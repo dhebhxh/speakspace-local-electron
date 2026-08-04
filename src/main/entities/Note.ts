@@ -3,7 +3,7 @@ import { Entity } from "./Entity";
 
 export class Note extends Entity {
 
-    private workspaceId: string | null;
+    private workspaceId: number | null;
     private name: string | null;
     private audioRelativePath: string | null;
     private transcript: string;
@@ -13,8 +13,8 @@ export class Note extends Entity {
     private updatedAt: Date;
 
     public constructor(
-        id: string,
-        workspaceId: string | null,
+        id: number,
+        workspaceId: number | null,
         name: string | null,
         audioRelativePath: string | null,
         transcript: string,
@@ -35,11 +35,11 @@ export class Note extends Entity {
         this.updatedAt = updatedAt;
     }
 
-    public getWorkspaceId(): string | null {
+    public getWorkspaceId(): number | null {
         return this.workspaceId;
     }
 
-    public setWorkspaceId(workspaceId: string | null): void {
+    public setWorkspaceId(workspaceId: number | null): void {
         this.workspaceId = workspaceId;
     }
 

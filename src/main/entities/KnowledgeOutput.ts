@@ -3,17 +3,17 @@ import { Entity } from "./Entity";
 
 export class KnowledgeOutput extends Entity {
 
-    private noteId: string;
-    private templateId: string;
+    private noteId: number;
+    private templateId: number;
     private contentType: string;
     private content: string;
     private createdAt: Date;
     private updatedAt: Date;
 
     public constructor(
-        id: string,
-        noteId: string,
-        templateId: string,
+        id: number,
+        noteId: number,
+        templateId: number,
         contentType: string,
         content: string,
         createdAt: Date,
@@ -29,19 +29,19 @@ export class KnowledgeOutput extends Entity {
         this.updatedAt = updatedAt;
     }
 
-    public getNoteId(): string {
+    public getNoteId(): number {
         return this.noteId;
     }
 
-    public setNoteId(noteId: string): void {
+    public setNoteId(noteId: number): void {
         this.noteId = noteId;
     }
 
-    public getTemplateId(): string {
+    public getTemplateId(): number {
         return this.templateId;
     }
 
-    public setTemplateId(templateId: string): void {
+    public setTemplateId(templateId: number): void {
         this.templateId = templateId;
     }
 

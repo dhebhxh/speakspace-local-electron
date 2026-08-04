@@ -8,7 +8,7 @@ export class AIConversation extends Entity {
     private updatedAt: Date;
 
     public constructor(
-        id: string,
+        id: number,
         name: string,
         createdAt: Date,
         updatedAt: Date

@@ -3,14 +3,14 @@ import { Entity } from "./Entity";
 
 export class Subnote extends Entity {
 
-    private noteId: string;
+    private noteId: number;
     private contentType: string;
     private content: string;
     private createdAt: Date;
 
     public constructor(
-        id: string,
-        noteId: string,
+        id: number,
+        noteId: number,
         contentType: string,
         content: string,
         createdAt: Date
@@ -23,11 +23,11 @@ export class Subnote extends Entity {
         this.createdAt = createdAt;
     }
 
-    public getNoteId(): string {
+    public getNoteId(): number {
         return this.noteId;
     }
 
-    public setNoteId(noteId: string): void {
+    public setNoteId(noteId: number): void {
         this.noteId = noteId;
     }
 

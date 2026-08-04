@@ -3,14 +3,14 @@ import { Entity } from "./Entity";
 
 export class AIMessage extends Entity {
 
-    private conversationId: string;
+    private conversationId: number;
     private role: string;
     private content: string;
     private createdAt: Date;
 
     public constructor(
-        id: string,
-        conversationId: string,
+        id: number,
+        conversationId: number,
         role: string,
         content: string,
         createdAt: Date
@@ -23,11 +23,11 @@ export class AIMessage extends Entity {
         this.createdAt = createdAt;
     }
 
-    public getConversationId(): string {
+    public getConversationId(): number {
         return this.conversationId;
     }
 
-    public setConversationId(conversationId: string): void {
+    public setConversationId(conversationId: number): void {
         this.conversationId = conversationId;
     }
 

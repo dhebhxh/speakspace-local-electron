@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { KnowledgeTemplateCard } from "./components/KnowledgeTemplateCard";
 import { KnowledgeTemplate } from "../../../main/entities/KnowledgeTemplate";
-import { KnowledgeTemplateFormPage } from "./KnowledgeTemplateFormPage";
+import { KnowledgeTemplateFormPage } from "./components/KnowledgeTemplateFormPage";
 
 
 export function WorkflowPage() {
 
     const [knowledgeTemplates, setKnowledgeTemplates] = useState<KnowledgeTemplate[]>([]);
 
-    const [pageMode, setPageMode] = useState<"list" | "create" | "edit">("list");
+    const [pageMode, setPageMode] = useState<"list" | "form">("list");
 
     const [editingTemplate, setEditingTemplate] = useState<KnowledgeTemplate | null>(null);
 
@@ -20,19 +20,44 @@ export function WorkflowPage() {
         loadKnowledgeTemplates();
     },[]);
 
-    function handleUpdate(knowledgeTemplate: KnowledgeTemplate) {
+    function handleFormOpen(knowledgeTemplate: KnowledgeTemplate | null) {
         setEditingTemplate(knowledgeTemplate);
-        setPageMode("edit");
-
-
+        setPageMode("form");
     }
 
-    function handleDelete(knowledgeTemplate: KnowledgeTemplate) {
-        // Implement delete functionality here
+    async function handleSubmit(name: string, prompt: string) {
+
+        if (editingTemplate == null) {
+            // create
+            await window.electron.workflow.createKnowledgeTemplate(
+                name,
+                prompt
+            );
+        } else {
+            // update
+            await window.electron.workflow.updateKnowledgeTemplate(
+                editingTemplate.getId(),
+                name,
+                prompt
+            );
+        }
+
+        // 保存成功以后重新加载列表
+        const list = await window.electron.workflow.getKnowledgeTemplateList();
+        setKnowledgeTemplates(list);
+
+        // 返回列表页
+        setPageMode("list");
     }
 
-    function handleCreateTemplate() {
-        setPageMode("create");
+    async function handleDelete(knowledgeTemplate: KnowledgeTemplate) {
+        await window.electron.workflow.deleteKnowledgeTemplate(
+            knowledgeTemplate.getId()
+        );
+
+        // 重新加载列表
+        const list = await window.electron.workflow.getKnowledgeTemplateList();
+        setKnowledgeTemplates(list);
     }
 
     return (
@@ -40,7 +65,7 @@ export function WorkflowPage() {
             {
                 pageMode === "list" && 
                 <>
-                    <button onClick={handleCreateTemplate}>
+                    <button onClick={() => handleFormOpen(null)}>
                         create new knowledge template
                     </button>
                     {
@@ -49,7 +74,7 @@ export function WorkflowPage() {
                                 <KnowledgeTemplateCard
                                     key={knowledgeTemplate.getId()}
                                     knowledgeTemplate={knowledgeTemplate}
-                                    onUpdate={handleUpdate}
+                                    onOpenForm={handleFormOpen}
                                     onDelete={handleDelete}
                                 />
                             )
@@ -59,14 +84,11 @@ export function WorkflowPage() {
             }
 
             {
-                pageMode === "create" &&
-                <KnowledgeTemplateFormPage/>
-            }
-
-            {
-                pageMode === "edit" &&
+                pageMode === "form" &&
                 <KnowledgeTemplateFormPage
-                    
+                    knowledgeTemplate={editingTemplate}
+                    onSubmit={handleSubmit}
+                />
             }
         </div>
     )

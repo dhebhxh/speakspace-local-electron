@@ -3,11 +3,11 @@ import { KnowledgeTemplate } from "../../../../main/entities/KnowledgeTemplate";
 export function KnowledgeTemplateCard(
     {
         knowledgeTemplate,
-        onUpdate,
+        onOpenForm,
         onDelete
     }: {
         knowledgeTemplate: KnowledgeTemplate
-        onUpdate: (knowledgeTemplate: KnowledgeTemplate) => void;
+        onOpenForm: (knowledgeTemplate: KnowledgeTemplate) => void;
         onDelete: (knowledgeTemplate: KnowledgeTemplate) => void;
     }
 ) {
@@ -26,7 +26,7 @@ export function KnowledgeTemplateCard(
             <span>
                 {knowledgeTemplate.getUpdatedAt().toLocaleString()}
             </span>
-            <button onClick={() => onUpdate(knowledgeTemplate)}>update</button>
+            <button onClick={() => onOpenForm(knowledgeTemplate)}>update</button>
             <button onClick={() => onDelete(knowledgeTemplate)}>delete</button>
         </div>
     )

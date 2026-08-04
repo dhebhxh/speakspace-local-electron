@@ -1,34 +1,24 @@
 import { useEffect, useState } from "react";
+import { KnowledgeTemplate } from "../../../../main/entities/KnowledgeTemplate";
 
 
 export function KnowledgeTemplateFormPage(
     {
-        isEditMode,
-        knowledgeTemplateId,
-        oldName,
-        oldPrompt
+        knowledgeTemplate,
+        onSubmit
     }: {
-        isEditMode: boolean;
-        knowledgeTemplateId: number;
-        oldName: string;
-        oldPrompt: string;
+        knowledgeTemplate: KnowledgeTemplate | null;
+        onSubmit: (name: string, prompt: string) => void;
     }
 ) {
-    const [name, setName] = useState("");
-    const [prompt, setPrompt] = useState("");
-
-    useEffect(() => {
-        if (isEditMode) {
-            setName(oldName);
-            setPrompt(oldPrompt);
-        } else {
-            setName("");
-            setPrompt("");
-        }
-    }, [isEditMode, oldName, oldPrompt]);
+    const [name, setName] = useState(knowledgeTemplate?.getName() ?? "");
+    const [prompt, setPrompt] = useState(knowledgeTemplate?.getPrompt() ?? "");
 
     return (
-        <form>
+        <form onSubmit={(e) => {
+            e.preventDefault();
+            onSubmit(name, prompt);
+        }}>
             <label>
                 name:
                 <input

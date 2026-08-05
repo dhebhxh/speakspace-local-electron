@@ -54,6 +54,8 @@ export class RecordingSession {
     public stop(): void {
         this.recorder?.stop();
 
+        // 现有问题说明：停止录制后没有停止 MediaStream 的 audio tracks，麦克风可能仍保持占用。
+
         this.state = RecordingState.Completed;
     }
 
@@ -78,5 +80,5 @@ export class RecordingSession {
         // TODO IPC
     }
 
-    //增加状态检查
+    // 现有问题说明：state 是普通类字段，没有通知 React 重新渲染，控制栏可能不会随录音状态切换按钮。
 }

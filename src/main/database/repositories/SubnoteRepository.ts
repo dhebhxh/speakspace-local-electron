@@ -6,6 +6,8 @@ import { DatabaseManager } from "../DatabaseManager";
 
 export class SubnoteRepository implements Repository<Subnote> {
 
+    // 现有问题说明：Subnote 实体 id 是 string，而数据库 subnotes.id 是 INTEGER AUTOINCREMENT；create 主动写入字符串 id 时可能发生类型冲突。
+
     private database: Database.Database;
 
 

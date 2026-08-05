@@ -94,6 +94,25 @@ const electronHandler = {
         id
       )
     }
+  },
+
+  // 操作方法：渲染进程使用 window.electron.workspace 调用；数据库访问始终留在主进程。
+  workspace: {
+    getList() {
+      return ipcRenderer.invoke('Workspace:getList');
+    },
+    create(name: string) {
+      return ipcRenderer.invoke('Workspace:create', name);
+    },
+    getNotes(workspaceId: number) {
+      return ipcRenderer.invoke('Workspace:getNotes', workspaceId);
+    },
+    rename(id: number, name: string) {
+      return ipcRenderer.invoke('Workspace:rename', id, name);
+    },
+    delete(id: number) {
+      return ipcRenderer.invoke('Workspace:delete', id);
+    },
   }
   
 };

@@ -188,6 +188,7 @@ export class STTModelManager implements ModelManager {
 
         const lastActivated = this.getActivatedModel();
 
+        // 现有问题说明：getActivatedModel() 会重新读取配置；lastActivated 属于另一份对象，下面修改它不会影响最终传给 saveConfig 的 config。
         if (lastActivated) {
             lastActivated.activated = false;
         }

@@ -28,6 +28,7 @@ export function ModelManagerPage() {
 
     async function refreshLLMModels(){
         const models = await window.electron.modelManagement.getModelList("llm");
+        // 现有问题说明：这里刷新的是 LLM 列表，却写入了 STT state；执行 LLM 操作后会覆盖语音模型列表，LLM 界面也不会刷新。
         setSttModels(models);
     }
 

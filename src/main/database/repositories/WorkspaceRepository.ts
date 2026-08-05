@@ -7,6 +7,8 @@ import { DatabaseManager } from"../DatabaseManager";
 
 export class WorkspaceRepository implements Repository<Workspace> {
 
+    // 现有问题说明：Workspace 实体使用 string 类型 id，但数据库 workspaces.id 是 INTEGER AUTOINCREMENT；创建流程直接写入实体 id 时可能发生类型冲突。
+
     private database: Database.Database;
 
 

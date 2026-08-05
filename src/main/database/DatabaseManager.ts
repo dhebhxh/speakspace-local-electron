@@ -1,3 +1,4 @@
+// 现有问题说明：better-sqlite3 是原生依赖，但当前被声明在根 package.json；项目 postinstall 要求它安装到 release/app，因此 npm ci 会主动终止。
 import Database from "better-sqlite3";
 import { app } from "electron";
 import path from "path";

@@ -3,6 +3,7 @@ import { Entity } from "./Entity";
 
 export class Note extends Entity {
 
+    // 现有问题说明：这里允许 workspaceId 为 null，但数据库 notes.workspace_id 定义为 NOT NULL，保存未归属工作空间的笔记会失败。
     private workspaceId: string | null;
     private name: string | null;
     private audioRelativePath: string | null;

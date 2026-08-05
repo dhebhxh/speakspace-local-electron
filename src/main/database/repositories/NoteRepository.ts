@@ -19,6 +19,9 @@ export class NoteRepository implements Repository<Note> {
 
     public create(entity: Note): number {
 
+        // 现有问题说明：INSERT 只有 8 个字段和占位符，但下方传入了 9 个值（多传 entity.getId()），参数会整体错位并导致创建失败。
+        // 现有问题说明：方法声明返回 number，但当前实现没有 return，调用方无法取得新笔记 ID。
+
         const now = new Date();
 
         const statement = this.database.prepare(`

@@ -6,6 +6,8 @@ import { KnowledgeTemplateFormPage } from "./KnowledgeTemplateFormPage";
 
 export function WorkflowPage() {
 
+    // 现有问题说明：IPC 传回的类实例会被结构化克隆为普通对象，后续调用 getId/getName 等实体方法会失败，应使用纯数据 DTO。
+
     const [knowledgeTemplates, setKnowledgeTemplates] = useState<KnowledgeTemplate[]>([]);
 
     const [pageMode, setPageMode] = useState<"list" | "create" | "edit">("list");
@@ -65,6 +67,7 @@ export function WorkflowPage() {
 
             {
                 pageMode === "edit" &&
+                // 现有问题说明：下面的 KnowledgeTemplateFormPage JSX 未闭合且缺少必填 props，当前文件存在语法错误。
                 <KnowledgeTemplateFormPage
                     
             }

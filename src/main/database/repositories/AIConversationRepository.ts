@@ -6,6 +6,8 @@ import { DatabaseManager } from "../DatabaseManager";
 
 export class AIConversationRepository implements Repository<AIConversation> {
 
+    // 现有问题说明：Repository 接口要求 number 类型 ID，但本仓储的查找、删除和存在性检查使用 string，严格类型检查下不兼容。
+
     private database: Database.Database;
 
 

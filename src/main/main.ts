@@ -18,6 +18,8 @@ import { resolveHtmlPath } from './util';
 //speakspace-local ipc
 import "./ipc/model-management-ipc";
 import "./ipc/workflow-ipc";
+// 工作空间 IPC 必须在主进程启动时注册，渲染进程才能通过 preload 安全调用。
+import "./ipc/workspace-ipc";
 
 class AppUpdater {
   constructor() {

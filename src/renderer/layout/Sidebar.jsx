@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { RoutePath } from '../router/RouteManager';
 
 export default function Sidebar() {
     const { t } = useTranslation();
@@ -10,31 +11,37 @@ export default function Sidebar() {
         <h2>Sidebar</h2>
         <ul>
             <li>
-                <NavLink to="/">
+                <NavLink to={RoutePath.Transcription}>
                     {t('sidebar.transcription')}
                 </NavLink>
             </li>
 
             <li>
-                <NavLink to="/AIChat">
+                <NavLink to={RoutePath.Dashboard}>
+                    {t('sidebar.dashBoard')}
+                </NavLink>
+            </li>
+
+            <li>
+                <NavLink to={RoutePath.AIChat}>
                     {t('sidebar.aiChat')}
                 </NavLink>
             </li>
 
             <li>
-                <NavLink to="/Workspace">
+                <NavLink to={RoutePath.Workspace}>
                     {t('sidebar.workspace')}
                 </NavLink>
             </li>
             
             <li>
-                <NavLink to="/ModelManagement">
+                <NavLink to={RoutePath.ModelManagement}>
                     {t('sidebar.modelManagement')}
                 </NavLink>
             </li>
 
             <li>
-                <NavLink to="/Settings">
+                <NavLink to={RoutePath.Settings}>
                     {t('sidebar.settings')}
                 </NavLink>
             </li>

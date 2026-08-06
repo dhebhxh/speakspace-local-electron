@@ -1,6 +1,7 @@
 {
   "sidebar.transcription": "Transcription",
   "sidebar.aiChat": "AI Chat",
+  "sidebar.dashBoard": "DashBoard",
   "sidebar.workspace": "Workspace",
   "sidebar.modelManagement": "Model Manage",
   "sidebar.settings": "Settings"

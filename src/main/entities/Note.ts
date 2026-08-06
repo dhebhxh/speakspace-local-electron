@@ -3,8 +3,7 @@ import { Entity } from "./Entity";
 
 export class Note extends Entity {
 
-    // 现有问题说明：这里允许 workspaceId 为 null，但数据库 notes.workspace_id 定义为 NOT NULL，保存未归属工作空间的笔记会失败。
-    private workspaceId: string | null;
+    private workspaceId: number | null;
     private name: string | null;
     private audioRelativePath: string | null;
     private transcript: string;
@@ -14,8 +13,8 @@ export class Note extends Entity {
     private updatedAt: Date;
 
     public constructor(
-        id: string,
-        workspaceId: string | null,
+        id: number,
+        workspaceId: number | null,
         name: string | null,
         audioRelativePath: string | null,
         transcript: string,
@@ -36,11 +35,11 @@ export class Note extends Entity {
         this.updatedAt = updatedAt;
     }
 
-    public getWorkspaceId(): string | null {
+    public getWorkspaceId(): number | null {
         return this.workspaceId;
     }
 
-    public setWorkspaceId(workspaceId: string | null): void {
+    public setWorkspaceId(workspaceId: number | null): void {
         this.workspaceId = workspaceId;
     }
 

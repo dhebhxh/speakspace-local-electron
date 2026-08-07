@@ -1,23 +1,14 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import './WorkspacePage.css';
+import {
+  NoteItem,
+  WorkspaceController,
+  WorkspaceItem,
+} from './WorkspaceController';
 
-type WorkspaceItem = {
-  id: number;
-  name: string;
-  created_at: string;
-  updated_at: string;
-  note_count: number;
-  pinned_count: number;
-};
-
-type NoteItem = {
-  id: number;
-  name: string | null;
-  transcript: string;
-  is_pinned: number;
-  created_at: string;
-  updated_at: string;
-};
+// 页面只维护 React 状态；所有工作空间操作由 OOP controller 统一完成。
+// The page owns React state while the OOP controller handles workspace operations.
+const workspaceController = new WorkspaceController();
 
 export default function WorkspacePage() {
   const [items, setItems] = useState<WorkspaceItem[]>([]);
@@ -33,12 +24,12 @@ export default function WorkspacePage() {
   const loadWorkspaces = useCallback(async () => {
     try {
       setError('');
-      const result = await window.electron.workspace.getList();
+      const result = await workspaceController.getWorkspaces();
       setItems(result);
       // 首次进入时自动选中最近使用的工作空间；刷新列表时保留用户当前选择。
       setSelectedId((current) => current ?? result[0]?.id ?? null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '读取工作空间失败');
+      setError(WorkspaceController.getErrorMessage(reason, '读取工作空间失败'));
     } finally {
       setLoading(false);
     }
@@ -58,9 +49,9 @@ export default function WorkspacePage() {
       setNotesLoading(true);
       try {
         setError('');
-        setNotes(await window.electron.workspace.getNotes(selectedId));
+        setNotes(await workspaceController.getWorkspaceNotes(selectedId));
       } catch (reason) {
-        setError(reason instanceof Error ? reason.message : '读取笔记失败');
+        setError(WorkspaceController.getErrorMessage(reason, '读取笔记失败'));
       } finally {
         setNotesLoading(false);
       }
@@ -73,12 +64,12 @@ export default function WorkspacePage() {
     if (!name.trim()) return;
     try {
       setError('');
-      const created = await window.electron.workspace.create(name);
+      const created = await workspaceController.createWorkspace(name);
       setName('');
       setSelectedId(created.id);
       await loadWorkspaces();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '创建工作空间失败');
+      setError(WorkspaceController.getErrorMessage(reason, '创建工作空间失败'));
     }
   };
 
@@ -89,10 +80,10 @@ export default function WorkspacePage() {
     if (nextName === null || !nextName.trim() || nextName.trim() === item.name)
       return;
     try {
-      await window.electron.workspace.rename(item.id, nextName);
+      await workspaceController.renameWorkspace(item.id, nextName);
       await loadWorkspaces();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '重命名失败');
+      setError(WorkspaceController.getErrorMessage(reason, '重命名失败'));
     }
   };
 
@@ -101,23 +92,17 @@ export default function WorkspacePage() {
     // eslint-disable-next-line no-alert
     if (!window.confirm(`确定删除“${item.name}”及其中的全部笔记吗？`)) return;
     try {
-      await window.electron.workspace.delete(item.id);
+      await workspaceController.deleteWorkspace(item.id);
       if (selectedId === item.id) setSelectedId(null);
       await loadWorkspaces();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '删除失败');
+      setError(WorkspaceController.getErrorMessage(reason, '删除失败'));
     }
   };
 
   const selectedWorkspace =
     items.find((item) => item.id === selectedId) ?? null;
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  const visibleNotes = notes.filter((note) => {
-    if (!normalizedQuery) return true;
-    return `${note.name ?? ''} ${note.transcript}`
-      .toLocaleLowerCase()
-      .includes(normalizedQuery);
-  });
+  const visibleNotes = WorkspaceController.filterNotes(notes, query);
 
   return (
     <section className="workspace-page">
@@ -194,9 +179,10 @@ export default function WorkspacePage() {
                   <h2>{selectedWorkspace.name}</h2>
                   <p>
                     最近更新{' '}
-                    {new Intl.DateTimeFormat('zh-CN', {
-                      dateStyle: 'long',
-                    }).format(new Date(selectedWorkspace.updated_at))}
+                    {WorkspaceController.formatDate(
+                      selectedWorkspace.updated_at,
+                      'long',
+                    )}
                   </p>
                 </div>
                 <div className="workspace-card-actions">
@@ -257,10 +243,7 @@ export default function WorkspacePage() {
                       <p>{note.transcript || '暂无转录内容'}</p>
                     </div>
                     <time dateTime={note.updated_at}>
-                      {new Intl.DateTimeFormat('zh-CN', {
-                        month: 'short',
-                        day: 'numeric',
-                      }).format(new Date(note.updated_at))}
+                      {WorkspaceController.formatDate(note.updated_at, 'short')}
                     </time>
                   </article>
                 ))}

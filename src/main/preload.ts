@@ -96,7 +96,8 @@ const electronHandler = {
     }
   },
 
-  // 操作方法：渲染进程使用 window.electron.workspace 调用；数据库访问始终留在主进程。
+  // 操作方法：通过 window.electron.workspace 调用，数据库访问保留在主进程。
+  // Usage: call through window.electron.workspace; database access stays in main.
   workspace: {
     getList() {
       return ipcRenderer.invoke('Workspace:getList');

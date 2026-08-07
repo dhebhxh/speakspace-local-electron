@@ -8,6 +8,9 @@ export enum RecordingState {
 export class RecordingSession {
     private recorder?: MediaRecorder;
     private state = RecordingState.Idle;
+    private transcriptListeners = new Set<() => void>();
+
+    public transcript = '';
 
     public constructor() {
 
@@ -16,6 +19,12 @@ export class RecordingSession {
 
     public getState(): RecordingState {
         return this.state;
+    }
+
+    public subscribe(listener: () => void): () => void {
+        this.transcriptListeners.add(listener);
+
+        return () => this.transcriptListeners.delete(listener);
     }
 
 

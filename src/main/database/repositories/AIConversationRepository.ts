@@ -38,7 +38,7 @@ export class AIConversationRepository implements Repository<AIConversation> {
     }
 
 
-    public findById(id: string): AIConversation | null {
+    public findById(id: number): AIConversation | null {
 
         const statement = this.database.prepare(`
             SELECT *
@@ -100,7 +100,7 @@ export class AIConversationRepository implements Repository<AIConversation> {
     }
 
 
-    public deleteById(id: string): boolean {
+    public deleteById(id: number): boolean {
 
         const statement = this.database.prepare(`
             DELETE
@@ -116,7 +116,7 @@ export class AIConversationRepository implements Repository<AIConversation> {
     }
 
 
-    public existsById(id: string): boolean {
+    public existsById(id: number): boolean {
 
         const statement = this.database.prepare(`
             SELECT 1

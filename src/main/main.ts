@@ -18,6 +18,7 @@ import { resolveHtmlPath } from './util';
 //speakspace-local ipc
 import "./ipc/model-management-ipc";
 import "./ipc/workflow-ipc";
+import "./ipc/recording-ipc";
 
 class AppUpdater {
   constructor() {

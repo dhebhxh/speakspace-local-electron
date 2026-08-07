@@ -1,3 +1,10 @@
+import { useEffect, useState } from 'react';
+import { RecordingSession } from '../RecordingSession';
+
+interface Props {
+    session: RecordingSession;
+}
+
 export function TranscriptionPanel(
     { session }: Props
 ){
@@ -10,7 +17,7 @@ export function TranscriptionPanel(
 
     useEffect(()=>{
 
-        session.subscribe(()=>{
+        return session.subscribe(() => {
 
             setText(
                 session.transcript
@@ -18,7 +25,7 @@ export function TranscriptionPanel(
 
         });
 
-    },[]);
+    }, [session]);
 
 
     return (

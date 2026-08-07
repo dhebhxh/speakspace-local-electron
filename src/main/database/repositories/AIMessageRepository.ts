@@ -41,7 +41,7 @@ export class AIMessageRepository implements Repository<AIMessage> {
     }
 
 
-    public findById(id: string): AIMessage | null {
+    public findById(id: number): AIMessage | null {
 
         const statement = this.database.prepare(`
             SELECT *
@@ -107,7 +107,7 @@ export class AIMessageRepository implements Repository<AIMessage> {
     }
 
 
-    public deleteById(id: string): boolean {
+    public deleteById(id: number): boolean {
 
         const statement = this.database.prepare(`
             DELETE
@@ -123,7 +123,7 @@ export class AIMessageRepository implements Repository<AIMessage> {
     }
 
 
-    public existsById(id: string): boolean {
+    public existsById(id: number): boolean {
 
         const statement = this.database.prepare(`
             SELECT 1

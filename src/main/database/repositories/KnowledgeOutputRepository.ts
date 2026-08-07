@@ -44,7 +44,7 @@ export class KnowledgeOutputRepository implements Repository<KnowledgeOutput> {
     }
 
 
-    public findById(id: string): KnowledgeOutput | null {
+    public findById(id: number): KnowledgeOutput | null {
 
         const statement = this.database.prepare(`
             SELECT *
@@ -127,7 +127,7 @@ export class KnowledgeOutputRepository implements Repository<KnowledgeOutput> {
     }
 
 
-    public deleteById(id: string): boolean {
+    public deleteById(id: number): boolean {
 
         return this.database.prepare(`
             DELETE
@@ -137,7 +137,7 @@ export class KnowledgeOutputRepository implements Repository<KnowledgeOutput> {
     }
 
 
-    public existsById(id: string): boolean {
+    public existsById(id: number): boolean {
 
         return this.database.prepare(`
             SELECT 1

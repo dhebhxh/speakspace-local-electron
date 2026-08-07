@@ -31,7 +31,7 @@ export class STTModelManager implements ModelManager {
 
 
 
-    constructor() {
+    public constructor() {
 
         const projectRoot = app.getAppPath();
 
@@ -215,6 +215,10 @@ export class STTModelManager implements ModelManager {
         return model;
     }
 
+    public getModelPath(model: STTModel): string | null {
+        const fileName = path.basename(model.downloadUrl);
+        return path.join(this.modelDir, fileName);
+    }
 
     private loadConfig(): STTConfig {
         const json =

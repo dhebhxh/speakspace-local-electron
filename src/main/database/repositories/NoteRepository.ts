@@ -17,9 +17,14 @@ export class NoteRepository implements Repository<Note> {
     }
 
 
-    public create(entity: Note): number {
+    public create(
+        workspaceId: number,
+        name: string,
+        audioRelativePath: string,
+        transcript: string,
+    ): number {
 
-        const now = new Date();
+        const now = new Date().toISOString();
 
         const statement = this.database.prepare(`
             INSERT INTO notes (
@@ -36,19 +41,18 @@ export class NoteRepository implements Repository<Note> {
         `);
 
 
-        statement.run(
-            entity.getId(),
-            entity.getWorkspaceId(),
-            entity.getName(),
-            entity.getAudioRelativePath(),
-            entity.getTranscript(),
-            entity.isPinned() ? 1 : 0,
-            entity.getPinnedAt()
-                ? entity.getPinnedAt()?.toISOString()
-                : null,
-            entity.getCreatedAt().toISOString(),
-            entity.getUpdatedAt().toISOString()
+        const result = statement.run(
+            workspaceId,
+            name,
+            audioRelativePath,
+            transcript,
+            0,
+            null,
+            now,
+            now
         );
+
+        return result.lastInsertRowid as number;
     }
 
 

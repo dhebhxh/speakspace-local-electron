@@ -40,7 +40,7 @@ export class SubnoteRepository implements Repository<Subnote> {
     }
 
 
-    public findById(id: string): Subnote | null {
+    public findById(id: number): Subnote | null {
 
         const statement = this.database.prepare(`
             SELECT *
@@ -105,7 +105,7 @@ export class SubnoteRepository implements Repository<Subnote> {
     }
 
 
-    public deleteById(id: string): boolean {
+    public deleteById(id: number): boolean {
 
         const statement = this.database.prepare(`
             DELETE
@@ -121,7 +121,7 @@ export class SubnoteRepository implements Repository<Subnote> {
     }
 
 
-    public existsById(id: string): boolean {
+    public existsById(id: number): boolean {
 
         const statement = this.database.prepare(`
             SELECT 1

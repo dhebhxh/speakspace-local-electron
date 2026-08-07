@@ -94,7 +94,52 @@ const electronHandler = {
         id
       )
     }
-  }
+  },
+
+  transcription: {
+    start() {
+      return ipcRenderer.invoke(
+        "Transcription:start"
+      )
+    },
+
+    stop() {
+      return ipcRenderer.invoke(
+        "Transcription:stop"
+      )
+    },
+
+    save(title: string) {
+      return ipcRenderer.invoke(
+        "Transcription:save",
+        title
+      )
+    },
+
+    discard() {
+      return ipcRenderer.invoke(
+        "Transcription:discard"
+      )
+    },
+
+    sendChunk(chunk: Blob) {
+      ipcRenderer.send(
+        "Transcription:sendChunk",
+        chunk
+      )
+    },
+
+    onText(callback: (id: number, text: string) => void) {
+      const subscription = (_event: IpcRendererEvent, id: number, text: string) =>callback(id, text);
+
+      ipcRenderer.on("Transcription:onText", subscription);
+
+      return () => {
+        ipcRenderer.removeListener("Transcription:onText", subscription);
+      };
+    },
+
+  },
   
 };
 

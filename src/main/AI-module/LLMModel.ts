@@ -6,7 +6,7 @@ export class LLMModel extends Model {
     quantization: string | null;
     modelName: string;
 
-    constructor(
+    public constructor(
         id: string,
         name: string,
         language: string,

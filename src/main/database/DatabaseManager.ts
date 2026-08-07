@@ -37,6 +37,8 @@ export class DatabaseManager {
         );
 
         this.createCoreTables();
+
+        this.createDefaultWorkspace();
     }
 
 
@@ -225,5 +227,35 @@ export class DatabaseManager {
             );
 
         `);
+    }
+
+    private createDefaultWorkspace(): void {
+        const statement = this.database.prepare(`
+            SELECT COUNT(*) as count
+            FROM workspaces
+        `);
+
+        const result = statement.get() as {
+            count: number
+        };
+
+        if (result.count === 0) {
+            const now = new Date().toISOString();
+
+            const insert = this.database.prepare(`
+                INSERT INTO workspaces (
+                    name,
+                    created_at,
+                    updated_at
+                )
+                VALUES (?, ?, ?)
+            `);
+
+            insert.run(
+                "Default Workspace",
+                now,
+                now
+            );
+        }
     }
 }

@@ -22,7 +22,7 @@ export class WorkspaceRepository implements Repository<Workspace> {
         const statement = this.database.prepare(`
             INSERT INTO workspaces (
                 id,
-                name,
+                name,·
                 created_at,
                 updated_at
             )
@@ -38,7 +38,7 @@ export class WorkspaceRepository implements Repository<Workspace> {
     }
 
 
-    public findById(id: string): Workspace | null {
+    public findById(id: number): Workspace | null {
 
         const statement = this.database.prepare(`
             SELECT *
@@ -90,7 +90,7 @@ export class WorkspaceRepository implements Repository<Workspace> {
     }
 
 
-    public deleteById(id: string): boolean {
+    public deleteById(id: number): boolean {
 
         const statement = this.database.prepare(`
             DELETE
@@ -104,7 +104,7 @@ export class WorkspaceRepository implements Repository<Workspace> {
     }
 
 
-    public existsById(id: string): boolean {
+    public existsById(id: number): boolean {
 
         const statement = this.database.prepare(`
             SELECT 1

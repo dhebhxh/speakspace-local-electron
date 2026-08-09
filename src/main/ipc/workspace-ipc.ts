@@ -13,6 +13,7 @@ import { WorkspaceService } from '../workspace/WorkspaceService';
 class WorkspaceIpcController {
   // read-only
   private readonly service: WorkspaceService;
+
   private readonly ipc: IpcMain;
 
   // initialize
@@ -21,22 +22,33 @@ class WorkspaceIpcController {
     this.ipc = ipc;
   }
 
-  // ipcMain.handle调用WorkspaceService.ts中已有方法
+  // IPC 通道只转发请求，最近打开与内容修改规则由 WorkspaceService 处理。
   public register(): void {
-    // getlist
-    this.ipc.handle('Workspace:getList', () => this.service.listWorkspaces());
-    // create创建
+    this.ipc.handle('Workspace:getList', (_event, limit: unknown) =>
+      this.service.listWorkspaces(limit),
+    );
     this.ipc.handle('Workspace:create', (_event, name: unknown) =>
-      this.service.createWorkspace(name),);
-    // getNotes获取笔记列表
+      this.service.createWorkspace(name),
+    );
+    this.ipc.handle('Workspace:open', (_event, workspaceId: unknown) =>
+      this.service.openWorkspace(workspaceId),
+    );
     this.ipc.handle('Workspace:getNotes', (_event, workspaceId: unknown) =>
-      this.service.listNotes(workspaceId),);
-    // rename重命名
-    this.ipc.handle('Workspace:rename', (_event, workspaceId: unknown, name: unknown) =>
-        this.service.renameWorkspace(workspaceId, name),);
-    // delete删除
+      this.service.listNotes(workspaceId),
+    );
+    this.ipc.handle(
+      'Workspace:getNoteAudio',
+      (_event, workspaceId: unknown, noteId: unknown) =>
+        this.service.getNoteAudio(workspaceId, noteId),
+    );
+    this.ipc.handle(
+      'Workspace:rename',
+      (_event, workspaceId: unknown, name: unknown) =>
+        this.service.renameWorkspace(workspaceId, name),
+    );
     this.ipc.handle('Workspace:delete', (_event, workspaceId: unknown) =>
-      this.service.deleteWorkspace(workspaceId),);
+      this.service.deleteWorkspace(workspaceId),
+    );
   }
 }
 

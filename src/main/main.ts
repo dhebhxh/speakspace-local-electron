@@ -10,16 +10,17 @@
  */
 import path from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
-import { autoUpdater } from "electron-updater";
+import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 
-//speakspace-local ipc
-import "./ipc/model-management-ipc";
-import "./ipc/workflow-ipc";
+// speakspace-local ipc
+import './ipc/model-management-ipc';
+import './ipc/workflow-ipc';
+import './ipc/settings-ipc';
 // 工作空间 IPC 在主进程启动时注册。 / Register Workspace IPC when the main process starts.
-import "./ipc/workspace-ipc";
+import './ipc/workspace-ipc';
 
 class AppUpdater {
   constructor() {
@@ -46,7 +47,8 @@ const isDebug =
   process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
 
 if (isDebug) {
-  require('electron-debug').default();
+  // 保留开发快捷键，但不自动打开 DevTools，避免挤压应用预览布局。
+  require('electron-debug').default({ showDevTools: false });
 }
 
 const installExtensions = async () => {
@@ -63,7 +65,8 @@ const installExtensions = async () => {
 };
 
 const createWindow = async () => {
-  if (isDebug) {
+  // 仅在明确请求时安装开发扩展，避免扩展缓存故障阻止普通开发预览。
+  if (isDebug && process.env.UPGRADE_EXTENSIONS === 'true') {
     await installExtensions();
   }
 
@@ -133,7 +136,6 @@ app.on('window-all-closed', () => {
 app
   .whenReady()
   .then(() => {
-
     createWindow();
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the

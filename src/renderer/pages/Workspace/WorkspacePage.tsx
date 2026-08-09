@@ -1,257 +1,334 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
-import './WorkspacePage.css';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   NoteItem,
   WorkspaceController,
   WorkspaceItem,
 } from './WorkspaceController';
+import './WorkspacePage.css';
 
-// 页面只维护 React 状态；所有工作空间操作由 OOP controller 统一完成。
-// The page owns React state while the OOP controller handles workspace operations.
 const workspaceController = new WorkspaceController();
 
+function WorkspaceAudioPlayer({
+  workspaceId,
+  note,
+}: {
+  workspaceId: number;
+  note: NoteItem;
+}) {
+  const [audioUrl, setAudioUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(
+    () => () => {
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+    },
+    [audioUrl],
+  );
+
+  if (!note.audio_relative_path) {
+    return <span className="workspace-content-empty">没有关联录音</span>;
+  }
+
+  const loadAudio = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const audio = await workspaceController.getNoteAudio(
+        workspaceId,
+        note.id,
+      );
+      if (!audio) {
+        setError('录音文件不存在或已经移动');
+        return;
+      }
+
+      const bytes = new Uint8Array(audio.bytes);
+      const data = bytes.buffer.slice(
+        bytes.byteOffset,
+        bytes.byteOffset + bytes.byteLength,
+      ) as ArrayBuffer;
+      setAudioUrl(
+        URL.createObjectURL(new Blob([data], { type: audio.mime_type })),
+      );
+    } catch (reason) {
+      setError(WorkspaceController.getErrorMessage(reason, '读取录音失败'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (audioUrl) {
+    return (
+      <audio
+        className="workspace-audio"
+        controls
+        preload="metadata"
+        src={audioUrl}
+      >
+        <track kind="captions" />
+      </audio>
+    );
+  }
+
+  return (
+    <div className="workspace-audio-loader">
+      <button disabled={loading} onClick={loadAudio} type="button">
+        {loading ? '读取中…' : '加载录音'}
+      </button>
+      <small>{error || note.audio_relative_path}</small>
+    </div>
+  );
+}
+
+/**
+ * Workspace 详情页：进入时记录 last_opened_at，并展示该空间的完整内容。
+ * updated_at 只用于说明内容或名称最后修改时间。
+ */
 export default function WorkspacePage() {
-  const [items, setItems] = useState<WorkspaceItem[]>([]);
-  const [name, setName] = useState('');
+  const navigate = useNavigate();
+  const { workspaceId: workspaceIdParam } = useParams();
+  const workspaceId = Number(workspaceIdParam);
+  const [workspace, setWorkspace] = useState<WorkspaceItem | null>(null);
+  const [notes, setNotes] = useState<NoteItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [notes, setNotes] = useState<NoteItem[]>([]);
-  const [notesLoading, setNotesLoading] = useState(false);
   const [query, setQuery] = useState('');
 
-  // 操作方法：进入页面会自动读取列表；数据发生变化后重新读取，以数据库结果为准。
-  const loadWorkspaces = useCallback(async () => {
+  const loadWorkspace = useCallback(async () => {
+    if (!Number.isInteger(workspaceId) || workspaceId <= 0) {
+      setError('无效的工作空间 ID');
+      setLoading(false);
+      return;
+    }
+
     try {
+      setLoading(true);
       setError('');
-      const result = await workspaceController.getWorkspaces();
-      setItems(result);
-      // 首次进入时自动选中最近使用的工作空间；刷新列表时保留用户当前选择。
-      setSelectedId((current) => current ?? result[0]?.id ?? null);
+      // 先记录进入时间，再加载详情，保证返回首页时排序立即生效。
+      const openedWorkspace =
+        await workspaceController.openWorkspace(workspaceId);
+      const workspaceNotes =
+        await workspaceController.getWorkspaceNotes(workspaceId);
+      setWorkspace(openedWorkspace);
+      setNotes(workspaceNotes);
     } catch (reason) {
       setError(WorkspaceController.getErrorMessage(reason, '读取工作空间失败'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [workspaceId]);
 
   useEffect(() => {
-    loadWorkspaces();
-  }, [loadWorkspaces]);
+    loadWorkspace();
+  }, [loadWorkspace]);
 
-  useEffect(() => {
-    if (selectedId === null) {
-      setNotes([]);
-      return;
-    }
+  const renameWorkspace = async () => {
+    if (!workspace) return;
+    // eslint-disable-next-line no-alert
+    const nextName = window.prompt('输入新的工作空间名称', workspace.name);
+    if (!nextName?.trim() || nextName.trim() === workspace.name) return;
 
-    const loadNotes = async () => {
-      setNotesLoading(true);
-      try {
-        setError('');
-        setNotes(await workspaceController.getWorkspaceNotes(selectedId));
-      } catch (reason) {
-        setError(WorkspaceController.getErrorMessage(reason, '读取笔记失败'));
-      } finally {
-        setNotesLoading(false);
-      }
-    };
-    loadNotes();
-  }, [selectedId]);
-
-  const createWorkspace = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!name.trim()) return;
     try {
       setError('');
-      const created = await workspaceController.createWorkspace(name);
-      setName('');
-      setSelectedId(created.id);
-      await loadWorkspaces();
-    } catch (reason) {
-      setError(WorkspaceController.getErrorMessage(reason, '创建工作空间失败'));
-    }
-  };
-
-  const renameWorkspace = async (item: WorkspaceItem) => {
-    // 桌面端轻量重命名使用系统输入框，取消时不会修改数据。
-    // eslint-disable-next-line no-alert
-    const nextName = window.prompt('输入新的工作空间名称', item.name);
-    if (nextName === null || !nextName.trim() || nextName.trim() === item.name)
-      return;
-    try {
-      await workspaceController.renameWorkspace(item.id, nextName);
-      await loadWorkspaces();
+      await workspaceController.renameWorkspace(workspace.id, nextName);
+      setWorkspace(await workspaceController.openWorkspace(workspace.id));
     } catch (reason) {
       setError(WorkspaceController.getErrorMessage(reason, '重命名失败'));
     }
   };
 
-  const deleteWorkspace = async (item: WorkspaceItem) => {
-    // 删除会级联清除其笔记，因此执行前明确向用户确认。
+  const deleteWorkspace = async () => {
+    if (!workspace) return;
     // eslint-disable-next-line no-alert
-    if (!window.confirm(`确定删除“${item.name}”及其中的全部笔记吗？`)) return;
+    const confirmed = window.confirm(
+      `确定删除“${workspace.name}”及其中的全部笔记吗？`,
+    );
+    if (!confirmed) return;
+
     try {
-      await workspaceController.deleteWorkspace(item.id);
-      if (selectedId === item.id) setSelectedId(null);
-      await loadWorkspaces();
+      await workspaceController.deleteWorkspace(workspace.id);
+      navigate('/');
     } catch (reason) {
       setError(WorkspaceController.getErrorMessage(reason, '删除失败'));
     }
   };
 
-  const selectedWorkspace =
-    items.find((item) => item.id === selectedId) ?? null;
   const visibleNotes = WorkspaceController.filterNotes(notes, query);
 
+  if (loading) {
+    return <p className="workspace-detail-status">正在进入工作空间…</p>;
+  }
+
+  if (!workspace) {
+    return (
+      <section className="workspace-detail-page">
+        <p className="workspace-detail-error" role="alert">
+          {error || '工作空间不存在'}
+        </p>
+        <Link className="workspace-back-link" to="/">
+          ← 返回最近使用
+        </Link>
+      </section>
+    );
+  }
+
   return (
-    <section className="workspace-page">
-      <header className="workspace-header">
+    <section className="workspace-detail-page">
+      <Link className="workspace-back-link" to="/">
+        ← 返回最近使用
+      </Link>
+
+      <header className="workspace-detail-hero">
         <div>
-          <span className="workspace-eyebrow">KNOWLEDGE HUB</span>
-          <h1>工作空间</h1>
-          <p>按主题整理录音、转录文本和 AI 生成的知识内容。</p>
-        </div>
-        <form className="workspace-create" onSubmit={createWorkspace}>
-          <span className="workspace-create-label">新工作空间名称</span>
-          <div>
-            <input
-              id="workspace-name"
-              aria-label="新工作空间名称"
-              maxLength={80}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="例如：项目会议"
-              value={name}
-            />
-            <button type="submit" disabled={!name.trim()}>
-              创建
-            </button>
+          <span className="workspace-detail-eyebrow">WORKSPACE DETAIL</span>
+          <h1>{workspace.name}</h1>
+          <div className="workspace-detail-meta">
+            <span>{workspace.note_count} 篇笔记</span>
+            <span>{workspace.pinned_count} 篇置顶</span>
+            <span>
+              最近打开{' '}
+              {WorkspaceController.formatDate(workspace.recent_at, 'long')}
+            </span>
+            <span>
+              内容更新{' '}
+              {WorkspaceController.formatDate(workspace.updated_at, 'long')}
+            </span>
           </div>
-        </form>
+        </div>
+        <div className="workspace-detail-actions">
+          <button onClick={renameWorkspace} type="button">
+            重命名
+          </button>
+          <button
+            className="workspace-delete-button"
+            onClick={deleteWorkspace}
+            type="button"
+          >
+            删除
+          </button>
+        </div>
       </header>
 
       {error && (
-        <p className="workspace-error" role="alert">
+        <p className="workspace-detail-error" role="alert">
           {error}
         </p>
       )}
-      {loading && <p className="workspace-status">正在读取工作空间…</p>}
-      {!loading && items.length === 0 && (
-        <div className="workspace-empty">
-          <span aria-hidden="true">◇</span>
-          <h2>建立第一个工作空间</h2>
-          <p>在上方输入名称，即可开始归档录音与笔记。</p>
+
+      <label className="workspace-detail-search" htmlFor="workspace-search">
+        <span>搜索笔记、转录、子笔记或 AI 内容</span>
+        <input
+          id="workspace-search"
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="输入标题或内容关键词"
+          type="search"
+          value={query}
+        />
+      </label>
+
+      {visibleNotes.length === 0 && (
+        <div className="workspace-detail-empty">
+          <strong>{query ? '没有匹配内容' : '这个工作空间还没有笔记'}</strong>
+          <span>{query ? '尝试更换搜索词。' : '完成录音后可归档到这里。'}</span>
         </div>
       )}
 
-      {items.length > 0 && (
-        <div className="workspace-shell">
-          <aside className="workspace-list" aria-label="工作空间列表">
-            {items.map((item) => (
-              <button
-                className={`workspace-card${selectedId === item.id ? ' is-selected' : ''}`}
-                key={item.id}
-                onClick={() => setSelectedId(item.id)}
-                type="button"
-              >
-                <span className="workspace-card-icon" aria-hidden="true">
-                  W
+      <div className="workspace-detail-notes">
+        {visibleNotes.map((note) => (
+          <article className="workspace-detail-note" key={note.id}>
+            <header>
+              <div>
+                <span className="workspace-note-kind">
+                  {note.is_pinned ? '置顶笔记' : '工作笔记'}
                 </span>
-                <span className="workspace-card-copy">
-                  <strong>{item.name}</strong>
-                  <small>
-                    {item.note_count} 篇笔记 · {item.pinned_count} 篇置顶
-                  </small>
-                </span>
-                <span aria-hidden="true">›</span>
-              </button>
-            ))}
-          </aside>
-
-          {selectedWorkspace && (
-            <section
-              className="workspace-detail"
-              aria-label={`${selectedWorkspace.name}详情`}
-            >
-              <div className="workspace-detail-header">
-                <div>
-                  <span className="workspace-eyebrow">CURRENT WORKSPACE</span>
-                  <h2>{selectedWorkspace.name}</h2>
-                  <p>
-                    最近更新{' '}
-                    {WorkspaceController.formatDate(
-                      selectedWorkspace.updated_at,
-                      'long',
-                    )}
-                  </p>
-                </div>
-                <div className="workspace-card-actions">
-                  <button
-                    type="button"
-                    className="workspace-secondary"
-                    onClick={() => renameWorkspace(selectedWorkspace)}
-                  >
-                    重命名
-                  </button>
-                  <button
-                    type="button"
-                    className="workspace-danger"
-                    onClick={() => deleteWorkspace(selectedWorkspace)}
-                  >
-                    删除
-                  </button>
-                </div>
+                <h2>{note.name || '未命名笔记'}</h2>
               </div>
+              <time dateTime={note.updated_at}>
+                {WorkspaceController.formatDate(note.updated_at, 'short')}
+              </time>
+            </header>
 
-              <label
-                className="workspace-search"
-                htmlFor="workspace-note-search"
-              >
-                <span>搜索当前工作空间</span>
-                <input
-                  id="workspace-note-search"
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="按标题或转录内容搜索"
-                  type="search"
-                  value={query}
-                />
-              </label>
+            <div className="workspace-content-grid">
+              <section>
+                <h3>录音</h3>
+                <WorkspaceAudioPlayer workspaceId={workspace.id} note={note} />
+              </section>
 
-              {notesLoading && (
-                <p className="workspace-note-message">正在读取笔记…</p>
-              )}
-              {!notesLoading && visibleNotes.length === 0 && (
-                <div className="workspace-note-message">
-                  <strong>
-                    {query ? '没有匹配的笔记' : '这个工作空间还没有笔记'}
-                  </strong>
-                  <span>
-                    {query
-                      ? '尝试更换搜索词。'
-                      : '完成一次录音后，可将转录内容归档到这里。'}
-                  </span>
-                </div>
-              )}
-              <div className="workspace-note-list">
-                {visibleNotes.map((note) => (
-                  <article className="workspace-note" key={note.id}>
-                    <div>
-                      <span className="workspace-note-kind">
-                        {note.is_pinned ? '置顶笔记' : '转录笔记'}
-                      </span>
-                      <h3>{note.name || '未命名笔记'}</h3>
-                      <p>{note.transcript || '暂无转录内容'}</p>
-                    </div>
-                    <time dateTime={note.updated_at}>
-                      {WorkspaceController.formatDate(note.updated_at, 'short')}
-                    </time>
-                  </article>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      )}
+              <section className="workspace-transcript-section">
+                <h3>完整转录</h3>
+                <p className="workspace-transcript">
+                  {note.transcript || '暂无转录内容'}
+                </p>
+              </section>
+
+              <section>
+                <h3>子笔记</h3>
+                {note.subnotes.length === 0 ? (
+                  <span className="workspace-content-empty">暂无子笔记</span>
+                ) : (
+                  <div className="workspace-content-stack">
+                    {note.subnotes.map((subnote) => (
+                      <div className="workspace-content-item" key={subnote.id}>
+                        <small>{subnote.content_type}</small>
+                        <p>{subnote.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section>
+                <h3>AI 知识输出</h3>
+                {note.knowledge_outputs.length === 0 ? (
+                  <span className="workspace-content-empty">暂无 AI 输出</span>
+                ) : (
+                  <div className="workspace-content-stack">
+                    {note.knowledge_outputs.map((output) => (
+                      <div className="workspace-content-item" key={output.id}>
+                        <small>
+                          {output.template_name} · {output.content_type}
+                        </small>
+                        <p>{output.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="workspace-conversation-section">
+                <h3>关联 AI 对话</h3>
+                {note.conversations.length === 0 ? (
+                  <span className="workspace-content-empty">暂无关联对话</span>
+                ) : (
+                  <div className="workspace-content-stack">
+                    {note.conversations.map((conversation) => (
+                      <details
+                        className="workspace-conversation"
+                        key={conversation.id}
+                      >
+                        <summary>
+                          {conversation.name} · {conversation.messages.length}{' '}
+                          条消息
+                        </summary>
+                        <div>
+                          {conversation.messages.map((message) => (
+                            <p key={message.id}>
+                              <strong>{message.role}</strong>
+                              {message.content}
+                            </p>
+                          ))}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }

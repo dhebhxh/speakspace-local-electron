@@ -1,84 +1,65 @@
-// 现有问题说明：better-sqlite3 是原生依赖，但当前被声明在根 package.json；项目 postinstall 要求它安装到 release/app，因此 npm ci 会主动终止。
-import Database from "better-sqlite3";
-import { app } from "electron";
-import path from "path";
+// better-sqlite3 是 Electron 原生依赖，安装在 release/app 并通过模块链接供主进程使用。
+import Database from 'better-sqlite3';
+import { app } from 'electron';
+import path from 'path';
 
-
+// 保留命名导出，避免修改现有 repositories 与 WorkspaceService 的导入方式。
+// eslint-disable-next-line import/prefer-default-export
 export class DatabaseManager {
+  // 类内部的单例类型属于正常自引用，不是运行时的提前访问。
+  // eslint-disable-next-line no-use-before-define
+  private static instance: DatabaseManager | null = null;
 
-    private static instance: DatabaseManager | null = null;
+  private databasePath: string;
 
-    private databasePath: string;
-    private database: Database.Database;
+  private database: Database.Database;
 
+  private constructor() {
+    const userDataPath = app.getPath('userData');
 
-    private constructor() {
+    this.databasePath = path.join(userDataPath, 'speakspace.db');
 
-        const userDataPath = app.getPath("userData");
+    this.database = new Database(this.databasePath);
 
-        this.databasePath = path.join(
-            userDataPath,
-            "speakspace.db"
-        );
+    this.initialize();
+  }
 
+  private initialize(): void {
+    this.database.pragma('foreign_keys = ON');
 
-        this.database = new Database(
-            this.databasePath
-        );
+    this.createCoreTables();
+    this.ensureWorkspaceLastOpenedColumn();
+  }
 
-
-        this.initialize();
+  public static getInstance(): DatabaseManager {
+    if (DatabaseManager.instance === null) {
+      DatabaseManager.instance = new DatabaseManager();
     }
 
+    return DatabaseManager.instance;
+  }
 
-    private initialize(): void {
+  public getDatabase(): Database.Database {
+    return this.database;
+  }
 
-        this.database.pragma(
-            "foreign_keys = ON"
-        );
+  public getDatabasePath(): string {
+    return this.databasePath;
+  }
 
-        this.createCoreTables();
-    }
+  public close(): void {
+    this.database.close();
+  }
 
-
-    public static getInstance(): DatabaseManager {
-
-        if (DatabaseManager.instance === null) {
-
-            DatabaseManager.instance =
-                new DatabaseManager();
-        }
-
-        return DatabaseManager.instance;
-    }
-
-
-    public getDatabase(): Database.Database {
-
-        return this.database;
-    }
-
-
-    public getDatabasePath(): string {
-
-        return this.databasePath;
-    }
-
-
-    public close(): void {
-
-        this.database.close();
-    }
-
-
-    private createCoreTables(): void {
-
-        this.database.exec(`
+  private createCoreTables(): void {
+    this.database.exec(`
 
             CREATE TABLE IF NOT EXISTS workspaces (
 
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
+
+                last_opened_at TEXT,
 
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
@@ -226,5 +207,20 @@ export class DatabaseManager {
             );
 
         `);
+  }
+
+  /**
+   * 兼容已有数据库：last_opened_at 表示最近进入时间，updated_at 仍表示内容修改时间。
+   * Existing databases receive only the missing Workspace access-time column.
+   */
+  private ensureWorkspaceLastOpenedColumn(): void {
+    const statement = this.database.prepare('PRAGMA table_info(workspaces)');
+    const columns = statement.all() as Array<{ name: string }>;
+
+    if (!columns.some((column) => column.name === 'last_opened_at')) {
+      this.database.exec(
+        'ALTER TABLE workspaces ADD COLUMN last_opened_at TEXT',
+      );
     }
+  }
 }

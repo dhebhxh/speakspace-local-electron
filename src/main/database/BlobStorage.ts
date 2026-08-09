@@ -1,129 +1,65 @@
-import { app } from "electron";
-import fs from "fs";
-import path from "path";
-
+import { app } from 'electron';
+import fs from 'fs';
+import path from 'path';
 
 export class BlobStorage {
+  private static instance: BlobStorage | null = null;
 
-    private static instance: BlobStorage | null = null;
+  private blobRootPath: string;
 
+  private constructor() {
+    const userDataPath = app.getPath('userData');
 
-    private blobRootPath: string;
+    this.blobRootPath = path.join(userDataPath, 'blobs');
+  }
 
-
-    private constructor() {
-
-        const userDataPath = app.getPath("userData");
-
-        this.blobRootPath = path.join(
-            userDataPath,
-            "blobs"
-        );
+  public static getInstance(): BlobStorage {
+    if (BlobStorage.instance === null) {
+      BlobStorage.instance = new BlobStorage();
     }
 
+    return BlobStorage.instance;
+  }
 
-    public static getInstance(): BlobStorage {
+  public async save(relativePath: string, data: Blob): Promise<void> {
+    const absolutePath = this.resolveAbsolutePath(relativePath);
 
-        if (BlobStorage.instance === null) {
+    const directory = path.dirname(absolutePath);
 
-            BlobStorage.instance =
-                new BlobStorage();
-        }
-
-
-        return BlobStorage.instance;
+    if (!fs.existsSync(directory)) {
+      fs.mkdirSync(directory, {
+        recursive: true,
+      });
     }
 
+    const buffer = Buffer.from(await data.arrayBuffer());
 
-    public async save(
-        relativePath: string,
-        data: Blob
-    ): Promise<void> {
+    fs.writeFileSync(absolutePath, buffer);
+  }
 
-        const absolutePath =
-            this.resolveAbsolutePath(relativePath);
+  public load(relativePath: string): Blob {
+    const absolutePath = this.resolveAbsolutePath(relativePath);
 
+    const buffer = fs.readFileSync(absolutePath);
 
-        const directory =
-            path.dirname(absolutePath);
+    return new Blob([new Uint8Array(buffer)]);
+  }
 
+  public delete(relativePath: string): void {
+    const absolutePath = this.resolveAbsolutePath(relativePath);
 
-        if (!fs.existsSync(directory)) {
-
-            fs.mkdirSync(
-                directory,
-                {
-                    recursive: true
-                }
-            );
-        }
-
-
-        const buffer =
-            Buffer.from(
-                await data.arrayBuffer()
-            );
-
-
-        fs.writeFileSync(
-            absolutePath,
-            buffer
-        );
+    if (fs.existsSync(absolutePath)) {
+      fs.unlinkSync(absolutePath);
     }
+  }
 
+  public exists(relativePath: string): boolean {
+    const absolutePath = this.resolveAbsolutePath(relativePath);
 
-    public load(
-        relativePath: string
-    ): Blob {
+    return fs.existsSync(absolutePath);
+  }
 
-        const absolutePath =
-            this.resolveAbsolutePath(relativePath);
-
-
-        const buffer = fs.readFileSync(absolutePath);
-
-        return new Blob([
-            new Uint8Array(buffer)
-        ]);
-    }
-
-
-    public delete(
-        relativePath: string
-    ): void {
-
-        const absolutePath =
-            this.resolveAbsolutePath(relativePath);
-
-
-        if (fs.existsSync(absolutePath)) {
-
-            fs.unlinkSync(absolutePath);
-        }
-    }
-
-
-    public exists(
-        relativePath: string
-    ): boolean {
-
-        const absolutePath =
-            this.resolveAbsolutePath(relativePath);
-
-
-        return fs.existsSync(
-            absolutePath
-        );
-    }
-
-
-    public resolveAbsolutePath(
-        relativePath: string
-    ): string {
-
-        return path.join(
-            this.blobRootPath,
-            relativePath
-        );
-    }
+  public resolveAbsolutePath(relativePath: string): string {
+    return path.join(this.blobRootPath, relativePath);
+  }
 }

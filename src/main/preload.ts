@@ -23,90 +23,98 @@ const electronHandler = {
     },
   },
 
-  //speakspace-local
+  // speakspace-local
   modelManagement: {
     getModelList(modelType: string) {
-      return ipcRenderer.invoke(
-          "ModelManagement:getModelList",
-          modelType
-      );
+      return ipcRenderer.invoke('ModelManagement:getModelList', modelType);
     },
 
     downloadModel(modelType: string, modelId: string) {
       return ipcRenderer.invoke(
-          "ModelManagement:downloadModel",
-          modelType,
-          modelId
+        'ModelManagement:downloadModel',
+        modelType,
+        modelId,
       );
     },
 
     deleteModel(modelType: string, modelId: string) {
       return ipcRenderer.invoke(
-          "ModelManagement:deleteModel",
-          modelType,
-          modelId
+        'ModelManagement:deleteModel',
+        modelType,
+        modelId,
       );
     },
 
     activateModel(modelType: string, modelId: string) {
       return ipcRenderer.invoke(
-          "ModelManagement:activateModel",
-          modelType,
-          modelId
+        'ModelManagement:activateModel',
+        modelType,
+        modelId,
       );
-    }
+    },
   },
 
   workflow: {
     getKnowledgeTemplateList() {
-      return ipcRenderer.invoke(
-        "Workflow:getKnowledgeTemplateList"
-      );
+      return ipcRenderer.invoke('Workflow:getKnowledgeTemplateList');
     },
 
     getKnowledgeTemplateById(id: number) {
-      return ipcRenderer.invoke(
-        "Workflow:getKnowledgeTemplateById",
-        id
-      );
+      return ipcRenderer.invoke('Workflow:getKnowledgeTemplateById', id);
     },
-    
+
     createKnowledgeTemplate(name: string, prompt: string) {
       return ipcRenderer.invoke(
-        "Workflow:createKnowledgeTemplate",
+        'Workflow:createKnowledgeTemplate',
         name,
-        prompt
-      )
+        prompt,
+      );
     },
 
     updateKnowledgeTemplate(id: number, name: string, prompt: string) {
       return ipcRenderer.invoke(
-        "Workflow:updateKnowledgeTemplate",
+        'Workflow:updateKnowledgeTemplate',
         id,
         name,
-        prompt
-      )
+        prompt,
+      );
     },
 
     deleteKnowledgeTemplate(id: number) {
-      return ipcRenderer.invoke(
-        "Workflow:deleteKnowledgeTemplate",
-        id
-      )
-    }
+      return ipcRenderer.invoke('Workflow:deleteKnowledgeTemplate', id);
+    },
+  },
+
+  // 通用外观设置通过主进程持久化，renderer 只调用此安全接口。
+  settings: {
+    get() {
+      return ipcRenderer.invoke('Settings:get');
+    },
+    update(settings: {
+      fontSize: 'small' | 'medium' | 'large';
+      theme: 'light' | 'dark' | 'system';
+    }) {
+      return ipcRenderer.invoke('Settings:update', settings);
+    },
   },
 
   // 操作方法：通过 window.electron.workspace 调用，数据库访问保留在主进程。
   // Usage: call through window.electron.workspace; database access stays in main.
   workspace: {
-    getList() {
-      return ipcRenderer.invoke('Workspace:getList');
+    getList(limit = 6) {
+      return ipcRenderer.invoke('Workspace:getList', limit);
     },
     create(name: string) {
       return ipcRenderer.invoke('Workspace:create', name);
     },
+    open(workspaceId: number) {
+      return ipcRenderer.invoke('Workspace:open', workspaceId);
+    },
     getNotes(workspaceId: number) {
       return ipcRenderer.invoke('Workspace:getNotes', workspaceId);
+    },
+    getNoteAudio(workspaceId: number, noteId: number) {
+      return ipcRenderer.invoke('Workspace:getNoteAudio', workspaceId, noteId);
     },
     rename(id: number, name: string) {
       return ipcRenderer.invoke('Workspace:rename', id, name);
@@ -114,8 +122,7 @@ const electronHandler = {
     delete(id: number) {
       return ipcRenderer.invoke('Workspace:delete', id);
     },
-  }
-  
+  },
 };
 
 contextBridge.exposeInMainWorld('electron', electronHandler);

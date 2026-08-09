@@ -1,4 +1,10 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 type AskAIScope = 'note' | 'workspace';
 
@@ -6,6 +12,7 @@ type AskAINote = {
   id: number;
   workspaceId: number | null;
   name: string;
+  transcript: string;
   transcriptPreview: string;
   updatedAt: string;
 };
@@ -49,32 +56,19 @@ function formatDate(value: string): string {
 
 export default function AskAIPage() {
   const [notes, setNotes] = useState<AskAINote[]>([]);
-
   const [conversations, setConversations] = useState<AskAIConversation[]>([]);
-
   const [activeConversation, setActiveConversation] =
     useState<AskAIConversation | null>(null);
-
   const [messages, setMessages] = useState<AskAIMessage[]>([]);
-
   const [sources, setSources] = useState<AskAINote[]>([]);
-
   const [scope, setScope] = useState<AskAIScope>('note');
-
   const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null);
-
   const [question, setQuestion] = useState('');
-
   const [isAddingNote, setIsAddingNote] = useState(false);
-
   const [noteName, setNoteName] = useState('');
-
   const [noteTranscript, setNoteTranscript] = useState('');
-
   const [status, setStatus] = useState('');
-
   const [isSending, setIsSending] = useState(false);
-
   const [isSavingNote, setIsSavingNote] = useState(false);
 
   const selectedNote = useMemo(
@@ -82,11 +76,13 @@ export default function AskAIPage() {
     [notes, selectedNoteId],
   );
 
-  async function loadNotes() {
+  async function loadNotes(selectedId?: number) {
     const list = await window.electron.askAI.listNotes();
 
     setNotes(list);
-    setSelectedNoteId((currentNoteId) => currentNoteId || list[0]?.id || null);
+    setSelectedNoteId(
+      (currentNoteId) => selectedId || currentNoteId || list[0]?.id || null,
+    );
   }
 
   async function loadConversations() {
@@ -100,6 +96,19 @@ export default function AskAIPage() {
     loadConversations();
   }, []);
 
+  function resetActiveChat() {
+    setActiveConversation(null);
+    setMessages([]);
+    setSources([]);
+  }
+
+  function handleNoteSelect(noteId: number) {
+    setSelectedNoteId(noteId);
+    setScope('note');
+    setStatus('');
+    resetActiveChat();
+  }
+
   async function handleConversationOpen(conversationId: number) {
     setStatus('');
 
@@ -108,12 +117,14 @@ export default function AskAIPage() {
     setActiveConversation(result.conversation);
     setMessages(result.messages);
     setSources(result.sources || []);
+
+    if (result.sources?.[0]) {
+      setSelectedNoteId(result.sources[0].id);
+    }
   }
 
   function handleNewConversation() {
-    setActiveConversation(null);
-    setMessages([]);
-    setSources([]);
+    resetActiveChat();
     setStatus('');
   }
 
@@ -148,12 +159,12 @@ export default function AskAIPage() {
         transcript: cleanTranscript,
       });
 
-      await loadNotes();
-      setSelectedNoteId(createdNote.id);
+      await loadNotes(createdNote.id);
       setScope('note');
       setNoteName('');
       setNoteTranscript('');
       setIsAddingNote(false);
+      resetActiveChat();
       setStatus('Note saved.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Note save failed.');
@@ -194,122 +205,238 @@ export default function AskAIPage() {
     }
   }
 
+  function handleQuestionKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSend();
+    }
+  }
+
   return (
     <section className="ask-ai-page">
-      <aside className="ask-ai-history">
-        <div className="ask-ai-history-header">
+      <aside className="ask-ai-library">
+        <div className="ask-ai-library-header">
           <div>
-            <h2>Ask AI</h2>
-            <p>Local notes</p>
+            <p>Notes</p>
+            <h2>Library</h2>
           </div>
-          <div className="ask-ai-history-actions">
-            <button
-              type="button"
-              className="ask-ai-secondary-button"
-              onClick={handleAddNoteOpen}
-            >
-              Add Note
-            </button>
-            <button
-              type="button"
-              className="ask-ai-secondary-button"
-              onClick={handleNewConversation}
-            >
-              New
-            </button>
-          </div>
+          <button
+            type="button"
+            className="ask-ai-icon-button"
+            onClick={handleAddNoteOpen}
+          >
+            +
+          </button>
         </div>
 
-        <div className="ask-ai-conversation-list">
-          {conversations.length === 0 ? (
-            <p className="ask-ai-empty">No conversations yet.</p>
+        <div className="ask-ai-notes-list">
+          {notes.length === 0 ? (
+            <div className="ask-ai-empty-panel">
+              <h3>No notes yet</h3>
+              <p>Add a note to ask questions about it.</p>
+              <button type="button" onClick={handleAddNoteOpen}>
+                Add Note
+              </button>
+            </div>
           ) : (
-            conversations.map((conversation) => (
+            notes.map((note) => (
               <button
                 type="button"
-                key={conversation.id}
+                key={note.id}
                 className={
-                  activeConversation?.id === conversation.id
-                    ? 'ask-ai-conversation active'
-                    : 'ask-ai-conversation'
+                  selectedNoteId === note.id
+                    ? 'ask-ai-note-card active'
+                    : 'ask-ai-note-card'
                 }
-                onClick={() => {
-                  handleConversationOpen(conversation.id);
-                }}
+                onClick={() => handleNoteSelect(note.id)}
               >
-                <span>{conversation.name}</span>
-                <small>{formatDate(conversation.updatedAt)}</small>
+                <span>{note.name}</span>
+                <small>
+                  {note.transcriptPreview || 'No transcript preview'}
+                </small>
+                <time>{formatDate(note.updatedAt)}</time>
               </button>
             ))
           )}
         </div>
+
+        {conversations.length > 0 && (
+          <details className="ask-ai-recent-chats">
+            <summary>Recent Ask AI</summary>
+            {conversations.slice(0, 6).map((conversation) => (
+              <button
+                type="button"
+                key={conversation.id}
+                onClick={() => handleConversationOpen(conversation.id)}
+              >
+                <span>{conversation.name}</span>
+                <small>{formatDate(conversation.updatedAt)}</small>
+              </button>
+            ))}
+          </details>
+        )}
       </aside>
 
-      <main className="ask-ai-chat">
-        <header className="ask-ai-chat-header">
+      <main className="ask-ai-main">
+        <header className="ask-ai-topbar">
           <div>
-            <h1>{activeConversation?.name || 'Ask AI'}</h1>
-            <p>
-              {scope === 'note'
-                ? selectedNote?.name || 'No current note selected'
-                : `${notes.length} saved notes`}
-            </p>
+            <p>Ask AI</p>
+            <h1>{selectedNote?.name || 'Select a note'}</h1>
           </div>
-
-          <div className="ask-ai-controls">
-            <div className="ask-ai-segmented" role="group">
-              <button
-                type="button"
-                className={scope === 'note' ? 'active' : ''}
-                onClick={() => setScope('note')}
-              >
-                Current Note
-              </button>
-              <button
-                type="button"
-                className={scope === 'workspace' ? 'active' : ''}
-                onClick={() => setScope('workspace')}
-              >
-                All Notes
-              </button>
-            </div>
-
-            <select
-              value={selectedNoteId || ''}
-              onChange={(event) =>
-                setSelectedNoteId(
-                  event.target.value ? Number(event.target.value) : null,
-                )
-              }
-              disabled={scope === 'workspace'}
+          <div className="ask-ai-topbar-actions">
+            <button
+              type="button"
+              className="ask-ai-ghost-button"
+              onClick={handleNewConversation}
             >
-              <option value="">Select note</option>
-              {notes.map((note) => (
-                <option key={note.id} value={note.id}>
-                  {note.name}
-                </option>
-              ))}
-            </select>
+              New Chat
+            </button>
+            <button type="button" onClick={handleAddNoteOpen}>
+              Add Note
+            </button>
           </div>
         </header>
 
-        {sources.length > 0 && (
-          <div className="ask-ai-sources">
-            <span>Sources</span>
-            {sources.map((source) => (
-              <span
-                key={source.id}
-                className="ask-ai-source-chip"
-                title={source.transcriptPreview}
-              >
-                {source.name}
-              </span>
-            ))}
-          </div>
-        )}
+        <section className="ask-ai-workspace">
+          <article className="ask-ai-note-detail">
+            {selectedNote ? (
+              <>
+                <div className="ask-ai-note-header">
+                  <h2>{selectedNote.name}</h2>
+                  <span>{formatDate(selectedNote.updatedAt)}</span>
+                </div>
+                <section>
+                  <h3>Transcript</h3>
+                  <p>
+                    {selectedNote.transcript || selectedNote.transcriptPreview}
+                  </p>
+                </section>
+              </>
+            ) : (
+              <div className="ask-ai-empty-panel">
+                <h3>No note selected</h3>
+                <p>Choose a saved note or add one to start testing Ask AI.</p>
+              </div>
+            )}
+          </article>
 
-        {isAddingNote && (
-          <form className="ask-ai-note-form" onSubmit={handleCreateNote}>
+          <aside className="ask-ai-qa-section">
+            <div className="ask-ai-qa-header">
+              <div>
+                <h2>
+                  {scope === 'workspace'
+                    ? 'Ask Workspace'
+                    : 'Ask About This Note'}
+                </h2>
+                <p>
+                  {scope === 'workspace'
+                    ? `${notes.length} saved notes`
+                    : selectedNote?.name || 'No note selected'}
+                </p>
+              </div>
+
+              <div
+                className="ask-ai-scope-switch"
+                role="group"
+                aria-label="Ask AI scope"
+              >
+                <button
+                  type="button"
+                  className={scope === 'note' ? 'active' : ''}
+                  onClick={() => setScope('note')}
+                >
+                  This Note
+                </button>
+                <button
+                  type="button"
+                  className={scope === 'workspace' ? 'active' : ''}
+                  onClick={() => setScope('workspace')}
+                >
+                  Workspace
+                </button>
+              </div>
+            </div>
+
+            {sources.length > 0 && (
+              <div className="ask-ai-sources">
+                <span>Sources</span>
+                {sources.map((source) => (
+                  <span
+                    key={source.id}
+                    className="ask-ai-source-chip"
+                    title={source.transcriptPreview}
+                  >
+                    {source.name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="ask-ai-messages">
+              {messages.length === 0 ? (
+                <div className="ask-ai-empty-state">
+                  <h3>No messages yet</h3>
+                  <p>Ask a question grounded in your saved notes.</p>
+                </div>
+              ) : (
+                messages.map((message) => (
+                  <article
+                    key={message.id}
+                    className={`ask-ai-message ${message.role}`}
+                  >
+                    <span className="ask-ai-message-role">
+                      {message.role === 'assistant' ? 'AI' : 'You'}
+                    </span>
+                    <p>{message.content}</p>
+                  </article>
+                ))
+              )}
+            </div>
+
+            <footer className="ask-ai-composer">
+              <textarea
+                value={question}
+                placeholder={
+                  scope === 'workspace'
+                    ? 'Ask across all saved notes...'
+                    : 'For example: What should I do after this meeting?'
+                }
+                onChange={(event) => setQuestion(event.target.value)}
+                onKeyDown={handleQuestionKeyDown}
+              />
+
+              <button
+                type="button"
+                className="ask-ai-send-button"
+                onClick={handleSend}
+                disabled={isSending || !question.trim()}
+              >
+                {isSending ? '...' : 'Ask'}
+              </button>
+            </footer>
+
+            <div className="ask-ai-status">{status}</div>
+          </aside>
+        </section>
+      </main>
+
+      {isAddingNote && (
+        <div className="ask-ai-modal-backdrop">
+          <form className="ask-ai-modal" onSubmit={handleCreateNote}>
+            <div className="ask-ai-modal-header">
+              <div>
+                <p>Notes Library</p>
+                <h2>Add Note</h2>
+              </div>
+              <button
+                type="button"
+                className="ask-ai-icon-button"
+                onClick={handleAddNoteClose}
+              >
+                x
+              </button>
+            </div>
+
             <label htmlFor="ask-ai-note-title">
               Title
               <input
@@ -331,10 +458,10 @@ export default function AskAIPage() {
               />
             </label>
 
-            <div className="ask-ai-note-actions">
+            <div className="ask-ai-modal-actions">
               <button
                 type="button"
-                className="ask-ai-secondary-button"
+                className="ask-ai-ghost-button"
                 onClick={handleAddNoteClose}
               >
                 Cancel
@@ -347,59 +474,8 @@ export default function AskAIPage() {
               </button>
             </div>
           </form>
-        )}
-
-        <div className="ask-ai-messages">
-          {messages.length === 0 ? (
-            <div className="ask-ai-empty-state">
-              <h3>No messages yet</h3>
-            </div>
-          ) : (
-            messages.map((message) => (
-              <article
-                key={message.id}
-                className={`ask-ai-message ${message.role}`}
-              >
-                <span className="ask-ai-message-role">
-                  {message.role === 'assistant' ? 'AI' : 'You'}
-                </span>
-                <p>{message.content}</p>
-              </article>
-            ))
-          )}
         </div>
-
-        <footer className="ask-ai-composer">
-          <textarea
-            value={question}
-            placeholder={
-              scope === 'note'
-                ? 'Ask about the selected note...'
-                : 'Ask across all saved notes...'
-            }
-            onChange={(event) => setQuestion(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                handleSend();
-              }
-            }}
-          />
-
-          <div className="ask-ai-composer-actions">
-            <span>{status}</span>
-            <button
-              type="button"
-              onClick={() => {
-                handleSend();
-              }}
-              disabled={isSending || !question.trim()}
-            >
-              {isSending ? 'Sending' : 'Send'}
-            </button>
-          </div>
-        </footer>
-      </main>
+      )}
     </section>
   );
 }

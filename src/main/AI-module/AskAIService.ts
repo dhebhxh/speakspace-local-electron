@@ -44,6 +44,7 @@ export type AskAINoteDTO = {
   id: number;
   workspaceId: number | null;
   name: string;
+  transcript: string;
   transcriptPreview: string;
   updatedAt: string;
 };
@@ -99,6 +100,7 @@ function serializeNote(note: Note): AskAINoteDTO {
     id: note.getId(),
     workspaceId: note.getWorkspaceId(),
     name: note.getName() || `Note ${note.getId()}`,
+    transcript: note.getTranscript(),
     transcriptPreview: clipText(note.getTranscript(), 180),
     updatedAt: note.getUpdatedAt().toISOString(),
   };

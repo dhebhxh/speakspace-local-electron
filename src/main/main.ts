@@ -10,14 +10,15 @@
  */
 import path from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
-import { autoUpdater } from "electron-updater";
+import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 
 //speakspace-local ipc
-import "./ipc/model-management-ipc";
-import "./ipc/workflow-ipc";
+import './ipc/model-management-ipc';
+import './ipc/workflow-ipc';
+import './ipc/ask-ai-ipc';
 
 class AppUpdater {
   constructor() {
@@ -131,7 +132,6 @@ app.on('window-all-closed', () => {
 app
   .whenReady()
   .then(() => {
-
     createWindow();
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the

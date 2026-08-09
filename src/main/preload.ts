@@ -26,76 +26,87 @@ const electronHandler = {
   //speakspace-local
   modelManagement: {
     getModelList(modelType: string) {
-      return ipcRenderer.invoke(
-          "ModelManagement:getModelList",
-          modelType
-      );
+      return ipcRenderer.invoke('ModelManagement:getModelList', modelType);
     },
 
     downloadModel(modelType: string, modelId: string) {
       return ipcRenderer.invoke(
-          "ModelManagement:downloadModel",
-          modelType,
-          modelId
+        'ModelManagement:downloadModel',
+        modelType,
+        modelId,
       );
     },
 
     deleteModel(modelType: string, modelId: string) {
       return ipcRenderer.invoke(
-          "ModelManagement:deleteModel",
-          modelType,
-          modelId
+        'ModelManagement:deleteModel',
+        modelType,
+        modelId,
       );
     },
 
     activateModel(modelType: string, modelId: string) {
       return ipcRenderer.invoke(
-          "ModelManagement:activateModel",
-          modelType,
-          modelId
+        'ModelManagement:activateModel',
+        modelType,
+        modelId,
       );
-    }
+    },
   },
 
   workflow: {
     getKnowledgeTemplateList() {
-      return ipcRenderer.invoke(
-        "Workflow:getKnowledgeTemplateList"
-      );
+      return ipcRenderer.invoke('Workflow:getKnowledgeTemplateList');
     },
 
     getKnowledgeTemplateById(id: number) {
-      return ipcRenderer.invoke(
-        "Workflow:getKnowledgeTemplateById",
-        id
-      );
+      return ipcRenderer.invoke('Workflow:getKnowledgeTemplateById', id);
     },
-    
+
     createKnowledgeTemplate(name: string, prompt: string) {
       return ipcRenderer.invoke(
-        "Workflow:createKnowledgeTemplate",
+        'Workflow:createKnowledgeTemplate',
         name,
-        prompt
-      )
+        prompt,
+      );
     },
 
     updateKnowledgeTemplate(id: number, name: string, prompt: string) {
       return ipcRenderer.invoke(
-        "Workflow:updateKnowledgeTemplate",
+        'Workflow:updateKnowledgeTemplate',
         id,
         name,
-        prompt
-      )
+        prompt,
+      );
     },
 
     deleteKnowledgeTemplate(id: number) {
-      return ipcRenderer.invoke(
-        "Workflow:deleteKnowledgeTemplate",
-        id
-      )
-    }
-  }
-  
+      return ipcRenderer.invoke('Workflow:deleteKnowledgeTemplate', id);
+    },
+  },
+
+  askAI: {
+    listNotes() {
+      return ipcRenderer.invoke('AskAI:listNotes');
+    },
+
+    listConversations() {
+      return ipcRenderer.invoke('AskAI:listConversations');
+    },
+
+    getConversation(conversationId: number) {
+      return ipcRenderer.invoke('AskAI:getConversation', conversationId);
+    },
+
+    ask(request: {
+      conversationId?: number | null;
+      noteId?: number | null;
+      question: string;
+      scope: 'note' | 'workspace';
+    }) {
+      return ipcRenderer.invoke('AskAI:ask', request);
+    },
+  },
 };
 
 contextBridge.exposeInMainWorld('electron', electronHandler);

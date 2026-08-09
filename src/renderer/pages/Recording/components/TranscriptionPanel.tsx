@@ -1,29 +1,20 @@
-export function TranscriptionPanel(
-    { session }: Props
-){
+import { useEffect, useState } from 'react';
+import { RecordingSession } from '../RecordingSession';
 
-    const [text,setText] =
-        useState(
-            session.transcript
-        );
+type Props = {
+  session: RecordingSession;
+};
 
+export default function TranscriptionPanel({ session }: Props) {
+  const [text, setText] = useState(session.transcript);
 
-    useEffect(()=>{
+  useEffect(() => {
+    const unsubscribe = session.subscribe(() => {
+      setText(session.transcript);
+    });
 
-        session.subscribe(()=>{
+    return unsubscribe;
+  }, [session]);
 
-            setText(
-                session.transcript
-            );
-
-        });
-
-    },[]);
-
-
-    return (
-        <div>
-            {text}
-        </div>
-    );
+  return <div>{text}</div>;
 }

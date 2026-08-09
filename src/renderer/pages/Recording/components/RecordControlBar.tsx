@@ -1,77 +1,85 @@
-import React from "react";
-import { RecordingSession, RecordingState } from "../RecordingSession";
+import { useEffect, useState } from 'react';
+import { RecordingSession, RecordingState } from '../RecordingSession';
 
+export default function RecordControlBar({
+  session,
+}: {
+  session: RecordingSession;
+}) {
+  const [state, setState] = useState(session.getState());
+  const [error, setError] = useState('');
 
-export function RecordControlBar(
-    props: { session: RecordingSession }
-) {
-    const session = props.session;
+  useEffect(() => {
+    return session.subscribe(() => {
+      setState(session.getState());
+    });
+  }, [session]);
 
-    const state = session.getState();
+  async function handleStart() {
+    setError('');
 
-    return (
-        <div>
+    try {
+      await session.start();
+    } catch (startError) {
+      setError(
+        startError instanceof Error
+          ? startError.message
+          : 'Microphone permission failed.',
+      );
+    }
+  }
 
-            {
-                state === RecordingState.Idle &&
-                <button
-                    onClick={() => session.start()}
-                >
-                    Start
-                </button>
-            }
+  return (
+    <div className="record-control-bar">
+      <span className={`record-state record-state-${state}`}>{state}</span>
 
-            {
-                state === RecordingState.Recording &&
-                <React.Fragment>
-                    <button
-                        onClick={() => session.pause()}
-                    >
-                        Pause
-                    </button>
+      {state === RecordingState.Idle && (
+        <button type="button" onClick={handleStart}>
+          Start
+        </button>
+      )}
 
-                    <button
-                        onClick={() => session.stop()}
-                    >
-                        Stop
-                    </button>
-                </React.Fragment>
-            }
+      {state === RecordingState.Recording && (
+        <>
+          <button type="button" onClick={() => session.pause()}>
+            Pause
+          </button>
 
-            {
-                state === RecordingState.Paused &&
-                <React.Fragment>
-                    <button
-                        onClick={() => session.resume()}
-                    >
-                        Resume
-                    </button>
+          <button type="button" onClick={() => session.stop()}>
+            Stop
+          </button>
+        </>
+      )}
 
-                    <button
-                        onClick={() => session.stop()}
-                    >
-                        Stop
-                    </button>
-                </React.Fragment>
-            }
+      {state === RecordingState.Paused && (
+        <>
+          <button type="button" onClick={() => session.resume()}>
+            Resume
+          </button>
 
-            {
-                state === RecordingState.Completed &&
-                <React.Fragment>
-                    <button
-                        onClick={() => session.save()}
-                    >
-                        Save
-                    </button>
+          <button type="button" onClick={() => session.stop()}>
+            Stop
+          </button>
+        </>
+      )}
 
-                    <button
-                        onClick={() => session.discard()}
-                    >
-                        Discard
-                    </button>
-                </React.Fragment>
-            }
-            
-        </div>
-    );
+      {state === RecordingState.Completed && (
+        <>
+          <button type="button" onClick={() => session.save()}>
+            Save
+          </button>
+
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => session.discard()}
+          >
+            Discard
+          </button>
+        </>
+      )}
+
+      {error && <span className="record-error">{error}</span>}
+    </div>
+  );
 }

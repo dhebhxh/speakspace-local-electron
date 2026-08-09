@@ -23,7 +23,7 @@ const electronHandler = {
     },
   },
 
-  //speakspace-local
+  // speakspace-local
   modelManagement: {
     getModelList(modelType: string) {
       return ipcRenderer.invoke('ModelManagement:getModelList', modelType);
@@ -88,6 +88,10 @@ const electronHandler = {
   askAI: {
     listNotes() {
       return ipcRenderer.invoke('AskAI:listNotes');
+    },
+
+    createNote(request: { name?: string | null; transcript: string }) {
+      return ipcRenderer.invoke('AskAI:createNote', request);
     },
 
     listConversations() {

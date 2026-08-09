@@ -16,5 +16,13 @@ export default function TranscriptionPanel({ session }: Props) {
     return unsubscribe;
   }, [session]);
 
-  return <div>{text}</div>;
+  return (
+    <div className="transcription-panel">
+      {text ? (
+        <p>{text}</p>
+      ) : (
+        <p className="transcription-placeholder">No transcription yet.</p>
+      )}
+    </div>
+  );
 }

@@ -15,7 +15,7 @@ import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 
-//speakspace-local ipc
+// speakspace-local ipc
 import './ipc/model-management-ipc';
 import './ipc/workflow-ipc';
 import './ipc/ask-ai-ipc';
@@ -45,7 +45,7 @@ const isDebug =
   process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
 
 if (isDebug) {
-  require('electron-debug').default();
+  require('electron-debug').default({ showDevTools: false });
 }
 
 const installExtensions = async () => {

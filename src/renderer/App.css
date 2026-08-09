@@ -120,6 +120,7 @@ a:hover {
 .sidebar h2 {
   color: #ffffff;
   font-weight: 600;
+  margin: 0;
 }
 
 .sidebar nav {
@@ -129,6 +130,8 @@ a:hover {
 }
 
 .sidebar nav ul {
+  display: grid;
+  gap: 0.35rem;
   padding: 0;
   margin: 0;
 }
@@ -140,7 +143,7 @@ a:hover {
 .sidebar nav a {
   display: block;
   padding: 0.85rem 1rem;
-  border-radius: 18px;
+  border-radius: 8px;
   color: var(--muted);
   background: transparent;
   transition:
@@ -202,6 +205,125 @@ a:hover {
   min-height: calc(100vh - 5rem);
 }
 
+.transcription-page,
+.workflow-page,
+.model-manager-page {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.transcription-page {
+  align-content: start;
+}
+
+.transcription-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.transcription-header h1,
+.transcription-header p {
+  margin: 0;
+}
+
+.transcription-panel {
+  min-height: 280px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  background: rgba(2, 6, 23, 0.48);
+  color: var(--text);
+  overflow-y: auto;
+}
+
+.transcription-panel p {
+  margin: 0;
+  max-width: none;
+  white-space: pre-wrap;
+}
+
+.transcription-placeholder {
+  color: var(--muted);
+}
+
+.record-control-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.record-state {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.record-state-recording {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.32);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.record-error {
+  color: #fecaca;
+}
+
+.secondary-button {
+  background: rgba(148, 163, 184, 0.14);
+  box-shadow: none;
+}
+
+.workflow-page header h1,
+.workflow-page header p {
+  margin: 0;
+}
+
+.knowledge-template-card {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) auto auto auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9rem;
+  background: rgba(15, 23, 42, 0.78);
+}
+
+.knowledge-template-card span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-template-form {
+  display: grid;
+  gap: 1rem;
+  max-width: 720px;
+}
+
+.knowledge-template-form label {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--muted);
+}
+
+.knowledge-template-form input {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  background: rgba(2, 6, 23, 0.62);
+  color: var(--text);
+}
+
 .main-view h1,
 .transcription-page h1,
 .workspace-page h1 {
@@ -244,6 +366,13 @@ a:hover {
   gap: 1rem;
   padding: 1rem;
   border-bottom: 1px solid var(--border);
+}
+
+.ask-ai-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
 }
 
 .ask-ai-history-header h2,
@@ -376,6 +505,43 @@ a:hover {
   color: #ccfbf1;
   background: rgba(20, 184, 166, 0.12);
   font-size: 0.82rem;
+}
+
+.ask-ai-note-form {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(2, 6, 23, 0.28);
+}
+
+.ask-ai-note-form label {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.ask-ai-note-form input,
+.ask-ai-note-form textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  background: rgba(2, 6, 23, 0.62);
+  color: var(--text);
+}
+
+.ask-ai-note-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.ask-ai-note-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
 }
 
 .ask-ai-messages {

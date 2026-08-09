@@ -21,6 +21,13 @@ ipcMain.handle('AskAI:listNotes', () => {
   return askAIService.listNotes();
 });
 
+ipcMain.handle(
+  'AskAI:createNote',
+  (_event, request: { name?: string | null; transcript: string }) => {
+    return askAIService.createNote(request);
+  },
+);
+
 ipcMain.handle('AskAI:listConversations', () => {
   return askAIService.listConversations();
 });

@@ -4,10 +4,12 @@ import { LLMModelManager } from './LLMModelManager';
 import { AIConversation } from '../entities/AIConversation';
 import { AIMessage } from '../entities/AIMessage';
 import { Note } from '../entities/Note';
+import { Workspace } from '../entities/Workspace';
 import { AIConversationRepository } from '../database/repositories/AIConversationRepository';
 import { AIMessageRepository } from '../database/repositories/AIMessageRepository';
 import { ConversationContextRepository } from '../database/repositories/ConversationContextRepository';
 import { NoteRepository } from '../database/repositories/NoteRepository';
+import { WorkspaceRepository } from '../database/repositories/WorkspaceRepository';
 
 export type AskAIScope = 'note' | 'workspace';
 
@@ -16,6 +18,11 @@ export type AskAIRequest = {
   noteId?: number | null;
   question: string;
   scope: AskAIScope;
+};
+
+export type CreateAskAINoteRequest = {
+  name?: string | null;
+  transcript: string;
 };
 
 export type AskAIConversationDTO = {
@@ -158,10 +165,42 @@ export class AskAIService {
 
   private readonly noteRepository = new NoteRepository();
 
+  private readonly workspaceRepository = new WorkspaceRepository();
+
   private readonly llmModelManager = new LLMModelManager();
 
   public listNotes(): AskAINoteDTO[] {
     return this.noteRepository.findAll().map(serializeNote);
+  }
+
+  public createNote(request: CreateAskAINoteRequest): AskAINoteDTO {
+    const transcript = String(request.transcript || '').trim();
+
+    if (!transcript) {
+      throw new Error('Note text is required.');
+    }
+
+    const now = new Date();
+    const note = new Note(
+      0,
+      this.getOrCreateWorkspaceId(),
+      request.name?.trim() || createConversationName(transcript),
+      null,
+      transcript,
+      false,
+      null,
+      now,
+      now,
+    );
+
+    const noteId = this.noteRepository.create(note);
+    const createdNote = this.noteRepository.findById(noteId);
+
+    if (!createdNote) {
+      throw new Error('Saved note could not be loaded.');
+    }
+
+    return serializeNote(createdNote);
   }
 
   public listConversations(): AskAIConversationDTO[] {
@@ -302,6 +341,21 @@ export class AskAIService {
     const note = this.noteRepository.findById(noteId);
 
     return note ? [note] : [];
+  }
+
+  private getOrCreateWorkspaceId(): number {
+    const existingWorkspace = this.workspaceRepository.findAll()[0];
+
+    if (existingWorkspace) {
+      return existingWorkspace.getId();
+    }
+
+    const now = new Date();
+    const workspace = new Workspace(1, 'Default Workspace', now, now);
+
+    this.workspaceRepository.create(workspace);
+
+    return workspace.getId();
   }
 
   private attachContextNotes(conversationId: number, notes: Note[]): void {

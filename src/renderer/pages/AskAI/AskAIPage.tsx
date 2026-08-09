@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 
 type AskAIScope = 'note' | 'workspace';
 
@@ -65,9 +65,17 @@ export default function AskAIPage() {
 
   const [question, setQuestion] = useState('');
 
+  const [isAddingNote, setIsAddingNote] = useState(false);
+
+  const [noteName, setNoteName] = useState('');
+
+  const [noteTranscript, setNoteTranscript] = useState('');
+
   const [status, setStatus] = useState('');
 
   const [isSending, setIsSending] = useState(false);
+
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   const selectedNote = useMemo(
     () => notes.find((note) => note.id === selectedNoteId) || null,
@@ -107,6 +115,51 @@ export default function AskAIPage() {
     setMessages([]);
     setSources([]);
     setStatus('');
+  }
+
+  function handleAddNoteOpen() {
+    setIsAddingNote(true);
+    setStatus('');
+  }
+
+  function handleAddNoteClose() {
+    setIsAddingNote(false);
+    setNoteName('');
+    setNoteTranscript('');
+    setStatus('');
+  }
+
+  async function handleCreateNote(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const cleanTranscript = noteTranscript.trim();
+
+    if (!cleanTranscript || isSavingNote) {
+      setStatus('Add note text first.');
+      return;
+    }
+
+    setIsSavingNote(true);
+    setStatus('Saving note...');
+
+    try {
+      const createdNote = await window.electron.askAI.createNote({
+        name: noteName,
+        transcript: cleanTranscript,
+      });
+
+      await loadNotes();
+      setSelectedNoteId(createdNote.id);
+      setScope('note');
+      setNoteName('');
+      setNoteTranscript('');
+      setIsAddingNote(false);
+      setStatus('Note saved.');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Note save failed.');
+    } finally {
+      setIsSavingNote(false);
+    }
   }
 
   async function handleSend() {
@@ -149,13 +202,22 @@ export default function AskAIPage() {
             <h2>Ask AI</h2>
             <p>Local notes</p>
           </div>
-          <button
-            type="button"
-            className="ask-ai-secondary-button"
-            onClick={handleNewConversation}
-          >
-            New
-          </button>
+          <div className="ask-ai-history-actions">
+            <button
+              type="button"
+              className="ask-ai-secondary-button"
+              onClick={handleAddNoteOpen}
+            >
+              Add Note
+            </button>
+            <button
+              type="button"
+              className="ask-ai-secondary-button"
+              onClick={handleNewConversation}
+            >
+              New
+            </button>
+          </div>
         </div>
 
         <div className="ask-ai-conversation-list">
@@ -244,6 +306,47 @@ export default function AskAIPage() {
               </span>
             ))}
           </div>
+        )}
+
+        {isAddingNote && (
+          <form className="ask-ai-note-form" onSubmit={handleCreateNote}>
+            <label htmlFor="ask-ai-note-title">
+              Title
+              <input
+                id="ask-ai-note-title"
+                type="text"
+                value={noteName}
+                placeholder="Lecture notes"
+                onChange={(event) => setNoteName(event.target.value)}
+              />
+            </label>
+
+            <label htmlFor="ask-ai-note-transcript">
+              Note
+              <textarea
+                id="ask-ai-note-transcript"
+                value={noteTranscript}
+                placeholder="Paste or type note text..."
+                onChange={(event) => setNoteTranscript(event.target.value)}
+              />
+            </label>
+
+            <div className="ask-ai-note-actions">
+              <button
+                type="button"
+                className="ask-ai-secondary-button"
+                onClick={handleAddNoteClose}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingNote || !noteTranscript.trim()}
+              >
+                {isSavingNote ? 'Saving' : 'Save Note'}
+              </button>
+            </div>
+          </form>
         )}
 
         <div className="ask-ai-messages">

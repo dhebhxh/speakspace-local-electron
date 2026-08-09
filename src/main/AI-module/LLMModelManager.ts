@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { app } from 'electron';
-import ollama, { Message } from 'ollama';
+import ollama from 'ollama';
 
 import { ModelManager } from './ModelManager';
 import { LLMModel } from './LLMModel';
@@ -21,6 +21,8 @@ type LLMConfig = {
   }[];
 };
 
+// 保留命名导出，与现有 IPC 和 AI 模块导入方式一致。
+// eslint-disable-next-line import/prefer-default-export
 export class LLMModelManager implements ModelManager {
   private configPath: string;
 
@@ -35,7 +37,7 @@ export class LLMModelManager implements ModelManager {
 
     const modelList = [];
 
-    for (let i = 0; i < config.llm.length; i++) {
+    for (let i = 0; i < config.llm.length; i += 1) {
       const model = config.llm[i];
 
       modelList.push(
@@ -110,14 +112,10 @@ export class LLMModelManager implements ModelManager {
       return false;
     }
 
-    const lastActivated = this.getActivatedModel();
-
-    // 现有问题说明：getActivatedModel() 会重新读取配置；lastActivated 属于另一份对象，下面修改它不会影响最终传给 saveConfig 的 config。
-    if (lastActivated) {
-      lastActivated.activated = false;
-    }
-
-    model.activated = true;
+    // 必须修改同一份 config，确保选择新模型时旧模型同步取消激活。
+    config.llm.forEach((modelItem) => {
+      modelItem.activated = modelItem.id === id;
+    });
     this.saveConfig(config);
     return true;
   }

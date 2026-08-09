@@ -1,4 +1,7 @@
 import { Model } from '../../../../main/AI-module/Model';
+import { getModelDescription } from '../ModelDescription';
+import './ModelCard.css';
+import './ModelCardActions.css';
 
 // 保留命名导出，避免扩大本次样式调整的调用范围。
 // eslint-disable-next-line import/prefer-default-export
@@ -6,10 +9,12 @@ export function ModelCard({
   model,
   onRefresh,
   modelType,
+  recommended,
 }: {
   model: Model;
   onRefresh: () => Promise<void>;
   modelType: string;
+  recommended: boolean;
 }) {
   async function handleDownload() {
     await window.electron.modelManagement.downloadModel(modelType, model.id);
@@ -31,7 +36,10 @@ export function ModelCard({
   if (model.activated) statusLabel = '当前使用';
 
   return (
-    <article className="model-card">
+    <article
+      className={`model-card${recommended ? ' is-recommended' : ''}`}
+      id={`model-card-${model.id}`}
+    >
       <header className="model-card-header">
         <span className="model-card-icon" aria-hidden="true">
           {modelType === 'stt' ? 'ST' : 'LL'}
@@ -44,7 +52,12 @@ export function ModelCard({
             {statusLabel}
           </span>
         </div>
+        {recommended && <span className="model-recommended-badge">推荐</span>}
       </header>
+
+      <p className="model-card-description">
+        {getModelDescription(model, modelType)}
+      </p>
 
       <dl className="model-card-details">
         <div>

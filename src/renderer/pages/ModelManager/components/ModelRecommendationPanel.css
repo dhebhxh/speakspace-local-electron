@@ -1,0 +1,69 @@
+.model-recommendation {
+  padding: 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: 22px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 12%, var(--surface-strong)),
+    var(--surface)
+  );
+}
+
+.model-recommendation-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.model-recommendation-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  flex: none;
+  color: white;
+  border-radius: 13px;
+  background: linear-gradient(135deg, var(--accent), #3b82f6);
+}
+
+.model-recommendation-profile span {
+  color: var(--accent);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.model-recommendation-profile h2 { margin: 0.12rem 0; font-size: 1rem; }
+.model-recommendation-profile p { margin: 0; font-size: 0.7rem; }
+
+.model-recommendation-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.9rem;
+}
+
+.model-recommendation-list button {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.8rem 0.9rem;
+  color: var(--text);
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-soft);
+  box-shadow: none;
+}
+
+.model-recommendation-list button span { color: var(--accent); font-size: 0.62rem; font-weight: 800; }
+.model-recommendation-list button strong { margin-top: 0.12rem; font-size: 0.82rem; }
+.model-recommendation-list button small { margin-top: 0.28rem; color: var(--muted); font-size: 0.65rem; }
+.model-recommendation-list button i { margin-top: 0.45rem; color: var(--accent); font-size: 0.62rem; font-style: normal; font-weight: 700; }
+.model-recommendation-note { margin: 0.7rem 0 0; font-size: 0.62rem; }
+.model-recommendation-status { margin: 0; padding: 1rem; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.model-recommendation-status.is-error { color: #fca5a5; }
+
+@media (max-width: 720px) {
+  .model-recommendation-list { grid-template-columns: 1fr; }
+}

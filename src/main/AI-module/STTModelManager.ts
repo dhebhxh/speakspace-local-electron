@@ -20,6 +20,8 @@ type STTConfig = {
   }[];
 };
 
+// 保留命名导出，与现有 IPC 和录音模块导入方式一致。
+// eslint-disable-next-line import/prefer-default-export
 export class STTModelManager implements ModelManager {
   private configPath: string;
 
@@ -46,7 +48,7 @@ export class STTModelManager implements ModelManager {
 
     const modelList = [];
 
-    for (let i = 0; i < config.stt.length; i++) {
+    for (let i = 0; i < config.stt.length; i += 1) {
       const model = config.stt[i];
 
       modelList.push(
@@ -137,14 +139,10 @@ export class STTModelManager implements ModelManager {
       return false;
     }
 
-    const lastActivated = this.getActivatedModel();
-
-    // 现有问题说明：getActivatedModel() 会重新读取配置；lastActivated 属于另一份对象，下面修改它不会影响最终传给 saveConfig 的 config。
-    if (lastActivated) {
-      lastActivated.activated = false;
-    }
-
-    model.activated = true;
+    // 必须修改同一份 config，确保选择新模型时旧模型同步取消激活。
+    config.stt.forEach((modelItem) => {
+      modelItem.activated = modelItem.id === id;
+    });
     this.saveConfig(config);
     return true;
   }

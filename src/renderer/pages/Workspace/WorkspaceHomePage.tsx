@@ -1,9 +1,15 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { WorkspaceController, WorkspaceItem } from './WorkspaceController';
+import WorkspaceSuggestionCard from './WorkspaceSuggestionCard';
+import {
+  WorkspaceSuggestion,
+  WorkspaceSuggestionController,
+} from './WorkspaceSuggestionController';
 import './WorkspaceHomePage.css';
 
 const workspaceController = new WorkspaceController();
+const suggestionController = new WorkspaceSuggestionController();
 
 type WorkspaceHomePageProps = {
   limit: number;
@@ -24,11 +30,19 @@ export default function WorkspaceHomePage({
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [suggestion, setSuggestion] = useState<WorkspaceSuggestion | null>(
+    null,
+  );
 
   const loadWorkspaces = useCallback(async () => {
     try {
       setError('');
-      setItems(await workspaceController.getWorkspaces(limit));
+      const [workspaces, nextSuggestion] = await Promise.all([
+        workspaceController.getWorkspaces(limit),
+        suggestionController.getSuggestion(),
+      ]);
+      setItems(workspaces);
+      setSuggestion(nextSuggestion);
     } catch (reason) {
       setError(WorkspaceController.getErrorMessage(reason, '读取工作空间失败'));
     } finally {
@@ -54,6 +68,18 @@ export default function WorkspaceHomePage({
     } finally {
       setCreating(false);
     }
+  };
+
+  const renameSuggestedWorkspace = async (
+    workspaceId: number,
+    suggestedName: string,
+  ) => {
+    const renamed = await workspaceController.renameWorkspace(
+      workspaceId,
+      suggestedName,
+    );
+    if (!renamed) throw new Error('工作空间不存在');
+    await loadWorkspaces();
   };
 
   return (
@@ -89,6 +115,14 @@ export default function WorkspaceHomePage({
           </label>
         </form>
       </header>
+
+      {suggestion && (
+        <WorkspaceSuggestionCard
+          onRename={renameSuggestedWorkspace}
+          onUseName={setName}
+          suggestion={suggestion}
+        />
+      )}
 
       {error && (
         <p className="workspace-home-error" role="alert">

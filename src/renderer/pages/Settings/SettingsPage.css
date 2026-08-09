@@ -14,6 +14,7 @@
 .settings-panel-heading p { margin: 0; font-size: 0.8rem; }
 .settings-panel-icon { display: grid; width: 44px; height: 44px; place-items: center; flex: none; color: white; border-radius: 14px; background: linear-gradient(135deg, var(--accent), #3b82f6); font-size: 1.05rem; font-weight: 800; }
 .settings-panel-icon.theme-icon { background: linear-gradient(135deg, #f59e0b, #7c3aed); }
+.settings-panel-icon.guide-icon { background: linear-gradient(135deg, #10b981, #3b82f6); }
 .settings-options { display: grid; gap: 0.7rem; }
 .settings-option { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; gap: 0.85rem; width: 100%; padding: 0.9rem; color: var(--text); text-align: left; border: 1px solid var(--border); border-radius: 17px; background: var(--surface-soft); box-shadow: none; }
 .settings-option:hover { border-color: color-mix(in srgb, var(--accent) 65%, transparent); box-shadow: none; }
@@ -36,6 +37,7 @@
 .theme-system .settings-theme-preview { background: linear-gradient(135deg, #f8fafc 0 49%, #111827 51% 100%); }
 .theme-system .settings-theme-preview i { background: rgba(129, 140, 248, 0.7); }
 .settings-resolved-theme { margin: 1rem 0 0; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.75rem; }
+.settings-guide-button { width: 100%; padding: 0.7rem; color: var(--text); border: 1px solid var(--border); border-radius: 12px; background: var(--surface-soft); box-shadow: none; font-size: 0.75rem; font-weight: 700; }
 
 @keyframes settings-pulse { 50% { opacity: 0.4; transform: scale(0.82); } }
 @media (max-width: 900px) { .settings-grid { grid-template-columns: 1fr; } }

@@ -98,6 +98,20 @@ const electronHandler = {
     },
   },
 
+  // 智能推荐只返回本机硬件摘要和本地分类建议，不执行自动下载或改名。
+  recommendation: {
+    getModels(sttModels: unknown[], llmModels: unknown[]) {
+      return ipcRenderer.invoke(
+        'Recommendation:getModels',
+        sttModels,
+        llmModels,
+      );
+    },
+    getWorkspace() {
+      return ipcRenderer.invoke('Recommendation:getWorkspace');
+    },
+  },
+
   // 操作方法：通过 window.electron.workspace 调用，数据库访问保留在主进程。
   // Usage: call through window.electron.workspace; database access stays in main.
   workspace: {

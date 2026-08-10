@@ -35,9 +35,9 @@
 | 4 | 文件选择与音频时长探测 | `audio-duration.js`、`audio:pick` | 已提供安全文件选择和时长 IPC | 已迁移 |
 | 5 | Whisper/Parakeet 真实转写 | `transcription-service.js` | Whisper 执行与 Windows 官方运行时安装已迁移，Parakeet 待接入 | 进行中 |
 | 6 | 转写任务进度、取消和重试 | `transcription-job-manager.js` | React 页面已接入文件/录音任务、进度、取消和重试 | 已迁移 |
-| 7 | Ollama 服务与运行时状态 | `llm-service.js` | 仅直接调用已安装的 Ollama | 待迁移 |
+| 7 | Ollama 服务与运行时状态 | `llm-service.js` | 已检测系统/受管可执行文件、服务、模型和激活状态，并提供受校验的本地聊天；便携安装与按需启动待迁移 | 进行中 |
 | 8 | 结构化笔记生成 | `structured-processor.js` | 只有知识模板 CRUD | 待迁移 |
-| 9 | 基于笔记内容的问答 | `structured-processor.js` | 有会话数据表但没有问答服务 | 待迁移 |
+| 9 | 基于笔记内容的问答 | `structured-processor.js`、当前仓库 `feature/askai` | 已接入工作区隔离的本地问答、会话记录、安全 IPC 和拆分后的 React 页面 | 已迁移 |
 | 10 | 本地 TTS 和说话人选择 | `tts-service.js`、`tts-worker.js` | 未实现 | 待迁移 |
 | 11 | Embedding 与相似笔记检索 | `embedding-service.js` | 未实现 | 待迁移 |
 | 12 | Agent 工具编排和步骤事件 | `agent-orchestrator.js` | 未实现 | 待迁移 |
@@ -51,7 +51,7 @@
 | 分支 | 相对 main | 与 merge-old 的关系 | 处理结论 |
 | --- | --- | --- | --- |
 | `origin/W` | ahead 6 | 90 个变更文件已全部包含在 `merge-old` | 不再重复合并 |
-| `origin/feature/askai` | ahead 6 | 28 个变更文件中有 22 个与 `merge-old` 重叠 | 保留 Ask AI 功能；完成 Ollama 聊天服务后，按当前 Repository、IPC 和页面结构逐项适配，不整分支合并 |
+| `origin/feature/askai` | ahead 6 | 28 个变更文件中有 22 个与 `merge-old` 重叠 | Ask AI 后端、IPC、页面和布局修正已按当前结构迁移；原分支不再整段合并 |
 | `origin/feature/dashboard` | ahead 2 | 17 个变更文件中有 13 个 Dashboard 独有文件，4 个入口或依赖文件重叠 | 保留 Dashboard 页面；单独审查依赖、数据来源和路由后接入 |
 | `origin/feature/recording` | ahead 1 | 仅新增 5 个未接线的 `Recording1` 原型文件 | 已被当前受管录音、文件保存和转写任务页面覆盖，不合并原型 |
 | `origin/feature/workflow-engine` | ahead 1 | 21 个变更文件中有 13 个与 `merge-old` 重叠，另含旧录音原型和早期转写服务 | 先逐文件核对 Repository 差异；录音和转写部分已被当前实现覆盖，不整分支合并 |

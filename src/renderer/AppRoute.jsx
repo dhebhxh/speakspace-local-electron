@@ -5,16 +5,7 @@ import WorkspacePage from './pages/Workspace/WorkspacePage';
 import WorkspaceHomePage from './pages/Workspace/WorkspaceHomePage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import RecordingPage from './pages/Recording/RecordingPage';
-
-// 这是临时占位页；真实功能页接入后可删除。 / Temporary placeholder until each feature page is connected.
-// eslint-disable-next-line react/prop-types
-function PlaceholderPage({ title }) {
-  return (
-    <section>
-      <h1>{title}</h1>
-    </section>
-  );
-}
+import AskAIPage from './pages/AskAI/AskAIPage';
 
 export default function AppRoute() {
   return (
@@ -26,7 +17,7 @@ export default function AppRoute() {
           element={<WorkspaceHomePage directory={false} limit={6} />}
         />
         <Route path="/Transcription" element={<RecordingPage />} />
-        <Route path="/AIChat" element={<PlaceholderPage title="AI Chat" />} />
+        <Route path="/AIChat" element={<AskAIPage />} />
         <Route
           path="/Workspace"
           element={<WorkspaceHomePage directory limit={100} />}

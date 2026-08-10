@@ -6,8 +6,8 @@ export default function Sidebar() {
   const { t } = useTranslation();
 
   return (
-    <div className="sidebar">
-      <h2>Sidebar</h2>
+    <aside className="sidebar">
+      <h2>SpeakSpace</h2>
       <nav aria-label="主导航">
         <ul>
           <li>
@@ -36,6 +36,6 @@ export default function Sidebar() {
           </li>
         </ul>
       </nav>
-    </div>
+    </aside>
   );
 }

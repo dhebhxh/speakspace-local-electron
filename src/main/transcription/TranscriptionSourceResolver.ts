@@ -26,7 +26,7 @@ export default class TranscriptionSourceResolver {
     return inputPath;
   }
 
-  private static normalizeSource(rawSource: unknown): TranscriptionSource {
+  public static normalizeSource(rawSource: unknown): TranscriptionSource {
     if (typeof rawSource !== 'object' || rawSource === null) {
       throw new Error('无效的转写来源 / Invalid transcription source');
     }

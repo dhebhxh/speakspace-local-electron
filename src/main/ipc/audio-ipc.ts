@@ -1,10 +1,8 @@
 import { dialog, ipcMain } from 'electron';
 import AudioDurationService from '../audio/AudioDurationService';
 import RecordingStorageService from '../audio/RecordingStorageService';
-import WhisperTranscriptionService from '../transcription/WhisperTranscriptionService';
 
 const recordingStorageService = new RecordingStorageService();
-const whisperTranscriptionService = new WhisperTranscriptionService();
 
 ipcMain.handle('Audio:pickFile', async () => {
   const result = await dialog.showOpenDialog({
@@ -34,8 +32,4 @@ ipcMain.handle(
 
 ipcMain.handle('Audio:discardRecording', (_event, relativePath: unknown) =>
   recordingStorageService.discardRecording(relativePath),
-);
-
-ipcMain.handle('Transcription:run', (_event, source: unknown) =>
-  whisperTranscriptionService.transcribe(source),
 );

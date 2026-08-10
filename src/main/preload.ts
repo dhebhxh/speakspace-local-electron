@@ -87,6 +87,27 @@ const electronHandler = {
     ) {
       return ipcRenderer.invoke('Transcription:run', source);
     },
+    start(
+      source:
+        | { kind: 'file'; filePath: string }
+        | { kind: 'recording'; relativePath: string },
+    ) {
+      return ipcRenderer.invoke('Transcription:start', source);
+    },
+    get(jobId: string) {
+      return ipcRenderer.invoke('Transcription:get', jobId);
+    },
+    cancel(jobId: string) {
+      return ipcRenderer.invoke('Transcription:cancel', jobId);
+    },
+    retry(jobId: string) {
+      return ipcRenderer.invoke('Transcription:retry', jobId);
+    },
+    onStatus(listener: (job: unknown) => void) {
+      const wrapped = (_event: IpcRendererEvent, job: unknown) => listener(job);
+      ipcRenderer.on('Transcription:status', wrapped);
+      return () => ipcRenderer.removeListener('Transcription:status', wrapped);
+    },
   },
 
   workflow: {

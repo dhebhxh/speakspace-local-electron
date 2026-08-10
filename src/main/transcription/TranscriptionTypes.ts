@@ -22,3 +22,22 @@ export type TranscriptionResult = {
   modelName: string;
   elapsedMs: number;
 };
+
+export type TranscriptionJobStatus =
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export type TranscriptionJob = {
+  id: string;
+  source: TranscriptionSource;
+  status: TranscriptionJobStatus;
+  phase: TranscriptionProgress['phase'];
+  statusMessage: string;
+  errorMessage: string | null;
+  result: TranscriptionResult | null;
+  attempt: number;
+  createdAt: string;
+  updatedAt: string;
+};

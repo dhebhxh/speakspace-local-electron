@@ -361,7 +361,8 @@ a:hover {
 .ask-ai-library-header,
 .ask-ai-topbar,
 .ask-ai-modal-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -392,6 +393,12 @@ a:hover {
   line-height: 1.25;
 }
 
+.ask-ai-library-header > div,
+.ask-ai-topbar > div,
+.ask-ai-modal-header > div {
+  min-width: 0;
+}
+
 .ask-ai-page button {
   border-radius: 8px;
   padding: 0.55rem 0.8rem;
@@ -400,6 +407,7 @@ a:hover {
   box-shadow: 0 10px 26px rgba(99, 102, 241, 0.18);
   font-size: 0.86rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .ask-ai-icon-button {
@@ -485,20 +493,26 @@ a:hover {
 }
 
 .ask-ai-topbar h1 {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
   font-size: 1.2rem;
   line-height: 1.25;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .ask-ai-topbar-actions {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.5rem;
   justify-content: flex-end;
 }
 
 .ask-ai-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
   gap: 1.25rem;
   min-height: 0;
   padding: 1.25rem;
@@ -511,12 +525,15 @@ a:hover {
   min-height: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.74);
+  background: rgba(15, 23, 42, 0.96);
+  overflow-wrap: anywhere;
 }
 
 .ask-ai-note-detail {
   padding: 1.25rem;
+  overflow-x: hidden;
   overflow-y: auto;
+  contain: paint;
 }
 
 .ask-ai-note-header {
@@ -535,8 +552,10 @@ a:hover {
 }
 
 .ask-ai-note-header h2 {
+  min-width: 0;
   font-size: 1.15rem;
   line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .ask-ai-note-header span,
@@ -559,14 +578,18 @@ a:hover {
   color: var(--text);
   font-size: 0.9rem;
   line-height: 1.7;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
 .ask-ai-qa-section {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   padding: 1rem;
   overflow: hidden;
+  background: #0f172a;
 }
 
 .ask-ai-qa-header {
@@ -583,11 +606,13 @@ a:hover {
 
 .ask-ai-qa-header h2 {
   font-size: 1rem;
+  overflow-wrap: anywhere;
 }
 
 .ask-ai-qa-header p {
   color: var(--muted);
   font-size: 0.82rem;
+  overflow-wrap: anywhere;
 }
 
 .ask-ai-scope-switch {

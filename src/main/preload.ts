@@ -112,6 +112,13 @@ const electronHandler = {
     },
   },
 
+  // 运行时状态为只读汇总；下载和删除仍由各模型管理接口单独处理。
+  runtime: {
+    getStatus() {
+      return ipcRenderer.invoke('Runtime:getStatus');
+    },
+  },
+
   // 操作方法：通过 window.electron.workspace 调用，数据库访问保留在主进程。
   // Usage: call through window.electron.workspace; database access stays in main.
   workspace: {

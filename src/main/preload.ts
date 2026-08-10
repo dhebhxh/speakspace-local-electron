@@ -106,7 +106,9 @@ const electronHandler = {
     onStatus(listener: (job: unknown) => void) {
       const wrapped = (_event: IpcRendererEvent, job: unknown) => listener(job);
       ipcRenderer.on('Transcription:status', wrapped);
-      return () => ipcRenderer.removeListener('Transcription:status', wrapped);
+      return () => {
+        ipcRenderer.removeListener('Transcription:status', wrapped);
+      };
     },
   },
 

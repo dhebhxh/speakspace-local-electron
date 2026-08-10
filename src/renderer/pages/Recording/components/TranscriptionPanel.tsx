@@ -1,12 +1,17 @@
 import { RecordingSession } from '../RecordingSession';
 import { RecordingState } from '../RecordingTypes';
+import TranscriptionController from '../TranscriptionController';
 import useRecordingSession from '../useRecordingSession';
+import useTranscriptionController from '../useTranscriptionController';
 
 export default function TranscriptionPanel(props: {
   session: RecordingSession;
+  transcription: TranscriptionController;
 }) {
-  const { session } = props;
+  const { session, transcription } = props;
   const snapshot = useRecordingSession(session);
+  const transcriptionSnapshot = useTranscriptionController(transcription);
+  const { job } = transcriptionSnapshot;
 
   return (
     <section className="recording-panel">
@@ -25,6 +30,12 @@ export default function TranscriptionPanel(props: {
       {snapshot.errorMessage && (
         <p className="recording-panel__error" role="alert">
           {snapshot.errorMessage}
+        </p>
+      )}
+
+      {transcriptionSnapshot.requestError && (
+        <p className="recording-panel__error" role="alert">
+          {transcriptionSnapshot.requestError}
         </p>
       )}
 
@@ -49,6 +60,32 @@ export default function TranscriptionPanel(props: {
               {snapshot.savedRecording.mimeType}
             </span>
           </div>
+        )}
+        {job && (
+          <section className="transcription-result">
+            <header>
+              <strong>{job.statusMessage}</strong>
+              <span>{job.status}</span>
+            </header>
+            {job.errorMessage && (
+              <p className="recording-panel__error">{job.errorMessage}</p>
+            )}
+            {job.result && (
+              <>
+                <p className="transcription-result__text">{job.result.text}</p>
+                {job.result.segments.length > 0 && (
+                  <ol className="transcription-segments">
+                    {job.result.segments.map((segment) => (
+                      <li key={segment.id}>
+                        <time>{(segment.startMs / 1000).toFixed(1)}s</time>
+                        <span>{segment.text}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </>
+            )}
+          </section>
         )}
       </div>
     </section>

@@ -80,6 +80,50 @@
   color: var(--muted);
 }
 
+.transcription-result {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.transcription-result header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.transcription-result header span,
+.transcription-segments time {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.transcription-result__text {
+  margin: 0;
+  color: var(--text) !important;
+  white-space: pre-wrap;
+}
+
+.transcription-segments {
+  display: grid;
+  gap: 0.6rem;
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.transcription-segments li {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
 .recording-controls {
   display: flex;
   flex-wrap: wrap;

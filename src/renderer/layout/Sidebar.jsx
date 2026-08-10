@@ -32,6 +32,10 @@ export default function Sidebar() {
           </li>
 
           <li>
+            <NavLink to="/Workflow">{t('sidebar.workflow')}</NavLink>
+          </li>
+
+          <li>
             <NavLink to="/Settings">{t('sidebar.settings')}</NavLink>
           </li>
         </ul>

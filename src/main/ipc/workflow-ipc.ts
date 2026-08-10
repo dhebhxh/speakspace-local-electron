@@ -1,32 +1,31 @@
 import { ipcMain } from 'electron';
 
-import { KnowledgeTemplate } from '../entities/KnowledgeTemplate';
-import { KnowledgeTemplateRepository } from '../database/repositories/KnowledgeTemplateRepository';
+import WorkflowService from '../workflow/WorkflowService';
 
-const knowledgeTemplateRepositoy = new KnowledgeTemplateRepository();
+const workflowService = new WorkflowService();
 
-ipcMain.handle('Workflow:getKnowledgeTemplateList', (_event) => {
-  return knowledgeTemplateRepositoy.findAll();
+ipcMain.handle('Workflow:getKnowledgeTemplateList', () => {
+  return workflowService.listTemplates();
 });
 
 ipcMain.handle('Workflow:getKnowledgeTemplateById', (_event, id: number) => {
-  return knowledgeTemplateRepositoy.findById(id);
+  return workflowService.getTemplate(id);
 });
 
 ipcMain.handle(
   'Workflow:createKnowledgeTemplate',
   (_event, name: string, prompt: string) => {
-    return knowledgeTemplateRepositoy.create(name, prompt);
+    return workflowService.createTemplate(name, prompt);
   },
 );
 
 ipcMain.handle(
   'Workflow:updateKnowledgeTemplate',
   (_event, id: number, name: string, prompt: string) => {
-    return knowledgeTemplateRepositoy.update(id, name, prompt);
+    return workflowService.updateTemplate(id, name, prompt);
   },
 );
 
 ipcMain.handle('Workflow:deleteKnowledgeTemplate', (_event, id: number) => {
-  return knowledgeTemplateRepositoy.deleteById(id);
+  return workflowService.deleteTemplate(id);
 });

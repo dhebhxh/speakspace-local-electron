@@ -6,6 +6,7 @@ import WorkspaceHomePage from './pages/Workspace/WorkspaceHomePage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import RecordingPage from './pages/Recording/RecordingPage';
 import AskAIPage from './pages/AskAI/AskAIPage';
+import WorkflowPage from './pages/Workflow/WorkflowPage';
 
 export default function AppRoute() {
   return (
@@ -23,6 +24,7 @@ export default function AppRoute() {
           element={<WorkspaceHomePage directory limit={100} />}
         />
         <Route path="/Workspace/:workspaceId" element={<WorkspacePage />} />
+        <Route path="/Workflow" element={<WorkflowPage />} />
         <Route path="/ModelManagement" element={<ModelManagerPage />} />
         <Route path="/Settings" element={<SettingsPage />} />
       </Route>

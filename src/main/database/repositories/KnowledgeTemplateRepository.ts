@@ -4,14 +4,15 @@ import { Repository } from './Repository';
 import { KnowledgeTemplate } from '../../entities/KnowledgeTemplate';
 import { DatabaseManager } from '../DatabaseManager';
 
+// 保留命名导出，与其余 Repository 的导入方式一致。
+// eslint-disable-next-line import/prefer-default-export
 export class KnowledgeTemplateRepository
   implements Repository<KnowledgeTemplate>
 {
   private database: Database.Database;
 
-  public constructor() {
-    const dbManager = DatabaseManager.getInstance();
-    this.database = dbManager.getDatabase();
+  public constructor(database = DatabaseManager.getInstance().getDatabase()) {
+    this.database = database;
   }
 
   public create(name: string, prompt: string): number {
@@ -50,7 +51,7 @@ export class KnowledgeTemplateRepository
       return null;
     }
 
-    return this.toKnowledgeTemplate(row);
+    return KnowledgeTemplateRepository.toKnowledgeTemplate(row);
   }
 
   public findAll(): KnowledgeTemplate[] {
@@ -62,7 +63,9 @@ export class KnowledgeTemplateRepository
 
     const rows = statement.all() as any[];
 
-    return rows.map((row) => this.toKnowledgeTemplate(row));
+    return rows.map((row) =>
+      KnowledgeTemplateRepository.toKnowledgeTemplate(row),
+    );
   }
 
   public update(id: number, name: string, prompt: string): boolean {
@@ -103,7 +106,7 @@ export class KnowledgeTemplateRepository
     return statement.get(id) !== undefined;
   }
 
-  private toKnowledgeTemplate(row: any): KnowledgeTemplate {
+  private static toKnowledgeTemplate(row: any): KnowledgeTemplate {
     return new KnowledgeTemplate(
       row.id,
       row.name,

@@ -5,6 +5,7 @@ import { LLMModel } from '../../../main/AI-module/LLMModel';
 import ModelRecommendationPanel from './components/ModelRecommendationPanel';
 import WhisperRuntimePanel from './components/WhisperRuntimePanel';
 import OllamaRuntimePanel from './components/OllamaRuntimePanel';
+import TTSRuntimePanel from './components/TTSRuntimePanel';
 import {
   ModelRecommendation,
   ModelRecommendationController,
@@ -84,6 +85,7 @@ export function ModelManagerPage() {
             )
             .join('|')}
         />
+        <TTSRuntimePanel />
         <ModelRecommendationPanel
           error={recommendationError}
           loading={recommendationLoading}

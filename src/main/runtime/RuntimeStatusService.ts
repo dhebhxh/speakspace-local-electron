@@ -9,6 +9,9 @@ import OllamaRuntimeService, {
 } from '../llm/OllamaRuntimeService';
 import TTSRuntimeService from '../tts/TTSRuntimeService';
 import { TTSRuntimeStatus } from '../tts/TTSRuntimeTypes';
+import ParakeetRuntimeService, {
+  ParakeetRuntimeStatus,
+} from '../transcription/ParakeetRuntimeService';
 
 export type ManagedRuntimeState = 'missing' | 'partial' | 'ready';
 
@@ -24,6 +27,7 @@ export type RuntimeStatusSummary = {
   storageRoot: string;
   components: RuntimeComponentStatus[];
   transcription: WhisperRuntimeStatus;
+  parakeetTranscription: ParakeetRuntimeStatus;
   languageModel: OllamaRuntimeStatus;
   speechSynthesis: TTSRuntimeStatus;
 };
@@ -41,16 +45,20 @@ export class RuntimeStatusService {
 
   private readonly ttsRuntime: TTSRuntimeService;
 
+  private readonly parakeetRuntime: ParakeetRuntimeService;
+
   public constructor(
     managedPaths = ManagedPaths.getInstance(),
     whisperRuntime = new WhisperRuntimeService(managedPaths),
     ollamaRuntime = new OllamaRuntimeService(),
     ttsRuntime = new TTSRuntimeService(managedPaths),
+    parakeetRuntime = new ParakeetRuntimeService(),
   ) {
     this.managedPaths = managedPaths;
     this.whisperRuntime = whisperRuntime;
     this.ollamaRuntime = ollamaRuntime;
     this.ttsRuntime = ttsRuntime;
+    this.parakeetRuntime = parakeetRuntime;
   }
 
   public async getStatus(): Promise<RuntimeStatusSummary> {
@@ -65,6 +73,7 @@ export class RuntimeStatusService {
           : this.getComponentStatus(kind),
       ),
       transcription: this.whisperRuntime.getStatus(),
+      parakeetTranscription: this.parakeetRuntime.getStatus(),
       languageModel: await this.ollamaRuntime.getStatus(),
       speechSynthesis,
     };

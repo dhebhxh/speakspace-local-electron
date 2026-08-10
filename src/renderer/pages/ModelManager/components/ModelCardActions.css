@@ -42,3 +42,10 @@
   opacity: 0.45;
   transform: none;
 }
+
+.model-card-error {
+  margin: 0;
+  color: #fca5a5 !important;
+  font-size: 0.68rem;
+  overflow-wrap: anywhere;
+}

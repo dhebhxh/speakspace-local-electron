@@ -17,7 +17,7 @@ export type TranscriptionProgress = {
 export type TranscriptionResult = {
   text: string;
   segments: TranscriptSegment[];
-  engine: 'whisper';
+  engine: 'whisper' | 'parakeet';
   modelId: string;
   modelName: string;
   elapsedMs: number;

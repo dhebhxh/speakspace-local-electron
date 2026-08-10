@@ -6,6 +6,9 @@ export function getModelDescription(model: Model, modelType: string): string {
   const identity = `${model.id} ${model.name}`.toLowerCase();
 
   if (modelType === 'stt') {
+    if (identity.includes('parakeet')) {
+      return '英语离线识别模型，保留标点和大小写，适合英文会议与访谈。';
+    }
     if (identity.includes('tdrz')) {
       return '侧重英文说话人区分，适合多人会议记录。';
     }

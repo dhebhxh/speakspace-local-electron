@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import sttCatalogJson from '../../../config/stt-catalog.json';
 import { STTModel } from './STTModel';
 import { ModelManager } from './ModelManager';
@@ -8,17 +6,12 @@ import { ManagedPaths } from '../runtime/ManagedPaths';
 import FileDownloadService, {
   DownloadProgress,
 } from '../runtime/FileDownloadService';
-
-type STTCatalogItem = {
-  id: string;
-  name: string;
-  language: string;
-  engine: string;
-  format: string;
-  size: string;
-  downloadUrl: string;
-  checksum: string | null;
-};
+import ParakeetModelInstaller from '../transcription/ParakeetModelInstaller';
+import STTModelStorage from '../transcription/STTModelStorage';
+import {
+  PARAKEET_ENGINE,
+  STTCatalogItem,
+} from '../transcription/STTModelCatalog';
 
 type STTCatalog = {
   stt: STTCatalogItem[];
@@ -28,6 +21,8 @@ type STTModelManagerDependencies = {
   managedPaths?: ManagedPaths;
   downloader?: FileDownloadService;
   stateStore?: ActiveModelStateStore;
+  storage?: STTModelStorage;
+  parakeetInstaller?: ParakeetModelInstaller;
 };
 
 /**
@@ -38,19 +33,26 @@ type STTModelManagerDependencies = {
 export class STTModelManager implements ModelManager {
   private readonly catalog: STTCatalogItem[];
 
-  private readonly modelDir: string;
+  private readonly storage: STTModelStorage;
 
   private readonly stateStore: ActiveModelStateStore;
 
   private readonly downloader: FileDownloadService;
+
+  private readonly parakeetInstaller: ParakeetModelInstaller;
 
   public constructor(dependencies: STTModelManagerDependencies = {}) {
     const managedPaths =
       dependencies.managedPaths ?? ManagedPaths.getInstance();
 
     this.catalog = (sttCatalogJson as STTCatalog).stt;
-    this.modelDir = managedPaths.getRuntimePaths('stt').modelsRoot;
+    this.storage =
+      dependencies.storage ??
+      new STTModelStorage(managedPaths.getRuntimePaths('stt').modelsRoot);
     this.downloader = dependencies.downloader ?? new FileDownloadService();
+    this.parakeetInstaller =
+      dependencies.parakeetInstaller ??
+      new ParakeetModelInstaller(managedPaths, this.downloader);
     this.stateStore =
       dependencies.stateStore ??
       new ActiveModelStateStore(
@@ -62,7 +64,7 @@ export class STTModelManager implements ModelManager {
     const activeModelId = this.stateStore.getActiveModelId();
 
     return this.catalog.map((item) => {
-      const downloaded = fs.existsSync(this.getCatalogModelPath(item));
+      const downloaded = this.storage.isInstalled(item);
       return STTModelManager.createModel(
         item,
         downloaded,
@@ -76,27 +78,29 @@ export class STTModelManager implements ModelManager {
     onProgress?: (progress: DownloadProgress) => void,
   ): Promise<void> {
     const item = this.findCatalogItem(id);
-    const modelPath = this.getCatalogModelPath(item);
+    const modelPath = this.storage.getInstallPath(item);
 
-    if (fs.existsSync(modelPath)) {
+    if (this.storage.isInstalled(item)) {
       throw new Error('模型已经下载 / Model has already been downloaded');
     }
 
-    await this.downloader.download(item.downloadUrl, modelPath, {
-      expectedSha1: item.checksum,
-      onProgress,
-    });
+    if (item.engine === PARAKEET_ENGINE) {
+      await this.parakeetInstaller.install(item, modelPath, onProgress);
+    } else {
+      await this.downloader.download(item.downloadUrl, modelPath, {
+        expectedSha1: item.checksum,
+        onProgress,
+      });
+    }
   }
 
   public async deleteModel(id: string): Promise<void> {
     const item = this.findCatalogItem(id);
-    const modelPath = this.getCatalogModelPath(item);
-
-    if (!fs.existsSync(modelPath)) {
+    if (!this.storage.isInstalled(item)) {
       throw new Error('模型尚未下载 / Model has not been downloaded');
     }
 
-    await fs.promises.unlink(modelPath);
+    await this.storage.remove(item);
     if (this.stateStore.getActiveModelId() === id) {
       this.stateStore.setActiveModelId(null);
     }
@@ -104,7 +108,7 @@ export class STTModelManager implements ModelManager {
 
   public activateModel(id: string): boolean {
     const item = this.findCatalogItem(id);
-    if (!fs.existsSync(this.getCatalogModelPath(item))) return false;
+    if (!this.storage.isInstalled(item)) return false;
 
     this.stateStore.setActiveModelId(id);
     return true;
@@ -123,19 +127,15 @@ export class STTModelManager implements ModelManager {
     );
     if (!item) return null;
 
-    const modelPath = this.getCatalogModelPath(item);
-    return fs.existsSync(modelPath) ? modelPath : null;
+    return this.storage.isInstalled(item)
+      ? this.storage.getInstallPath(item)
+      : null;
   }
 
   private findCatalogItem(id: string): STTCatalogItem {
     const item = this.catalog.find((candidate) => candidate.id === id);
     if (!item) throw new Error('找不到模型 / Model not found');
     return item;
-  }
-
-  private getCatalogModelPath(item: STTCatalogItem): string {
-    const fileName = path.basename(new URL(item.downloadUrl).pathname);
-    return path.join(this.modelDir, fileName);
   }
 
   private static createModel(

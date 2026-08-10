@@ -52,7 +52,10 @@ export default class WhisperRuntimeService {
     if (portablePath) runtimeLocation = 'portable';
     else if (systemPath) runtimeLocation = 'system-path';
     const activeModel = this.modelManager.getActivatedModel();
-    const activeModelPath = this.modelManager.getActivatedModelPath();
+    const activeModelPath =
+      activeModel?.engine === 'whisper.cpp'
+        ? this.modelManager.getActivatedModelPath()
+        : null;
     const ffmpegPath = CommandLocator.resolve([
       process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg',
     ]);
@@ -64,8 +67,8 @@ export default class WhisperRuntimeService {
       whisperCliPresent: runtimeLocation !== 'missing',
       ffmpegPath,
       ffmpegPresent: ffmpegPath !== null,
-      activeModelId: activeModel?.id ?? null,
-      activeModelName: activeModel?.name ?? null,
+      activeModelId: activeModelPath ? (activeModel?.id ?? null) : null,
+      activeModelName: activeModelPath ? (activeModel?.name ?? null) : null,
       activeModelPath,
     };
   }

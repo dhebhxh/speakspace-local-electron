@@ -1,8 +1,8 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import TranscriptionJobManager from '../transcription/TranscriptionJobManager';
-import WhisperTranscriptionService from '../transcription/WhisperTranscriptionService';
+import LocalTranscriptionService from '../transcription/LocalTranscriptionService';
 
-const transcriptionService = new WhisperTranscriptionService();
+const transcriptionService = new LocalTranscriptionService();
 const transcriptionJobManager = new TranscriptionJobManager(
   transcriptionService,
 );

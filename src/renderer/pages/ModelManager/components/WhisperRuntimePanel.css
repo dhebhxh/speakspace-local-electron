@@ -4,7 +4,7 @@
   padding: 1.25rem;
   border: 1px solid var(--border);
   border-radius: 22px;
-  background: rgba(15, 23, 52, 0.74);
+  background: var(--surface);
 }
 
 .whisper-runtime-panel header {

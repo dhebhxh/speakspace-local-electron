@@ -7,6 +7,7 @@ import WhisperRuntimePanel from './components/WhisperRuntimePanel';
 import OllamaRuntimePanel from './components/OllamaRuntimePanel';
 import TTSRuntimePanel from './components/TTSRuntimePanel';
 import EmbeddingModelPanel from './components/EmbeddingModelPanel';
+import ParakeetRuntimePanel from './components/ParakeetRuntimePanel';
 import {
   ModelRecommendation,
   ModelRecommendationController,
@@ -73,6 +74,13 @@ export function ModelManagerPage() {
       </header>
       <main className="model-manager-content">
         <WhisperRuntimePanel
+          refreshToken={sttModels
+            .map(
+              (model) => `${model.id}:${model.downloaded}:${model.activated}`,
+            )
+            .join('|')}
+        />
+        <ParakeetRuntimePanel
           refreshToken={sttModels
             .map(
               (model) => `${model.id}:${model.downloaded}:${model.activated}`,

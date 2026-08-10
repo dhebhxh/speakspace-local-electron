@@ -6,7 +6,9 @@ import {
   TranscriptionProgress,
   TranscriptionSource,
 } from './TranscriptionTypes';
-import WhisperTranscriptionService from './WhisperTranscriptionService';
+import LocalTranscriptionService, {
+  TranscriptionBackend,
+} from './LocalTranscriptionService';
 
 const MAX_RETAINED_JOBS = 100;
 
@@ -17,9 +19,9 @@ type ActiveJob = {
 
 export type TranscriptionJobListener = (job: TranscriptionJob) => void;
 
-/** 管理转写任务状态、取消和重试；实际 Whisper 执行仍由独立服务负责。 */
+/** 管理转写任务状态、取消和重试；实际引擎执行由独立服务负责。 */
 export default class TranscriptionJobManager {
-  private readonly transcriptionService: WhisperTranscriptionService;
+  private readonly transcriptionService: TranscriptionBackend;
 
   private readonly jobs = new Map<string, TranscriptionJob>();
 
@@ -27,7 +29,7 @@ export default class TranscriptionJobManager {
 
   private readonly listeners = new Set<TranscriptionJobListener>();
 
-  public constructor(transcriptionService = new WhisperTranscriptionService()) {
+  public constructor(transcriptionService = new LocalTranscriptionService()) {
     this.transcriptionService = transcriptionService;
   }
 

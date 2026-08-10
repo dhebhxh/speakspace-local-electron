@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Model } from '../../../../main/AI-module/Model';
 import { getModelDescription } from '../ModelDescription';
 import './ModelCard.css';
@@ -16,24 +17,52 @@ export function ModelCard({
   modelType: string;
   recommended: boolean;
 }) {
+  const [pending, setPending] = useState<
+    'download' | 'delete' | 'activate' | null
+  >(null);
+  const [error, setError] = useState('');
+
+  async function runAction(
+    action: 'download' | 'delete' | 'activate',
+    operation: () => Promise<unknown>,
+  ) {
+    if (pending) return;
+    try {
+      setPending(action);
+      setError('');
+      await operation();
+      await onRefresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '模型操作失败');
+    } finally {
+      setPending(null);
+    }
+  }
+
   async function handleDownload() {
-    await window.electron.modelManagement.downloadModel(modelType, model.id);
-    await onRefresh();
+    await runAction('download', () =>
+      window.electron.modelManagement.downloadModel(modelType, model.id),
+    );
   }
 
   async function handleDelete() {
-    await window.electron.modelManagement.deleteModel(modelType, model.id);
-    await onRefresh();
+    await runAction('delete', () =>
+      window.electron.modelManagement.deleteModel(modelType, model.id),
+    );
   }
 
   async function handleActivate() {
-    await window.electron.modelManagement.activateModel(modelType, model.id);
-    await onRefresh();
+    await runAction('activate', () =>
+      window.electron.modelManagement.activateModel(modelType, model.id),
+    );
   }
 
   let statusLabel = '未下载';
   if (model.downloaded) statusLabel = '已下载';
   if (model.activated) statusLabel = '当前使用';
+  let activateLabel = '设为当前';
+  if (model.activated) activateLabel = '当前使用';
+  if (pending === 'activate') activateLabel = '设置中…';
 
   return (
     <article
@@ -74,32 +103,40 @@ export function ModelCard({
         </div>
       </dl>
 
+      {error && (
+        <p className="model-card-error" role="alert">
+          {error}
+        </p>
+      )}
+
       <footer className="model-card-actions">
         {model.downloaded ? (
           <button
             className="model-action-button is-danger"
+            disabled={pending !== null}
             onClick={handleDelete}
             type="button"
           >
-            删除
+            {pending === 'delete' ? '删除中…' : '删除'}
           </button>
         ) : (
           <button
             className="model-action-button is-secondary"
+            disabled={pending !== null}
             onClick={handleDownload}
             type="button"
           >
-            下载
+            {pending === 'download' ? '下载中…' : '下载'}
           </button>
         )}
 
         <button
           className="model-action-button is-primary"
-          disabled={!model.downloaded || model.activated}
+          disabled={!model.downloaded || model.activated || pending !== null}
           onClick={handleActivate}
           type="button"
         >
-          {model.activated ? '当前使用' : '设为当前'}
+          {activateLabel}
         </button>
       </footer>
     </article>

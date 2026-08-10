@@ -1,6 +1,11 @@
 // Disable no-unused-vars, broken for spread args
 /* eslint no-unused-vars: off */
-import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
+import {
+  contextBridge,
+  ipcRenderer,
+  IpcRendererEvent,
+  webUtils,
+} from 'electron';
 
 export type Channels = 'ipc-example';
 
@@ -51,6 +56,19 @@ const electronHandler = {
         modelType,
         modelId,
       );
+    },
+  },
+
+  // 文件选择和路径解析由 preload/main 提供，Renderer 不获得 Node 文件系统权限。
+  audio: {
+    pickFile() {
+      return ipcRenderer.invoke('Audio:pickFile');
+    },
+    getPathForFile(file: File) {
+      return webUtils.getPathForFile(file);
+    },
+    getDuration(filePath: string) {
+      return ipcRenderer.invoke('Audio:getDuration', filePath);
     },
   },
 

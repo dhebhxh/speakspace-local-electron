@@ -16,6 +16,7 @@ import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 
 // speakspace-local ipc
+import './ipc/audio-ipc';
 import './ipc/model-management-ipc';
 import './ipc/workflow-ipc';
 import './ipc/settings-ipc';

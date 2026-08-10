@@ -101,6 +101,7 @@ a:hover {
 
 .main-layout {
   display: flex;
+  height: 100vh;
   min-height: 100vh;
   width: 100vw;
 }
@@ -161,6 +162,8 @@ a:hover {
 
 .content-area {
   flex: 1;
+  min-width: 0;
+  min-height: 0;
   padding: 2.5rem;
   overflow-y: auto;
   background:
@@ -340,7 +343,8 @@ a:hover {
   display: grid;
   grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
   gap: 1px;
-  min-height: calc(100vh - 5rem);
+  height: calc(100vh - 5rem);
+  min-height: 0;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -484,11 +488,13 @@ a:hover {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
   background: rgba(2, 6, 23, 0.32);
 }
 
 .ask-ai-topbar {
-  padding: 1.25rem 1.5rem;
+  flex: 0 0 auto;
+  padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border);
 }
 
@@ -513,9 +519,10 @@ a:hover {
 .ask-ai-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
-  gap: 1.25rem;
+  flex: 1 1 auto;
+  gap: 1rem;
   min-height: 0;
-  padding: 1.25rem;
+  padding: 1rem;
   overflow: hidden;
 }
 
@@ -523,6 +530,7 @@ a:hover {
 .ask-ai-qa-section {
   min-width: 0;
   min-height: 0;
+  height: 100%;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.96);
@@ -593,6 +601,7 @@ a:hover {
 }
 
 .ask-ai-qa-header {
+  flex: 0 0 auto;
   display: grid;
   gap: 0.8rem;
   padding-bottom: 0.8rem;
@@ -641,6 +650,7 @@ a:hover {
 }
 
 .ask-ai-sources {
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -670,7 +680,7 @@ a:hover {
 }
 
 .ask-ai-messages {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -682,7 +692,8 @@ a:hover {
 .ask-ai-empty-state {
   display: grid;
   place-items: center;
-  min-height: 220px;
+  height: 100%;
+  min-height: 0;
   text-align: center;
   color: var(--muted);
 }
@@ -724,6 +735,7 @@ a:hover {
 }
 
 .ask-ai-composer {
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
@@ -733,9 +745,9 @@ a:hover {
 }
 
 .ask-ai-composer textarea {
-  min-height: 74px;
-  max-height: 160px;
-  resize: vertical;
+  min-height: 58px;
+  max-height: 96px;
+  resize: none;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.75rem 0.85rem;
@@ -749,6 +761,7 @@ a:hover {
 }
 
 .ask-ai-status {
+  flex: 0 0 auto;
   min-height: 1.2rem;
   margin-top: 0.4rem;
   color: var(--muted);
@@ -837,9 +850,87 @@ a:hover {
   gap: 0.6rem;
 }
 
+@media (max-width: 1280px) {
+  .ask-ai-page {
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  }
+
+  .ask-ai-workspace {
+    grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1fr);
+    gap: 0.8rem;
+    padding: 0.9rem;
+  }
+
+  .ask-ai-note-detail,
+  .ask-ai-qa-section {
+    padding: 0.9rem;
+  }
+}
+
+@media (max-height: 720px) and (min-width: 961px) {
+  .content-area {
+    padding: 1.25rem;
+  }
+
+  .ask-ai-page {
+    height: calc(100vh - 2.5rem);
+  }
+
+  .ask-ai-library {
+    padding: 0.85rem;
+  }
+
+  .ask-ai-topbar {
+    padding: 0.75rem 1rem;
+  }
+
+  .ask-ai-workspace {
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .ask-ai-note-detail,
+  .ask-ai-qa-section {
+    padding: 0.75rem;
+  }
+
+  .ask-ai-note-header {
+    margin-bottom: 0.7rem;
+    padding-bottom: 0.65rem;
+  }
+
+  .ask-ai-qa-header {
+    gap: 0.55rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .ask-ai-sources {
+    padding-top: 0.45rem;
+  }
+
+  .ask-ai-messages {
+    padding: 0.5rem 0.2rem;
+  }
+
+  .ask-ai-composer {
+    padding-top: 0.55rem;
+  }
+
+  .ask-ai-composer textarea {
+    min-height: 50px;
+    max-height: 70px;
+  }
+
+  .ask-ai-status {
+    min-height: 0.9rem;
+    margin-top: 0.25rem;
+  }
+}
+
 @media (max-width: 960px) {
   .main-layout {
     flex-direction: column;
+    min-height: 100vh;
   }
 
   .sidebar {
@@ -862,18 +953,24 @@ a:hover {
   }
 
   .content-area {
-    padding: 1.5rem;
+    padding: 1rem;
   }
 
   .ask-ai-page {
     grid-template-columns: 1fr;
-    min-height: auto;
+    height: auto;
+    min-height: calc(100vh - 2rem);
+    overflow: visible;
   }
 
   .ask-ai-library {
-    max-height: 280px;
+    max-height: 220px;
     border-right: none;
     border-bottom: 1px solid var(--border);
+  }
+
+  .ask-ai-main {
+    overflow: visible;
   }
 
   .ask-ai-workspace {
@@ -881,8 +978,13 @@ a:hover {
     overflow: visible;
   }
 
+  .ask-ai-note-detail {
+    max-height: 260px;
+  }
+
   .ask-ai-qa-section {
-    min-height: 520px;
+    height: 420px;
+    min-height: 420px;
   }
 
   .ask-ai-message {

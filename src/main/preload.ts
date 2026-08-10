@@ -70,6 +70,12 @@ const electronHandler = {
     getDuration(filePath: string) {
       return ipcRenderer.invoke('Audio:getDuration', filePath);
     },
+    saveRecording(data: ArrayBuffer, mimeType: string) {
+      return ipcRenderer.invoke('Audio:saveRecording', data, mimeType);
+    },
+    discardRecording(relativePath: string) {
+      return ipcRenderer.invoke('Audio:discardRecording', relativePath);
+    },
   },
 
   workflow: {

@@ -31,7 +31,7 @@
 | --- | --- | --- | --- | --- |
 | 1 | 受管资源路径 | `managed-paths.js` | 已统一到 Electron `userData`，并保留现有模型位置 | 已迁移 |
 | 2 | 运行时状态汇总 | 各 runtime service | 已提供 STT/LLM/TTS 受管状态只读 IPC | 已迁移 |
-| 3 | 录音文件保存和保留策略 | `transcription-service.js`、`audio-retention.js` | Renderer 中仍有保存/放弃 TODO | 待迁移 |
+| 3 | 录音文件保存和保留策略 | `transcription-service.js`、`audio-retention.js` | 主进程安全存储与保留策略已迁移，Renderer 待接线 | 进行中 |
 | 4 | 文件选择与音频时长探测 | `audio-duration.js`、`audio:pick` | 已提供安全文件选择和时长 IPC | 已迁移 |
 | 5 | Whisper/Parakeet 真实转写 | `transcription-service.js` | 已有模型下载，但未执行转写 | 待迁移 |
 | 6 | 转写任务进度、取消和重试 | `transcription-job-manager.js` | 未实现 | 待迁移 |

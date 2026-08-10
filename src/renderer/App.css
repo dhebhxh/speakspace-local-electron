@@ -867,6 +867,31 @@ a:hover {
   }
 }
 
+@media (max-width: 1180px) and (min-width: 961px) {
+  .ask-ai-page {
+    grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  }
+
+  .ask-ai-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(120px, 0.32fr) minmax(0, 1fr);
+  }
+
+  .ask-ai-note-header {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
+  .ask-ai-note-detail {
+    overflow-y: auto;
+  }
+
+  .ask-ai-note-detail p {
+    line-height: 1.55;
+  }
+}
+
 @media (max-height: 720px) and (min-width: 961px) {
   .content-area {
     padding: 1.25rem;

@@ -1,0 +1,67 @@
+.whisper-runtime-panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: rgba(15, 23, 52, 0.74);
+}
+
+.whisper-runtime-panel header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.whisper-runtime-panel h2 {
+  margin: 0.25rem 0 0;
+  font-size: 1.15rem;
+}
+
+.whisper-runtime-badge {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  font-size: 0.78rem;
+}
+
+.whisper-runtime-badge.is-ready {
+  color: #bbf7d0;
+  border-color: rgba(74, 222, 128, 0.4);
+  background: rgba(20, 83, 45, 0.32);
+}
+
+.whisper-runtime-grid {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(140px, 1fr);
+  gap: 0.55rem 1rem;
+}
+
+.whisper-runtime-grid span,
+.whisper-runtime-hint,
+.whisper-runtime-progress {
+  color: var(--muted);
+}
+
+.whisper-runtime-panel p {
+  margin: 0;
+}
+
+.whisper-runtime-error {
+  color: #fecaca !important;
+}
+
+.whisper-runtime-panel button {
+  justify-self: start;
+  padding: 0.65rem 1rem;
+  border-radius: 14px;
+}
+
+@media (max-width: 640px) {
+  .whisper-runtime-grid {
+    grid-template-columns: 1fr;
+  }
+}

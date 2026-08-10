@@ -3,6 +3,7 @@ import { ModelSection } from './components/ModelSection';
 import { STTModel } from '../../../main/AI-module/STTModel';
 import { LLMModel } from '../../../main/AI-module/LLMModel';
 import ModelRecommendationPanel from './components/ModelRecommendationPanel';
+import WhisperRuntimePanel from './components/WhisperRuntimePanel';
 import {
   ModelRecommendation,
   ModelRecommendationController,
@@ -68,6 +69,13 @@ export function ModelManagerPage() {
         </span>
       </header>
       <main className="model-manager-content">
+        <WhisperRuntimePanel
+          refreshToken={sttModels
+            .map(
+              (model) => `${model.id}:${model.downloaded}:${model.activated}`,
+            )
+            .join('|')}
+        />
         <ModelRecommendationPanel
           error={recommendationError}
           loading={recommendationLoading}

@@ -19,6 +19,10 @@ export default function Sidebar() {
           </li>
 
           <li>
+            <NavLink to="/Agent">{t('sidebar.agent')}</NavLink>
+          </li>
+
+          <li>
             {/* 首页直接进入工作空间。 / Open Workspace directly from the home route. */}
             <NavLink to="/" end>
               {t('sidebar.workspace')}

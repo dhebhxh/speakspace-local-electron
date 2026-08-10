@@ -7,6 +7,7 @@ import SettingsPage from './pages/Settings/SettingsPage';
 import RecordingPage from './pages/Recording/RecordingPage';
 import AskAIPage from './pages/AskAI/AskAIPage';
 import WorkflowPage from './pages/Workflow/WorkflowPage';
+import AgentPage from './pages/Agent/AgentPage';
 
 export default function AppRoute() {
   return (
@@ -19,6 +20,7 @@ export default function AppRoute() {
         />
         <Route path="/Transcription" element={<RecordingPage />} />
         <Route path="/AIChat" element={<AskAIPage />} />
+        <Route path="/Agent" element={<AgentPage />} />
         <Route
           path="/Workspace"
           element={<WorkspaceHomePage directory limit={100} />}

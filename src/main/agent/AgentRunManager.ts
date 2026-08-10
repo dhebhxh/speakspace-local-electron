@@ -75,6 +75,7 @@ export default class AgentRunManager {
         controller.signal,
         (step: AgentStep) => emit({ runId, type: 'step', step }),
       );
+      if (controller.signal.aborted) throw new Error('cancelled');
       emit({ runId, type: 'completed', result });
     } catch (error) {
       if (controller.signal.aborted) {

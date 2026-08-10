@@ -6,10 +6,16 @@ const manager = new AgentRunManager();
 
 ipcMain.handle('Agent:start', (event, request: unknown) => {
   const { sender } = event;
+  let ownedRunId = '';
+  const cancelOwnedRun = () => manager.cancel(ownedRunId);
   const started = manager.start(request, (agentEvent: AgentEvent) => {
     if (!sender.isDestroyed()) sender.send('Agent:event', agentEvent);
+    if (agentEvent.type !== 'step') {
+      sender.removeListener('destroyed', cancelOwnedRun);
+    }
   });
-  sender.once('destroyed', () => manager.cancel(started.runId));
+  ownedRunId = started.runId;
+  sender.once('destroyed', cancelOwnedRun);
   return started;
 });
 

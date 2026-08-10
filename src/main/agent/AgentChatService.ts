@@ -36,7 +36,13 @@ export default class AgentChatService {
     }
 
     const client = this.createClient();
-    const cancel = () => client.abort();
+    const cancel = () => {
+      try {
+        client.abort();
+      } catch {
+        // 客户端已自行结束时，重复取消无需再向上抛错。
+      }
+    };
     signal?.addEventListener('abort', cancel, { once: true });
     try {
       if (signal?.aborted) throw AgentChatService.cancelledError();

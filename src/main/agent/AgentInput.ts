@@ -43,9 +43,13 @@ export default function normalizeAgentRequest(
   if (!instruction) {
     throw new Error('请输入任务内容 / Agent instruction is required');
   }
+  const workspaceId = normalizeWorkspaceId(request.workspaceId);
+  if (workspaceId === null) {
+    throw new Error('请选择工作空间 / Select a workspace');
+  }
   return {
     instruction: instruction.slice(0, MAX_INSTRUCTION_CHARACTERS),
-    workspaceId: normalizeWorkspaceId(request.workspaceId),
+    workspaceId,
     history: normalizeHistory(request.history),
   };
 }

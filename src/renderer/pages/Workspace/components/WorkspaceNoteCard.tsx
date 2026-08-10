@@ -20,7 +20,7 @@ export default function WorkspaceNoteCard({
   onGenerate,
 }: Props) {
   return (
-    <article className="workspace-detail-note">
+    <article className="workspace-detail-note" id={`workspace-note-${note.id}`}>
       <header>
         <div>
           <span className="workspace-note-kind">

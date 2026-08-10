@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import WorkspaceDetailHeader from './components/WorkspaceDetailHeader';
 import WorkspaceNoteCard from './components/WorkspaceNoteCard';
+import WorkspaceSemanticSearch from './components/WorkspaceSemanticSearch';
 import useWorkspaceDetail from './useWorkspaceDetail';
 import './WorkspacePage.css';
 
@@ -54,6 +55,12 @@ export default function WorkspacePage() {
           value={query}
         />
       </label>
+
+      <WorkspaceSemanticSearch
+        onSelect={detail.revealNote}
+        query={query}
+        workspaceId={detail.workspaceId}
+      />
 
       {visibleNotes.length === 0 && (
         <div className="workspace-detail-empty">

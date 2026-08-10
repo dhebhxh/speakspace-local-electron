@@ -6,6 +6,7 @@ import ModelRecommendationPanel from './components/ModelRecommendationPanel';
 import WhisperRuntimePanel from './components/WhisperRuntimePanel';
 import OllamaRuntimePanel from './components/OllamaRuntimePanel';
 import TTSRuntimePanel from './components/TTSRuntimePanel';
+import EmbeddingModelPanel from './components/EmbeddingModelPanel';
 import {
   ModelRecommendation,
   ModelRecommendationController,
@@ -86,6 +87,7 @@ export function ModelManagerPage() {
             .join('|')}
         />
         <TTSRuntimePanel />
+        <EmbeddingModelPanel />
         <ModelRecommendationPanel
           error={recommendationError}
           loading={recommendationLoading}

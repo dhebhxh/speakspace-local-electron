@@ -39,7 +39,7 @@
 | 8 | 结构化笔记生成 | `structured-processor.js` | 已按当前模板表生成 Markdown、保存知识输出，并接入 Workspace 笔记详情 | 已迁移 |
 | 9 | 基于笔记内容的问答 | `structured-processor.js`、当前仓库 `feature/askai` | 已接入工作区隔离的本地问答、会话记录、安全 IPC 和拆分后的 React 页面 | 已迁移 |
 | 10 | 本地 TTS 和说话人选择 | `tts-service.js`、`tts-worker.js` | 原生依赖位于 `release/app`；已接入受管模型安装、异步合成、53 个音色、试听，以及 Ask AI/知识输出朗读 | 已迁移 |
-| 11 | Embedding 与相似笔记检索 | `embedding-service.js` | 已接入 `bge-m3` 安装、Ollama 批量向量、独立 SQLite 增量索引和工作区隔离搜索；界面待接入 | 进行中 |
+| 11 | Embedding 与相似笔记检索 | `embedding-service.js` | 已接入 `bge-m3` 安装、Ollama 批量向量、独立 SQLite 增量索引、工作区隔离搜索，以及模型管理和工作空间结果入口 | 已迁移 |
 | 12 | Agent 工具编排和步骤事件 | `agent-orchestrator.js` | 未实现 | 待迁移 |
 | 13 | 回收站、恢复和永久删除 | `db-service.js` | 当前 Workspace 直接级联删除 | 待评估后迁移 |
 | 14 | 文件夹、标签及动作项完成状态 | `db-service.js` | 当前笔记表尚无对应字段 | 待评估后迁移 |

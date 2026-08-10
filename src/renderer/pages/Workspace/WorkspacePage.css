@@ -12,6 +12,17 @@
 .workspace-detail-search span { display: block; margin-bottom: 0.45rem; color: var(--muted); font-size: 0.75rem; }
 .workspace-detail-search input { width: 100%; padding: 0.75rem 0.9rem; color: var(--text); border: 1px solid var(--border); border-radius: 13px; outline: none; background: var(--surface-strong); }
 .workspace-detail-search input:focus { border-color: var(--accent); }
+.workspace-semantic-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.65rem; margin-top: 0.7rem; padding: 0.8rem 1rem; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.workspace-semantic-search > div:first-child { display: grid; gap: 0.15rem; }
+.workspace-semantic-search > div:first-child span { color: var(--muted); font-size: 0.7rem; }
+.workspace-semantic-search > button { padding: 0.5rem 0.75rem; box-shadow: none; font-size: 0.7rem; }
+.workspace-semantic-search > a { color: var(--accent); font-size: 0.72rem; }
+.workspace-semantic-search > p { grid-column: 1 / -1; margin: 0; color: #ef4444; }
+.workspace-semantic-results { display: grid; grid-column: 1 / -1; gap: 0.4rem; padding-top: 0.6rem; border-top: 1px solid var(--border); }
+.workspace-semantic-results > span { color: var(--muted); font-size: 0.7rem; }
+.workspace-semantic-results > button { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.2rem 0.6rem; width: 100%; padding: 0.65rem; color: var(--text); text-align: left; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-soft); box-shadow: none; }
+.workspace-semantic-results > button span { grid-column: 1 / -1; overflow: hidden; color: var(--muted); font-size: 0.7rem; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-semantic-results > button small { color: var(--accent); }
 .workspace-detail-notes { display: grid; gap: 0.9rem; margin-top: 1rem; }
 .workspace-detail-note { padding: 1.35rem; border: 1px solid var(--border); border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); }
 .workspace-detail-note > header { display: flex; align-items: start; justify-content: space-between; gap: 1rem; padding-bottom: 0.85rem; border-bottom: 1px solid var(--border); }
@@ -50,4 +61,4 @@
 .workspace-detail-error { color: #ef4444; border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.08); }
 .workspace-detail-success { margin: 1rem 0 0; padding: 0.8rem 1rem; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border)); border-radius: 14px; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
 @media (max-width: 850px) { .workspace-content-grid { grid-template-columns: 1fr; } .workspace-transcript-section, .workspace-conversation-section { grid-column: auto; } }
-@media (max-width: 700px) { .workspace-detail-hero { align-items: stretch; flex-direction: column; padding: 1.35rem; } .workspace-detail-actions, .workspace-section-heading, .workspace-generate-controls { align-items: stretch; flex-direction: column; } }
+@media (max-width: 700px) { .workspace-detail-hero { align-items: stretch; flex-direction: column; padding: 1.35rem; } .workspace-detail-actions, .workspace-section-heading, .workspace-generate-controls { align-items: stretch; flex-direction: column; } .workspace-semantic-search { grid-template-columns: 1fr; } }

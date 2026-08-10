@@ -105,6 +105,16 @@ export default function useWorkspaceDetail() {
     }
   }, [navigate, workspace]);
 
+  const revealNote = useCallback((noteId: number) => {
+    setQuery('');
+    requestAnimationFrame(() => {
+      document.getElementById(`workspace-note-${noteId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
+  }, []);
+
   return {
     workspaceId,
     workspace,
@@ -118,6 +128,7 @@ export default function useWorkspaceDetail() {
     generateOutput,
     renameWorkspace,
     deleteWorkspace,
+    revealNote,
     visibleNotes: WorkspaceController.filterNotes(notes, query),
   };
 }

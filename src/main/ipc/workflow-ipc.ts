@@ -1,8 +1,11 @@
 import { ipcMain } from 'electron';
 
+import ollamaServerController from '../llm/OllamaRuntime';
+import StructuredNoteService from '../workflow/StructuredNoteService';
 import WorkflowService from '../workflow/WorkflowService';
 
 const workflowService = new WorkflowService();
+const structuredNoteService = new StructuredNoteService();
 
 ipcMain.handle('Workflow:getKnowledgeTemplateList', () => {
   return workflowService.listTemplates();
@@ -29,3 +32,16 @@ ipcMain.handle(
 ipcMain.handle('Workflow:deleteKnowledgeTemplate', (_event, id: number) => {
   return workflowService.deleteTemplate(id);
 });
+
+ipcMain.handle('Workflow:getKnowledgeOutputs', (_event, noteId: number) => {
+  return structuredNoteService.listOutputs(noteId);
+});
+
+// 生成前按需启动本机 Ollama；生成结果由主进程直接保存，Renderer 不接触数据库。
+ipcMain.handle(
+  'Workflow:generateKnowledgeOutput',
+  async (_event, noteId: number, templateId: number) => {
+    await ollamaServerController.ensureRunning();
+    return structuredNoteService.generate(noteId, templateId);
+  },
+);

@@ -141,6 +141,19 @@ const electronHandler = {
     deleteKnowledgeTemplate(id: number) {
       return ipcRenderer.invoke('Workflow:deleteKnowledgeTemplate', id);
     },
+
+    // 操作方法：选择一篇已有笔记和一个模板后调用生成；结果会自动保存。
+    getKnowledgeOutputs(noteId: number) {
+      return ipcRenderer.invoke('Workflow:getKnowledgeOutputs', noteId);
+    },
+
+    generateKnowledgeOutput(noteId: number, templateId: number) {
+      return ipcRenderer.invoke(
+        'Workflow:generateKnowledgeOutput',
+        noteId,
+        templateId,
+      );
+    },
   },
 
   // 通用外观设置通过主进程持久化，renderer 只调用此安全接口。

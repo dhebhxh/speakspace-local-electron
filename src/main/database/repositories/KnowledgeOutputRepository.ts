@@ -59,6 +59,7 @@ export class KnowledgeOutputRepository implements Repository<KnowledgeOutput> {
             SELECT *
             FROM knowledge_outputs
             WHERE note_id = ?
+            ORDER BY updated_at DESC
         `);
 
     const rows = statement.all(noteId) as any[];
@@ -71,6 +72,7 @@ export class KnowledgeOutputRepository implements Repository<KnowledgeOutput> {
             SELECT *
             FROM knowledge_outputs
             WHERE template_id = ?
+            ORDER BY updated_at DESC
         `);
 
     const rows = statement.all(templateId) as any[];

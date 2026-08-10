@@ -1,171 +1,161 @@
 import fs from 'fs';
 import path from 'path';
-import { app } from 'electron';
-
+import sttCatalogJson from '../../../config/stt-catalog.json';
 import { STTModel } from './STTModel';
 import { ModelManager } from './ModelManager';
+import STTModelStateStore from './STTModelStateStore';
 import { ManagedPaths } from '../runtime/ManagedPaths';
+import FileDownloadService, {
+  DownloadProgress,
+} from '../runtime/FileDownloadService';
 
-type STTConfig = {
-  stt: {
-    id: string;
-    name: string;
-    language: string;
-    engine: string;
-    format: string;
-    size: string;
-    downloadUrl: string;
-    checksum: string | null;
-    downloaded: boolean;
-    activated: boolean;
-  }[];
+type STTCatalogItem = {
+  id: string;
+  name: string;
+  language: string;
+  engine: string;
+  format: string;
+  size: string;
+  downloadUrl: string;
+  checksum: string | null;
 };
 
-// 保留命名导出，与现有 IPC 和录音模块导入方式一致。
+type STTCatalog = {
+  stt: STTCatalogItem[];
+};
+
+type STTModelManagerDependencies = {
+  managedPaths?: ManagedPaths;
+  downloader?: FileDownloadService;
+  stateStore?: STTModelStateStore;
+};
+
+/**
+ * STT 模型目录服务。目录中的真实文件决定下载状态，userData 状态文件决定当前模型。
+ */
+// 保留命名导出，与现有 IPC 和推荐模块的导入方式一致。
 // eslint-disable-next-line import/prefer-default-export
 export class STTModelManager implements ModelManager {
-  private configPath: string;
+  private readonly catalog: STTCatalogItem[];
 
-  private modelDir: string;
+  private readonly modelDir: string;
 
-  constructor() {
-    const projectRoot = app.getAppPath();
+  private readonly stateStore: STTModelStateStore;
 
-    this.configPath = path.join(projectRoot, 'config', 'stt-catalog.json');
+  private readonly downloader: FileDownloadService;
 
-    // 统一使用受管路径，后续运行时、缓存和模型清理不会访问项目目录。
-    this.modelDir =
-      ManagedPaths.getInstance().getRuntimePaths('stt').modelsRoot;
+  public constructor(dependencies: STTModelManagerDependencies = {}) {
+    const managedPaths =
+      dependencies.managedPaths ?? ManagedPaths.getInstance();
 
-    if (!fs.existsSync(this.modelDir)) {
-      fs.mkdirSync(this.modelDir, {
-        recursive: true,
-      });
-    }
-  }
-
-  getModelList(): STTModel[] {
-    const config = this.loadConfig();
-
-    const modelList = [];
-
-    for (let i = 0; i < config.stt.length; i += 1) {
-      const model = config.stt[i];
-
-      modelList.push(
-        new STTModel(
-          model.id,
-          model.name,
-          model.language,
-          model.engine,
-          model.format,
-          model.size,
-          model.downloadUrl,
-          model.checksum,
-          model.downloaded,
-          model.activated,
-        ),
+    this.catalog = (sttCatalogJson as STTCatalog).stt;
+    this.modelDir = managedPaths.getRuntimePaths('stt').modelsRoot;
+    this.downloader = dependencies.downloader ?? new FileDownloadService();
+    this.stateStore =
+      dependencies.stateStore ??
+      new STTModelStateStore(
+        managedPaths.resolveManagedPath('model-state', 'stt.json'),
       );
-    }
 
-    return modelList;
+    fs.mkdirSync(this.modelDir, { recursive: true });
   }
 
-  async downloadModel(id: string): Promise<void> {
-    const config = this.loadConfig();
+  public getModelList(): STTModel[] {
+    const activeModelId = this.stateStore.getActiveModelId();
 
-    const model = config.stt.find((modelItem) => modelItem.id === id);
-
-    if (!model) {
-      throw new Error('Model not found.');
-    }
-
-    if (model.downloaded) {
-      throw new Error('Model has already been downloaded.');
-    }
-
-    const fileName = path.basename(model.downloadUrl);
-
-    const savePath = path.join(this.modelDir, fileName);
-
-    const response = await fetch(model.downloadUrl);
-
-    if (!response.ok) {
-      throw new Error(`Download failed: ${response.status}`);
-    }
-
-    const buffer = await response.arrayBuffer();
-
-    await fs.promises.writeFile(savePath, Buffer.from(buffer));
-
-    model.downloaded = true;
-    this.saveConfig(config);
-  }
-
-  async deleteModel(id: string): Promise<void> {
-    const config = this.loadConfig();
-
-    const model = config.stt.find((modelItem) => modelItem.id === id);
-
-    if (!model) {
-      throw new Error('Model not found.');
-    }
-
-    if (!model.downloaded) {
-      throw new Error('Model has not been downloaded.');
-    }
-
-    const fileName = path.basename(model.downloadUrl);
-
-    const filePath = path.join(this.modelDir, fileName);
-
-    await fs.promises.unlink(filePath);
-
-    model.downloaded = false;
-    model.activated = false;
-
-    this.saveConfig(config);
-  }
-
-  activateModel(id: string): boolean {
-    const config = this.loadConfig();
-
-    const model = config.stt.find((modelItem: STTModel) => modelItem.id === id);
-
-    if (!model) {
-      return false;
-    }
-
-    if (!model.downloaded) {
-      return false;
-    }
-
-    // 必须修改同一份 config，确保选择新模型时旧模型同步取消激活。
-    config.stt.forEach((modelItem) => {
-      modelItem.activated = modelItem.id === id;
+    return this.catalog.map((item) => {
+      const downloaded = fs.existsSync(this.getCatalogModelPath(item));
+      return STTModelManager.createModel(
+        item,
+        downloaded,
+        downloaded && activeModelId === item.id,
+      );
     });
-    this.saveConfig(config);
+  }
+
+  public async downloadModel(
+    id: string,
+    onProgress?: (progress: DownloadProgress) => void,
+  ): Promise<void> {
+    const item = this.findCatalogItem(id);
+    const modelPath = this.getCatalogModelPath(item);
+
+    if (fs.existsSync(modelPath)) {
+      throw new Error('模型已经下载 / Model has already been downloaded');
+    }
+
+    await this.downloader.download(item.downloadUrl, modelPath, {
+      expectedSha1: item.checksum,
+      onProgress,
+    });
+  }
+
+  public async deleteModel(id: string): Promise<void> {
+    const item = this.findCatalogItem(id);
+    const modelPath = this.getCatalogModelPath(item);
+
+    if (!fs.existsSync(modelPath)) {
+      throw new Error('模型尚未下载 / Model has not been downloaded');
+    }
+
+    await fs.promises.unlink(modelPath);
+    if (this.stateStore.getActiveModelId() === id) {
+      this.stateStore.setActiveModelId(null);
+    }
+  }
+
+  public activateModel(id: string): boolean {
+    const item = this.findCatalogItem(id);
+    if (!fs.existsSync(this.getCatalogModelPath(item))) return false;
+
+    this.stateStore.setActiveModelId(id);
     return true;
   }
 
-  getActivatedModel(): STTModel | null {
-    const config = this.loadConfig();
-
-    const model = config.stt.find((modelItem) => modelItem.activated);
-
-    if (!model) {
-      return null;
-    }
-
-    return model;
+  public getActivatedModel(): STTModel | null {
+    return this.getModelList().find((model) => model.activated) ?? null;
   }
 
-  private loadConfig(): STTConfig {
-    const json = fs.readFileSync(this.configPath, 'utf-8');
-    return JSON.parse(json);
+  public getActivatedModelPath(): string | null {
+    const activeModelId = this.stateStore.getActiveModelId();
+    if (!activeModelId) return null;
+
+    const item = this.catalog.find(
+      (candidate) => candidate.id === activeModelId,
+    );
+    if (!item) return null;
+
+    const modelPath = this.getCatalogModelPath(item);
+    return fs.existsSync(modelPath) ? modelPath : null;
   }
 
-  private saveConfig(config: STTConfig): void {
-    fs.writeFileSync(this.configPath, JSON.stringify(config, null, 4), 'utf-8');
+  private findCatalogItem(id: string): STTCatalogItem {
+    const item = this.catalog.find((candidate) => candidate.id === id);
+    if (!item) throw new Error('找不到模型 / Model not found');
+    return item;
+  }
+
+  private getCatalogModelPath(item: STTCatalogItem): string {
+    const fileName = path.basename(new URL(item.downloadUrl).pathname);
+    return path.join(this.modelDir, fileName);
+  }
+
+  private static createModel(
+    item: STTCatalogItem,
+    downloaded: boolean,
+    activated: boolean,
+  ): STTModel {
+    return new STTModel(
+      item.id,
+      item.name,
+      item.language,
+      item.engine,
+      item.format,
+      item.size,
+      item.downloadUrl,
+      item.checksum,
+      downloaded,
+      activated,
+    );
   }
 }

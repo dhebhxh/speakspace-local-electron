@@ -201,6 +201,35 @@ const electronHandler = {
     },
   },
 
+  // Ask AI 通过主进程读取笔记和保存会话，Renderer 不直接接触 SQLite。
+  askAI: {
+    listNotes(workspaceId?: number | null) {
+      return ipcRenderer.invoke('AskAI:listNotes', workspaceId);
+    },
+    createNote(request: {
+      workspaceId?: number | null;
+      name?: string | null;
+      transcript: string;
+    }) {
+      return ipcRenderer.invoke('AskAI:createNote', request);
+    },
+    listConversations() {
+      return ipcRenderer.invoke('AskAI:listConversations');
+    },
+    getConversation(conversationId: number) {
+      return ipcRenderer.invoke('AskAI:getConversation', conversationId);
+    },
+    ask(request: {
+      conversationId?: number | null;
+      workspaceId?: number | null;
+      noteId?: number | null;
+      question: string;
+      scope: 'note' | 'workspace';
+    }) {
+      return ipcRenderer.invoke('AskAI:ask', request);
+    },
+  },
+
   // 操作方法：通过 window.electron.workspace 调用，数据库访问保留在主进程。
   // Usage: call through window.electron.workspace; database access stays in main.
   workspace: {

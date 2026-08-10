@@ -188,6 +188,19 @@ const electronHandler = {
     },
   },
 
+  // 本地聊天仅接受角色和文字，主进程会再次校验并使用当前激活模型。
+  llm: {
+    chat(
+      messages: Array<{
+        role: 'system' | 'user' | 'assistant';
+        content: string;
+      }>,
+      options: { temperature?: number } = {},
+    ) {
+      return ipcRenderer.invoke('LLM:chat', messages, options);
+    },
+  },
+
   // 操作方法：通过 window.electron.workspace 调用，数据库访问保留在主进程。
   // Usage: call through window.electron.workspace; database access stays in main.
   workspace: {

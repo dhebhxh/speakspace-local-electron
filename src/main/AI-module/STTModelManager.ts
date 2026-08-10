@@ -4,6 +4,7 @@ import { app } from 'electron';
 
 import { STTModel } from './STTModel';
 import { ModelManager } from './ModelManager';
+import { ManagedPaths } from '../runtime/ManagedPaths';
 
 type STTConfig = {
   stt: {
@@ -30,11 +31,11 @@ export class STTModelManager implements ModelManager {
   constructor() {
     const projectRoot = app.getAppPath();
 
-    const userDataPath = app.getPath('userData');
-
     this.configPath = path.join(projectRoot, 'config', 'stt-catalog.json');
 
-    this.modelDir = path.join(userDataPath, 'models', 'stt');
+    // 统一使用受管路径，后续运行时、缓存和模型清理不会访问项目目录。
+    this.modelDir =
+      ManagedPaths.getInstance().getRuntimePaths('stt').modelsRoot;
 
     if (!fs.existsSync(this.modelDir)) {
       fs.mkdirSync(this.modelDir, {

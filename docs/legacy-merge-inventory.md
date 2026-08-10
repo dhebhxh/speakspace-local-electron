@@ -29,19 +29,20 @@
 
 | 顺序 | 功能项 | 旧仓库主要来源 | 当前状态 | 迁移状态 |
 | --- | --- | --- | --- | --- |
-| 1 | 受管资源路径和运行时状态 | `managed-paths.js`、下载脚本 | 仅有各模型管理器自己的路径 | 待迁移 |
-| 2 | 录音文件保存和保留策略 | `transcription-service.js`、`audio-retention.js` | Renderer 中仍有保存/放弃 TODO | 待迁移 |
-| 3 | 音频时长探测 | `audio-duration.js` | 未提供 IPC | 待迁移 |
-| 4 | Whisper/Parakeet 真实转写 | `transcription-service.js` | 已有模型下载，但未执行转写 | 待迁移 |
-| 5 | 转写任务进度、取消和重试 | `transcription-job-manager.js` | 未实现 | 待迁移 |
-| 6 | Ollama 服务与运行时状态 | `llm-service.js` | 仅直接调用已安装的 Ollama | 待迁移 |
-| 7 | 结构化笔记生成 | `structured-processor.js` | 只有知识模板 CRUD | 待迁移 |
-| 8 | 基于笔记内容的问答 | `structured-processor.js` | 有会话数据表但没有问答服务 | 待迁移 |
-| 9 | 本地 TTS 和说话人选择 | `tts-service.js`、`tts-worker.js` | 未实现 | 待迁移 |
-| 10 | Embedding 与相似笔记检索 | `embedding-service.js` | 未实现 | 待迁移 |
-| 11 | Agent 工具编排和步骤事件 | `agent-orchestrator.js` | 未实现 | 待迁移 |
-| 12 | 回收站、恢复和永久删除 | `db-service.js` | 当前 Workspace 直接级联删除 | 待评估后迁移 |
-| 13 | 文件夹、标签及动作项完成状态 | `db-service.js` | 当前笔记表尚无对应字段 | 待评估后迁移 |
+| 1 | 受管资源路径 | `managed-paths.js` | 已统一到 Electron `userData`，并保留现有模型位置 | 已迁移 |
+| 2 | 运行时状态汇总 | 各 runtime service | 当前仅有模型列表状态 | 待迁移 |
+| 3 | 录音文件保存和保留策略 | `transcription-service.js`、`audio-retention.js` | Renderer 中仍有保存/放弃 TODO | 待迁移 |
+| 4 | 音频时长探测 | `audio-duration.js` | 未提供 IPC | 待迁移 |
+| 5 | Whisper/Parakeet 真实转写 | `transcription-service.js` | 已有模型下载，但未执行转写 | 待迁移 |
+| 6 | 转写任务进度、取消和重试 | `transcription-job-manager.js` | 未实现 | 待迁移 |
+| 7 | Ollama 服务与运行时状态 | `llm-service.js` | 仅直接调用已安装的 Ollama | 待迁移 |
+| 8 | 结构化笔记生成 | `structured-processor.js` | 只有知识模板 CRUD | 待迁移 |
+| 9 | 基于笔记内容的问答 | `structured-processor.js` | 有会话数据表但没有问答服务 | 待迁移 |
+| 10 | 本地 TTS 和说话人选择 | `tts-service.js`、`tts-worker.js` | 未实现 | 待迁移 |
+| 11 | Embedding 与相似笔记检索 | `embedding-service.js` | 未实现 | 待迁移 |
+| 12 | Agent 工具编排和步骤事件 | `agent-orchestrator.js` | 未实现 | 待迁移 |
+| 13 | 回收站、恢复和永久删除 | `db-service.js` | 当前 Workspace 直接级联删除 | 待评估后迁移 |
+| 14 | 文件夹、标签及动作项完成状态 | `db-service.js` | 当前笔记表尚无对应字段 | 待评估后迁移 |
 
 ## 不直接迁移的内容
 

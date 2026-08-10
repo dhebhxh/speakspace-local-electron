@@ -152,6 +152,26 @@ export class DatabaseManager {
             );
 
 
+            CREATE TABLE IF NOT EXISTS note_embeddings (
+
+                note_id INTEGER NOT NULL,
+
+                model_name TEXT NOT NULL,
+
+                embedding TEXT NOT NULL,
+
+                content_hash TEXT NOT NULL,
+
+                updated_at TEXT NOT NULL,
+
+                PRIMARY KEY(note_id, model_name),
+
+                FOREIGN KEY(note_id)
+                    REFERENCES notes(id)
+                    ON DELETE CASCADE
+            );
+
+
             CREATE TABLE IF NOT EXISTS ai_conversations (
 
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -26,6 +26,7 @@ import './ipc/transcription-ipc';
 import './ipc/llm-ipc';
 import './ipc/ask-ai-ipc';
 import './ipc/tts-ipc';
+import './ipc/semantic-ipc';
 // 工作空间 IPC 在主进程启动时注册。 / Register Workspace IPC when the main process starts.
 import './ipc/workspace-ipc';
 

@@ -249,6 +249,27 @@ const electronHandler = {
     },
   },
 
+  // 语义索引仅保存于本机 SQLite，Embedding 与搜索均复用本机 Ollama。
+  semantic: {
+    getStatus() {
+      return ipcRenderer.invoke('Semantic:getStatus');
+    },
+    installModel() {
+      return ipcRenderer.invoke('Semantic:installModel');
+    },
+    search(query: string, workspaceId?: number | null, topK = 5) {
+      return ipcRenderer.invoke('Semantic:search', query, workspaceId, topK);
+    },
+    onInstallProgress(listener: (progress: unknown) => void) {
+      const wrapped = (_event: IpcRendererEvent, progress: unknown) =>
+        listener(progress);
+      ipcRenderer.on('Semantic:installProgress', wrapped);
+      return () => {
+        ipcRenderer.removeListener('Semantic:installProgress', wrapped);
+      };
+    },
+  },
+
   // Ask AI 通过主进程读取笔记和保存会话，Renderer 不直接接触 SQLite。
   askAI: {
     listNotes(workspaceId?: number | null) {

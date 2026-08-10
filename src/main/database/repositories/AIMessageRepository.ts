@@ -4,14 +4,13 @@ import { Repository } from './Repository';
 import { AIMessage } from '../../entities/AIMessage';
 import { DatabaseManager } from '../DatabaseManager';
 
+// 保留命名导出，与其余 Repository 的导入方式一致。
+// eslint-disable-next-line import/prefer-default-export
 export class AIMessageRepository implements Repository<AIMessage> {
-  // 现有问题说明：Repository 接口要求 number 类型 ID，但本仓储的查找、删除和存在性检查使用 string，严格类型检查下不兼容。
-
   private database: Database.Database;
 
-  public constructor() {
-    const dbManager = DatabaseManager.getInstance();
-    this.database = dbManager.getDatabase();
+  public constructor(database = DatabaseManager.getInstance().getDatabase()) {
+    this.database = database;
   }
 
   public create(entity: AIMessage): void {
@@ -35,7 +34,35 @@ export class AIMessageRepository implements Repository<AIMessage> {
     );
   }
 
-  public findById(id: string): AIMessage | null {
+  /** 聊天消息沿用数据库自增 ID，并返回刚创建的实体。 */
+  public createForConversation(
+    conversationId: number,
+    role: 'user' | 'assistant' | 'system',
+    content: string,
+  ): AIMessage {
+    const now = new Date();
+    const statement = this.database.prepare(`
+            INSERT INTO ai_messages (
+                conversation_id, role, content, created_at
+            ) VALUES (?, ?, ?, ?)
+        `);
+    const result = statement.run(
+      conversationId,
+      role,
+      content,
+      now.toISOString(),
+    );
+
+    return new AIMessage(
+      Number(result.lastInsertRowid),
+      conversationId,
+      role,
+      content,
+      now,
+    );
+  }
+
+  public findById(id: number): AIMessage | null {
     const statement = this.database.prepare(`
             SELECT *
             FROM ai_messages
@@ -48,10 +75,10 @@ export class AIMessageRepository implements Repository<AIMessage> {
       return null;
     }
 
-    return this.toAIMessage(row);
+    return AIMessageRepository.toAIMessage(row);
   }
 
-  public findAllByConversation(conversationId: string): AIMessage[] {
+  public findAllByConversation(conversationId: number): AIMessage[] {
     const statement = this.database.prepare(`
             SELECT *
             FROM ai_messages
@@ -61,7 +88,7 @@ export class AIMessageRepository implements Repository<AIMessage> {
 
     const rows = statement.all(conversationId) as any[];
 
-    return rows.map((row) => this.toAIMessage(row));
+    return rows.map((row) => AIMessageRepository.toAIMessage(row));
   }
 
   public update(entity: AIMessage): boolean {
@@ -82,7 +109,7 @@ export class AIMessageRepository implements Repository<AIMessage> {
     return result.changes > 0;
   }
 
-  public deleteById(id: string): boolean {
+  public deleteById(id: number): boolean {
     const statement = this.database.prepare(`
             DELETE
             FROM ai_messages
@@ -94,7 +121,7 @@ export class AIMessageRepository implements Repository<AIMessage> {
     return result.changes > 0;
   }
 
-  public existsById(id: string): boolean {
+  public existsById(id: number): boolean {
     const statement = this.database.prepare(`
             SELECT 1
             FROM ai_messages
@@ -105,7 +132,7 @@ export class AIMessageRepository implements Repository<AIMessage> {
     return statement.get(id) !== undefined;
   }
 
-  private toAIMessage(row: any): AIMessage {
+  private static toAIMessage(row: any): AIMessage {
     return new AIMessage(
       row.id,
       row.conversation_id,

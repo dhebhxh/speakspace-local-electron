@@ -4,38 +4,37 @@ import { Repository } from './Repository';
 import { Subnote } from '../../entities/Subnote';
 import { DatabaseManager } from '../DatabaseManager';
 
+// 保留命名导出，与其余 Repository 的导入方式一致。
+// eslint-disable-next-line import/prefer-default-export
 export class SubnoteRepository implements Repository<Subnote> {
-  // 现有问题说明：Subnote 实体 id 是 string，而数据库 subnotes.id 是 INTEGER AUTOINCREMENT；create 主动写入字符串 id 时可能发生类型冲突。
-
   private database: Database.Database;
 
-  public constructor() {
-    const dbManager = DatabaseManager.getInstance();
-    this.database = dbManager.getDatabase();
+  public constructor(database = DatabaseManager.getInstance().getDatabase()) {
+    this.database = database;
   }
 
-  public create(entity: Subnote): void {
+  public create(entity: Subnote): number {
     const statement = this.database.prepare(`
             INSERT INTO subnotes (
-                id,
                 note_id,
                 content_type,
                 content,
                 created_at
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?)
         `);
 
-    statement.run(
-      entity.getId(),
+    const result = statement.run(
       entity.getNoteId(),
       entity.getContentType(),
       entity.getContent(),
       entity.getCreatedAt().toISOString(),
     );
+
+    return Number(result.lastInsertRowid);
   }
 
-  public findById(id: string): Subnote | null {
+  public findById(id: number): Subnote | null {
     const statement = this.database.prepare(`
             SELECT *
             FROM subnotes
@@ -48,10 +47,10 @@ export class SubnoteRepository implements Repository<Subnote> {
       return null;
     }
 
-    return this.toSubnote(row);
+    return SubnoteRepository.toSubnote(row);
   }
 
-  public findAllByNote(noteId: string): Subnote[] {
+  public findAllByNote(noteId: number): Subnote[] {
     const statement = this.database.prepare(`
             SELECT *
             FROM subnotes
@@ -61,7 +60,7 @@ export class SubnoteRepository implements Repository<Subnote> {
 
     const rows = statement.all(noteId) as any[];
 
-    return rows.map((row) => this.toSubnote(row));
+    return rows.map((row) => SubnoteRepository.toSubnote(row));
   }
 
   public update(entity: Subnote): boolean {
@@ -82,7 +81,7 @@ export class SubnoteRepository implements Repository<Subnote> {
     return result.changes > 0;
   }
 
-  public deleteById(id: string): boolean {
+  public deleteById(id: number): boolean {
     const statement = this.database.prepare(`
             DELETE
             FROM subnotes
@@ -94,7 +93,7 @@ export class SubnoteRepository implements Repository<Subnote> {
     return result.changes > 0;
   }
 
-  public existsById(id: string): boolean {
+  public existsById(id: number): boolean {
     const statement = this.database.prepare(`
             SELECT 1
             FROM subnotes
@@ -105,7 +104,7 @@ export class SubnoteRepository implements Repository<Subnote> {
     return statement.get(id) !== undefined;
   }
 
-  private toSubnote(row: any): Subnote {
+  private static toSubnote(row: any): Subnote {
     return new Subnote(
       row.id,
       row.note_id,

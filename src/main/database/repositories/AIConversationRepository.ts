@@ -4,14 +4,13 @@ import { Repository } from './Repository';
 import { AIConversation } from '../../entities/AIConversation';
 import { DatabaseManager } from '../DatabaseManager';
 
+// 保留命名导出，与其余 Repository 的导入方式一致。
+// eslint-disable-next-line import/prefer-default-export
 export class AIConversationRepository implements Repository<AIConversation> {
-  // 现有问题说明：Repository 接口要求 number 类型 ID，但本仓储的查找、删除和存在性检查使用 string，严格类型检查下不兼容。
-
   private database: Database.Database;
 
-  public constructor() {
-    const dbManager = DatabaseManager.getInstance();
-    this.database = dbManager.getDatabase();
+  public constructor(database = DatabaseManager.getInstance().getDatabase()) {
+    this.database = database;
   }
 
   public create(entity: AIConversation): void {
@@ -33,7 +32,19 @@ export class AIConversationRepository implements Repository<AIConversation> {
     );
   }
 
-  public findById(id: string): AIConversation | null {
+  /** 新会话使用数据库自增 ID，避免由调用方猜测下一个编号。 */
+  public createWithName(name: string): AIConversation {
+    const now = new Date();
+    const statement = this.database.prepare(`
+            INSERT INTO ai_conversations (name, created_at, updated_at)
+            VALUES (?, ?, ?)
+        `);
+    const result = statement.run(name, now.toISOString(), now.toISOString());
+
+    return new AIConversation(Number(result.lastInsertRowid), name, now, now);
+  }
+
+  public findById(id: number): AIConversation | null {
     const statement = this.database.prepare(`
             SELECT *
             FROM ai_conversations
@@ -46,7 +57,7 @@ export class AIConversationRepository implements Repository<AIConversation> {
       return null;
     }
 
-    return this.toAIConversation(row);
+    return AIConversationRepository.toAIConversation(row);
   }
 
   public findAll(): AIConversation[] {
@@ -58,7 +69,7 @@ export class AIConversationRepository implements Repository<AIConversation> {
 
     const rows = statement.all() as any[];
 
-    return rows.map((row) => this.toAIConversation(row));
+    return rows.map((row) => AIConversationRepository.toAIConversation(row));
   }
 
   public update(entity: AIConversation): boolean {
@@ -79,7 +90,7 @@ export class AIConversationRepository implements Repository<AIConversation> {
     return result.changes > 0;
   }
 
-  public deleteById(id: string): boolean {
+  public deleteById(id: number): boolean {
     const statement = this.database.prepare(`
             DELETE
             FROM ai_conversations
@@ -91,7 +102,7 @@ export class AIConversationRepository implements Repository<AIConversation> {
     return result.changes > 0;
   }
 
-  public existsById(id: string): boolean {
+  public existsById(id: number): boolean {
     const statement = this.database.prepare(`
             SELECT 1
             FROM ai_conversations
@@ -102,7 +113,7 @@ export class AIConversationRepository implements Repository<AIConversation> {
     return statement.get(id) !== undefined;
   }
 
-  private toAIConversation(row: any): AIConversation {
+  private static toAIConversation(row: any): AIConversation {
     return new AIConversation(
       row.id,
       row.name,

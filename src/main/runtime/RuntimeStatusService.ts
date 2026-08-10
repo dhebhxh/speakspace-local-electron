@@ -4,6 +4,9 @@ import { ManagedPaths, RuntimeKind, RuntimeStoragePaths } from './ManagedPaths';
 import WhisperRuntimeService, {
   WhisperRuntimeStatus,
 } from '../transcription/WhisperRuntimeService';
+import OllamaRuntimeService, {
+  OllamaRuntimeStatus,
+} from '../llm/OllamaRuntimeService';
 
 export type ManagedRuntimeState = 'missing' | 'partial' | 'ready';
 
@@ -19,6 +22,7 @@ export type RuntimeStatusSummary = {
   storageRoot: string;
   components: RuntimeComponentStatus[];
   transcription: WhisperRuntimeStatus;
+  languageModel: OllamaRuntimeStatus;
 };
 
 /**
@@ -30,21 +34,26 @@ export class RuntimeStatusService {
 
   private readonly whisperRuntime: WhisperRuntimeService;
 
+  private readonly ollamaRuntime: OllamaRuntimeService;
+
   public constructor(
     managedPaths = ManagedPaths.getInstance(),
     whisperRuntime = new WhisperRuntimeService(managedPaths),
+    ollamaRuntime = new OllamaRuntimeService(),
   ) {
     this.managedPaths = managedPaths;
     this.whisperRuntime = whisperRuntime;
+    this.ollamaRuntime = ollamaRuntime;
   }
 
-  public getStatus(): RuntimeStatusSummary {
+  public async getStatus(): Promise<RuntimeStatusSummary> {
     const kinds: RuntimeKind[] = ['stt', 'llm', 'tts'];
 
     return {
       storageRoot: this.managedPaths.getDataRoot(),
       components: kinds.map((kind) => this.getComponentStatus(kind)),
       transcription: this.whisperRuntime.getStatus(),
+      languageModel: await this.ollamaRuntime.getStatus(),
     };
   }
 

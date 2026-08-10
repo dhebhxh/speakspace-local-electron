@@ -194,6 +194,9 @@ const electronHandler = {
     installOllama() {
       return ipcRenderer.invoke('Runtime:installOllama');
     },
+    installTTS() {
+      return ipcRenderer.invoke('Runtime:installTTS');
+    },
     onInstallProgress(listener: (progress: unknown) => void) {
       const wrapped = (_event: IpcRendererEvent, progress: unknown) =>
         listener(progress);
@@ -208,6 +211,14 @@ const electronHandler = {
       ipcRenderer.on('Runtime:installOllamaProgress', wrapped);
       return () => {
         ipcRenderer.removeListener('Runtime:installOllamaProgress', wrapped);
+      };
+    },
+    onTTSInstallProgress(listener: (progress: unknown) => void) {
+      const wrapped = (_event: IpcRendererEvent, progress: unknown) =>
+        listener(progress);
+      ipcRenderer.on('Runtime:installTTSProgress', wrapped);
+      return () => {
+        ipcRenderer.removeListener('Runtime:installTTSProgress', wrapped);
       };
     },
   },

@@ -236,6 +236,19 @@ const electronHandler = {
     },
   },
 
+  // TTS 在主进程异步合成，Renderer 只接收可播放的 PCM 样本。
+  tts: {
+    getStatus() {
+      return ipcRenderer.invoke('TTS:getStatus');
+    },
+    synthesize(
+      text: string,
+      options: { speakerId?: number; speed?: number } = {},
+    ) {
+      return ipcRenderer.invoke('TTS:synthesize', text, options);
+    },
+  },
+
   // Ask AI 通过主进程读取笔记和保存会话，Renderer 不直接接触 SQLite。
   askAI: {
     listNotes(workspaceId?: number | null) {

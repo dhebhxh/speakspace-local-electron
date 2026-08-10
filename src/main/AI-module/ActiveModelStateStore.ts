@@ -1,14 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 
-type STTModelState = {
+type ActiveModelState = {
   activeModelId: string | null;
 };
 
-const DEFAULT_STATE: STTModelState = { activeModelId: null };
-
-/** 激活状态保存在 userData，模型目录和应用升级不会覆盖它。 */
-export default class STTModelStateStore {
+/** 在 userData 中保存某一类模型的当前激活 ID。 */
+export default class ActiveModelStateStore {
   private readonly statePath: string;
 
   public constructor(statePath: string) {
@@ -19,12 +17,12 @@ export default class STTModelStateStore {
     try {
       const state = JSON.parse(
         fs.readFileSync(this.statePath, 'utf8'),
-      ) as Partial<STTModelState>;
+      ) as Partial<ActiveModelState>;
       return typeof state.activeModelId === 'string'
         ? state.activeModelId
         : null;
     } catch {
-      return DEFAULT_STATE.activeModelId;
+      return null;
     }
   }
 

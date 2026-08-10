@@ -3,7 +3,7 @@ import path from 'path';
 import sttCatalogJson from '../../../config/stt-catalog.json';
 import { STTModel } from './STTModel';
 import { ModelManager } from './ModelManager';
-import STTModelStateStore from './STTModelStateStore';
+import ActiveModelStateStore from './ActiveModelStateStore';
 import { ManagedPaths } from '../runtime/ManagedPaths';
 import FileDownloadService, {
   DownloadProgress,
@@ -27,7 +27,7 @@ type STTCatalog = {
 type STTModelManagerDependencies = {
   managedPaths?: ManagedPaths;
   downloader?: FileDownloadService;
-  stateStore?: STTModelStateStore;
+  stateStore?: ActiveModelStateStore;
 };
 
 /**
@@ -40,7 +40,7 @@ export class STTModelManager implements ModelManager {
 
   private readonly modelDir: string;
 
-  private readonly stateStore: STTModelStateStore;
+  private readonly stateStore: ActiveModelStateStore;
 
   private readonly downloader: FileDownloadService;
 
@@ -53,7 +53,7 @@ export class STTModelManager implements ModelManager {
     this.downloader = dependencies.downloader ?? new FileDownloadService();
     this.stateStore =
       dependencies.stateStore ??
-      new STTModelStateStore(
+      new ActiveModelStateStore(
         managedPaths.resolveManagedPath('model-state', 'stt.json'),
       );
   }

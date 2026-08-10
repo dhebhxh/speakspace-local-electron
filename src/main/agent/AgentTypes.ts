@@ -42,6 +42,14 @@ export type AgentRunResult = {
   completed: boolean;
 };
 
+export type AgentRunStarted = { runId: string };
+
+export type AgentEvent =
+  | { runId: string; type: 'step'; step: AgentStep }
+  | { runId: string; type: 'completed'; result: AgentRunResult }
+  | { runId: string; type: 'cancelled' }
+  | { runId: string; type: 'error'; message: string };
+
 export type AgentContext = {
   workspaceId: number | null;
 };

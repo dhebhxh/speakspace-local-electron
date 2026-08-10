@@ -6,6 +6,7 @@ import {
   IpcRendererEvent,
   webUtils,
 } from 'electron';
+import { AgentEvent, AgentRunRequest } from './agent/AgentTypes';
 
 export type Channels = 'ipc-example';
 
@@ -266,6 +267,24 @@ const electronHandler = {
       ipcRenderer.on('Semantic:installProgress', wrapped);
       return () => {
         ipcRenderer.removeListener('Semantic:installProgress', wrapped);
+      };
+    },
+  },
+
+  // Agent 只能调用主进程注册的本地工具；步骤事件不包含模型私有推理。
+  agent: {
+    start(request: AgentRunRequest) {
+      return ipcRenderer.invoke('Agent:start', request);
+    },
+    cancel(runId: string) {
+      return ipcRenderer.invoke('Agent:cancel', runId);
+    },
+    onEvent(listener: (event: AgentEvent) => void) {
+      const wrapped = (_event: IpcRendererEvent, agentEvent: AgentEvent) =>
+        listener(agentEvent);
+      ipcRenderer.on('Agent:event', wrapped);
+      return () => {
+        ipcRenderer.removeListener('Agent:event', wrapped);
       };
     },
   },

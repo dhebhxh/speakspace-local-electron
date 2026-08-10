@@ -7,6 +7,8 @@ import WhisperRuntimeService, {
 import OllamaRuntimeService, {
   OllamaRuntimeStatus,
 } from '../llm/OllamaRuntimeService';
+import TTSRuntimeService from '../tts/TTSRuntimeService';
+import { TTSRuntimeStatus } from '../tts/TTSRuntimeTypes';
 
 export type ManagedRuntimeState = 'missing' | 'partial' | 'ready';
 
@@ -23,6 +25,7 @@ export type RuntimeStatusSummary = {
   components: RuntimeComponentStatus[];
   transcription: WhisperRuntimeStatus;
   languageModel: OllamaRuntimeStatus;
+  speechSynthesis: TTSRuntimeStatus;
 };
 
 /**
@@ -36,24 +39,54 @@ export class RuntimeStatusService {
 
   private readonly ollamaRuntime: OllamaRuntimeService;
 
+  private readonly ttsRuntime: TTSRuntimeService;
+
   public constructor(
     managedPaths = ManagedPaths.getInstance(),
     whisperRuntime = new WhisperRuntimeService(managedPaths),
     ollamaRuntime = new OllamaRuntimeService(),
+    ttsRuntime = new TTSRuntimeService(managedPaths),
   ) {
     this.managedPaths = managedPaths;
     this.whisperRuntime = whisperRuntime;
     this.ollamaRuntime = ollamaRuntime;
+    this.ttsRuntime = ttsRuntime;
   }
 
   public async getStatus(): Promise<RuntimeStatusSummary> {
     const kinds: RuntimeKind[] = ['stt', 'llm', 'tts'];
+    const speechSynthesis = this.ttsRuntime.getStatus();
 
     return {
       storageRoot: this.managedPaths.getDataRoot(),
-      components: kinds.map((kind) => this.getComponentStatus(kind)),
+      components: kinds.map((kind) =>
+        kind === 'tts'
+          ? RuntimeStatusService.getTTSComponentStatus(speechSynthesis)
+          : this.getComponentStatus(kind),
+      ),
       transcription: this.whisperRuntime.getStatus(),
       languageModel: await this.ollamaRuntime.getStatus(),
+      speechSynthesis,
+    };
+  }
+
+  private static getTTSComponentStatus(
+    status: TTSRuntimeStatus,
+  ): RuntimeComponentStatus {
+    const installedModelCount = status.modelReady ? 1 : 0;
+    const hasPartialState =
+      status.packageInstalled ||
+      status.manifestPresent ||
+      status.missingFiles.length < 6;
+    let managedState: ManagedRuntimeState = 'missing';
+    if (hasPartialState) managedState = 'partial';
+    if (status.runtimeReady) managedState = 'ready';
+    return {
+      kind: 'tts',
+      managedState,
+      runtimePresent: status.packageInstalled,
+      manifestPresent: status.manifestPresent,
+      installedModelCount,
     };
   }
 

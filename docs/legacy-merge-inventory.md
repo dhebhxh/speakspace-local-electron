@@ -19,7 +19,7 @@
 | 笔记与子笔记 | 已有实体和 Repository | 已有创建、更新、子笔记和回收站逻辑 | 复用当前实体，补充缺少的业务操作 |
 | AI 会话 | 已有会话、消息和笔记上下文表 | 会话保存在笔记 JSON 中 | 使用当前规范化表，迁移问答逻辑而非存储格式 |
 | STT 模型管理 | 已改为流式下载、SHA-1 校验和 userData 激活状态 | 有 Whisper/Parakeet 运行时、进度和状态检测 | 保留当前 UI，继续补齐运行时和真实转写能力 |
-| LLM 模型管理 | 已使用 Ollama 实际列表和 userData 激活状态 | 有便携 Ollama、服务启动、状态和进度管理 | 继续迁移运行时检测，避免重复模型目录和状态源 |
+| LLM 模型管理 | 已使用 Ollama 实际列表和 userData 激活状态，并支持官方便携运行时 | 有便携 Ollama、服务启动、状态和进度管理 | 已按当前 IPC 和 Model Manager 结构迁移，不保留旧状态源 |
 | 硬件检测与推荐 | 已有系统画像和模型评分 | 主进程内有更细的 GPU/内存检测 | 提取可复用检测项，继续使用当前推荐结果格式 |
 | 工作流模板 | 已有模板增删改查 | 有结构化模板和 LLM 处理器 | 保留当前模板表，接入真实生成流程 |
 | 工作空间页面 | 已有完整 React 页面、筛选、预览和建议 | 旧版以文件夹、标签组织笔记 | 不替换页面；将旧笔记能力映射到当前 Workspace |
@@ -35,7 +35,7 @@
 | 4 | 文件选择与音频时长探测 | `audio-duration.js`、`audio:pick` | 已提供安全文件选择和时长 IPC | 已迁移 |
 | 5 | Whisper/Parakeet 真实转写 | `transcription-service.js` | Whisper 执行与 Windows 官方运行时安装已迁移，Parakeet 待接入 | 进行中 |
 | 6 | 转写任务进度、取消和重试 | `transcription-job-manager.js` | React 页面已接入文件/录音任务、进度、取消和重试 | 已迁移 |
-| 7 | Ollama 服务与运行时状态 | `llm-service.js` | 已检测系统/受管可执行文件、服务、模型和激活状态，模型操作或聊天时可按需启动服务；便携安装待迁移 | 进行中 |
+| 7 | Ollama 服务与运行时状态 | `llm-service.js` | 已检测系统/受管可执行文件、服务、模型和激活状态，按需启动服务，并可校验安装官方 Windows 便携包 | 已迁移 |
 | 8 | 结构化笔记生成 | `structured-processor.js` | 只有知识模板 CRUD | 待迁移 |
 | 9 | 基于笔记内容的问答 | `structured-processor.js`、当前仓库 `feature/askai` | 已接入工作区隔离的本地问答、会话记录、安全 IPC 和拆分后的 React 页面 | 已迁移 |
 | 10 | 本地 TTS 和说话人选择 | `tts-service.js`、`tts-worker.js` | 未实现 | 待迁移 |

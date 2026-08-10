@@ -178,12 +178,23 @@ const electronHandler = {
     installWhisper() {
       return ipcRenderer.invoke('Runtime:installWhisper');
     },
+    installOllama() {
+      return ipcRenderer.invoke('Runtime:installOllama');
+    },
     onInstallProgress(listener: (progress: unknown) => void) {
       const wrapped = (_event: IpcRendererEvent, progress: unknown) =>
         listener(progress);
       ipcRenderer.on('Runtime:installProgress', wrapped);
       return () => {
         ipcRenderer.removeListener('Runtime:installProgress', wrapped);
+      };
+    },
+    onOllamaInstallProgress(listener: (progress: unknown) => void) {
+      const wrapped = (_event: IpcRendererEvent, progress: unknown) =>
+        listener(progress);
+      ipcRenderer.on('Runtime:installOllamaProgress', wrapped);
+      return () => {
+        ipcRenderer.removeListener('Runtime:installOllamaProgress', wrapped);
       };
     },
   },

@@ -1,0 +1,66 @@
+.ollama-runtime-panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface);
+}
+
+.ollama-runtime-panel header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ollama-runtime-panel h2 {
+  margin: 0.25rem 0 0;
+  font-size: 1.15rem;
+}
+
+.ollama-runtime-badge {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  font-size: 0.78rem;
+}
+
+.ollama-runtime-badge.is-ready {
+  border-color: rgba(74, 222, 128, 0.4);
+  background: rgba(20, 83, 45, 0.32);
+  color: #bbf7d0;
+}
+
+.ollama-runtime-grid {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(140px, 1fr);
+  gap: 0.55rem 1rem;
+}
+
+.ollama-runtime-grid span,
+.ollama-runtime-progress {
+  color: var(--muted);
+}
+
+.ollama-runtime-panel p {
+  margin: 0;
+}
+
+.ollama-runtime-error {
+  color: #fecaca !important;
+}
+
+.ollama-runtime-panel button {
+  justify-self: start;
+  padding: 0.65rem 1rem;
+  border-radius: 14px;
+}
+
+@media (max-width: 640px) {
+  .ollama-runtime-grid {
+    grid-template-columns: 1fr;
+  }
+}

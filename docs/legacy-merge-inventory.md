@@ -44,6 +44,26 @@
 | 13 | 回收站、恢复和永久删除 | `db-service.js` | 当前 Workspace 直接级联删除 | 待评估后迁移 |
 | 14 | 文件夹、标签及动作项完成状态 | `db-service.js` | 当前笔记表尚无对应字段 | 待评估后迁移 |
 
+## 当前仓库未进入 main 的分支审计
+
+以下结果以 2026-08-10 刷新后的 `origin/main` 为基线。`ahead` 只表示提交拓扑，不能代替功能验收；所有需要保留的功能仍要在 `merge-old` 中逐项适配和检查。
+
+| 分支 | 相对 main | 与 merge-old 的关系 | 处理结论 |
+| --- | --- | --- | --- |
+| `origin/W` | ahead 6 | 90 个变更文件已全部包含在 `merge-old` | 不再重复合并 |
+| `origin/feature/askai` | ahead 6 | 28 个变更文件中有 22 个与 `merge-old` 重叠 | 保留 Ask AI 功能；完成 Ollama 聊天服务后，按当前 Repository、IPC 和页面结构逐项适配，不整分支合并 |
+| `origin/feature/dashboard` | ahead 2 | 17 个变更文件中有 13 个 Dashboard 独有文件，4 个入口或依赖文件重叠 | 保留 Dashboard 页面；单独审查依赖、数据来源和路由后接入 |
+| `origin/feature/recording` | ahead 1 | 仅新增 5 个未接线的 `Recording1` 原型文件 | 已被当前受管录音、文件保存和转写任务页面覆盖，不合并原型 |
+| `origin/feature/workflow-engine` | ahead 1 | 21 个变更文件中有 13 个与 `merge-old` 重叠，另含旧录音原型和早期转写服务 | 先逐文件核对 Repository 差异；录音和转写部分已被当前实现覆盖，不整分支合并 |
+| `origin/feature/workflow-update` | ahead 0、behind 1 | 已由 `origin/main` 包含 | 无需处理 |
+
+### 分支验收门槛
+
+- 先识别独有业务功能，再判断是否已被 `merge-old` 的新实现覆盖。
+- 对仍需保留的功能，迁移最小文件集合，并按当前类型、Repository、IPC 和 React 页面结构适配。
+- 每项至少通过目标文件 ESLint、主进程或渲染进程构建以及相关行为检查后，才独立 commit 和 push。
+- `merge-old` 验收完成前不直接改写 `main`，避免把未完成或相互覆盖的实现一次性带入主线。
+
 ## 不直接迁移的内容
 
 - 旧版 `index.html`、`renderer.js` 和 `styles.css`：功能将以当前 React 组件重新接入。

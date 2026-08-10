@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { NoteItem } from '../WorkspaceController';
 import { WorkspaceTemplate } from '../WorkspaceWorkflowController';
+import TTSPlayButton from '../../../tts/TTSPlayButton';
 
 type Props = {
   note: NoteItem;
@@ -70,6 +71,7 @@ export default function KnowledgeOutputPanel({
                 {output.template_name} · {output.content_type}
               </small>
               <p>{output.content}</p>
+              <TTSPlayButton text={output.content} />
             </div>
           ))}
         </div>

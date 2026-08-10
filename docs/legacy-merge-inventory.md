@@ -38,7 +38,7 @@
 | 7 | Ollama 服务与运行时状态 | `llm-service.js` | 已检测系统/受管可执行文件、服务、模型和激活状态，按需启动服务，并可校验安装官方 Windows 便携包 | 已迁移 |
 | 8 | 结构化笔记生成 | `structured-processor.js` | 已按当前模板表生成 Markdown、保存知识输出，并接入 Workspace 笔记详情 | 已迁移 |
 | 9 | 基于笔记内容的问答 | `structured-processor.js`、当前仓库 `feature/askai` | 已接入工作区隔离的本地问答、会话记录、安全 IPC 和拆分后的 React 页面 | 已迁移 |
-| 10 | 本地 TTS 和说话人选择 | `tts-service.js`、`tts-worker.js` | 原生依赖已放入 `release/app`，运行时状态与 53 个 Kokoro v1.0 音色已接入；模型安装、合成和播放待接入 | 进行中 |
+| 10 | 本地 TTS 和说话人选择 | `tts-service.js`、`tts-worker.js` | 原生依赖位于 `release/app`；已接入受管模型安装、异步合成、53 个音色、试听，以及 Ask AI/知识输出朗读 | 已迁移 |
 | 11 | Embedding 与相似笔记检索 | `embedding-service.js` | 未实现 | 待迁移 |
 | 12 | Agent 工具编排和步骤事件 | `agent-orchestrator.js` | 未实现 | 待迁移 |
 | 13 | 回收站、恢复和永久删除 | `db-service.js` | 当前 Workspace 直接级联删除 | 待评估后迁移 |

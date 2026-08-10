@@ -4,6 +4,7 @@ import { ModelManagerPage } from './pages/ModelManager/ModelManagerPage';
 import WorkspacePage from './pages/Workspace/WorkspacePage';
 import WorkspaceHomePage from './pages/Workspace/WorkspaceHomePage';
 import SettingsPage from './pages/Settings/SettingsPage';
+import RecordingPage from './pages/Recording/RecordingPage';
 
 // 这是临时占位页；真实功能页接入后可删除。 / Temporary placeholder until each feature page is connected.
 // eslint-disable-next-line react/prop-types
@@ -24,10 +25,7 @@ export default function AppRoute() {
           path="/"
           element={<WorkspaceHomePage directory={false} limit={6} />}
         />
-        <Route
-          path="/Transcription"
-          element={<PlaceholderPage title="Transcription" />}
-        />
+        <Route path="/Transcription" element={<RecordingPage />} />
         <Route path="/AIChat" element={<PlaceholderPage title="AI Chat" />} />
         <Route
           path="/Workspace"

@@ -1,12 +1,56 @@
-// 现有问题说明：本文件缺少 useState/useEffect 和 Props 的定义；RecordingSession 也未提供 transcript 与 subscribe，当前组件无法通过类型检查。
-export function TranscriptionPanel({ session }: Props) {
-  const [text, setText] = useState(session.transcript);
+import { RecordingSession } from '../RecordingSession';
+import { RecordingState } from '../RecordingTypes';
+import useRecordingSession from '../useRecordingSession';
 
-  useEffect(() => {
-    session.subscribe(() => {
-      setText(session.transcript);
-    });
-  }, []);
+export default function TranscriptionPanel(props: {
+  session: RecordingSession;
+}) {
+  const { session } = props;
+  const snapshot = useRecordingSession(session);
 
-  return <div>{text}</div>;
+  return (
+    <section className="recording-panel">
+      <div className="recording-panel__header">
+        <div>
+          <p className="recording-panel__eyebrow">LOCAL AUDIO</p>
+          <h1>录音与转写 / Recording</h1>
+        </div>
+        <span className={`recording-state recording-state--${snapshot.state}`}>
+          {snapshot.state}
+        </span>
+      </div>
+
+      <p className="recording-panel__status">{snapshot.statusMessage}</p>
+
+      {snapshot.errorMessage && (
+        <p className="recording-panel__error" role="alert">
+          {snapshot.errorMessage}
+        </p>
+      )}
+
+      <div className="recording-panel__content">
+        {snapshot.state === RecordingState.Idle && (
+          <p>点击开始后，浏览器会请求麦克风权限。录音只保存在本机。</p>
+        )}
+        {(snapshot.state === RecordingState.Recording ||
+          snapshot.state === RecordingState.Paused ||
+          snapshot.state === RecordingState.Completed) && (
+          <p>
+            已接收 {(snapshot.bufferedBytes / 1024).toFixed(1)} KB
+            本地音频数据。
+          </p>
+        )}
+        {snapshot.savedRecording && (
+          <div className="recording-panel__saved">
+            <strong>本地录音已保存</strong>
+            <span>{snapshot.savedRecording.relativePath}</span>
+            <span>
+              {(snapshot.savedRecording.byteLength / 1024).toFixed(1)} KB ·{' '}
+              {snapshot.savedRecording.mimeType}
+            </span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }

@@ -62,6 +62,22 @@ export class BlobStorage {
   }
 
   public resolveAbsolutePath(relativePath: string): string {
-    return path.join(this.blobRootPath, relativePath);
+    if (!relativePath || path.isAbsolute(relativePath)) {
+      throw new Error('无效的 Blob 相对路径 / Invalid blob relative path');
+    }
+
+    const blobRoot = path.resolve(this.blobRootPath);
+    const absolutePath = path.resolve(blobRoot, relativePath);
+    const pathFromRoot = path.relative(blobRoot, absolutePath);
+    if (
+      !pathFromRoot ||
+      pathFromRoot === '..' ||
+      pathFromRoot.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(pathFromRoot)
+    ) {
+      throw new Error('Blob 路径超出受管目录 / Blob path is not managed');
+    }
+
+    return absolutePath;
   }
 }

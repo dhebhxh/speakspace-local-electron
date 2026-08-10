@@ -78,6 +78,17 @@ const electronHandler = {
     },
   },
 
+  // 单次转写接口先用于功能接线；任务进度、取消和重试由后续 job API 提供。
+  transcription: {
+    run(
+      source:
+        | { kind: 'file'; filePath: string }
+        | { kind: 'recording'; relativePath: string },
+    ) {
+      return ipcRenderer.invoke('Transcription:run', source);
+    },
+  },
+
   workflow: {
     getKnowledgeTemplateList() {
       return ipcRenderer.invoke('Workflow:getKnowledgeTemplateList');

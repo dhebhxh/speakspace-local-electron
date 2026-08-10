@@ -175,6 +175,17 @@ const electronHandler = {
     getStatus() {
       return ipcRenderer.invoke('Runtime:getStatus');
     },
+    installWhisper() {
+      return ipcRenderer.invoke('Runtime:installWhisper');
+    },
+    onInstallProgress(listener: (progress: unknown) => void) {
+      const wrapped = (_event: IpcRendererEvent, progress: unknown) =>
+        listener(progress);
+      ipcRenderer.on('Runtime:installProgress', wrapped);
+      return () => {
+        ipcRenderer.removeListener('Runtime:installProgress', wrapped);
+      };
+    },
   },
 
   // 操作方法：通过 window.electron.workspace 调用，数据库访问保留在主进程。

@@ -9,6 +9,7 @@ export type DownloadProgress = {
 
 export type DownloadOptions = {
   expectedSha1?: string | null;
+  expectedSha256?: string | null;
   signal?: AbortSignal;
   onProgress?: (progress: DownloadProgress) => void;
 };
@@ -39,7 +40,8 @@ export default class FileDownloadService {
     const totalBytes = FileDownloadService.parseContentLength(
       response.headers.get('content-length'),
     );
-    const hash = createHash('sha1');
+    const hashAlgorithm = options.expectedSha256 ? 'sha256' : 'sha1';
+    const hash = createHash(hashAlgorithm);
     const reader = response.body.getReader();
     let output: fsPromises.FileHandle | null = null;
     let receivedBytes = 0;
@@ -80,8 +82,10 @@ export default class FileDownloadService {
     actualSha1: string,
     options: DownloadOptions,
   ): void {
-    const expectedSha1 = options.expectedSha1?.trim().toLowerCase();
-    if (expectedSha1 && actualSha1.toLowerCase() !== expectedSha1) {
+    const expectedChecksum = (options.expectedSha256 ?? options.expectedSha1)
+      ?.trim()
+      .toLowerCase();
+    if (expectedChecksum && actualSha1.toLowerCase() !== expectedChecksum) {
       throw new Error('模型校验失败 / Download checksum mismatch');
     }
   }

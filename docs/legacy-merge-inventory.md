@@ -33,7 +33,7 @@
 | 2 | 运行时状态汇总 | 各 runtime service | 已提供 STT/LLM/TTS 受管状态只读 IPC | 已迁移 |
 | 3 | 录音文件保存和保留策略 | `transcription-service.js`、`audio-retention.js` | 已接入 React 录音状态、保存、放弃和麦克风释放 | 已迁移 |
 | 4 | 文件选择与音频时长探测 | `audio-duration.js`、`audio:pick` | 已提供安全文件选择和时长 IPC | 已迁移 |
-| 5 | Whisper/Parakeet 真实转写 | `transcription-service.js` | Whisper CLI、激活模型及 ffmpeg 检测已迁移，执行层待接入 | 进行中 |
+| 5 | Whisper/Parakeet 真实转写 | `transcription-service.js` | 已迁移运行时检测、可取消进程和 ffmpeg 转换，Whisper 执行待接入 | 进行中 |
 | 6 | 转写任务进度、取消和重试 | `transcription-job-manager.js` | 未实现 | 待迁移 |
 | 7 | Ollama 服务与运行时状态 | `llm-service.js` | 仅直接调用已安装的 Ollama | 待迁移 |
 | 8 | 结构化笔记生成 | `structured-processor.js` | 只有知识模板 CRUD | 待迁移 |

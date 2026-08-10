@@ -56,8 +56,6 @@ export class STTModelManager implements ModelManager {
       new STTModelStateStore(
         managedPaths.resolveManagedPath('model-state', 'stt.json'),
       );
-
-    fs.mkdirSync(this.modelDir, { recursive: true });
   }
 
   public getModelList(): STTModel[] {

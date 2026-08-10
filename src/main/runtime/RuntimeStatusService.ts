@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { ManagedPaths, RuntimeKind, RuntimeStoragePaths } from './ManagedPaths';
+import WhisperRuntimeService, {
+  WhisperRuntimeStatus,
+} from '../transcription/WhisperRuntimeService';
 
 export type ManagedRuntimeState = 'missing' | 'partial' | 'ready';
 
@@ -15,6 +18,7 @@ export type RuntimeComponentStatus = {
 export type RuntimeStatusSummary = {
   storageRoot: string;
   components: RuntimeComponentStatus[];
+  transcription: WhisperRuntimeStatus;
 };
 
 /**
@@ -24,8 +28,14 @@ export type RuntimeStatusSummary = {
 export class RuntimeStatusService {
   private readonly managedPaths: ManagedPaths;
 
-  public constructor(managedPaths = ManagedPaths.getInstance()) {
+  private readonly whisperRuntime: WhisperRuntimeService;
+
+  public constructor(
+    managedPaths = ManagedPaths.getInstance(),
+    whisperRuntime = new WhisperRuntimeService(managedPaths),
+  ) {
     this.managedPaths = managedPaths;
+    this.whisperRuntime = whisperRuntime;
   }
 
   public getStatus(): RuntimeStatusSummary {
@@ -34,6 +44,7 @@ export class RuntimeStatusService {
     return {
       storageRoot: this.managedPaths.getDataRoot(),
       components: kinds.map((kind) => this.getComponentStatus(kind)),
+      transcription: this.whisperRuntime.getStatus(),
     };
   }
 

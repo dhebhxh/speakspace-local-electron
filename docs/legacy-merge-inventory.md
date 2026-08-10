@@ -35,7 +35,7 @@
 | 4 | 文件选择与音频时长探测 | `audio-duration.js`、`audio:pick` | 已提供安全文件选择和时长 IPC | 已迁移 |
 | 5 | Whisper/Parakeet 真实转写 | `transcription-service.js` | Whisper 执行与 Windows 官方运行时安装已迁移，Parakeet 待接入 | 进行中 |
 | 6 | 转写任务进度、取消和重试 | `transcription-job-manager.js` | React 页面已接入文件/录音任务、进度、取消和重试 | 已迁移 |
-| 7 | Ollama 服务与运行时状态 | `llm-service.js` | 已检测系统/受管可执行文件、服务、模型和激活状态，并提供受校验的本地聊天；便携安装与按需启动待迁移 | 进行中 |
+| 7 | Ollama 服务与运行时状态 | `llm-service.js` | 已检测系统/受管可执行文件、服务、模型和激活状态，模型操作或聊天时可按需启动服务；便携安装待迁移 | 进行中 |
 | 8 | 结构化笔记生成 | `structured-processor.js` | 只有知识模板 CRUD | 待迁移 |
 | 9 | 基于笔记内容的问答 | `structured-processor.js`、当前仓库 `feature/askai` | 已接入工作区隔离的本地问答、会话记录、安全 IPC 和拆分后的 React 页面 | 已迁移 |
 | 10 | 本地 TTS 和说话人选择 | `tts-service.js`、`tts-worker.js` | 未实现 | 待迁移 |

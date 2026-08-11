@@ -1,53 +1,54 @@
-import { Entity } from "./Entity";
-
+import { Entity } from './Entity';
 
 export class Subnote extends Entity {
+  private noteId: number;
 
-    private noteId: number;
-    private contentType: string;
-    private content: string;
-    private createdAt: Date;
+  private contentType: string;
 
-    public constructor(
-        id: number,
-        noteId: number,
-        contentType: string,
-        content: string,
-        createdAt: Date
-    ) {
-        super(id);
+  private content: string;
 
-        this.noteId = noteId;
-        this.contentType = contentType;
-        this.content = content;
-        this.createdAt = createdAt;
-    }
+  private createdAt: Date;
 
-    public getNoteId(): number {
-        return this.noteId;
-    }
+  public constructor(
+    id: number,
+    noteId: number,
+    contentType: string,
+    content: string,
+    createdAt: Date,
+  ) {
+    super(id);
 
-    public setNoteId(noteId: number): void {
-        this.noteId = noteId;
-    }
+    this.noteId = noteId;
+    this.contentType = contentType;
+    this.content = content;
+    this.createdAt = createdAt;
+  }
 
-    public getContentType(): string {
-        return this.contentType;
-    }
+  public getNoteId(): number {
+    return this.noteId;
+  }
 
-    public setContentType(contentType: string): void {
-        this.contentType = contentType;
-    }
+  public setNoteId(noteId: number): void {
+    this.noteId = noteId;
+  }
 
-    public getContent(): string {
-        return this.content;
-    }
+  public getContentType(): string {
+    return this.contentType;
+  }
 
-    public setContent(content: string): void {
-        this.content = content;
-    }
+  public setContentType(contentType: string): void {
+    this.contentType = contentType;
+  }
 
-    public getCreatedAt(): Date {
-        return this.createdAt;
-    }
+  public getContent(): string {
+    return this.content;
+  }
+
+  public setContent(content: string): void {
+    this.content = content;
+  }
+
+  public getCreatedAt(): Date {
+    return this.createdAt;
+  }
 }

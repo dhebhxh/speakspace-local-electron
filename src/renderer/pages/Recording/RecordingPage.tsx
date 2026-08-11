@@ -1,27 +1,23 @@
-import { useRef } from "react";
-import { RecordingSession } from "./RecordingSession";
-import { RecordControlBar } from "./components/RecordControlBar";
-import { TranscriptionPanel } from "./components/TranscriptionPanel";
+import { useEffect, useRef } from 'react';
+import { RecordingSession } from './RecordingSession';
+import TranscriptionController from './TranscriptionController';
+import RecordControlBar from './components/RecordControlBar';
+import TranscriptionPanel from './components/TranscriptionPanel';
+import './RecordingPage.css';
 
-export function RecordingPage() {
+export default function RecordingPage() {
+  const sessionRef = useRef(new RecordingSession());
+  const transcriptionRef = useRef(new TranscriptionController());
 
-    const sessionRef = useRef(
-        new RecordingSession()
-    );
+  const session = sessionRef.current;
+  const transcription = transcriptionRef.current;
 
+  useEffect(() => () => transcription.dispose(), [transcription]);
 
-    const session = sessionRef.current;
-
-
-    return (
-        <>
-            <TranscriptionPanel
-                session={session}
-            />
-
-            <RecordControlBar
-                session={session}
-            />
-        </>
-    );
+  return (
+    <section className="recording-page">
+      <TranscriptionPanel session={session} transcription={transcription} />
+      <RecordControlBar session={session} transcription={transcription} />
+    </section>
+  );
 }

@@ -1,196 +1,176 @@
-import fs from "fs";
-import path from "path";
-import { app } from "electron";
-import ollama, { Message } from "ollama";
+import ollama from 'ollama';
+import llmCatalogJson from '../../../config/llm-catalog.json';
+import { ModelManager } from './ModelManager';
+import { LLMModel } from './LLMModel';
+import ActiveModelStateStore from './ActiveModelStateStore';
+import { ManagedPaths } from '../runtime/ManagedPaths';
 
-import { ModelManager } from "./ModelManager";
-import { LLMModel } from "./LLMModel";
-
-
-type LLMConfig = {
-    "llm": {
-        "id": string;
-        "name": string;
-        "language": string;
-        "engine": string;
-        "format": string;
-        "quantization": string | null;
-        "size": string;
-        "modelName": string;
-        "downloaded": boolean;
-        "activated": boolean;
-    }[];
+type LLMCatalogItem = {
+  id: string;
+  name: string;
+  language: string;
+  engine: string;
+  format: string;
+  quantization: string | null;
+  size: string;
+  modelName: string;
 };
 
+type LLMCatalog = { llm: LLMCatalogItem[] };
+
+type OllamaClient = Pick<typeof ollama, 'list' | 'pull' | 'delete'>;
+
+export type LLMDownloadProgress = {
+  status: string;
+  completed: number;
+  total: number;
+};
+
+type LLMModelManagerDependencies = {
+  managedPaths?: ManagedPaths;
+  client?: OllamaClient;
+  stateStore?: ActiveModelStateStore;
+};
+
+/** 使用 Ollama 实际模型列表计算下载状态，激活 ID 单独保存在 userData。 */
 export class LLMModelManager implements ModelManager {
+  private readonly catalog: LLMCatalogItem[];
 
+  private readonly client: OllamaClient;
 
-    private configPath: string;
+  private readonly stateStore: ActiveModelStateStore;
 
+  public constructor(dependencies: LLMModelManagerDependencies = {}) {
+    const managedPaths =
+      dependencies.managedPaths ?? ManagedPaths.getInstance();
+    this.catalog = (llmCatalogJson as LLMCatalog).llm;
+    this.client = dependencies.client ?? ollama;
+    this.stateStore =
+      dependencies.stateStore ??
+      new ActiveModelStateStore(
+        managedPaths.resolveManagedPath('model-state', 'llm.json'),
+      );
+  }
 
-    constructor() {
+  public async getModelList(): Promise<LLMModel[]> {
+    const installedModels = await this.getInstalledModelNames();
+    const activeModelId = this.stateStore.getActiveModelId();
 
-        const projectRoot =
-            app.getAppPath();
+    return this.catalog.map((item) => {
+      const downloaded = installedModels.has(
+        LLMModelManager.normalizeModelName(item.modelName),
+      );
+      return LLMModelManager.createModel(
+        item,
+        downloaded,
+        downloaded && activeModelId === item.id,
+      );
+    });
+  }
 
-
-        this.configPath =
-            path.join(
-                projectRoot,
-                "config",
-                "llm-catalog.json"
-            );
-
+  public async downloadModel(
+    id: string,
+    onProgress?: (progress: LLMDownloadProgress) => void,
+  ): Promise<void> {
+    const item = this.findCatalogItem(id);
+    const installedModels = await this.getInstalledModelNames();
+    if (
+      installedModels.has(LLMModelManager.normalizeModelName(item.modelName))
+    ) {
+      throw new Error('模型已经下载 / Model has already been downloaded');
     }
 
+    const progressStream = await this.client.pull({
+      model: item.modelName,
+      stream: true,
+    });
+    // Ollama 按顺序发送同一下载的进度事件。
+    // eslint-disable-next-line no-restricted-syntax
+    for await (const progress of progressStream) {
+      onProgress?.({
+        status: progress.status,
+        completed: progress.completed ?? 0,
+        total: progress.total ?? 0,
+      });
+    }
+  }
 
-
-    getModelList(): LLMModel[] {
-
-        const config =
-            this.loadConfig();
-
-        const modelList = [];
-
-        for (let i = 0; i < config.llm.length; i++) {
-            const model = config.llm[i];
-
-            modelList.push(
-                new LLMModel(
-                    model.id,
-                    model.name,
-                    model.language,
-                    model.engine,
-                    model.format,
-                    model.quantization,
-                    model.size,
-                    model.modelName,
-                    model.downloaded,
-                    model.activated
-                )
-            );
-        }
-
-        return modelList;
+  public async deleteModel(id: string): Promise<void> {
+    const item = this.findCatalogItem(id);
+    const installedModels = await this.getInstalledModelNames();
+    if (
+      !installedModels.has(LLMModelManager.normalizeModelName(item.modelName))
+    ) {
+      throw new Error('模型尚未下载 / Model has not been downloaded');
     }
 
+    await this.client.delete({ model: item.modelName });
+    if (this.stateStore.getActiveModelId() === id) {
+      this.stateStore.setActiveModelId(null);
+    }
+  }
 
-
-
-    async downloadModel(id: string): Promise<void> {
-
-        const config = this.loadConfig();
-
-        const model =
-            config.llm.find(
-                (modelItem: LLMModel) =>
-                    modelItem.id === id
-            );
-
-        if (!model) {
-            throw new Error("Model not found.");
-        }
-
-        if (model.downloaded) {
-            throw new Error("Model has already been downloaded.");
-        }
-
-        await ollama.pull({"model": model.modelName});
-
-        model.downloaded = true;
-        this.saveConfig(config);
+  public async activateModel(id: string): Promise<boolean> {
+    const item = this.findCatalogItem(id);
+    const installedModels = await this.getInstalledModelNames();
+    if (
+      !installedModels.has(LLMModelManager.normalizeModelName(item.modelName))
+    ) {
+      return false;
     }
 
+    this.stateStore.setActiveModelId(id);
+    return true;
+  }
 
-    async deleteModel(id: string): Promise<void> {
+  public async getActivatedModel(): Promise<LLMModel | null> {
+    const models = await this.getModelList();
+    return models.find((model) => model.activated) ?? null;
+  }
 
-        const config = this.loadConfig();
-
-        const model =
-            config.llm.find(
-                (modelItem: LLMModel) =>
-                    modelItem.id === id
-            );
-
-        if (!model) {
-            throw new Error("Model not found.");
-        }
-
-        if (!model.downloaded) {
-            throw new Error("Model has not been downloaded.");
-        }
-
-        await ollama.delete({"model": model.modelName});
-
-        model.downloaded = false;
-        model.activated =false;
-
-        this.saveConfig(config);
+  private async getInstalledModelNames(): Promise<Set<string>> {
+    try {
+      const response = await this.client.list();
+      return new Set(
+        response.models.flatMap((model) =>
+          [model.name, model.model]
+            .filter((name): name is string => typeof name === 'string')
+            .map(LLMModelManager.normalizeModelName),
+        ),
+      );
+    } catch {
+      // Ollama 未运行时模型页仍可加载，运行时面板会显示具体状态。
+      return new Set();
     }
+  }
 
+  private findCatalogItem(id: string): LLMCatalogItem {
+    const item = this.catalog.find((candidate) => candidate.id === id);
+    if (!item) throw new Error('找不到模型 / Model not found');
+    return item;
+  }
 
-    activateModel(id: string): boolean {
+  private static normalizeModelName(modelName: string): string {
+    const normalized = modelName.trim().toLowerCase();
+    return normalized.includes(':') ? normalized : `${normalized}:latest`;
+  }
 
-        const config = this.loadConfig();
-
-        const model =
-            config.llm.find(
-                (modelItem: LLMModel) =>
-                    modelItem.id === id
-            );
-
-        if (!model) {
-            return false;
-        }
-
-        if (!model.downloaded) {
-            return false;
-        }
-
-        const lastActivated = this.getActivatedModel();
-
-        if (lastActivated) {
-            lastActivated.activated = false;
-        }
-
-        model.activated = true;
-        this.saveConfig(config);
-        return true;
-    }
-
-    getActivatedModel(): LLMModel | null {
-        const config = this.loadConfig();
-        const model = config.llm.find(
-            (modelItem) =>
-                modelItem.activated
-        );
-
-        if (!model) {
-            return null;
-        }
-        return model;
-    }
-
-
-    private loadConfig(): LLMConfig {
-        const json =
-            fs.readFileSync(
-                this.configPath,
-                "utf-8"
-            );
-        return JSON.parse(json);
-    }
-
-
-    private saveConfig(config: LLMConfig): void {
-        fs.writeFileSync(
-            this.configPath,
-            JSON.stringify(
-                config,
-                null,
-                4
-            ),
-            "utf-8"
-        );
-    }
+  private static createModel(
+    item: LLMCatalogItem,
+    downloaded: boolean,
+    activated: boolean,
+  ): LLMModel {
+    return new LLMModel(
+      item.id,
+      item.name,
+      item.language,
+      item.engine,
+      item.format,
+      item.quantization,
+      item.size,
+      item.modelName,
+      downloaded,
+      activated,
+    );
+  }
 }

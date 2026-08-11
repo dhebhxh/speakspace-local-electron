@@ -1,129 +1,83 @@
-import { app } from "electron";
-import fs from "fs";
-import path from "path";
+import fs from 'fs';
+import path from 'path';
+import { ManagedPaths } from '../runtime/ManagedPaths';
 
-
+// 保留命名导出，与现有 WorkspaceService 的导入方式一致。
+// eslint-disable-next-line import/prefer-default-export
 export class BlobStorage {
+  // 类内部的单例类型属于正常自引用，不是运行时的提前访问。
+  // eslint-disable-next-line no-use-before-define
+  private static instance: BlobStorage | null = null;
 
-    private static instance: BlobStorage | null = null;
+  private blobRootPath: string;
 
+  private constructor() {
+    this.blobRootPath = ManagedPaths.getInstance().getBlobRoot();
+  }
 
-    private blobRootPath: string;
-
-
-    private constructor() {
-
-        const userDataPath = app.getPath("userData");
-
-        this.blobRootPath = path.join(
-            userDataPath,
-            "blobs"
-        );
+  public static getInstance(): BlobStorage {
+    if (BlobStorage.instance === null) {
+      BlobStorage.instance = new BlobStorage();
     }
 
+    return BlobStorage.instance;
+  }
 
-    public static getInstance(): BlobStorage {
+  public async save(relativePath: string, data: Blob): Promise<void> {
+    const absolutePath = this.resolveAbsolutePath(relativePath);
 
-        if (BlobStorage.instance === null) {
+    const directory = path.dirname(absolutePath);
 
-            BlobStorage.instance =
-                new BlobStorage();
-        }
-
-
-        return BlobStorage.instance;
+    if (!fs.existsSync(directory)) {
+      fs.mkdirSync(directory, {
+        recursive: true,
+      });
     }
 
+    const buffer = Buffer.from(await data.arrayBuffer());
 
-    public async save(
-        relativePath: string,
-        data: Blob
-    ): Promise<void> {
+    fs.writeFileSync(absolutePath, buffer);
+  }
 
-        const absolutePath =
-            this.resolveAbsolutePath(relativePath);
+  public load(relativePath: string): Blob {
+    const absolutePath = this.resolveAbsolutePath(relativePath);
 
+    const buffer = fs.readFileSync(absolutePath);
 
-        const directory =
-            path.dirname(absolutePath);
+    return new Blob([new Uint8Array(buffer)]);
+  }
 
+  public delete(relativePath: string): void {
+    const absolutePath = this.resolveAbsolutePath(relativePath);
 
-        if (!fs.existsSync(directory)) {
+    if (fs.existsSync(absolutePath)) {
+      fs.unlinkSync(absolutePath);
+    }
+  }
 
-            fs.mkdirSync(
-                directory,
-                {
-                    recursive: true
-                }
-            );
-        }
+  public exists(relativePath: string): boolean {
+    const absolutePath = this.resolveAbsolutePath(relativePath);
 
+    return fs.existsSync(absolutePath);
+  }
 
-        const buffer =
-            Buffer.from(
-                await data.arrayBuffer()
-            );
-
-
-        fs.writeFileSync(
-            absolutePath,
-            buffer
-        );
+  public resolveAbsolutePath(relativePath: string): string {
+    if (!relativePath || path.isAbsolute(relativePath)) {
+      throw new Error('无效的 Blob 相对路径 / Invalid blob relative path');
     }
 
-
-    public load(
-        relativePath: string
-    ): Blob {
-
-        const absolutePath =
-            this.resolveAbsolutePath(relativePath);
-
-
-        const buffer = fs.readFileSync(absolutePath);
-
-        return new Blob([
-            new Uint8Array(buffer)
-        ]);
+    const blobRoot = path.resolve(this.blobRootPath);
+    const absolutePath = path.resolve(blobRoot, relativePath);
+    const pathFromRoot = path.relative(blobRoot, absolutePath);
+    if (
+      !pathFromRoot ||
+      pathFromRoot === '..' ||
+      pathFromRoot.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(pathFromRoot)
+    ) {
+      throw new Error('Blob 路径超出受管目录 / Blob path is not managed');
     }
 
-
-    public delete(
-        relativePath: string
-    ): void {
-
-        const absolutePath =
-            this.resolveAbsolutePath(relativePath);
-
-
-        if (fs.existsSync(absolutePath)) {
-
-            fs.unlinkSync(absolutePath);
-        }
-    }
-
-
-    public exists(
-        relativePath: string
-    ): boolean {
-
-        const absolutePath =
-            this.resolveAbsolutePath(relativePath);
-
-
-        return fs.existsSync(
-            absolutePath
-        );
-    }
-
-
-    public resolveAbsolutePath(
-        relativePath: string
-    ): string {
-
-        return path.join(
-            this.blobRootPath,
-            relativePath
-        );
-    }
+    return absolutePath;
+  }
 }

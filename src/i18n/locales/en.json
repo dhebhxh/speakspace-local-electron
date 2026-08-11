@@ -1,7 +1,9 @@
 {
   "sidebar.transcription": "Transcription",
   "sidebar.aiChat": "AI Chat",
+  "sidebar.agent": "Agent",
   "sidebar.workspace": "Workspace",
   "sidebar.modelManagement": "Model Manage",
+  "sidebar.workflow": "Knowledge Templates",
   "sidebar.settings": "Settings"
 }

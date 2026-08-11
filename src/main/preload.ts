@@ -95,6 +95,9 @@ const electronHandler = {
     ) {
       return ipcRenderer.invoke('Transcription:start', source);
     },
+    liveRun(data: ArrayBuffer, mimeType: string) {
+      return ipcRenderer.invoke('Transcription:liveRun', data, mimeType);
+    },
     get(jobId: string) {
       return ipcRenderer.invoke('Transcription:get', jobId);
     },

@@ -1,5 +1,6 @@
 import os from 'os';
 import TTSRuntimeService from './TTSRuntimeService';
+import { requireAtRuntime } from '../runtime/RuntimeRequire';
 
 type GeneratedAudio = { samples: Float32Array; sampleRate: number };
 type OfflineTts = {
@@ -81,8 +82,7 @@ export default class TTSEngine {
   }
 
   private static requireModule(): SherpaModule {
-    // 原生依赖位于 release/app，并由 webpack 标记为 external。
-    // eslint-disable-next-line global-require
-    return require('sherpa-onnx-node') as SherpaModule;
+    // 原生依赖位于 release/app，按需加载避免主进程启动阶段硬依赖。
+    return requireAtRuntime<SherpaModule>('sherpa-onnx-node');
   }
 }

@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { STTModelManager } from '../AI-module/STTModelManager';
 import CommandLocator from '../runtime/CommandLocator';
+import { requireAtRuntime } from '../runtime/RuntimeRequire';
 import ParakeetModelArchive, {
   PARAKEET_REQUIRED_FILES,
 } from './ParakeetModelArchive';
@@ -93,10 +94,9 @@ export default class ParakeetRuntimeService {
     version: string | null;
   } {
     try {
-      // eslint-disable-next-line global-require, import/no-dynamic-require
-      const info = require('sherpa-onnx-node/package.json') as {
+      const info = requireAtRuntime<{
         version?: string;
-      };
+      }>('sherpa-onnx-node/package.json');
       return { installed: true, version: info.version ?? null };
     } catch {
       return { installed: false, version: null };

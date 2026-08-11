@@ -2,6 +2,7 @@ import os from 'os';
 import ParakeetRuntimeService, {
   ParakeetRuntimeStatus,
 } from './ParakeetRuntimeService';
+import { requireAtRuntime } from '../runtime/RuntimeRequire';
 import parseSherpaSegments, {
   SherpaRecognitionResult,
 } from './SherpaOutputParser';
@@ -86,8 +87,7 @@ export default class ParakeetEngine {
   }
 
   private static requireModule(): SherpaModule {
-    // 原生依赖与 TTS 共用 release/app 中的 external 包。
-    // eslint-disable-next-line global-require
-    return require('sherpa-onnx-node') as SherpaModule;
+    // 原生依赖与 TTS 共用 release/app 中的 external 包，按需加载。
+    return requireAtRuntime<SherpaModule>('sherpa-onnx-node');
   }
 }

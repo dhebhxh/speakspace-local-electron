@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { ManagedPaths } from '../runtime/ManagedPaths';
+import { requireAtRuntime } from '../runtime/RuntimeRequire';
 import { TTSRuntimeStatus } from './TTSRuntimeTypes';
 import { DEFAULT_SPEAKER_ID, getTTSSpeakers } from './TTSVoices';
 
@@ -74,10 +75,9 @@ export default class TTSRuntimeService {
     version: string | null;
   } {
     try {
-      // eslint-disable-next-line global-require, import/no-dynamic-require
-      const info = require('sherpa-onnx-node/package.json') as {
+      const info = requireAtRuntime<{
         version?: string;
-      };
+      }>('sherpa-onnx-node/package.json');
       return { installed: true, version: info.version ?? null };
     } catch {
       return { installed: false, version: null };

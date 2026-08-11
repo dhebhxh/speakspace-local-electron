@@ -1,9 +1,89 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { TranscriptionLanguage } from '../../../../main/transcription/TranscriptionTypes';
 import { RecordingSession } from '../RecordingSession';
-import { RecordingState } from '../RecordingTypes';
+import { RecordingState, SavedRecording } from '../RecordingTypes';
 import TranscriptionController from '../TranscriptionController';
+import {
+  COMMON_LANGUAGE_OPTIONS,
+  MORE_LANGUAGE_OPTIONS,
+} from '../TranscriptionLanguageOptions';
 import useRecordingSession from '../useRecordingSession';
 import useTranscriptionController from '../useTranscriptionController';
+import SaveToWorkspaceDialog, {
+  WorkspaceSaveSelection,
+} from './SaveToWorkspaceDialog';
+
+function UploadLanguageSelect(props: {
+  value: TranscriptionLanguage;
+  disabled: boolean;
+  onChange: (language: TranscriptionLanguage) => void;
+}) {
+  const { value, disabled, onChange } = props;
+
+  return (
+    <label
+      className="recording-language-select"
+      htmlFor="upload-audio-language"
+    >
+      <span>音频语言 / Audio language</span>
+      <select
+        id="upload-audio-language"
+        value={value}
+        disabled={disabled}
+        onChange={(event) =>
+          onChange(event.target.value as TranscriptionLanguage)
+        }
+      >
+        <option value="auto">自动检测 / Auto detect（推荐）</option>
+        <optgroup label="常用语言 / Common languages">
+          {COMMON_LANGUAGE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label="更多语言 / More languages">
+          {MORE_LANGUAGE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </optgroup>
+      </select>
+    </label>
+  );
+}
+
+function buildTranscriptText(
+  transcription: ReturnType<TranscriptionController['getSnapshot']>,
+): string {
+  const finalText = transcription.job?.result?.text?.trim();
+  if (finalText) return finalText;
+
+  return transcription.liveSegments
+    .map((segment) => segment.text.trim())
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function defaultNoteName(
+  fileMode: boolean,
+  uploadedFileName: string | null,
+): string {
+  if (fileMode && uploadedFileName) {
+    return uploadedFileName.replace(/\.[^.]+$/u, '').slice(0, 80);
+  }
+
+  return `Recording ${new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date())}`;
+}
 
 export default function RecordControlBar(props: {
   session: RecordingSession;
@@ -12,148 +92,382 @@ export default function RecordControlBar(props: {
   const { session, transcription } = props;
   const snapshot = useRecordingSession(session);
   const transcriptionSnapshot = useTranscriptionController(transcription);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [workspaceSaving, setWorkspaceSaving] = useState(false);
+  const [workspaceSaveError, setWorkspaceSaveError] = useState<string | null>(
+    null,
+  );
+  const [workspaceSaveSuccess, setWorkspaceSaveSuccess] = useState<
+    string | null
+  >(null);
   const transcriptionRunning =
     transcriptionSnapshot.job?.status === 'processing';
   const liveTranscriptionRunning = transcriptionSnapshot.livePendingCount > 0;
-  const run = (operation: () => Promise<void>) => {
+  const fileMode = transcriptionSnapshot.inputMode === 'file';
+  const fileBusy =
+    transcriptionSnapshot.requestPending ||
+    transcriptionRunning ||
+    liveTranscriptionRunning ||
+    transcriptionSnapshot.languageDetectionPending;
+  const transcriptText = buildTranscriptText(transcriptionSnapshot);
+  const summaryBusy = transcriptionSnapshot.summaryPendingCount > 0;
+  const fileReadyToSave =
+    fileMode &&
+    transcriptionSnapshot.job?.status === 'completed' &&
+    Boolean(transcriptText);
+  const microphoneReadyToSave =
+    !fileMode &&
+    (snapshot.state === RecordingState.Completed ||
+      snapshot.state === RecordingState.Saved) &&
+    Boolean(transcriptText);
+  const canSaveToWorkspace =
+    (fileReadyToSave || microphoneReadyToSave) && !summaryBusy;
+  const noteName = defaultNoteName(
+    fileMode,
+    transcriptionSnapshot.uploadedFileName,
+  );
+
+  const run = (operation: () => Promise<unknown>) => {
     operation().catch(() => undefined);
+  };
+  const clearWorkspaceSaveFeedback = () => {
+    setWorkspaceSaveSuccess(null);
+    setWorkspaceSaveError(null);
+    setSaveDialogOpen(false);
   };
   const stopAndFinalize = async () => {
     await session.stop();
     await transcription.finalizeLiveSummary();
   };
 
+  const openWorkspaceSave = () => {
+    setWorkspaceSaveError(null);
+    setSaveDialogOpen(true);
+  };
+
+  const saveToWorkspace = async (selection: WorkspaceSaveSelection) => {
+    await transcription.finalizeLiveSummary();
+    const latestTranscription = transcription.getSnapshot();
+    const latestTranscriptText = buildTranscriptText(latestTranscription);
+    const latestSummaryTexts = latestTranscription.liveSummaries.map(
+      (summary) => summary.text,
+    );
+    if (!latestTranscriptText) {
+      setWorkspaceSaveError('没有可保存的转录内容 / No transcript to save');
+      return;
+    }
+
+    setWorkspaceSaving(true);
+    setWorkspaceSaveError(null);
+    let importedRecording: SavedRecording | null = null;
+
+    try {
+      let { workspaceId } = selection;
+      let workspaceName = '';
+      if (workspaceId === null) {
+        const created = (await window.electron.workspace.create(
+          selection.newWorkspaceName,
+        )) as { id: number; name: string };
+        workspaceId = created.id;
+        workspaceName = created.name;
+      } else {
+        const workspaces = (await window.electron.workspace.getList(100)) as
+          | Array<{ id: number; name: string }>
+          | undefined;
+        workspaceName =
+          workspaces?.find((workspace) => workspace.id === workspaceId)?.name ??
+          `Workspace ${workspaceId}`;
+      }
+
+      let audioRelativePath = snapshot.savedRecording?.relativePath ?? null;
+      if (fileMode && transcriptionSnapshot.uploadedFilePath) {
+        importedRecording = (await window.electron.audio.importRecordingFile(
+          transcriptionSnapshot.uploadedFilePath,
+        )) as SavedRecording;
+        audioRelativePath = importedRecording.relativePath;
+      } else if (
+        !fileMode &&
+        snapshot.state === RecordingState.Completed &&
+        !audioRelativePath
+      ) {
+        const savedRecording = await session.save();
+        if (!savedRecording) {
+          throw new Error('录音保存失败 / Unable to save recording');
+        }
+        audioRelativePath = savedRecording.relativePath;
+      }
+
+      await window.electron.workspace.saveTranscriptionNote({
+        workspaceId,
+        name: selection.noteName,
+        transcript: latestTranscriptText,
+        summaries: latestSummaryTexts,
+        audioRelativePath,
+      });
+
+      setWorkspaceSaveSuccess(
+        `已保存到“${workspaceName}” / Saved to “${workspaceName}”`,
+      );
+      setSaveDialogOpen(false);
+    } catch (reason) {
+      if (importedRecording) {
+        await window.electron.audio
+          .discardRecording(importedRecording.relativePath)
+          .catch(() => undefined);
+      }
+      setWorkspaceSaveError(
+        reason instanceof Error
+          ? reason.message
+          : '保存到工作空间失败 / Unable to save to workspace',
+      );
+    } finally {
+      setWorkspaceSaving(false);
+    }
+  };
+
   return (
-    <div className="recording-controls" aria-label="Recording controls">
-      {snapshot.state === RecordingState.Idle && (
-        <>
-          <button
-            type="button"
-            disabled={snapshot.busy || transcriptionRunning}
-            onClick={() => {
-              transcription.resetLive();
-              run(() => session.start());
-            }}
-          >
-            开始录音 / Start
-          </button>
+    <>
+      <div className="recording-controls" aria-label="Recording controls">
+        {snapshot.state === RecordingState.Idle && !fileMode && (
+          <>
+            <button
+              type="button"
+              disabled={snapshot.busy || fileBusy}
+              onClick={() => {
+                clearWorkspaceSaveFeedback();
+                transcription.resetLive('microphone');
+                run(() => session.start());
+              }}
+            >
+              开始录音 / Start
+            </button>
+            <UploadLanguageSelect
+              value={transcriptionSnapshot.uploadLanguage}
+              disabled={fileBusy}
+              onChange={(language) => transcription.setUploadLanguage(language)}
+            />
+            <button
+              className="recording-button--secondary"
+              type="button"
+              disabled={fileBusy}
+              onClick={() => {
+                clearWorkspaceSaveFeedback();
+                run(() => transcription.pickFileAndStart());
+              }}
+            >
+              上传音频文件 / Upload audio
+            </button>
+          </>
+        )}
+
+        {snapshot.state === RecordingState.Idle && fileMode && (
+          <>
+            {fileReadyToSave && (
+              <button
+                type="button"
+                disabled={
+                  !canSaveToWorkspace ||
+                  workspaceSaving ||
+                  Boolean(workspaceSaveSuccess)
+                }
+                onClick={openWorkspaceSave}
+              >
+                {workspaceSaveSuccess
+                  ? '已保存到工作空间 / Saved'
+                  : '保存到工作空间 / Save to workspace'}
+              </button>
+            )}
+            <UploadLanguageSelect
+              value={transcriptionSnapshot.uploadLanguage}
+              disabled={fileBusy || workspaceSaving}
+              onChange={(language) => transcription.setUploadLanguage(language)}
+            />
+            <button
+              className="recording-button--secondary"
+              type="button"
+              disabled={fileBusy || !transcriptionSnapshot.uploadedFilePath}
+              onClick={() => {
+                clearWorkspaceSaveFeedback();
+                run(() => transcription.retranscribeUploadedFile());
+              }}
+            >
+              {transcriptionSnapshot.languageConfirmationRequired
+                ? '确认语言并转录 / Confirm & transcribe'
+                : '重新转录 / Retranscribe'}
+            </button>
+            <button
+              className="recording-button--secondary"
+              type="button"
+              disabled={fileBusy}
+              onClick={() => {
+                clearWorkspaceSaveFeedback();
+                run(() => transcription.pickFileAndStart());
+              }}
+            >
+              上传另一个文件 / Upload another
+            </button>
+            <button
+              className="recording-button--secondary"
+              type="button"
+              disabled={fileBusy || snapshot.busy}
+              onClick={() => {
+                clearWorkspaceSaveFeedback();
+                transcription.resetLive('microphone');
+                run(() => session.start());
+              }}
+            >
+              开始新录音 / New recording
+            </button>
+          </>
+        )}
+
+        {snapshot.state === RecordingState.Recording && (
+          <>
+            <button type="button" onClick={() => session.pause()}>
+              暂停 / Pause
+            </button>
+            <button
+              type="button"
+              disabled={snapshot.busy}
+              onClick={() => run(stopAndFinalize)}
+            >
+              停止 / Stop
+            </button>
+          </>
+        )}
+
+        {snapshot.state === RecordingState.Paused && (
+          <>
+            <button type="button" onClick={() => session.resume()}>
+              继续 / Resume
+            </button>
+            <button
+              type="button"
+              disabled={snapshot.busy}
+              onClick={() => run(stopAndFinalize)}
+            >
+              停止 / Stop
+            </button>
+          </>
+        )}
+
+        {snapshot.state === RecordingState.Completed && (
+          <>
+            <button
+              type="button"
+              disabled={
+                !canSaveToWorkspace ||
+                workspaceSaving ||
+                Boolean(workspaceSaveSuccess)
+              }
+              onClick={openWorkspaceSave}
+            >
+              {workspaceSaveSuccess
+                ? '已保存到工作空间 / Saved'
+                : '保存到工作空间 / Save to workspace'}
+            </button>
+            <button
+              className="recording-button--secondary"
+              type="button"
+              disabled={snapshot.busy}
+              onClick={() => run(() => session.save())}
+            >
+              仅保存录音 / Save audio only
+            </button>
+            <button
+              className="recording-button--secondary"
+              type="button"
+              disabled={snapshot.busy}
+              onClick={() => run(() => session.discard())}
+            >
+              放弃 / Discard
+            </button>
+          </>
+        )}
+
+        {snapshot.state === RecordingState.Saved && !fileMode && (
+          <>
+            {transcriptText && (
+              <button
+                type="button"
+                disabled={
+                  !canSaveToWorkspace ||
+                  workspaceSaving ||
+                  Boolean(workspaceSaveSuccess)
+                }
+                onClick={openWorkspaceSave}
+              >
+                {workspaceSaveSuccess
+                  ? '已保存到工作空间 / Saved'
+                  : '保存到工作空间 / Save to workspace'}
+              </button>
+            )}
+            <button
+              className="recording-button--secondary"
+              type="button"
+              disabled={fileBusy}
+              onClick={() =>
+                run(() =>
+                  transcription.startRecording(
+                    snapshot.savedRecording?.relativePath as string,
+                  ),
+                )
+              }
+            >
+              重新完整转写 / Full retranscribe
+            </button>
+            <button
+              className="recording-button--secondary"
+              type="button"
+              disabled={snapshot.busy || transcriptionRunning}
+              onClick={() => run(() => session.discard())}
+            >
+              删除已保存录音 / Delete saved recording
+            </button>
+          </>
+        )}
+
+        {transcriptionRunning && (
           <button
             className="recording-button--secondary"
-            type="button"
-            disabled={
-              transcriptionSnapshot.requestPending ||
-              transcriptionRunning ||
-              liveTranscriptionRunning
-            }
-            onClick={() => run(() => transcription.pickFileAndStart())}
-          >
-            选择文件转写 / Transcribe file
-          </button>
-        </>
-      )}
-
-      {snapshot.state === RecordingState.Recording && (
-        <>
-          <button type="button" onClick={() => session.pause()}>
-            暂停 / Pause
-          </button>
-          <button
-            type="button"
-            disabled={snapshot.busy}
-            onClick={() => run(stopAndFinalize)}
-          >
-            停止 / Stop
-          </button>
-        </>
-      )}
-
-      {snapshot.state === RecordingState.Paused && (
-        <>
-          <button type="button" onClick={() => session.resume()}>
-            继续 / Resume
-          </button>
-          <button
-            type="button"
-            disabled={snapshot.busy}
-            onClick={() => run(stopAndFinalize)}
-          >
-            停止 / Stop
-          </button>
-        </>
-      )}
-
-      {snapshot.state === RecordingState.Completed && (
-        <>
-          <button
-            type="button"
-            disabled={snapshot.busy}
-            onClick={() => run(() => session.save())}
-          >
-            保存 / Save
-          </button>
-          <button
-            className="recording-button--secondary"
-            type="button"
-            disabled={snapshot.busy}
-            onClick={() => run(() => session.discard())}
-          >
-            放弃 / Discard
-          </button>
-        </>
-      )}
-
-      {snapshot.state === RecordingState.Saved && (
-        <>
-          <button
-            type="button"
-            disabled={
-              transcriptionSnapshot.requestPending ||
-              transcriptionRunning ||
-              liveTranscriptionRunning
-            }
-            onClick={() =>
-              run(() =>
-                transcription.startRecording(
-                  snapshot.savedRecording?.relativePath as string,
-                ),
-              )
-            }
-          >
-            开始本地转写 / Transcribe
-          </button>
-          <button
-            className="recording-button--secondary"
-            type="button"
-            disabled={snapshot.busy || transcriptionRunning}
-            onClick={() => run(() => session.discard())}
-          >
-            删除已保存录音 / Delete saved recording
-          </button>
-        </>
-      )}
-
-      {transcriptionRunning && (
-        <button
-          className="recording-button--secondary"
-          type="button"
-          disabled={transcriptionSnapshot.requestPending}
-          onClick={() => run(() => transcription.cancel())}
-        >
-          取消转写 / Cancel transcription
-        </button>
-      )}
-
-      {transcriptionSnapshot.job &&
-        (transcriptionSnapshot.job.status === 'failed' ||
-          transcriptionSnapshot.job.status === 'cancelled') && (
-          <button
             type="button"
             disabled={transcriptionSnapshot.requestPending}
-            onClick={() => run(() => transcription.retry())}
+            onClick={() => run(() => transcription.cancel())}
           >
-            重试转写 / Retry
+            取消转写 / Cancel transcription
           </button>
         )}
-    </div>
+
+        {transcriptionSnapshot.job &&
+          !fileMode &&
+          (transcriptionSnapshot.job.status === 'failed' ||
+            transcriptionSnapshot.job.status === 'cancelled') && (
+            <button
+              type="button"
+              disabled={transcriptionSnapshot.requestPending}
+              onClick={() => run(() => transcription.retry())}
+            >
+              重试转写 / Retry
+            </button>
+          )}
+
+        {workspaceSaveSuccess && (
+          <span className="workspace-save-feedback" role="status">
+            {workspaceSaveSuccess}
+          </span>
+        )}
+      </div>
+
+      <SaveToWorkspaceDialog
+        open={saveDialogOpen}
+        defaultNoteName={noteName}
+        saving={workspaceSaving}
+        error={workspaceSaveError}
+        onClose={() => {
+          if (!workspaceSaving) setSaveDialogOpen(false);
+        }}
+        onSave={saveToWorkspace}
+      />
+    </>
   );
 }

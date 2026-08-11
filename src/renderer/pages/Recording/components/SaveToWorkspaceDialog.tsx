@@ -1,0 +1,206 @@
+import React, { FormEvent, useEffect, useMemo, useState } from 'react';
+
+type WorkspaceOption = {
+  id: number;
+  name: string;
+};
+
+export type WorkspaceSaveSelection = {
+  workspaceId: number | null;
+  newWorkspaceName: string;
+  noteName: string;
+};
+
+type Props = {
+  open: boolean;
+  defaultNoteName: string;
+  saving: boolean;
+  error: string | null;
+  onClose(): void;
+  onSave(selection: WorkspaceSaveSelection): Promise<void>;
+};
+
+const NEW_WORKSPACE_VALUE = '__new__';
+
+export default function SaveToWorkspaceDialog({
+  open,
+  defaultNoteName,
+  saving,
+  error,
+  onClose,
+  onSave,
+}: Props) {
+  const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
+  const [workspaceValue, setWorkspaceValue] = useState('');
+  const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [noteName, setNoteName] = useState(defaultNoteName);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    let cancelled = false;
+    setNoteName(defaultNoteName);
+    setNewWorkspaceName('');
+    setLoadError(null);
+    setLoading(true);
+
+    const loadWorkspaces = async () => {
+      try {
+        const items = (await window.electron.workspace.getList(
+          100,
+        )) as WorkspaceOption[];
+        if (cancelled) return;
+        const options = items.filter(
+          (item) => Number.isInteger(item.id) && item.id > 0 && item.name,
+        );
+        setWorkspaces(options);
+        setWorkspaceValue(
+          options.length > 0 ? String(options[0].id) : NEW_WORKSPACE_VALUE,
+        );
+      } catch (reason) {
+        if (cancelled) return;
+        setWorkspaces([]);
+        setWorkspaceValue(NEW_WORKSPACE_VALUE);
+        setLoadError(
+          reason instanceof Error
+            ? reason.message
+            : '无法读取工作空间 / Unable to load workspaces',
+        );
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadWorkspaces().catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [defaultNoteName, open]);
+
+  const selectedWorkspaceId = useMemo(() => {
+    if (workspaceValue === NEW_WORKSPACE_VALUE) return null;
+    const id = Number(workspaceValue);
+    return Number.isInteger(id) && id > 0 ? id : null;
+  }, [workspaceValue]);
+
+  if (!open) return null;
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (saving || loading) return;
+    onSave({
+      workspaceId: selectedWorkspaceId,
+      newWorkspaceName: newWorkspaceName.trim(),
+      noteName: noteName.trim(),
+    }).catch(() => undefined);
+  };
+
+  return (
+    <div className="workspace-save-modal" role="presentation">
+      <form
+        className="workspace-save-dialog"
+        aria-label="保存到工作空间 / Save to workspace"
+        onSubmit={submit}
+      >
+        <header>
+          <div>
+            <span>WORKSPACE NOTE</span>
+            <h2>保存到工作空间 / Save to workspace</h2>
+          </div>
+          <button
+            className="workspace-save-dialog__close"
+            type="button"
+            disabled={saving}
+            onClick={onClose}
+            aria-label="关闭 / Close"
+          >
+            ×
+          </button>
+        </header>
+
+        <p className="workspace-save-dialog__hint">
+          完整转录会保存为笔记正文，右侧语义总结会保存为该笔记的子笔记。
+          Transcript and semantic summaries will stay together in one workspace
+          note.
+        </p>
+
+        <label htmlFor="workspace-save-target">
+          <span>工作空间 / Workspace</span>
+          <select
+            id="workspace-save-target"
+            value={workspaceValue}
+            disabled={saving || loading}
+            onChange={(event) => setWorkspaceValue(event.target.value)}
+          >
+            {workspaces.map((workspace) => (
+              <option key={workspace.id} value={workspace.id}>
+                {workspace.name}
+              </option>
+            ))}
+            <option value={NEW_WORKSPACE_VALUE}>
+              + 新建工作空间 / Create new workspace
+            </option>
+          </select>
+        </label>
+
+        {workspaceValue === NEW_WORKSPACE_VALUE && (
+          <label htmlFor="workspace-save-new-name">
+            <span>新工作空间名称 / New workspace name</span>
+            <input
+              id="workspace-save-new-name"
+              type="text"
+              value={newWorkspaceName}
+              disabled={saving}
+              maxLength={80}
+              placeholder="例如：Project Meeting"
+              onChange={(event) => setNewWorkspaceName(event.target.value)}
+            />
+          </label>
+        )}
+
+        <label htmlFor="workspace-save-note-name">
+          <span>笔记标题 / Note title</span>
+          <input
+            id="workspace-save-note-name"
+            type="text"
+            value={noteName}
+            disabled={saving}
+            maxLength={80}
+            onChange={(event) => setNoteName(event.target.value)}
+          />
+        </label>
+
+        {(loadError || error) && (
+          <p className="workspace-save-dialog__error" role="alert">
+            {error || loadError}
+          </p>
+        )}
+
+        <footer>
+          <button
+            className="recording-button--secondary"
+            type="button"
+            disabled={saving}
+            onClick={onClose}
+          >
+            取消 / Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={
+              saving ||
+              loading ||
+              !noteName.trim() ||
+              (workspaceValue === NEW_WORKSPACE_VALUE &&
+                !newWorkspaceName.trim())
+            }
+          >
+            {saving ? '正在保存… / Saving…' : '保存笔记 / Save note'}
+          </button>
+        </footer>
+      </form>
+    </div>
+  );
+}

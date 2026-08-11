@@ -30,6 +30,10 @@ ipcMain.handle(
     recordingStorageService.saveRecording(data, mimeType),
 );
 
+ipcMain.handle('Audio:importRecordingFile', (_event, filePath: unknown) =>
+  recordingStorageService.importRecordingFile(filePath),
+);
+
 ipcMain.handle('Audio:discardRecording', (_event, relativePath: unknown) =>
   recordingStorageService.discardRecording(relativePath),
 );

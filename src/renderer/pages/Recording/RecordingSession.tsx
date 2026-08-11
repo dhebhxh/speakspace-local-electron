@@ -132,13 +132,13 @@ export class RecordingSession {
     }
   }
 
-  public async save(): Promise<void> {
-    if (this.state !== RecordingState.Completed || this.busy) return;
+  public async save(): Promise<SavedRecording | null> {
+    if (this.state !== RecordingState.Completed || this.busy) return null;
     if (this.chunks.length === 0) {
       this.update({
         errorMessage: '没有收到录音数据 / No recording data received',
       });
-      return;
+      return null;
     }
 
     this.update({
@@ -163,12 +163,14 @@ export class RecordingSession {
         savedRecording,
         statusMessage: '录音已保存 / Recording saved',
       });
+      return savedRecording;
     } catch (error) {
       this.update({
         busy: false,
         errorMessage: RecordingSession.getErrorMessage(error),
         statusMessage: '保存失败 / Save failed',
       });
+      return null;
     }
   }
 

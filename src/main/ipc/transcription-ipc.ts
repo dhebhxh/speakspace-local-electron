@@ -17,8 +17,17 @@ transcriptionJobManager.subscribe((job) => {
   });
 });
 
+transcriptionJobManager.subscribePartial((jobId, segment) => {
+  BrowserWindow.getAllWindows().forEach((window) => {
+    window.webContents.send('Transcription:partial', { jobId, segment });
+  });
+});
+
 ipcMain.handle('Transcription:run', (_event, source: unknown) =>
   transcriptionService.transcribe(source),
+);
+ipcMain.handle('Transcription:detectLanguage', (_event, source: unknown) =>
+  transcriptionService.detectLanguage(source),
 );
 ipcMain.handle(
   'Transcription:liveRun',

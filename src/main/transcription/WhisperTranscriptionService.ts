@@ -8,6 +8,9 @@ import AudioConversionService, {
 } from './AudioConversionService';
 import TranscriptionSourceResolver from './TranscriptionSourceResolver';
 import {
+  isWhisperLanguage,
+  LanguageDetectionResult,
+  TranscriptSegment,
   TranscriptionProgress,
   TranscriptionResult,
 } from './TranscriptionTypes';
@@ -17,6 +20,7 @@ import WhisperRuntimeService from './WhisperRuntimeService';
 export type TranscriptionOptions = {
   signal?: AbortSignal;
   onProgress?: (progress: TranscriptionProgress) => void;
+  onPartial?: (segment: TranscriptSegment) => void;
 };
 
 /** 执行单次 whisper-cli 转写，不负责任务队列或数据库持久化。 */
@@ -45,6 +49,70 @@ export default class WhisperTranscriptionService {
     this.audioConversion = audioConversion;
   }
 
+  public async detectLanguage(
+    source: unknown,
+    signal?: AbortSignal,
+  ): Promise<LanguageDetectionResult> {
+    const normalizedSource =
+      TranscriptionSourceResolver.normalizeSource(source);
+    const inputPath = await this.sourceResolver.resolve(normalizedSource);
+    const runtime = this.runtimeService.requireReady();
+    const outputBasePath = await this.createOutputBasePath(inputPath);
+    let preparedAudio: PreparedAudio | null = null;
+
+    try {
+      preparedAudio = await this.audioConversion.prepare(
+        inputPath,
+        outputBasePath,
+        runtime.ffmpegPath,
+        signal,
+      );
+      const threadCount = Math.max(1, Math.min(os.cpus().length - 1, 8));
+      const processResult = await this.processRunner.run(
+        runtime.whisperCliPath,
+        [
+          '-m',
+          runtime.activeModelPath as string,
+          '-f',
+          preparedAudio.wavePath,
+          '-l',
+          'auto',
+          '-dl',
+          '-t',
+          String(threadCount),
+        ],
+        {
+          cwd:
+            runtime.runtimeLocation === 'portable'
+              ? path.dirname(runtime.whisperCliPath)
+              : undefined,
+          signal,
+        },
+      );
+      const combinedOutput = `${processResult.stderr}\n${processResult.stdout}`;
+      const match = combinedOutput.match(
+        /auto-detected language:\s*([a-z]{2,3})\s*\(p\s*=\s*([0-9.]+)\)/iu,
+      );
+      const detectedCode = match?.[1]?.toLowerCase();
+      if (!isWhisperLanguage(detectedCode)) {
+        throw new Error(
+          '无法从 Whisper 输出中读取语言检测结果 / Could not read detected language',
+        );
+      }
+
+      const confidence = Number(match?.[2]);
+      return {
+        language: detectedCode,
+        confidence: Number.isFinite(confidence) ? confidence : null,
+        source: 'whisper',
+      };
+    } finally {
+      await this.cleanupOutput([
+        preparedAudio?.temporary ? preparedAudio.wavePath : null,
+      ]);
+    }
+  }
+
   public async transcribe(
     source: unknown,
     options: TranscriptionOptions = {},
@@ -55,7 +123,10 @@ export default class WhisperTranscriptionService {
       message: '正在准备本地音频 / Preparing local audio',
     });
 
-    const inputPath = await this.sourceResolver.resolve(source);
+    const normalizedSource =
+      TranscriptionSourceResolver.normalizeSource(source);
+    const inputPath = await this.sourceResolver.resolve(normalizedSource);
+    const language = normalizedSource.language ?? 'auto';
     const runtime = this.runtimeService.requireReady();
     const outputBasePath = await this.createOutputBasePath(inputPath);
     const outputTextPath = `${outputBasePath}.txt`;
@@ -75,6 +146,9 @@ export default class WhisperTranscriptionService {
       });
 
       const threadCount = Math.max(1, Math.min(os.cpus().length - 1, 8));
+      const partialParser = WhisperTranscriptionService.createPartialParser(
+        options.onPartial,
+      );
       const processResult = await this.processRunner.run(
         runtime.whisperCliPath,
         [
@@ -83,7 +157,8 @@ export default class WhisperTranscriptionService {
           '-f',
           preparedAudio.wavePath,
           '-l',
-          'auto',
+          language,
+          '-sns',
           '-t',
           String(threadCount),
           '-otxt',
@@ -97,8 +172,11 @@ export default class WhisperTranscriptionService {
               ? path.dirname(runtime.whisperCliPath)
               : undefined,
           signal: options.signal,
+          onStdout: partialParser.consumeStdout,
+          onStderr: partialParser.consumeStderr,
         },
       );
+      partialParser.flush();
       const segments =
         await WhisperTranscriptionService.readSegments(outputJsonPath);
       const text = await WhisperTranscriptionService.readText(
@@ -126,6 +204,91 @@ export default class WhisperTranscriptionService {
         preparedAudio?.temporary ? preparedAudio.wavePath : null,
       ]);
     }
+  }
+
+  private static createPartialParser(
+    onPartial?: (segment: TranscriptSegment) => void,
+  ): {
+    consumeStdout: (chunk: string) => void;
+    consumeStderr: (chunk: string) => void;
+    flush: () => void;
+  } {
+    let stdoutBuffer = '';
+    let stderrBuffer = '';
+    let sequence = 0;
+    const emitted = new Set<string>();
+
+    const parseLine = (rawLine: string) => {
+      if (!onPartial) return;
+      const line = WhisperTranscriptionService.stripAnsi(rawLine).trim();
+      const match = line.match(
+        /^\[(\d{1,2}):(\d{2}):(\d{2}(?:\.\d+)?)\s*-->\s*(\d{1,2}):(\d{2}):(\d{2}(?:\.\d+)?)\]\s*(.+)$/u,
+      );
+      if (!match) return;
+
+      const text = match[7].trim();
+      if (!text) return;
+      const startMs = WhisperTranscriptionService.timestampToMs(
+        match[1],
+        match[2],
+        match[3],
+      );
+      const endMs = WhisperTranscriptionService.timestampToMs(
+        match[4],
+        match[5],
+        match[6],
+      );
+      const fingerprint = `${startMs}:${endMs}:${text}`;
+      if (emitted.has(fingerprint)) return;
+      emitted.add(fingerprint);
+
+      sequence += 1;
+      onPartial({
+        id: `partial-${sequence}`,
+        startMs,
+        endMs,
+        text,
+      });
+    };
+
+    const consume = (buffer: string, chunk: string): string => {
+      if (!onPartial || !chunk) return buffer;
+      const next = `${buffer}${chunk}`;
+      const lines = next.split(/\r?\n/u);
+      const remainder = lines.pop() ?? '';
+      lines.forEach(parseLine);
+      return remainder;
+    };
+
+    return {
+      consumeStdout(chunk: string) {
+        stdoutBuffer = consume(stdoutBuffer, chunk);
+      },
+      consumeStderr(chunk: string) {
+        stderrBuffer = consume(stderrBuffer, chunk);
+      },
+      flush() {
+        if (stdoutBuffer) parseLine(stdoutBuffer);
+        if (stderrBuffer) parseLine(stderrBuffer);
+        stdoutBuffer = '';
+        stderrBuffer = '';
+      },
+    };
+  }
+
+  private static timestampToMs(
+    hours: string,
+    minutes: string,
+    seconds: string,
+  ): number {
+    return Math.round(
+      (Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)) * 1000,
+    );
+  }
+
+  private static stripAnsi(value: string): string {
+    const escape = String.fromCharCode(27);
+    return value.replace(new RegExp(`${escape}\\[[0-9;]*m`, 'g'), '');
   }
 
   private async createOutputBasePath(inputPath: string): Promise<string> {

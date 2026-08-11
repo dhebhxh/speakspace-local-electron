@@ -7,6 +7,7 @@ import {
   webUtils,
 } from 'electron';
 import { AgentEvent, AgentRunRequest } from './agent/AgentTypes';
+import type { TranscriptionSource } from './transcription/TranscriptionTypes';
 
 export type Channels = 'ipc-example';
 
@@ -74,6 +75,9 @@ const electronHandler = {
     saveRecording(data: ArrayBuffer, mimeType: string) {
       return ipcRenderer.invoke('Audio:saveRecording', data, mimeType);
     },
+    importRecordingFile(filePath: string) {
+      return ipcRenderer.invoke('Audio:importRecordingFile', filePath);
+    },
     discardRecording(relativePath: string) {
       return ipcRenderer.invoke('Audio:discardRecording', relativePath);
     },
@@ -81,18 +85,13 @@ const electronHandler = {
 
   // 单次转写接口先用于功能接线；任务进度、取消和重试由后续 job API 提供。
   transcription: {
-    run(
-      source:
-        | { kind: 'file'; filePath: string }
-        | { kind: 'recording'; relativePath: string },
-    ) {
+    run(source: TranscriptionSource) {
       return ipcRenderer.invoke('Transcription:run', source);
     },
-    start(
-      source:
-        | { kind: 'file'; filePath: string }
-        | { kind: 'recording'; relativePath: string },
-    ) {
+    detectLanguage(source: TranscriptionSource) {
+      return ipcRenderer.invoke('Transcription:detectLanguage', source);
+    },
+    start(source: TranscriptionSource) {
       return ipcRenderer.invoke('Transcription:start', source);
     },
     liveRun(data: ArrayBuffer, mimeType: string) {
@@ -112,6 +111,14 @@ const electronHandler = {
       ipcRenderer.on('Transcription:status', wrapped);
       return () => {
         ipcRenderer.removeListener('Transcription:status', wrapped);
+      };
+    },
+    onPartial(listener: (payload: unknown) => void) {
+      const wrapped = (_event: IpcRendererEvent, payload: unknown) =>
+        listener(payload);
+      ipcRenderer.on('Transcription:partial', wrapped);
+      return () => {
+        ipcRenderer.removeListener('Transcription:partial', wrapped);
       };
     },
   },
@@ -335,6 +342,15 @@ const electronHandler = {
     },
     getNotes(workspaceId: number) {
       return ipcRenderer.invoke('Workspace:getNotes', workspaceId);
+    },
+    saveTranscriptionNote(request: {
+      workspaceId: number;
+      name?: string | null;
+      transcript: string;
+      summaries?: string[];
+      audioRelativePath?: string | null;
+    }) {
+      return ipcRenderer.invoke('Workspace:saveTranscriptionNote', request);
     },
     getNoteAudio(workspaceId: number, noteId: number) {
       return ipcRenderer.invoke('Workspace:getNoteAudio', workspaceId, noteId);

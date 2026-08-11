@@ -4,20 +4,16 @@ import { Repository } from './Repository';
 import { Note } from '../../entities/Note';
 import { DatabaseManager } from '../DatabaseManager';
 
+// 保留命名导出，与其余 Repository 的导入方式一致。
+// eslint-disable-next-line import/prefer-default-export
 export class NoteRepository implements Repository<Note> {
   private database: Database.Database;
 
-  public constructor() {
-    const dbManager = DatabaseManager.getInstance();
-    this.database = dbManager.getDatabase();
+  public constructor(database = DatabaseManager.getInstance().getDatabase()) {
+    this.database = database;
   }
 
   public create(entity: Note): number {
-    // 现有问题说明：INSERT 只有 8 个字段和占位符，但下方传入了 9 个值（多传 entity.getId()），参数会整体错位并导致创建失败。
-    // 现有问题说明：方法声明返回 number，但当前实现没有 return，调用方无法取得新笔记 ID。
-
-    const now = new Date();
-
     const statement = this.database.prepare(`
             INSERT INTO notes (
                 workspace_id,
@@ -32,8 +28,7 @@ export class NoteRepository implements Repository<Note> {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
-    statement.run(
-      entity.getId(),
+    const result = statement.run(
       entity.getWorkspaceId(),
       entity.getName(),
       entity.getAudioRelativePath(),
@@ -43,6 +38,9 @@ export class NoteRepository implements Repository<Note> {
       entity.getCreatedAt().toISOString(),
       entity.getUpdatedAt().toISOString(),
     );
+
+    // notes.id 由 SQLite 生成，调用方使用返回值继续读取或关联笔记。
+    return Number(result.lastInsertRowid);
   }
 
   public findById(id: number): Note | null {
@@ -58,10 +56,10 @@ export class NoteRepository implements Repository<Note> {
       return null;
     }
 
-    return this.toNote(row);
+    return NoteRepository.toNote(row);
   }
 
-  public findAllByWorkspace(workspaceId: string): Note[] {
+  public findAllByWorkspace(workspaceId: number): Note[] {
     const statement = this.database.prepare(`
             SELECT *
             FROM notes
@@ -71,7 +69,18 @@ export class NoteRepository implements Repository<Note> {
 
     const rows = statement.all(workspaceId) as any[];
 
-    return rows.map((row) => this.toNote(row));
+    return rows.map((row) => NoteRepository.toNote(row));
+  }
+
+  public findAll(): Note[] {
+    const statement = this.database.prepare(`
+            SELECT *
+            FROM notes
+            ORDER BY updated_at DESC
+        `);
+    const rows = statement.all() as any[];
+
+    return rows.map((row) => NoteRepository.toNote(row));
   }
 
   public update(entity: Note): boolean {
@@ -125,7 +134,7 @@ export class NoteRepository implements Repository<Note> {
     return statement.get(id) !== undefined;
   }
 
-  private toNote(row: any): Note {
+  private static toNote(row: any): Note {
     return new Note(
       row.id,
       row.workspace_id,

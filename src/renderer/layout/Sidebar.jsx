@@ -6,8 +6,8 @@ export default function Sidebar() {
   const { t } = useTranslation();
 
   return (
-    <div className="sidebar">
-      <h2>Sidebar</h2>
+    <aside className="sidebar">
+      <h2>SpeakSpace</h2>
       <nav aria-label="主导航">
         <ul>
           <li>
@@ -16,6 +16,10 @@ export default function Sidebar() {
 
           <li>
             <NavLink to="/AIChat">{t('sidebar.aiChat')}</NavLink>
+          </li>
+
+          <li>
+            <NavLink to="/Agent">{t('sidebar.agent')}</NavLink>
           </li>
 
           <li>
@@ -32,10 +36,14 @@ export default function Sidebar() {
           </li>
 
           <li>
+            <NavLink to="/Workflow">{t('sidebar.workflow')}</NavLink>
+          </li>
+
+          <li>
             <NavLink to="/Settings">{t('sidebar.settings')}</NavLink>
           </li>
         </ul>
       </nav>
-    </div>
+    </aside>
   );
 }

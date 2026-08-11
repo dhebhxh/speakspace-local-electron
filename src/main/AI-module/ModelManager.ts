@@ -1,11 +1,11 @@
 import { Model } from './Model';
 
 export interface ModelManager {
-  getModelList(): Model[];
+  getModelList(): Model[] | Promise<Model[]>;
 
   downloadModel(id: string): Promise<void>;
 
   deleteModel(id: string): Promise<void>;
 
-  activateModel(id: string): boolean;
+  activateModel(id: string): boolean | Promise<boolean>;
 }

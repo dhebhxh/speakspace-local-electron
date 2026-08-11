@@ -1,0 +1,4 @@
+.tts-play-control { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.45rem; }
+.tts-play-control .tts-play-button { min-height: 28px; padding: 0.3rem 0.55rem; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 8px; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); box-shadow: none; font-size: 0.68rem; }
+.tts-play-control .tts-play-button:hover { transform: none; }
+.tts-play-control small { color: #ef4444; font-size: 0.66rem; }

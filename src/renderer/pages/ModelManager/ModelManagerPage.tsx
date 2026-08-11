@@ -3,6 +3,11 @@ import { ModelSection } from './components/ModelSection';
 import { STTModel } from '../../../main/AI-module/STTModel';
 import { LLMModel } from '../../../main/AI-module/LLMModel';
 import ModelRecommendationPanel from './components/ModelRecommendationPanel';
+import WhisperRuntimePanel from './components/WhisperRuntimePanel';
+import OllamaRuntimePanel from './components/OllamaRuntimePanel';
+import TTSRuntimePanel from './components/TTSRuntimePanel';
+import EmbeddingModelPanel from './components/EmbeddingModelPanel';
+import ParakeetRuntimePanel from './components/ParakeetRuntimePanel';
 import {
   ModelRecommendation,
   ModelRecommendationController,
@@ -68,6 +73,29 @@ export function ModelManagerPage() {
         </span>
       </header>
       <main className="model-manager-content">
+        <WhisperRuntimePanel
+          refreshToken={sttModels
+            .map(
+              (model) => `${model.id}:${model.downloaded}:${model.activated}`,
+            )
+            .join('|')}
+        />
+        <ParakeetRuntimePanel
+          refreshToken={sttModels
+            .map(
+              (model) => `${model.id}:${model.downloaded}:${model.activated}`,
+            )
+            .join('|')}
+        />
+        <OllamaRuntimePanel
+          refreshToken={llmModels
+            .map(
+              (model) => `${model.id}:${model.downloaded}:${model.activated}`,
+            )
+            .join('|')}
+        />
+        <TTSRuntimePanel />
+        <EmbeddingModelPanel />
         <ModelRecommendationPanel
           error={recommendationError}
           loading={recommendationLoading}

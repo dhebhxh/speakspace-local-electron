@@ -1,16 +1,18 @@
-import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import { ManagedPaths } from '../runtime/ManagedPaths';
 
+// 保留命名导出，与现有 WorkspaceService 的导入方式一致。
+// eslint-disable-next-line import/prefer-default-export
 export class BlobStorage {
+  // 类内部的单例类型属于正常自引用，不是运行时的提前访问。
+  // eslint-disable-next-line no-use-before-define
   private static instance: BlobStorage | null = null;
 
   private blobRootPath: string;
 
   private constructor() {
-    const userDataPath = app.getPath('userData');
-
-    this.blobRootPath = path.join(userDataPath, 'blobs');
+    this.blobRootPath = ManagedPaths.getInstance().getBlobRoot();
   }
 
   public static getInstance(): BlobStorage {
@@ -60,6 +62,22 @@ export class BlobStorage {
   }
 
   public resolveAbsolutePath(relativePath: string): string {
-    return path.join(this.blobRootPath, relativePath);
+    if (!relativePath || path.isAbsolute(relativePath)) {
+      throw new Error('无效的 Blob 相对路径 / Invalid blob relative path');
+    }
+
+    const blobRoot = path.resolve(this.blobRootPath);
+    const absolutePath = path.resolve(blobRoot, relativePath);
+    const pathFromRoot = path.relative(blobRoot, absolutePath);
+    if (
+      !pathFromRoot ||
+      pathFromRoot === '..' ||
+      pathFromRoot.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(pathFromRoot)
+    ) {
+      throw new Error('Blob 路径超出受管目录 / Blob path is not managed');
+    }
+
+    return absolutePath;
   }
 }

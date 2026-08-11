@@ -4,15 +4,16 @@ import { Note } from '../../entities/Note';
 import { AIConversation } from '../../entities/AIConversation';
 import { DatabaseManager } from '../DatabaseManager';
 
+// 保留命名导出，与其余 Repository 的导入方式一致。
+// eslint-disable-next-line import/prefer-default-export
 export class ConversationContextRepository {
   private database: Database.Database;
 
-  public constructor() {
-    const dbManager = DatabaseManager.getInstance();
-    this.database = dbManager.getDatabase();
+  public constructor(database = DatabaseManager.getInstance().getDatabase()) {
+    this.database = database;
   }
 
-  public addContext(conversationId: string, noteId: string): void {
+  public addContext(conversationId: number, noteId: number): void {
     const statement = this.database.prepare(`
             INSERT INTO conversation_contexts (
                 conversation_id,
@@ -24,7 +25,7 @@ export class ConversationContextRepository {
     statement.run(conversationId, noteId);
   }
 
-  public removeContext(conversationId: string, noteId: string): void {
+  public removeContext(conversationId: number, noteId: number): void {
     const statement = this.database.prepare(`
             DELETE
             FROM conversation_contexts
@@ -35,7 +36,7 @@ export class ConversationContextRepository {
     statement.run(conversationId, noteId);
   }
 
-  public findAllByConversation(conversationId: string): Note[] {
+  public findAllByConversation(conversationId: number): Note[] {
     const statement = this.database.prepare(`
             SELECT notes.*
             FROM notes
@@ -46,10 +47,10 @@ export class ConversationContextRepository {
 
     const rows = statement.all(conversationId) as any[];
 
-    return rows.map((row) => this.toNote(row));
+    return rows.map((row) => ConversationContextRepository.toNote(row));
   }
 
-  public findAllByNote(noteId: string): AIConversation[] {
+  public findAllByNote(noteId: number): AIConversation[] {
     const statement = this.database.prepare(`
             SELECT ai_conversations.*
             FROM ai_conversations
@@ -61,10 +62,12 @@ export class ConversationContextRepository {
 
     const rows = statement.all(noteId) as any[];
 
-    return rows.map((row) => this.toAIConversation(row));
+    return rows.map((row) =>
+      ConversationContextRepository.toAIConversation(row),
+    );
   }
 
-  public exists(conversationId: string, noteId: string): boolean {
+  public exists(conversationId: number, noteId: number): boolean {
     const statement = this.database.prepare(`
             SELECT 1
             FROM conversation_contexts
@@ -76,7 +79,7 @@ export class ConversationContextRepository {
     return statement.get(conversationId, noteId) !== undefined;
   }
 
-  private toNote(row: any): Note {
+  private static toNote(row: any): Note {
     return new Note(
       row.id,
       row.workspace_id,
@@ -90,7 +93,7 @@ export class ConversationContextRepository {
     );
   }
 
-  private toAIConversation(row: any): AIConversation {
+  private static toAIConversation(row: any): AIConversation {
     return new AIConversation(
       row.id,
       row.name,

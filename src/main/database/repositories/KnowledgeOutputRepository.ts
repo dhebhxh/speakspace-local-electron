@@ -4,20 +4,18 @@ import { Repository } from './Repository';
 import { KnowledgeOutput } from '../../entities/KnowledgeOutput';
 import { DatabaseManager } from '../DatabaseManager';
 
+// 保留命名导出，与其余 Repository 的导入方式一致。
+// eslint-disable-next-line import/prefer-default-export
 export class KnowledgeOutputRepository implements Repository<KnowledgeOutput> {
-  // 现有问题说明：Repository 接口要求 number 类型 ID，但本仓储的查找、删除和存在性检查使用 string，严格类型检查下不兼容。
-
   private database: Database.Database;
 
-  public constructor() {
-    const dbManager = DatabaseManager.getInstance();
-    this.database = dbManager.getDatabase();
+  public constructor(database = DatabaseManager.getInstance().getDatabase()) {
+    this.database = database;
   }
 
-  public create(entity: KnowledgeOutput): void {
+  public create(entity: KnowledgeOutput): number {
     const statement = this.database.prepare(`
             INSERT INTO knowledge_outputs (
-                id,
                 note_id,
                 template_id,
                 content_type,
@@ -25,11 +23,10 @@ export class KnowledgeOutputRepository implements Repository<KnowledgeOutput> {
                 created_at,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
         `);
 
-    statement.run(
-      entity.getId(),
+    const result = statement.run(
       entity.getNoteId(),
       entity.getTemplateId(),
       entity.getContentType(),
@@ -37,9 +34,11 @@ export class KnowledgeOutputRepository implements Repository<KnowledgeOutput> {
       entity.getCreatedAt().toISOString(),
       entity.getUpdatedAt().toISOString(),
     );
+
+    return Number(result.lastInsertRowid);
   }
 
-  public findById(id: string): KnowledgeOutput | null {
+  public findById(id: number): KnowledgeOutput | null {
     const statement = this.database.prepare(`
             SELECT *
             FROM knowledge_outputs
@@ -52,31 +51,33 @@ export class KnowledgeOutputRepository implements Repository<KnowledgeOutput> {
       return null;
     }
 
-    return this.toKnowledgeOutput(row);
+    return KnowledgeOutputRepository.toKnowledgeOutput(row);
   }
 
-  public findAllByNote(noteId: string): KnowledgeOutput[] {
+  public findAllByNote(noteId: number): KnowledgeOutput[] {
     const statement = this.database.prepare(`
             SELECT *
             FROM knowledge_outputs
             WHERE note_id = ?
+            ORDER BY updated_at DESC
         `);
 
     const rows = statement.all(noteId) as any[];
 
-    return rows.map((row) => this.toKnowledgeOutput(row));
+    return rows.map((row) => KnowledgeOutputRepository.toKnowledgeOutput(row));
   }
 
-  public findAllByTemplate(templateId: string): KnowledgeOutput[] {
+  public findAllByTemplate(templateId: number): KnowledgeOutput[] {
     const statement = this.database.prepare(`
             SELECT *
             FROM knowledge_outputs
             WHERE template_id = ?
+            ORDER BY updated_at DESC
         `);
 
     const rows = statement.all(templateId) as any[];
 
-    return rows.map((row) => this.toKnowledgeOutput(row));
+    return rows.map((row) => KnowledgeOutputRepository.toKnowledgeOutput(row));
   }
 
   public update(entity: KnowledgeOutput): boolean {
@@ -99,7 +100,7 @@ export class KnowledgeOutputRepository implements Repository<KnowledgeOutput> {
     );
   }
 
-  public deleteById(id: string): boolean {
+  public deleteById(id: number): boolean {
     return (
       this.database
         .prepare(
@@ -113,7 +114,7 @@ export class KnowledgeOutputRepository implements Repository<KnowledgeOutput> {
     );
   }
 
-  public existsById(id: string): boolean {
+  public existsById(id: number): boolean {
     return (
       this.database
         .prepare(
@@ -127,7 +128,7 @@ export class KnowledgeOutputRepository implements Repository<KnowledgeOutput> {
     );
   }
 
-  private toKnowledgeOutput(row: any): KnowledgeOutput {
+  private static toKnowledgeOutput(row: any): KnowledgeOutput {
     return new KnowledgeOutput(
       row.id,
       row.note_id,

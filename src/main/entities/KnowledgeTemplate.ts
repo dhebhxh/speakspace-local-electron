@@ -1,53 +1,54 @@
-import { Entity } from "./Entity";
-
+import { Entity } from './Entity';
 
 export class KnowledgeTemplate extends Entity {
+  private name: string;
 
-    private name: string;
-    private prompt: string;
-    private createdAt: Date;
-    private updatedAt: Date;
+  private prompt: string;
 
-    public constructor(
-        id: number,
-        name: string,
-        prompt: string,
-        createdAt: Date,
-        updatedAt: Date
-    ) {
-        super(id);
+  private createdAt: Date;
 
-        this.name = name;
-        this.prompt = prompt;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-    }
+  private updatedAt: Date;
 
-    public getName(): string {
-        return this.name;
-    }
+  public constructor(
+    id: number,
+    name: string,
+    prompt: string,
+    createdAt: Date,
+    updatedAt: Date,
+  ) {
+    super(id);
 
-    public setName(name: string): void {
-        this.name = name;
-    }
+    this.name = name;
+    this.prompt = prompt;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+  }
 
-    public getPrompt(): string {
-        return this.prompt;
-    }
+  public getName(): string {
+    return this.name;
+  }
 
-    public setPrompt(prompt: string): void {
-        this.prompt = prompt;
-    }
+  public setName(name: string): void {
+    this.name = name;
+  }
 
-    public getCreatedAt(): Date {
-        return this.createdAt;
-    }
+  public getPrompt(): string {
+    return this.prompt;
+  }
 
-    public getUpdatedAt(): Date {
-        return this.updatedAt;
-    }
+  public setPrompt(prompt: string): void {
+    this.prompt = prompt;
+  }
 
-    public setUpdatedAt(updatedAt: Date): void {
-        this.updatedAt = updatedAt;
-    }
+  public getCreatedAt(): Date {
+    return this.createdAt;
+  }
+
+  public getUpdatedAt(): Date {
+    return this.updatedAt;
+  }
+
+  public setUpdatedAt(updatedAt: Date): void {
+    this.updatedAt = updatedAt;
+  }
 }

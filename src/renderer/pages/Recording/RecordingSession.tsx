@@ -1,82 +1,74 @@
 export enum RecordingState {
-    Idle = "idle",
-    Recording = "recording",
-    Paused = "paused",
-    Completed = "completed"
+  Idle = 'idle',
+  Recording = 'recording',
+  Paused = 'paused',
+  Completed = 'completed',
 }
 
 export class RecordingSession {
-    private recorder?: MediaRecorder;
-    private state = RecordingState.Idle;
+  private recorder?: MediaRecorder;
 
-    public constructor() {
+  private state = RecordingState.Idle;
 
-    }
+  public constructor() {}
 
+  public getState(): RecordingState {
+    return this.state;
+  }
 
-    public getState(): RecordingState {
-        return this.state;
-    }
+  public async start(): Promise<void> {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+    });
 
+    this.recorder = new MediaRecorder(stream);
 
-    public async start(): Promise<void> {
-        const stream =
-            await navigator.mediaDevices.getUserMedia({
-                audio: true
-            });
+    this.recorder.ondataavailable = (event) => {
+      this.sendAudioChunk(event.data);
+    };
 
-        this.recorder = new MediaRecorder(stream);
+    this.recorder.start(1000);
 
-        this.recorder.ondataavailable = (event) => {
-            this.sendAudioChunk(event.data);
-        };
+    this.state = RecordingState.Recording;
+  }
 
-        this.recorder.start(1000);
+  public pause(): void {
+    this.recorder?.pause();
 
-        this.state = RecordingState.Recording;
-    }
+    this.state = RecordingState.Paused;
+  }
 
+  public resume(): void {
+    this.recorder?.resume();
 
-    public pause(): void {
-        this.recorder?.pause();
+    this.state = RecordingState.Recording;
+  }
 
-        this.state = RecordingState.Paused;
-    }
+  public stop(): void {
+    this.recorder?.stop();
 
+    // 现有问题说明：停止录制后没有停止 MediaStream 的 audio tracks，麦克风可能仍保持占用。
 
-    public resume(): void {
-        this.recorder?.resume();
+    this.state = RecordingState.Completed;
+  }
 
-        this.state = RecordingState.Recording;
-    }
+  public save(): void {
+    // TODO IPC: save recording
 
+    this.state = RecordingState.Idle;
+  }
 
-    public stop(): void {
-        this.recorder?.stop();
+  public discard(): void {
+    // TODO IPC: discard recording
 
-        this.state = RecordingState.Completed;
-    }
+    this.state = RecordingState.Idle;
+  }
 
-    
-    public save(): void {
-        // TODO IPC: save recording
+  private async sendAudioChunk(blob: Blob) {
+    const buffer = await blob.arrayBuffer();
 
-        this.state = RecordingState.Idle;
-    }
+    // TODO IPC
+  }
 
-
-    public discard(): void {
-        // TODO IPC: discard recording
-
-        this.state = RecordingState.Idle;
-    }
-
-
-    private async sendAudioChunk(blob: Blob) {
-        const buffer = await blob.arrayBuffer();
-
-        // TODO IPC
-    }
-
-    //增加状态检查
+  // 现有问题说明：state 是普通类字段，没有通知 React 重新渲染，控制栏可能不会随录音状态切换按钮。
 }

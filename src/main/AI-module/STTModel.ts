@@ -1,36 +1,25 @@
-import { Model } from "./Model";
-
+import { Model } from './Model';
 
 export class STTModel extends Model {
+  downloadUrl: string;
 
-    downloadUrl: string;
-    checksum: string | null;
+  checksum: string | null;
 
-    constructor(
-        id: string,
-        name: string,
-        language: string,
-        engine: string,
-        format: string,
-        size: string,
-        downloadUrl: string,
-        checksum: string | null,
-        downloaded: boolean,
-        activated: boolean
-    ) {
+  constructor(
+    id: string,
+    name: string,
+    language: string,
+    engine: string,
+    format: string,
+    size: string,
+    downloadUrl: string,
+    checksum: string | null,
+    downloaded: boolean,
+    activated: boolean,
+  ) {
+    super(id, name, language, engine, format, size, downloaded, activated);
 
-        super(                                                                            
-            id,
-            name,
-            language,
-            engine,
-            format,
-            size,
-            downloaded,
-            activated
-        );
-
-        this.checksum = checksum;
-        this.downloadUrl = downloadUrl;
-    }
+    this.checksum = checksum;
+    this.downloadUrl = downloadUrl;
+  }
 }

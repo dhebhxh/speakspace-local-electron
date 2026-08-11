@@ -1,97 +1,102 @@
-import { Entity } from "./Entity";
-
+import { Entity } from './Entity';
 
 export class Note extends Entity {
+  private workspaceId: number | null;
 
-    private workspaceId: number | null;
-    private name: string | null;
-    private audioRelativePath: string | null;
-    private transcript: string;
-    private pinned: boolean;
-    private pinnedAt: Date | null;
-    private createdAt: Date;
-    private updatedAt: Date;
+  private name: string | null;
 
-    public constructor(
-        id: number,
-        workspaceId: number | null,
-        name: string | null,
-        audioRelativePath: string | null,
-        transcript: string,
-        pinned: boolean,
-        pinnedAt: Date | null,
-        createdAt: Date,
-        updatedAt: Date
-    ) {
-        super(id);
+  private audioRelativePath: string | null;
 
-        this.workspaceId = workspaceId;
-        this.name = name;
-        this.audioRelativePath = audioRelativePath;
-        this.transcript = transcript;
-        this.pinned = pinned;
-        this.pinnedAt = pinnedAt;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-    }
+  private transcript: string;
 
-    public getWorkspaceId(): number | null {
-        return this.workspaceId;
-    }
+  private pinned: boolean;
 
-    public setWorkspaceId(workspaceId: number | null): void {
-        this.workspaceId = workspaceId;
-    }
+  private pinnedAt: Date | null;
 
-    public getName(): string | null {
-        return this.name;
-    }
+  private createdAt: Date;
 
-    public setName(name: string | null): void {
-        this.name = name;
-    }
+  private updatedAt: Date;
 
-    public getAudioRelativePath(): string | null {
-        return this.audioRelativePath;
-    }
+  public constructor(
+    id: number,
+    workspaceId: number | null,
+    name: string | null,
+    audioRelativePath: string | null,
+    transcript: string,
+    pinned: boolean,
+    pinnedAt: Date | null,
+    createdAt: Date,
+    updatedAt: Date,
+  ) {
+    super(id);
 
-    public setAudioRelativePath(audioRelativePath: string | null): void {
-        this.audioRelativePath = audioRelativePath;
-    }
+    this.workspaceId = workspaceId;
+    this.name = name;
+    this.audioRelativePath = audioRelativePath;
+    this.transcript = transcript;
+    this.pinned = pinned;
+    this.pinnedAt = pinnedAt;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+  }
 
-    public getTranscript(): string {
-        return this.transcript;
-    }
+  public getWorkspaceId(): number | null {
+    return this.workspaceId;
+  }
 
-    public setTranscript(transcript: string): void {
-        this.transcript = transcript;
-    }
+  public setWorkspaceId(workspaceId: number | null): void {
+    this.workspaceId = workspaceId;
+  }
 
-    public isPinned(): boolean {
-        return this.pinned;
-    }
+  public getName(): string | null {
+    return this.name;
+  }
 
-    public setPinned(pinned: boolean): void {
-        this.pinned = pinned;
-    }
+  public setName(name: string | null): void {
+    this.name = name;
+  }
 
-    public getPinnedAt(): Date | null {
-        return this.pinnedAt;
-    }
+  public getAudioRelativePath(): string | null {
+    return this.audioRelativePath;
+  }
 
-    public setPinnedAt(pinnedAt: Date | null): void {
-        this.pinnedAt = pinnedAt;
-    }
+  public setAudioRelativePath(audioRelativePath: string | null): void {
+    this.audioRelativePath = audioRelativePath;
+  }
 
-    public getCreatedAt(): Date {
-        return this.createdAt;
-    }
+  public getTranscript(): string {
+    return this.transcript;
+  }
 
-    public getUpdatedAt(): Date {
-        return this.updatedAt;
-    }
+  public setTranscript(transcript: string): void {
+    this.transcript = transcript;
+  }
 
-    public setUpdatedAt(updatedAt: Date): void {
-        this.updatedAt = updatedAt;
-    }
+  public isPinned(): boolean {
+    return this.pinned;
+  }
+
+  public setPinned(pinned: boolean): void {
+    this.pinned = pinned;
+  }
+
+  public getPinnedAt(): Date | null {
+    return this.pinnedAt;
+  }
+
+  public setPinnedAt(pinnedAt: Date | null): void {
+    this.pinnedAt = pinnedAt;
+  }
+
+  public getCreatedAt(): Date {
+    return this.createdAt;
+  }
+
+  public getUpdatedAt(): Date {
+    return this.updatedAt;
+  }
+
+  public setUpdatedAt(updatedAt: Date): void {
+    this.updatedAt = updatedAt;
+  }
 }

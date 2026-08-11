@@ -1,77 +1,40 @@
-import React from "react";
-import { RecordingSession, RecordingState } from "../RecordingSession";
+import React from 'react';
+import { RecordingSession, RecordingState } from '../RecordingSession';
 
+export function RecordControlBar(props: { session: RecordingSession }) {
+  const { session } = props;
 
-export function RecordControlBar(
-    props: { session: RecordingSession }
-) {
-    const session = props.session;
+  const state = session.getState();
 
-    const state = session.getState();
+  return (
+    <div>
+      {state === RecordingState.Idle && (
+        <button onClick={() => session.start()}>Start</button>
+      )}
 
-    return (
-        <div>
+      {state === RecordingState.Recording && (
+        <>
+          <button onClick={() => session.pause()}>Pause</button>
 
-            {
-                state === RecordingState.Idle &&
-                <button
-                    onClick={() => session.start()}
-                >
-                    Start
-                </button>
-            }
+          <button onClick={() => session.stop()}>Stop</button>
+        </>
+      )}
 
-            {
-                state === RecordingState.Recording &&
-                <React.Fragment>
-                    <button
-                        onClick={() => session.pause()}
-                    >
-                        Pause
-                    </button>
+      {state === RecordingState.Paused && (
+        <>
+          <button onClick={() => session.resume()}>Resume</button>
 
-                    <button
-                        onClick={() => session.stop()}
-                    >
-                        Stop
-                    </button>
-                </React.Fragment>
-            }
+          <button onClick={() => session.stop()}>Stop</button>
+        </>
+      )}
 
-            {
-                state === RecordingState.Paused &&
-                <React.Fragment>
-                    <button
-                        onClick={() => session.resume()}
-                    >
-                        Resume
-                    </button>
+      {state === RecordingState.Completed && (
+        <>
+          <button onClick={() => session.save()}>Save</button>
 
-                    <button
-                        onClick={() => session.stop()}
-                    >
-                        Stop
-                    </button>
-                </React.Fragment>
-            }
-
-            {
-                state === RecordingState.Completed &&
-                <React.Fragment>
-                    <button
-                        onClick={() => session.save()}
-                    >
-                        Save
-                    </button>
-
-                    <button
-                        onClick={() => session.discard()}
-                    >
-                        Discard
-                    </button>
-                </React.Fragment>
-            }
-            
-        </div>
-    );
+          <button onClick={() => session.discard()}>Discard</button>
+        </>
+      )}
+    </div>
+  );
 }

@@ -12,7 +12,16 @@ export default function RecordingPage() {
   const session = sessionRef.current;
   const transcription = transcriptionRef.current;
 
-  useEffect(() => () => transcription.dispose(), [transcription]);
+  useEffect(() => {
+    const detachLiveTranscription = session.setLiveChunkHandler((chunk) =>
+      transcription.enqueueLiveChunk(chunk),
+    );
+
+    return () => {
+      detachLiveTranscription();
+      transcription.dispose();
+    };
+  }, [session, transcription]);
 
   return (
     <section className="recording-page">

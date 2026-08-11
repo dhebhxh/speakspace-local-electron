@@ -14,8 +14,13 @@ export default function RecordControlBar(props: {
   const transcriptionSnapshot = useTranscriptionController(transcription);
   const transcriptionRunning =
     transcriptionSnapshot.job?.status === 'processing';
+  const liveTranscriptionRunning = transcriptionSnapshot.livePendingCount > 0;
   const run = (operation: () => Promise<void>) => {
     operation().catch(() => undefined);
+  };
+  const stopAndFinalize = async () => {
+    await session.stop();
+    await transcription.finalizeLiveSummary();
   };
 
   return (
@@ -25,7 +30,10 @@ export default function RecordControlBar(props: {
           <button
             type="button"
             disabled={snapshot.busy || transcriptionRunning}
-            onClick={() => run(() => session.start())}
+            onClick={() => {
+              transcription.resetLive();
+              run(() => session.start());
+            }}
           >
             开始录音 / Start
           </button>
@@ -33,7 +41,9 @@ export default function RecordControlBar(props: {
             className="recording-button--secondary"
             type="button"
             disabled={
-              transcriptionSnapshot.requestPending || transcriptionRunning
+              transcriptionSnapshot.requestPending ||
+              transcriptionRunning ||
+              liveTranscriptionRunning
             }
             onClick={() => run(() => transcription.pickFileAndStart())}
           >
@@ -50,7 +60,7 @@ export default function RecordControlBar(props: {
           <button
             type="button"
             disabled={snapshot.busy}
-            onClick={() => run(() => session.stop())}
+            onClick={() => run(stopAndFinalize)}
           >
             停止 / Stop
           </button>
@@ -65,7 +75,7 @@ export default function RecordControlBar(props: {
           <button
             type="button"
             disabled={snapshot.busy}
-            onClick={() => run(() => session.stop())}
+            onClick={() => run(stopAndFinalize)}
           >
             停止 / Stop
           </button>
@@ -97,7 +107,9 @@ export default function RecordControlBar(props: {
           <button
             type="button"
             disabled={
-              transcriptionSnapshot.requestPending || transcriptionRunning
+              transcriptionSnapshot.requestPending ||
+              transcriptionRunning ||
+              liveTranscriptionRunning
             }
             onClick={() =>
               run(() =>

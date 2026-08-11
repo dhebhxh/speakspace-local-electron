@@ -1,129 +1,90 @@
-import Database from "better-sqlite3";
+import Database from 'better-sqlite3';
 
-import { Repository } from "./Repository";
-import { Workspace } from "../../entities/Workspace";
-import { DatabaseManager } from"../DatabaseManager";
+import { Repository } from './Repository';
+import { Workspace } from '../../entities/Workspace';
+import { DatabaseManager } from '../DatabaseManager';
 
-
+// 保留命名导出，与其余 Repository 的导入方式一致。
+// eslint-disable-next-line import/prefer-default-export
 export class WorkspaceRepository implements Repository<Workspace> {
+  private database: Database.Database;
 
-    private database: Database.Database;
+  public constructor(database = DatabaseManager.getInstance().getDatabase()) {
+    this.database = database;
+  }
 
-
-    public constructor() {
-
-        const dbManager = DatabaseManager.getInstance();
-        this.database = dbManager.getDatabase();
-    }
-
-
-    public create(entity: Workspace): void {
-
-        const statement = this.database.prepare(`
-            INSERT INTO workspaces (
-                id,
-                name,
-                created_at,
-                updated_at
-            )
-            VALUES (?, ?, ?, ?)
+  /** 创建时让 SQLite 分配整数 ID，并把该 ID 返回给业务层。 */
+  public create(entity: Workspace): number {
+    const statement = this.database.prepare(`
+            INSERT INTO workspaces (name, created_at, updated_at)
+            VALUES (?, ?, ?)
         `);
+    const result = statement.run(
+      entity.getName(),
+      entity.getCreatedAt().toISOString(),
+      entity.getUpdatedAt().toISOString(),
+    );
 
-        statement.run(
-            entity.getId(),
-            entity.getName(),
-            entity.getCreatedAt().toISOString(),
-            entity.getUpdatedAt().toISOString()
-        );
-    }
+    return Number(result.lastInsertRowid);
+  }
 
-
-    public findById(id: string): Workspace | null {
-
-        const statement = this.database.prepare(`
+  public findById(id: number): Workspace | null {
+    const statement = this.database.prepare(`
             SELECT *
             FROM workspaces
             WHERE id = ?
         `);
+    const row = statement.get(id) as any;
 
-        const row = statement.get(id) as any;
+    return row === undefined ? null : WorkspaceRepository.toWorkspace(row);
+  }
 
-        if (row === undefined) {
-            return null;
-        }
-
-        return this.toWorkspace(row);
-    }
-
-
-    public findAll(): Workspace[] {
-
-        const statement = this.database.prepare(`
+  public findAll(): Workspace[] {
+    const statement = this.database.prepare(`
             SELECT *
             FROM workspaces
             ORDER BY updated_at DESC
         `);
+    const rows = statement.all() as any[];
 
-        const rows = statement.all() as any[];
+    return rows.map((row) => WorkspaceRepository.toWorkspace(row));
+  }
 
-        return rows.map(row => this.toWorkspace(row));
-    }
-
-
-    public update(entity: Workspace): boolean {
-
-        const statement = this.database.prepare(`
+  public update(entity: Workspace): boolean {
+    const statement = this.database.prepare(`
             UPDATE workspaces
-            SET
-                name = ?,
-                updated_at = ?
+            SET name = ?, updated_at = ?
             WHERE id = ?
         `);
+    const result = statement.run(
+      entity.getName(),
+      entity.getUpdatedAt().toISOString(),
+      entity.getId(),
+    );
 
-        const result = statement.run(
-            entity.getName(),
-            entity.getUpdatedAt().toISOString(),
-            entity.getId()
-        );
+    return result.changes > 0;
+  }
 
-        return result.changes > 0;
-    }
+  public deleteById(id: number): boolean {
+    const statement = this.database.prepare(
+      'DELETE FROM workspaces WHERE id = ?',
+    );
+    return statement.run(id).changes > 0;
+  }
 
+  public existsById(id: number): boolean {
+    const statement = this.database.prepare(
+      'SELECT 1 FROM workspaces WHERE id = ? LIMIT 1',
+    );
+    return statement.get(id) !== undefined;
+  }
 
-    public deleteById(id: string): boolean {
-
-        const statement = this.database.prepare(`
-            DELETE
-            FROM workspaces
-            WHERE id = ?
-        `);
-
-        const result = statement.run(id);
-
-        return result.changes > 0;
-    }
-
-
-    public existsById(id: string): boolean {
-
-        const statement = this.database.prepare(`
-            SELECT 1
-            FROM workspaces
-            WHERE id = ?
-            LIMIT 1
-        `);
-
-        return statement.get(id) !== undefined;
-    }
-
-
-    private toWorkspace(row: any): Workspace {
-
-        return new Workspace(
-            row.id,
-            row.name,
-            new Date(row.created_at),
-            new Date(row.updated_at)
-        );
-    }
+  private static toWorkspace(row: any): Workspace {
+    return new Workspace(
+      row.id,
+      row.name,
+      new Date(row.created_at),
+      new Date(row.updated_at),
+    );
+  }
 }

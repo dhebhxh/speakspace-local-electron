@@ -83,8 +83,10 @@ a:hover {
 
 .main-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   width: 100vw;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -135,8 +137,12 @@ a:hover {
 
 .content-area {
   flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
   padding: 2.5rem;
-  overflow-y: auto;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
   background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 20%),
     rgba(2, 6, 25, 0.9);
 }
@@ -189,6 +195,7 @@ a:hover {
 @media (max-width: 960px) {
   .main-layout {
     flex-direction: column;
+    overflow-y: auto;
   }
 
   .sidebar {
@@ -211,6 +218,9 @@ a:hover {
   }
 
   .content-area {
+    height: auto;
+    min-height: 0;
     padding: 1.5rem;
+    overflow: visible;
   }
 }

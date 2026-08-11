@@ -1,75 +1,78 @@
-import { Entity } from "./Entity";
-
+import { Entity } from './Entity';
 
 export class KnowledgeOutput extends Entity {
+  private noteId: number;
 
-    private noteId: number;
-    private templateId: number;
-    private contentType: string;
-    private content: string;
-    private createdAt: Date;
-    private updatedAt: Date;
+  private templateId: number;
 
-    public constructor(
-        id: number,
-        noteId: number,
-        templateId: number,
-        contentType: string,
-        content: string,
-        createdAt: Date,
-        updatedAt: Date
-    ) {
-        super(id);
+  private contentType: string;
 
-        this.noteId = noteId;
-        this.templateId = templateId;
-        this.contentType = contentType;
-        this.content = content;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-    }
+  private content: string;
 
-    public getNoteId(): number {
-        return this.noteId;
-    }
+  private createdAt: Date;
 
-    public setNoteId(noteId: number): void {
-        this.noteId = noteId;
-    }
+  private updatedAt: Date;
 
-    public getTemplateId(): number {
-        return this.templateId;
-    }
+  public constructor(
+    id: number,
+    noteId: number,
+    templateId: number,
+    contentType: string,
+    content: string,
+    createdAt: Date,
+    updatedAt: Date,
+  ) {
+    super(id);
 
-    public setTemplateId(templateId: number): void {
-        this.templateId = templateId;
-    }
+    this.noteId = noteId;
+    this.templateId = templateId;
+    this.contentType = contentType;
+    this.content = content;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+  }
 
-    public getContentType(): string {
-        return this.contentType;
-    }
+  public getNoteId(): number {
+    return this.noteId;
+  }
 
-    public setContentType(contentType: string): void {
-        this.contentType = contentType;
-    }
+  public setNoteId(noteId: number): void {
+    this.noteId = noteId;
+  }
 
-    public getContent(): string {
-        return this.content;
-    }
+  public getTemplateId(): number {
+    return this.templateId;
+  }
 
-    public updateContent(content: string): void {
-        this.content = content;
-    }
+  public setTemplateId(templateId: number): void {
+    this.templateId = templateId;
+  }
 
-    public getCreatedAt(): Date {
-        return this.createdAt;
-    }
+  public getContentType(): string {
+    return this.contentType;
+  }
 
-    public getUpdatedAt(): Date {
-        return this.updatedAt;
-    }
+  public setContentType(contentType: string): void {
+    this.contentType = contentType;
+  }
 
-    public setUpdatedAt(updatedAt: Date): void {
-        this.updatedAt = updatedAt;
-    }
+  public getContent(): string {
+    return this.content;
+  }
+
+  public updateContent(content: string): void {
+    this.content = content;
+  }
+
+  public getCreatedAt(): Date {
+    return this.createdAt;
+  }
+
+  public getUpdatedAt(): Date {
+    return this.updatedAt;
+  }
+
+  public setUpdatedAt(updatedAt: Date): void {
+    this.updatedAt = updatedAt;
+  }
 }

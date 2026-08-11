@@ -1,0 +1,16 @@
+.tts-runtime-panel { padding: 1.25rem; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+.tts-runtime-panel > header { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
+.tts-runtime-panel h2 { margin: 0.2rem 0 0; font-size: 1.05rem; }
+.tts-runtime-badge { padding: 0.35rem 0.6rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; background: var(--surface-soft); font-size: 0.68rem; }
+.tts-runtime-badge.is-ready { color: #86efac; border-color: rgba(34, 197, 94, 0.3); background: rgba(34, 197, 94, 0.1); }
+.tts-runtime-grid { display: grid; grid-template-columns: minmax(110px, 0.6fr) minmax(0, 1fr); gap: 0.45rem 1rem; margin: 0.9rem 0; padding: 0.85rem; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-soft); font-size: 0.75rem; }
+.tts-runtime-grid span { color: var(--muted); }
+.tts-runtime-grid strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tts-runtime-panel > button, .tts-voice-preview button { padding: 0.55rem 0.8rem; box-shadow: none; font-size: 0.72rem; }
+.tts-runtime-progress { margin: 0 0 0.75rem; color: var(--accent); font-size: 0.72rem; }
+.tts-runtime-error, .tts-voice-preview p { margin: 0.6rem 0; color: #ef4444; font-size: 0.72rem; }
+.tts-voice-preview { display: flex; align-items: end; gap: 0.55rem; padding-top: 0.85rem; border-top: 1px solid var(--border); }
+.tts-voice-preview label { display: grid; flex: 1; gap: 0.3rem; color: var(--muted); font-size: 0.7rem; }
+.tts-voice-preview select { width: 100%; padding: 0.55rem 0.65rem; color: var(--text); border: 1px solid var(--border); border-radius: 10px; background: var(--surface-strong); }
+.tts-voice-preview p { flex-basis: 100%; }
+@media (max-width: 650px) { .tts-voice-preview { align-items: stretch; flex-direction: column; } .tts-voice-preview label { width: 100%; } }

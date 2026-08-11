@@ -1,95 +1,103 @@
-import { useEffect, useState } from "react";
-import { KnowledgeTemplateCard } from "./components/KnowledgeTemplateCard";
-import { KnowledgeTemplate } from "../../../main/entities/KnowledgeTemplate";
-import { KnowledgeTemplateFormPage } from "./components/KnowledgeTemplateFormPage";
+import { useCallback, useEffect, useState } from 'react';
+import { KnowledgeTemplateDTO } from '../../../main/workflow/WorkflowTypes';
+import KnowledgeTemplateCard from './components/KnowledgeTemplateCard';
+import KnowledgeTemplateFormPage from './components/KnowledgeTemplateFormPage';
+import './WorkflowPage.css';
 
+export default function WorkflowPage() {
+  const [templates, setTemplates] = useState<KnowledgeTemplateDTO[]>([]);
+  const [editingTemplate, setEditingTemplate] =
+    useState<KnowledgeTemplateDTO | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [status, setStatus] = useState('');
 
-export function WorkflowPage() {
+  const loadTemplates = useCallback(async () => {
+    const list =
+      (await window.electron.workflow.getKnowledgeTemplateList()) as KnowledgeTemplateDTO[];
+    setTemplates(list);
+  }, []);
 
-    const [knowledgeTemplates, setKnowledgeTemplates] = useState<KnowledgeTemplate[]>([]);
+  useEffect(() => {
+    loadTemplates().catch((error) => {
+      setStatus(error instanceof Error ? error.message : '模板加载失败');
+    });
+  }, [loadTemplates]);
 
-    const [pageMode, setPageMode] = useState<"list" | "form">("list");
+  const openForm = useCallback((template: KnowledgeTemplateDTO | null) => {
+    setEditingTemplate(template);
+    setFormOpen(true);
+    setStatus('');
+  }, []);
 
-    const [editingTemplate, setEditingTemplate] = useState<KnowledgeTemplate | null>(null);
+  const closeForm = useCallback(() => setFormOpen(false), []);
+  const openCreateForm = useCallback(() => openForm(null), [openForm]);
 
-    useEffect(()=>{
-        async function loadKnowledgeTemplates() {
-            const knowledgeTemplateList = await window.electron.workflow.getKnowledgeTemplateList();
-            setKnowledgeTemplates(knowledgeTemplateList);
-        }
-        loadKnowledgeTemplates();
-    },[]);
-
-    function handleFormOpen(knowledgeTemplate: KnowledgeTemplate | null) {
-        setEditingTemplate(knowledgeTemplate);
-        setPageMode("form");
-    }
-
-    async function handleSubmit(name: string, prompt: string) {
-
-        if (editingTemplate == null) {
-            // create
-            await window.electron.workflow.createKnowledgeTemplate(
-                name,
-                prompt
-            );
-        } else {
-            // update
-            await window.electron.workflow.updateKnowledgeTemplate(
-                editingTemplate.getId(),
-                name,
-                prompt
-            );
-        }
-
-        // 保存成功以后重新加载列表
-        const list = await window.electron.workflow.getKnowledgeTemplateList();
-        setKnowledgeTemplates(list);
-
-        // 返回列表页
-        setPageMode("list");
-    }
-
-    async function handleDelete(knowledgeTemplate: KnowledgeTemplate) {
-        await window.electron.workflow.deleteKnowledgeTemplate(
-            knowledgeTemplate.getId()
+  const submitTemplate = useCallback(
+    async (name: string, prompt: string) => {
+      if (editingTemplate) {
+        await window.electron.workflow.updateKnowledgeTemplate(
+          editingTemplate.id,
+          name,
+          prompt,
         );
+      } else {
+        await window.electron.workflow.createKnowledgeTemplate(name, prompt);
+      }
+      await loadTemplates();
+      setEditingTemplate(null);
+      setFormOpen(false);
+      setStatus('模板已保存');
+    },
+    [editingTemplate, loadTemplates],
+  );
 
-        // 重新加载列表
-        const list = await window.electron.workflow.getKnowledgeTemplateList();
-        setKnowledgeTemplates(list);
-    }
+  const deleteTemplate = useCallback(
+    async (template: KnowledgeTemplateDTO) => {
+      await window.electron.workflow.deleteKnowledgeTemplate(template.id);
+      await loadTemplates();
+      setStatus('模板已删除');
+    },
+    [loadTemplates],
+  );
 
-    return (
+  return (
+    <section className="workflow-page">
+      <header className="workflow-header">
         <div>
-            {
-                pageMode === "list" && 
-                <>
-                    <button onClick={() => handleFormOpen(null)}>
-                        create new knowledge template
-                    </button>
-                    {
-                        knowledgeTemplates.map(
-                            (knowledgeTemplate) => (
-                                <KnowledgeTemplateCard
-                                    key={knowledgeTemplate.getId()}
-                                    knowledgeTemplate={knowledgeTemplate}
-                                    onOpenForm={handleFormOpen}
-                                    onDelete={handleDelete}
-                                />
-                            )
-                        )
-                    }
-                </>
-            }
-
-            {
-                pageMode === "form" &&
-                <KnowledgeTemplateFormPage
-                    knowledgeTemplate={editingTemplate}
-                    onSubmit={handleSubmit}
-                />
-            }
+          <span>LOCAL WORKFLOW</span>
+          <h1>知识模板</h1>
+          <p>模板会指导本地模型如何把笔记整理成摘要、行动项或其他格式。</p>
         </div>
-    )
+        {!formOpen && (
+          <button type="button" onClick={openCreateForm}>
+            新建模板
+          </button>
+        )}
+      </header>
+
+      {status && <p className="workflow-status">{status}</p>}
+      {formOpen ? (
+        <KnowledgeTemplateFormPage
+          knowledgeTemplate={editingTemplate}
+          onCancel={closeForm}
+          onSubmit={submitTemplate}
+        />
+      ) : (
+        <div className="workflow-template-list">
+          {templates.length === 0 ? (
+            <div className="workflow-empty">还没有知识模板。</div>
+          ) : (
+            templates.map((template) => (
+              <KnowledgeTemplateCard
+                key={template.id}
+                knowledgeTemplate={template}
+                onOpenForm={openForm}
+                onDelete={deleteTemplate}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </section>
+  );
 }

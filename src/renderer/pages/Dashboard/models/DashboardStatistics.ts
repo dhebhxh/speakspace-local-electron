@@ -45,4 +45,18 @@ export class DashboardStatistics {
             return t.getAssociatedNoteId() === noteId;
         });
     }
+
+    public getRecentNotesCount(): number {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        return this.notes.filter(n => n.getCreatedAt() >= oneWeekAgo).length;
+    }
+
+    public getRecentTranscribedWordCount(): number {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        return this.notes
+            .filter(n => n.getCreatedAt() >= oneWeekAgo)
+            .reduce((total, n) => total + (n.getTranscript() || "").length, 0);
+    }
 }

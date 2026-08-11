@@ -1,7 +1,7 @@
 import { NavigateFunction } from "react-router-dom";
 
 export enum RoutePath {
-    Transcription = "/",
+    Transcription = "/Transcription",
     AIChat = "/AIChat",
     Workspace = "/Workspace",
     ModelManagement = "/ModelManagement",

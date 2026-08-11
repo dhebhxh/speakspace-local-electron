@@ -23,6 +23,24 @@ export const DashboardPage: React.FC = () => {
     const [notes, setNotes] = useState<DashboardNoteItem[]>(INITIAL_NOTES);
     const [todos] = useState<TodoItem[]>(INITIAL_TODOS);
 
+    React.useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                const overview = await window.electron.dashboard.getDashboardOverview();
+                const fetchedNotes = overview.notes.map((n: any) => new DashboardNoteItem(
+                    n.id, n.workspaceId, n.name, n.audioRelativePath,
+                    n.transcript, n.isPinned, n.pinnedAt,
+                    n.createdAt, n.updatedAt, n.typeCategory, n.durationSeconds
+                ));
+                setNotes(fetchedNotes);
+            } catch (error) {
+                console.error("Failed to load dashboard data:", error);
+            }
+        };
+
+        fetchDashboardData();
+    }, []);
+
     // Filters and Sorting State
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('全部');

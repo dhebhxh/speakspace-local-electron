@@ -26,7 +26,7 @@ export const MetricCardsGrid: React.FC<MetricCardsGridProps> = ({
                 <div className="card-content">
                     <div className="card-value">{stats.getTotalNotesCount()}</div>
                     <div className="card-label">筆記總數</div>
-                    <div className="card-trend trend-positive">較上週 +2</div>
+                    <div className="card-trend trend-positive">近一週新增 +{stats.getRecentNotesCount()}</div>
                 </div>
             </div>
 
@@ -56,7 +56,7 @@ export const MetricCardsGrid: React.FC<MetricCardsGridProps> = ({
                 <div className="card-content">
                     <div className="card-value">{stats.getTotalTranscribedWordCount().toLocaleString()}</div>
                     <div className="card-label">轉錄總字數</div>
-                    <div className="card-trend trend-positive">較上週 +8,205</div>
+                    <div className="card-trend trend-positive">近一週新增 +{stats.getRecentTranscribedWordCount().toLocaleString()}</div>
                 </div>
             </div>
 

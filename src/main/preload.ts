@@ -318,6 +318,12 @@ const electronHandler = {
     },
   },
 
+  dashboard: {
+    getDashboardOverview() {
+      return ipcRenderer.invoke('Dashboard:getDashboardOverview');
+    },
+  },
+
   // 操作方法：通过 window.electron.workspace 调用，数据库访问保留在主进程。
   // Usage: call through window.electron.workspace; database access stays in main.
   workspace: {

@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import i18n from '../../i18n';
 import { AppSettings, SettingsController } from './SettingsController';
 
 type SettingsContextValue = {
@@ -20,6 +21,7 @@ type SettingsContextValue = {
 const DEFAULT_SETTINGS: AppSettings = {
   fontSize: 'medium',
   theme: 'system',
+  language: 'zh',
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -72,6 +74,14 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     root.dataset.theme = resolvedTheme;
     root.dataset.themePreference = settings.theme;
   }, [resolvedTheme, settings.fontSize, settings.theme]);
+
+  // 语言设置变化时同步 i18next，并反映到 <html lang> 便于无障碍与样式。
+  useEffect(() => {
+    if (i18n.language !== settings.language) {
+      i18n.changeLanguage(settings.language);
+    }
+    document.documentElement.lang = settings.language;
+  }, [settings.language]);
 
   const contextValue = useMemo<SettingsContextValue>(
     () => ({

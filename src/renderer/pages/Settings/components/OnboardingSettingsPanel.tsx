@@ -1,6 +1,8 @@
+import { useTranslation } from 'react-i18next';
 import { OnboardingController } from '../../../onboarding/OnboardingController';
 
 export default function OnboardingSettingsPanel() {
+  const { t } = useTranslation();
   return (
     <section className="settings-panel" aria-labelledby="guide-title">
       <div className="settings-panel-heading">
@@ -8,8 +10,8 @@ export default function OnboardingSettingsPanel() {
           ?
         </span>
         <div>
-          <h2 id="guide-title">新用户使用指南</h2>
-          <p>重新查看工作空间、转录、模型推荐和设置流程。</p>
+          <h2 id="guide-title">{t('settings.guide.title')}</h2>
+          <p>{t('settings.guide.desc')}</p>
         </div>
       </div>
       <button
@@ -17,7 +19,7 @@ export default function OnboardingSettingsPanel() {
         onClick={() => OnboardingController.open()}
         type="button"
       >
-        打开 6 步指南
+        {t('settings.guide.restart')}
       </button>
     </section>
   );

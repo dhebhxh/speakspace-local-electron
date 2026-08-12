@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RuntimeStatusSummary } from '../../../../main/runtime/RuntimeStatusService';
 import { RuntimeInstallProgress } from '../../../../main/transcription/WhisperRuntimeInstaller';
+import { FfmpegInstallProgress } from '../../../../main/runtime/FfmpegInstaller';
 import './WhisperRuntimePanel.css';
 
 export default function WhisperRuntimePanel(props: { refreshToken: string }) {
@@ -9,6 +10,10 @@ export default function WhisperRuntimePanel(props: { refreshToken: string }) {
   const [progress, setProgress] = useState<RuntimeInstallProgress | null>(null);
   const [installing, setInstalling] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [ffmpegProgress, setFfmpegProgress] =
+    useState<FfmpegInstallProgress | null>(null);
+  const [ffmpegInstalling, setFfmpegInstalling] = useState(false);
+  const [ffmpegError, setFfmpegError] = useState('');
 
   const loadStatus = useCallback(async () => {
     const nextStatus = (await window.electron.runtime.getStatus()) as
@@ -33,6 +38,14 @@ export default function WhisperRuntimePanel(props: { refreshToken: string }) {
     [],
   );
 
+  useEffect(
+    () =>
+      window.electron.runtime.onFfmpegInstallProgress((rawProgress) => {
+        setFfmpegProgress(rawProgress as FfmpegInstallProgress);
+      }),
+    [],
+  );
+
   const installRuntime = async () => {
     setInstalling(true);
     setErrorMessage('');
@@ -48,10 +61,31 @@ export default function WhisperRuntimePanel(props: { refreshToken: string }) {
     }
   };
 
+  const installFfmpeg = async () => {
+    setFfmpegInstalling(true);
+    setFfmpegError('');
+    try {
+      await window.electron.runtime.installFfmpeg();
+      await loadStatus();
+    } catch (error) {
+      setFfmpegError(
+        error instanceof Error ? error.message : 'ffmpeg 安装失败',
+      );
+    } finally {
+      setFfmpegInstalling(false);
+    }
+  };
+
   const transcription = status?.transcription;
   const percent =
     progress?.receivedBytes && progress.totalBytes
       ? Math.round((progress.receivedBytes / progress.totalBytes) * 100)
+      : null;
+  const ffmpegPercent =
+    ffmpegProgress?.receivedBytes && ffmpegProgress.totalBytes
+      ? Math.round(
+          (ffmpegProgress.receivedBytes / ffmpegProgress.totalBytes) * 100,
+        )
       : null;
 
   return (
@@ -80,9 +114,29 @@ export default function WhisperRuntimePanel(props: { refreshToken: string }) {
       </div>
 
       {!transcription?.ffmpegPresent && (
-        <p className="whisper-runtime-hint">
-          WebM、MP3 等格式需要系统 ffmpeg；WAV 文件可以直接转写。
-        </p>
+        <>
+          <p className="whisper-runtime-hint">
+            WebM、MP3 等格式（含麦克风录音）需要 ffmpeg；WAV 文件可以直接转写。点击下方按钮自动下载安装，无需手动配置。
+          </p>
+          {ffmpegProgress && ffmpegInstalling && (
+            <p className="whisper-runtime-progress">
+              {ffmpegProgress.message}
+              {ffmpegPercent !== null ? ` · ${ffmpegPercent}%` : ''}
+            </p>
+          )}
+          {ffmpegError && (
+            <p className="whisper-runtime-error" role="alert">
+              {ffmpegError}
+            </p>
+          )}
+          <button
+            type="button"
+            disabled={ffmpegInstalling}
+            onClick={installFfmpeg}
+          >
+            {ffmpegInstalling ? '正在安装 ffmpeg…' : '安装 ffmpeg'}
+          </button>
+        </>
       )}
       {progress && installing && (
         <p className="whisper-runtime-progress">

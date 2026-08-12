@@ -1,3 +1,92 @@
+.recording-shell {
+  position: relative;
+}
+
+/* 悬浮的 AI 对话开关，收起时贴在右上角 */
+.recording-aichat-toggle {
+  position: absolute;
+  top: clamp(1.25rem, 3vw, 2.5rem);
+  right: clamp(1.25rem, 3vw, 2.5rem);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  color: #f8fbff;
+  border: 1px solid rgba(129, 140, 248, 0.5);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.9), rgba(59, 130, 246, 0.9));
+  box-shadow: 0 10px 30px rgba(30, 64, 175, 0.35);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.recording-aichat-toggle:hover {
+  filter: brightness(1.08);
+}
+
+/* 从右侧滑出的可折叠 AI 对话侧栏 */
+.recording-aichat-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  width: min(760px, 94vw);
+  height: 100vh;
+  border-left: 1px solid var(--border);
+  background: var(--surface, #0f1734);
+  box-shadow: -24px 0 60px rgba(2, 6, 23, 0.4);
+  transform: translateX(100%);
+  transition: transform 0.28s ease;
+}
+
+.recording-aichat-drawer.is-open {
+  transform: translateX(0);
+}
+
+.recording-aichat-drawer__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.recording-aichat-drawer__bar strong {
+  font-size: 1rem;
+}
+
+.recording-aichat-drawer__close {
+  min-width: auto;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-soft);
+  box-shadow: none;
+  font-size: 1rem;
+}
+
+.recording-aichat-drawer__body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 嵌入模式下让问答面板铺满抽屉高度 */
+.ask-ai-page.ask-ai-page--embedded {
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .recording-page {
   --recording-text: #f8fbff;
   --recording-muted: #c7d2ea;

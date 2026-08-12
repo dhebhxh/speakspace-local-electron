@@ -15,10 +15,6 @@ export default function Sidebar() {
           </li>
 
           <li>
-            <NavLink to="/AIChat">{t('sidebar.aiChat')}</NavLink>
-          </li>
-
-          <li>
             <NavLink to="/Agent">{t('sidebar.agent')}</NavLink>
           </li>
 

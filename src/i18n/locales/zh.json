@@ -1,9 +1,61 @@
 {
-  "sidebar.transcription": "实时转录",
+  "sidebar.transcription": "对话工作台",
   "sidebar.aiChat": "AI对话",
   "sidebar.agent": "智能助理",
   "sidebar.workspace": "工作空间",
   "sidebar.modelManagement": "模型管理",
   "sidebar.workflow": "知识模板",
-  "sidebar.settings": "设置"
+  "sidebar.settings": "设置",
+
+  "settings.title": "设置",
+  "settings.subtitle": "管理外观、语言与使用引导，修改会自动保存。",
+  "settings.status.synced": "设置已同步",
+  "settings.status.loading": "正在读取设置",
+  "settings.status.saving": "正在保存",
+  "settings.error.save": "保存设置失败",
+  "settings.error.load": "读取应用设置失败",
+
+  "settings.category.appearance": "外观",
+  "settings.category.appearance.desc": "字号与颜色模式",
+  "settings.category.language": "语言",
+  "settings.category.language.desc": "界面显示语言",
+  "settings.category.guide": "使用引导",
+  "settings.category.guide.desc": "新手引导与提示",
+
+  "settings.language.title": "界面语言",
+  "settings.language.desc": "选择应用的显示语言，切换后立即生效。",
+  "settings.language.zh": "简体中文",
+  "settings.language.zh.desc": "使用简体中文界面",
+  "settings.language.en": "English",
+  "settings.language.en.desc": "Use the English interface",
+
+  "settings.font.title": "输出文字字号",
+  "settings.font.desc": "用于导航、页面文字和输出内容。",
+  "settings.font.small": "小",
+  "settings.font.small.desc": "适合显示更多内容",
+  "settings.font.medium": "中",
+  "settings.font.medium.desc": "默认平衡尺寸",
+  "settings.font.large": "大",
+  "settings.font.large.desc": "更易阅读",
+
+  "settings.theme.title": "系统颜色",
+  "settings.theme.desc": "选择浅色、深色，或自动跟随系统。",
+  "settings.theme.light": "浅色",
+  "settings.theme.light.desc": "明亮、清晰的工作界面",
+  "settings.theme.dark": "深色",
+  "settings.theme.dark.desc": "降低暗光环境下的视觉刺激",
+  "settings.theme.system": "跟随系统",
+  "settings.theme.system.desc": "随操作系统外观自动切换",
+  "settings.theme.resolved": "当前实际显示：",
+  "settings.theme.resolved.dark": "深色模式",
+  "settings.theme.resolved.light": "浅色模式",
+
+  "settings.guide.title": "使用引导",
+  "settings.guide.desc": "重新查看新手引导，了解各功能入口。",
+  "settings.guide.restart": "重新开始引导",
+
+  "transcription.tab.transcript": "转录",
+  "transcription.aichat.title": "AI 对话",
+  "transcription.aichat.open": "打开 AI 对话",
+  "transcription.aichat.close": "收起 AI 对话"
 }

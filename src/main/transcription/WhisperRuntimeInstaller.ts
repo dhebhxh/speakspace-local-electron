@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import CommandLocator from '../runtime/CommandLocator';
+import ArchiveExtractor from '../runtime/ArchiveExtractor';
 import FileDownloadService, {
   DownloadProgress,
 } from '../runtime/FileDownloadService';
@@ -74,19 +74,13 @@ export default class WhisperRuntimeInstaller {
           onProgress?.(WhisperRuntimeInstaller.toDownloadProgress(progress)),
       });
 
-      const tarPath = CommandLocator.resolve(['tar.exe', 'tar']);
-      if (!tarPath) {
-        throw new Error('未找到系统 tar 解压工具 / tar is not available');
-      }
       onProgress?.({
         phase: 'extracting',
         message: '正在解压 Whisper 运行时 / Extracting Whisper runtime',
       });
-      await this.processRunner.run(
-        tarPath,
-        ['-xf', archivePath, '-C', extractRoot],
-        { signal },
-      );
+      await ArchiveExtractor.extract(archivePath, extractRoot, this.processRunner, {
+        signal,
+      });
 
       const cliPath = await WhisperRuntimeArchive.findCli(extractRoot);
       if (!cliPath) {

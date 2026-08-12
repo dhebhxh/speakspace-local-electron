@@ -208,6 +208,9 @@ const electronHandler = {
     installTTS() {
       return ipcRenderer.invoke('Runtime:installTTS');
     },
+    installFfmpeg() {
+      return ipcRenderer.invoke('Runtime:installFfmpeg');
+    },
     onInstallProgress(listener: (progress: unknown) => void) {
       const wrapped = (_event: IpcRendererEvent, progress: unknown) =>
         listener(progress);
@@ -222,6 +225,14 @@ const electronHandler = {
       ipcRenderer.on('Runtime:installOllamaProgress', wrapped);
       return () => {
         ipcRenderer.removeListener('Runtime:installOllamaProgress', wrapped);
+      };
+    },
+    onFfmpegInstallProgress(listener: (progress: unknown) => void) {
+      const wrapped = (_event: IpcRendererEvent, progress: unknown) =>
+        listener(progress);
+      ipcRenderer.on('Runtime:installFfmpegProgress', wrapped);
+      return () => {
+        ipcRenderer.removeListener('Runtime:installFfmpegProgress', wrapped);
       };
     },
     onTTSInstallProgress(listener: (progress: unknown) => void) {

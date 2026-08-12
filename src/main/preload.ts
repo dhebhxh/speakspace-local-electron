@@ -332,10 +332,14 @@ const electronHandler = {
       conversationId?: number | null;
       workspaceId?: number | null;
       noteId?: number | null;
+      noteIds?: number[] | null;
       question: string;
-      scope: 'note' | 'workspace';
+      scope: 'note' | 'workspace' | 'multi-note';
     }) {
       return ipcRenderer.invoke('AskAI:ask', request);
+    },
+    autoSegmentNote(noteId: number) {
+      return ipcRenderer.invoke('AskAI:autoSegmentNote', noteId);
     },
   },
 
@@ -371,6 +375,18 @@ const electronHandler = {
     },
     delete(id: number) {
       return ipcRenderer.invoke('Workspace:delete', id);
+    },
+  },
+  
+  // Export functionality
+  export: {
+    note(request: {
+      title: string;
+      transcript: string;
+      subnotes: { type: string; content: string }[];
+      format: 'word' | 'pdf';
+    }) {
+      return ipcRenderer.invoke('Export:note', request);
     },
   },
 };

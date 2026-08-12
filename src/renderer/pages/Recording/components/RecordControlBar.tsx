@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TranscriptionLanguage } from '../../../../main/transcription/TranscriptionTypes';
 import { RecordingSession } from '../RecordingSession';
 import { RecordingState, SavedRecording } from '../RecordingTypes';
@@ -89,6 +90,7 @@ export default function RecordControlBar(props: {
   session: RecordingSession;
   transcription: TranscriptionController;
 }) {
+  const navigate = useNavigate();
   const { session, transcription } = props;
   const snapshot = useRecordingSession(session);
   const transcriptionSnapshot = useTranscriptionController(transcription);
@@ -197,7 +199,7 @@ export default function RecordControlBar(props: {
         audioRelativePath = savedRecording.relativePath;
       }
 
-      await window.electron.workspace.saveTranscriptionNote({
+      const saveResult = await window.electron.workspace.saveTranscriptionNote({
         workspaceId,
         name: selection.noteName,
         transcript: latestTranscriptText,
@@ -205,10 +207,14 @@ export default function RecordControlBar(props: {
         audioRelativePath,
       });
 
+      // Trigger intelligent auto-segmentation in the background
+      window.electron.askAI.autoSegmentNote(saveResult.noteId).catch(console.error);
+
       setWorkspaceSaveSuccess(
         `已保存到“${workspaceName}” / Saved to “${workspaceName}”`,
       );
       setSaveDialogOpen(false);
+      navigate('/Workspace');
     } catch (reason) {
       if (importedRecording) {
         await window.electron.audio

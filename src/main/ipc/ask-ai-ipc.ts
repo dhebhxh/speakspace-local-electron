@@ -14,6 +14,7 @@ function normalizeId(value: unknown): number | null {
 }
 
 function normalizeScope(value: unknown): AskAIScope {
+  if (value === 'multi-note') return 'multi-note';
   return value === 'workspace' ? 'workspace' : 'note';
 }
 
@@ -46,7 +47,14 @@ ipcMain.handle('AskAI:ask', (_event, request: Partial<AskAIRequest>) =>
     conversationId: normalizeId(request?.conversationId),
     workspaceId: normalizeId(request?.workspaceId),
     noteId: normalizeId(request?.noteId),
+    noteIds: Array.isArray(request?.noteIds) ? request.noteIds.map(normalizeId).filter((id): id is number => id !== null) : null,
     question: String(request?.question || ''),
     scope: normalizeScope(request?.scope),
-  }),
+  })
 );
+
+ipcMain.handle('AskAI:autoSegmentNote', (_event, noteId: unknown) => {
+  const id = normalizeId(noteId);
+  if (id === null) throw new Error('Invalid note ID');
+  return askAIService.autoSegmentNote(id);
+});

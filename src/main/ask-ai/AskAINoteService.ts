@@ -63,7 +63,14 @@ export default class AskAINoteService {
     scope: AskAIScope,
     workspaceId: number | null,
     noteId: number | null,
+    noteIds: number[] | null = null,
   ): Note[] {
+    if (scope === 'multi-note' && noteIds) {
+      return noteIds
+        .map(id => this.noteRepository.findById(id))
+        .filter((note): note is Note => note !== null);
+    }
+
     if (scope === 'note') {
       const note =
         noteId === null ? null : this.noteRepository.findById(noteId);

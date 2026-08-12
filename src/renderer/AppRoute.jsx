@@ -14,11 +14,7 @@ export default function AppRoute() {
     <Routes>
       <Route element={<MainLayout />}>
         {/* 首页只显示最近入口；Workspace 详情使用独立路由。 */}
-        <Route
-          path="/"
-          element={<WorkspaceHomePage directory={false} limit={6} />}
-        />
-        <Route path="/Transcription" element={<RecordingPage />} />
+        <Route path="/" element={<RecordingPage />} />
         <Route path="/AIChat" element={<AskAIPage />} />
         <Route path="/Agent" element={<AgentPage />} />
         <Route

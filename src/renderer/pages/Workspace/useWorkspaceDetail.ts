@@ -26,6 +26,13 @@ export default function useWorkspaceDetail() {
   const [status, setStatus] = useState('');
   const [query, setQuery] = useState('');
   const [generatingNoteId, setGeneratingNoteId] = useState<number | null>(null);
+  const [selectedNoteIds, setSelectedNoteIds] = useState<number[]>([]);
+
+  const toggleNoteSelection = useCallback((noteId: number) => {
+    setSelectedNoteIds(prev =>
+      prev.includes(noteId) ? prev.filter(id => id !== noteId) : [...prev, noteId]
+    );
+  }, []);
 
   const loadWorkspace = useCallback(async () => {
     if (!Number.isInteger(workspaceId) || workspaceId <= 0) {
@@ -125,6 +132,9 @@ export default function useWorkspaceDetail() {
     query,
     setQuery,
     generatingNoteId,
+    selectedNoteIds,
+    toggleNoteSelection,
+    setSelectedNoteIds,
     generateOutput,
     renameWorkspace,
     deleteWorkspace,

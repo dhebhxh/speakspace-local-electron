@@ -11,7 +11,7 @@ export default function Sidebar() {
       <nav aria-label="主导航">
         <ul>
           <li>
-            <NavLink to="/Transcription">{t('sidebar.transcription')}</NavLink>
+            <NavLink to="/" end>{t('sidebar.transcription')}</NavLink>
           </li>
 
           <li>
@@ -24,7 +24,7 @@ export default function Sidebar() {
 
           <li>
             {/* 首页直接进入工作空间。 / Open Workspace directly from the home route. */}
-            <NavLink to="/" end>
+            <NavLink to="/Workspace">
               {t('sidebar.workspace')}
             </NavLink>
           </li>

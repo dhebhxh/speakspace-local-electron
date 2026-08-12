@@ -2,7 +2,9 @@ import { Link } from 'react-router-dom';
 import WorkspaceDetailHeader from './components/WorkspaceDetailHeader';
 import WorkspaceNoteCard from './components/WorkspaceNoteCard';
 import WorkspaceSemanticSearch from './components/WorkspaceSemanticSearch';
+import WorkspaceMultiNoteModal from './components/WorkspaceMultiNoteModal';
 import useWorkspaceDetail from './useWorkspaceDetail';
+import { useState } from 'react';
 import './WorkspacePage.css';
 
 /**
@@ -11,7 +13,8 @@ import './WorkspacePage.css';
  */
 export default function WorkspacePage() {
   const detail = useWorkspaceDetail();
-  const { workspace, loading, error, status, query, visibleNotes } = detail;
+  const { workspace, loading, error, status, query, visibleNotes, selectedNoteIds, toggleNoteSelection } = detail;
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
 
   if (loading) {
     return <p className="workspace-detail-status">正在进入工作空间…</p>;
@@ -64,8 +67,27 @@ export default function WorkspacePage() {
 
       {visibleNotes.length === 0 && (
         <div className="workspace-detail-empty">
-          <strong>{query ? '没有匹配内容' : '这个工作空间还没有笔记'}</strong>
-          <span>{query ? '尝试更换搜索词。' : '完成录音后可归档到这里。'}</span>
+          <strong>{query ? '没有找到内容' : '这个工作空间还没有笔记'}</strong>
+          <span>{query ? '尝试更换搜索词' : '完成录音即可归档到这里'}</span>
+        </div>
+      )}
+
+      {selectedNoteIds.length > 0 && (
+        <div className="workspace-floating-bar" style={{
+          position: 'sticky', top: '20px', zIndex: 100, backgroundColor: 'var(--accent)', color: '#fff', 
+          padding: '12px 24px', borderRadius: '30px', display: 'flex', justifyContent: 'space-between', 
+          alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', marginBottom: '20px'
+        }}>
+          <span>已選取 {selectedNoteIds.length} 篇筆記</span>
+          <button 
+            type="button" 
+            className="btn-primary btn-sm" 
+            style={{ backgroundColor: '#fff', color: 'var(--accent)', marginLeft: '16px' }}
+            onClick={() => setShowAnalysisModal(true)}
+            disabled={selectedNoteIds.length < 2}
+          >
+            {selectedNoteIds.length < 2 ? '請至少選擇 2 篇' : '分析選中筆記'}
+          </button>
         </div>
       )}
 
@@ -75,12 +97,22 @@ export default function WorkspacePage() {
             generating={detail.generatingNoteId === note.id}
             key={note.id}
             note={note}
+            isSelected={selectedNoteIds.includes(note.id)}
+            onToggleSelection={toggleNoteSelection}
             onGenerate={detail.generateOutput}
             templates={detail.templates}
             workspaceId={detail.workspaceId}
           />
         ))}
       </div>
+
+      {showAnalysisModal && (
+        <WorkspaceMultiNoteModal 
+          selectedNoteIds={selectedNoteIds} 
+          workspaceId={detail.workspaceId} 
+          onClose={() => setShowAnalysisModal(false)} 
+        />
+      )}
     </section>
   );
 }

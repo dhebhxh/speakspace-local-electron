@@ -1,9 +1,10 @@
-export type AskAIScope = 'note' | 'workspace';
+export type AskAIScope = 'note' | 'workspace' | 'multi-note';
 
 export type AskAIRequest = {
   conversationId?: number | null;
   workspaceId?: number | null;
   noteId?: number | null;
+  noteIds?: number[] | null;
   question: string;
   scope: AskAIScope;
 };

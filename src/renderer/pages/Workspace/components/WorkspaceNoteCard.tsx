@@ -8,29 +8,60 @@ type Props = {
   note: NoteItem;
   templates: WorkspaceTemplate[];
   generating: boolean;
+  isSelected?: boolean;
+  onToggleSelection?: (noteId: number) => void;
   onGenerate(noteId: number, templateId: number): Promise<void>;
 };
 
-/** 单篇笔记的录音、转录、派生内容与对话展示保持在独立组件内。 */
+/** 协调笔记音视频、转录、派生内容，对应展示保留为独立组件。 */
 export default function WorkspaceNoteCard({
   workspaceId,
   note,
   templates,
   generating,
+  isSelected = false,
+  onToggleSelection,
   onGenerate,
 }: Props) {
+  const handleExport = (format: 'word' | 'pdf') => {
+    window.electron.export.note({
+      title: note.name || '未命名笔记',
+      transcript: note.transcript,
+      subnotes: note.subnotes.map(s => ({ type: s.content_type, content: s.content })),
+      format
+    }).catch(console.error);
+  };
+
   return (
-    <article className="workspace-detail-note" id={`workspace-note-${note.id}`}>
-      <header>
-        <div>
-          <span className="workspace-note-kind">
-            {note.is_pinned ? '置顶笔记' : '工作笔记'}
-          </span>
-          <h2>{note.name || '未命名笔记'}</h2>
+    <article className={`workspace-detail-note ${isSelected ? 'selected' : ''}`} id={`workspace-note-${note.id}`}>
+      <header style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {onToggleSelection && (
+            <input 
+              type="checkbox" 
+              checked={isSelected}
+              onChange={() => onToggleSelection(note.id)}
+              style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
+            />
+          )}
+          <div>
+            <span className="workspace-note-kind">
+              {note.is_pinned ? '置顶笔记' : '工作笔记'}
+            </span>
+            <h2>{note.name || '未命名笔记'}</h2>
+          </div>
         </div>
-        <time dateTime={note.updated_at}>
-          {WorkspaceController.formatDate(note.updated_at, 'short')}
-        </time>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button type="button" className="btn-secondary btn-sm" onClick={() => handleExport('word')}>
+            匯出 Word
+          </button>
+          <button type="button" className="btn-secondary btn-sm" onClick={() => handleExport('pdf')}>
+            匯出 PDF
+          </button>
+          <time dateTime={note.updated_at} style={{ marginLeft: '8px' }}>
+            {WorkspaceController.formatDate(note.updated_at, 'short')}
+          </time>
+        </div>
       </header>
 
       <div className="workspace-content-grid">

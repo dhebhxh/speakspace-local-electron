@@ -4,8 +4,8 @@
 .agent-page-header h1 { margin: 0.2rem 0; }
 .agent-page-header p { margin: 0; }
 .agent-page-header > strong { padding: 0.4rem 0.65rem; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 999px; font-size: 0.7rem; white-space: nowrap; }
-.agent-page-grid { display: grid; grid-template-columns: minmax(250px, 0.7fr) minmax(0, 1.3fr); align-items: start; gap: 1rem; }
-.agent-page-grid > aside { display: grid; gap: 1rem; }
+.agent-page-grid { display: grid; grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr); align-items: start; gap: 1rem; }
+.agent-page-grid > aside { position: sticky; top: 1rem; display: grid; gap: 1rem; align-self: start; }
 .agent-task-panel, .agent-timeline, .agent-conversation { padding: 1.1rem; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
 .agent-task-panel { display: grid; gap: 0.85rem; }
 .agent-task-panel label { display: grid; gap: 0.35rem; color: var(--muted); font-size: 0.72rem; font-weight: 700; }
@@ -22,9 +22,9 @@
 .agent-timeline > p { margin-bottom: 0; font-size: 0.72rem; }
 .agent-timeline ol { display: grid; gap: 0.4rem; margin: 0.8rem 0 0; padding-left: 1.2rem; color: var(--muted); font-size: 0.72rem; }
 .agent-timeline li { list-style: decimal; }
-.agent-conversation { min-height: 430px; }
-.agent-conversation-empty { display: grid; place-content: center; gap: 0.3rem; min-height: 330px; color: var(--muted); text-align: center; }
-.agent-message-list { display: grid; gap: 0.7rem; margin-top: 1rem; }
+.agent-conversation { display: flex; flex-direction: column; min-height: 430px; max-height: calc(100vh - 11rem); }
+.agent-conversation-empty { display: grid; place-content: center; gap: 0.3rem; flex: 1; min-height: 330px; color: var(--muted); text-align: center; }
+.agent-message-list { display: grid; align-content: start; gap: 0.7rem; flex: 1; margin-top: 1rem; min-height: 0; overflow-y: auto; padding-right: 0.25rem; }
 .agent-message-list article { max-width: 88%; padding: 0.8rem 0.9rem; border: 1px solid var(--border); border-radius: 13px; background: var(--surface-soft); }
 .agent-message-list article.user { justify-self: end; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
 .agent-message-list article span { color: var(--muted); font-size: 0.65rem; font-weight: 800; }

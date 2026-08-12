@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import CommandLocator from '../runtime/CommandLocator';
+import ArchiveExtractor from '../runtime/ArchiveExtractor';
 import FileDownloadService, {
   DownloadProgress,
 } from '../runtime/FileDownloadService';
@@ -51,9 +51,7 @@ export default class ParakeetModelInstaller {
         onProgress,
       });
 
-      const tarPath = CommandLocator.resolve(['tar.exe', 'tar']);
-      if (!tarPath) throw new Error('未找到系统 tar 解压工具');
-      await this.runner.run(tarPath, ['-xf', archivePath, '-C', extractRoot]);
+      await ArchiveExtractor.extract(archivePath, extractRoot, this.runner);
       const source = await ParakeetModelArchive.findModelRoot(extractRoot);
       if (!source) throw new Error('Parakeet 压缩包缺少必需模型文件');
 

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { STTModelManager } from '../AI-module/STTModelManager';
-import CommandLocator from '../runtime/CommandLocator';
+import { resolveFfmpegPath } from '../runtime/FfmpegLocator';
 import { requireAtRuntime } from '../runtime/RuntimeRequire';
 import ParakeetModelArchive, {
   PARAKEET_REQUIRED_FILES,
@@ -61,9 +61,7 @@ export default class ParakeetRuntimeService {
       modelType: 'nemo_transducer',
       requiredFiles,
       missingFiles,
-      ffmpegPath: CommandLocator.resolve([
-        process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg',
-      ]),
+      ffmpegPath: resolveFfmpegPath(),
     };
   }
 

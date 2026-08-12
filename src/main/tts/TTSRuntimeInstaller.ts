@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import CommandLocator from '../runtime/CommandLocator';
+import ArchiveExtractor from '../runtime/ArchiveExtractor';
 import FileDownloadService from '../runtime/FileDownloadService';
 import LocalProcessRunner from '../runtime/LocalProcessRunner';
 import { ManagedPaths } from '../runtime/ManagedPaths';
@@ -83,10 +83,8 @@ export default class TTSRuntimeInstaller {
         onProgress: (progress) => onProgress?.(toTTSDownloadProgress(progress)),
       });
 
-      const tarPath = CommandLocator.resolve(['tar.exe', 'tar']);
-      if (!tarPath) throw new Error('未找到系统 tar 解压工具');
       onProgress?.({ phase: 'extracting', message: '正在解压 TTS 模型' });
-      await this.runner.run(tarPath, ['-xf', archivePath, '-C', extractRoot], {
+      await ArchiveExtractor.extract(archivePath, extractRoot, this.runner, {
         signal,
       });
       const source = await TTSRuntimeArchive.findModelRoot(extractRoot);

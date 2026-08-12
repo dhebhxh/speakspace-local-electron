@@ -1,9 +1,11 @@
 export type FontSizeSetting = 'small' | 'medium' | 'large';
 export type ThemeSetting = 'light' | 'dark' | 'system';
+export type LanguageSetting = 'zh' | 'en';
 
 export type AppSettings = {
   fontSize: FontSizeSetting;
   theme: ThemeSetting;
+  language: LanguageSetting;
 };
 
 type SettingsApi = {

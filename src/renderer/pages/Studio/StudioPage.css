@@ -1,0 +1,375 @@
+.studio-page {
+  display: grid;
+  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) minmax(250px, 330px);
+  height: calc(100vh - 5rem);
+  min-height: 560px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.studio-page button {
+  min-height: 34px;
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.studio-page button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}
+
+/* 中间：对话主区 */
+.studio-chat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 0.9rem;
+  overflow: hidden;
+}
+
+.studio-chat-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.studio-chat-heading span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.studio-chat-heading h2 {
+  margin: 0.1rem 0 0;
+  font-size: 0.98rem;
+}
+
+.studio-chat-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.studio-chat-messages {
+  padding: 0.75rem 0.15rem;
+}
+
+/* 已关联笔记的 chip */
+.studio-linked-note {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-soft));
+  color: var(--text);
+  font-size: 0.74rem;
+}
+
+.studio-linked-note__icon {
+  color: var(--accent);
+}
+
+.studio-linked-note__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-record-error {
+  flex: 0 0 auto;
+  margin: 0.4rem 0 0;
+  padding: 0.5rem 0.65rem;
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.08);
+  font-size: 0.75rem;
+}
+
+/* 输入区：工具行 + 文本框 + 发送 */
+.studio-composer {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'tools tools'
+    'input send';
+  align-items: end;
+  gap: 0.55rem;
+  margin-top: 0.6rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+}
+
+.studio-composer-tools {
+  grid-area: tools;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.studio-composer textarea {
+  grid-area: input;
+  min-height: 48px;
+  max-height: 120px;
+  padding: 0.65rem 0.75rem;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  outline: none;
+  background: var(--surface-soft);
+  resize: vertical;
+}
+
+.studio-composer textarea:focus {
+  border-color: var(--accent);
+}
+
+.studio-send-button {
+  grid-area: send;
+}
+
+.studio-record-button,
+.studio-upload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text);
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+}
+
+.studio-record-button:hover:not(:disabled),
+.studio-upload-button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+
+.studio-record-mic {
+  color: #ef4444;
+  font-size: 0.7rem;
+}
+
+.studio-record-button.is-recording {
+  color: #fff;
+  border-color: transparent;
+  background: #ef4444;
+}
+
+.studio-record-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  animation: studio-pulse 1s ease-in-out infinite;
+}
+
+@keyframes studio-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* 右侧：来源笔记预览 */
+.studio-source {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: var(--surface-soft);
+}
+
+.studio-source .ask-ai-note-preview {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+@media (max-width: 1040px) {
+  .studio-page {
+    grid-template-columns: minmax(190px, 230px) minmax(0, 1fr);
+  }
+  .studio-source {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .studio-page {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100vh - 2rem);
+    overflow: visible;
+  }
+}
+
+/* 录音复核弹窗 */
+.studio-review-modal {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(2, 6, 23, 0.62);
+  backdrop-filter: blur(8px);
+}
+
+.studio-review-dialog {
+  display: grid;
+  gap: 0.9rem;
+  width: min(780px, 100%);
+  max-height: min(88vh, 900px);
+  padding: 1.25rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.45);
+}
+
+.studio-review-dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.studio-review-dialog header span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.studio-review-dialog header h2 {
+  margin: 0.15rem 0 0;
+  font-size: 1.2rem;
+}
+
+.studio-review-dialog__close {
+  min-width: auto;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-soft);
+  font-size: 1.3rem;
+}
+
+.studio-review-texts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.studio-review-texts h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.studio-review-text {
+  min-height: 120px;
+  max-height: 260px;
+  padding: 0.8rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  color: var(--text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.studio-review-empty {
+  color: var(--muted);
+}
+
+.studio-review-form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.studio-review-form label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.studio-review-form select,
+.studio-review-form input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0.6rem 0.75rem;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: none;
+  background: var(--surface-strong);
+  font: inherit;
+}
+
+.studio-review-form select:focus,
+.studio-review-form input:focus {
+  border-color: var(--accent);
+}
+
+.studio-review-dialog__error {
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.studio-review-dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.studio-review-dialog footer button {
+  min-width: 150px;
+}
+
+.studio-review-dialog__secondary {
+  color: var(--text);
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+}
+
+@media (max-width: 640px) {
+  .studio-review-texts {
+    grid-template-columns: 1fr;
+  }
+  .studio-review-dialog footer {
+    flex-direction: column-reverse;
+  }
+  .studio-review-dialog footer button {
+    width: 100%;
+  }
+}

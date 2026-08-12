@@ -1,9 +1,61 @@
 {
-  "sidebar.transcription": "Transcription",
+  "sidebar.transcription": "Studio",
   "sidebar.aiChat": "AI Chat",
   "sidebar.agent": "Agent",
   "sidebar.workspace": "Workspace",
   "sidebar.modelManagement": "Model Manage",
   "sidebar.workflow": "Knowledge Templates",
-  "sidebar.settings": "Settings"
+  "sidebar.settings": "Settings",
+
+  "settings.title": "Settings",
+  "settings.subtitle": "Manage appearance, language and onboarding. Changes save automatically.",
+  "settings.status.synced": "Settings synced",
+  "settings.status.loading": "Loading settings",
+  "settings.status.saving": "Saving",
+  "settings.error.save": "Failed to save settings",
+  "settings.error.load": "Failed to load application settings",
+
+  "settings.category.appearance": "Appearance",
+  "settings.category.appearance.desc": "Font size & color mode",
+  "settings.category.language": "Language",
+  "settings.category.language.desc": "Interface language",
+  "settings.category.guide": "Onboarding",
+  "settings.category.guide.desc": "Guide & tips",
+
+  "settings.language.title": "Interface Language",
+  "settings.language.desc": "Choose the display language. Changes take effect immediately.",
+  "settings.language.zh": "简体中文",
+  "settings.language.zh.desc": "使用简体中文界面",
+  "settings.language.en": "English",
+  "settings.language.en.desc": "Use the English interface",
+
+  "settings.font.title": "Text Size",
+  "settings.font.desc": "Applies to navigation, page text and generated content.",
+  "settings.font.small": "Small",
+  "settings.font.small.desc": "Fit more content",
+  "settings.font.medium": "Medium",
+  "settings.font.medium.desc": "Balanced default",
+  "settings.font.large": "Large",
+  "settings.font.large.desc": "Easier to read",
+
+  "settings.theme.title": "Color Mode",
+  "settings.theme.desc": "Choose light, dark, or follow the system.",
+  "settings.theme.light": "Light",
+  "settings.theme.light.desc": "Bright, crisp workspace",
+  "settings.theme.dark": "Dark",
+  "settings.theme.dark.desc": "Reduce eye strain in low light",
+  "settings.theme.system": "System",
+  "settings.theme.system.desc": "Follow the OS appearance",
+  "settings.theme.resolved": "Currently showing: ",
+  "settings.theme.resolved.dark": "Dark mode",
+  "settings.theme.resolved.light": "Light mode",
+
+  "settings.guide.title": "Onboarding",
+  "settings.guide.desc": "Replay the guided tour to explore each feature.",
+  "settings.guide.restart": "Restart guide",
+
+  "transcription.tab.transcript": "Transcript",
+  "transcription.aichat.title": "AI Chat",
+  "transcription.aichat.open": "Open AI Chat",
+  "transcription.aichat.close": "Hide AI Chat"
 }

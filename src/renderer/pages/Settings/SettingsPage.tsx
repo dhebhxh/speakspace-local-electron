@@ -1,20 +1,54 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppSettings } from '../../settings/SettingsController';
 import { useAppSettings } from '../../settings/AppSettingsProvider';
 import FontSizeSettingsPanel from './components/FontSizeSettingsPanel';
+import LanguageSettingsPanel from './components/LanguageSettingsPanel';
 import OnboardingSettingsPanel from './components/OnboardingSettingsPanel';
 import ThemeSettingsPanel from './components/ThemeSettingsPanel';
 import './SettingsPage.css';
 
-/** 设置主页面只管理加载/保存状态，具体选项由独立面板展示。 */
+type CategoryId = 'appearance' | 'language' | 'guide';
+
+const CATEGORIES: Array<{
+  id: CategoryId;
+  labelKey: string;
+  descKey: string;
+  glyph: string;
+}> = [
+  {
+    id: 'appearance',
+    labelKey: 'settings.category.appearance',
+    descKey: 'settings.category.appearance.desc',
+    glyph: '◐',
+  },
+  {
+    id: 'language',
+    labelKey: 'settings.category.language',
+    descKey: 'settings.category.language.desc',
+    glyph: '文',
+  },
+  {
+    id: 'guide',
+    labelKey: 'settings.category.guide',
+    descKey: 'settings.category.guide.desc',
+    glyph: '?',
+  },
+];
+
+/** 设置主页面：左侧分类导航 + 右侧对应内容面板，加载/保存状态集中管理。 */
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const { settings, resolvedTheme, loading, loadError, updateSettings } =
     useAppSettings();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  let statusText = '设置已同步';
-  if (loading) statusText = '正在读取设置';
-  else if (saving) statusText = '正在保存';
+  const [activeCategory, setActiveCategory] =
+    useState<CategoryId>('appearance');
+
+  let statusText = t('settings.status.synced');
+  if (loading) statusText = t('settings.status.loading');
+  else if (saving) statusText = t('settings.status.saving');
 
   const save = async (nextSettings: AppSettings) => {
     setSaving(true);
@@ -22,19 +56,23 @@ export default function SettingsPage() {
     try {
       await updateSettings(nextSettings);
     } catch (reason) {
-      setSaveError(reason instanceof Error ? reason.message : '保存设置失败');
+      setSaveError(
+        reason instanceof Error ? reason.message : t('settings.error.save'),
+      );
     } finally {
       setSaving(false);
     }
   };
 
+  const disabled = loading || saving;
+
   return (
     <section className="settings-page">
       <header className="settings-header">
         <div>
-          <span className="settings-eyebrow">APPEARANCE</span>
-          <h1>系统外观</h1>
-          <p>调整整个应用的阅读尺寸和颜色模式，修改会自动保存。</p>
+          <span className="settings-eyebrow">SETTINGS</span>
+          <h1>{t('settings.title')}</h1>
+          <p>{t('settings.subtitle')}</p>
         </div>
         <div className="settings-status" aria-live="polite">
           <span
@@ -50,19 +88,56 @@ export default function SettingsPage() {
         </p>
       )}
 
-      <div className="settings-grid">
-        <FontSizeSettingsPanel
-          disabled={loading || saving}
-          save={save}
-          settings={settings}
-        />
-        <ThemeSettingsPanel
-          disabled={loading || saving}
-          resolvedTheme={resolvedTheme}
-          save={save}
-          settings={settings}
-        />
-        <OnboardingSettingsPanel />
+      <div className="settings-layout">
+        <nav className="settings-nav" aria-label={t('settings.title')}>
+          {CATEGORIES.map((category) => (
+            <button
+              type="button"
+              key={category.id}
+              className={`settings-nav-item${
+                activeCategory === category.id ? ' is-active' : ''
+              }`}
+              aria-current={activeCategory === category.id}
+              onClick={() => setActiveCategory(category.id)}
+            >
+              <span className="settings-nav-glyph" aria-hidden="true">
+                {category.glyph}
+              </span>
+              <span>
+                <strong>{t(category.labelKey)}</strong>
+                <small>{t(category.descKey)}</small>
+              </span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="settings-content">
+          {activeCategory === 'appearance' && (
+            <>
+              <ThemeSettingsPanel
+                disabled={disabled}
+                resolvedTheme={resolvedTheme}
+                save={save}
+                settings={settings}
+              />
+              <FontSizeSettingsPanel
+                disabled={disabled}
+                save={save}
+                settings={settings}
+              />
+            </>
+          )}
+
+          {activeCategory === 'language' && (
+            <LanguageSettingsPanel
+              disabled={disabled}
+              save={save}
+              settings={settings}
+            />
+          )}
+
+          {activeCategory === 'guide' && <OnboardingSettingsPanel />}
+        </div>
       </div>
     </section>
   );

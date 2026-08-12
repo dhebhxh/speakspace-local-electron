@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { STTModelManager } from '../AI-module/STTModelManager';
 import CommandLocator from '../runtime/CommandLocator';
+import { resolveFfmpegPath } from '../runtime/FfmpegLocator';
 import { ManagedPaths } from '../runtime/ManagedPaths';
 
 export type WhisperRuntimeLocation = 'portable' | 'system-path' | 'missing';
@@ -56,9 +57,7 @@ export default class WhisperRuntimeService {
       activeModel?.engine === 'whisper.cpp'
         ? this.modelManager.getActivatedModelPath()
         : null;
-    const ffmpegPath = CommandLocator.resolve([
-      process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg',
-    ]);
+    const ffmpegPath = resolveFfmpegPath(this.managedPaths);
 
     return {
       ready: runtimeLocation !== 'missing' && activeModelPath !== null,

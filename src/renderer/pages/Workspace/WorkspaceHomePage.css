@@ -14,7 +14,7 @@
 .workspace-home-section-heading h2 { margin: 0 0 0.2rem; }
 .workspace-home-section-heading p { margin: 0; font-size: 0.78rem; }
 .workspace-home-section-heading a { flex: none; padding: 0.55rem 0.85rem; color: var(--accent); border: 1px solid var(--border); border-radius: 999px; font-size: 0.78rem; }
-.workspace-home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
+.workspace-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.9rem; }
 .workspace-home-card { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 0.85rem; min-width: 0; padding: 1rem; color: var(--text); text-align: left; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); box-shadow: none; }
 .workspace-home-card:hover { border-color: color-mix(in srgb, var(--accent) 65%, transparent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
 .workspace-home-card-index { align-self: start; color: var(--muted); font-size: 0.65rem; font-weight: 800; letter-spacing: 0.08em; }
@@ -28,5 +28,4 @@
 .workspace-home-empty h2 { margin: 0.5rem 0 0.25rem; }
 .workspace-home-empty p { margin: auto; }
 .workspace-home-error { color: #ef4444; border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.08); }
-@media (max-width: 900px) { .workspace-home-grid { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .workspace-home-header { align-items: stretch; flex-direction: column; padding: 1.4rem; } .workspace-home-create { min-width: 0; } .workspace-home-create div { flex-direction: column; } .workspace-home-section-heading { align-items: flex-start; flex-direction: column; } }

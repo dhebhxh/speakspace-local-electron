@@ -1,30 +1,77 @@
 import {
   FontSizeSetting,
+  LanguageSetting,
   ThemeSetting,
 } from '../../settings/SettingsController';
 
+/**
+ * 选项只保留取值与 i18n key，可读文案由面板通过 t() 渲染，
+ * 以便随界面语言切换而更新。
+ */
 export const FONT_SIZE_OPTIONS: Array<{
   value: FontSizeSetting;
-  label: string;
-  description: string;
+  labelKey: string;
+  descKey: string;
   sample: string;
 }> = [
   {
     value: 'small',
-    label: '小',
-    description: '适合显示更多内容',
+    labelKey: 'settings.font.small',
+    descKey: 'settings.font.small.desc',
     sample: 'Aa',
   },
-  { value: 'medium', label: '中', description: '默认平衡尺寸', sample: 'Aa' },
-  { value: 'large', label: '大', description: '更易阅读', sample: 'Aa' },
+  {
+    value: 'medium',
+    labelKey: 'settings.font.medium',
+    descKey: 'settings.font.medium.desc',
+    sample: 'Aa',
+  },
+  {
+    value: 'large',
+    labelKey: 'settings.font.large',
+    descKey: 'settings.font.large.desc',
+    sample: 'Aa',
+  },
 ];
 
 export const THEME_OPTIONS: Array<{
   value: ThemeSetting;
-  label: string;
-  description: string;
+  labelKey: string;
+  descKey: string;
 }> = [
-  { value: 'light', label: '浅色', description: '明亮、清晰的工作界面' },
-  { value: 'dark', label: '深色', description: '降低暗光环境下的视觉刺激' },
-  { value: 'system', label: '跟随系统', description: '随操作系统外观自动切换' },
+  {
+    value: 'light',
+    labelKey: 'settings.theme.light',
+    descKey: 'settings.theme.light.desc',
+  },
+  {
+    value: 'dark',
+    labelKey: 'settings.theme.dark',
+    descKey: 'settings.theme.dark.desc',
+  },
+  {
+    value: 'system',
+    labelKey: 'settings.theme.system',
+    descKey: 'settings.theme.system.desc',
+  },
+];
+
+export const LANGUAGE_OPTIONS: Array<{
+  value: LanguageSetting;
+  labelKey: string;
+  descKey: string;
+  glyph: string;
+}> = [
+  {
+    value: 'zh',
+    labelKey: 'settings.language.zh',
+    descKey: 'settings.language.zh.desc',
+    glyph: '中',
+  },
+  {
+    value: 'en',
+    labelKey: 'settings.language.en',
+    descKey: 'settings.language.en.desc',
+    glyph: 'EN',
+  },
 ];

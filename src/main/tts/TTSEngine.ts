@@ -1,88 +1,60 @@
-import os from 'os';
-import TTSRuntimeService from './TTSRuntimeService';
-import { requireAtRuntime } from '../runtime/RuntimeRequire';
+import MossOnnxRuntime from './MossOnnxRuntime';
+import SherpaTTSEngine from './SherpaTTSEngine';
+import { GeneratedTTSAudio, TTSModelEngine } from './TTSGeneratedAudio';
+import { getTTSModelCatalogItem } from './TTSModelCatalog';
 
-type GeneratedAudio = { samples: Float32Array; sampleRate: number };
-type OfflineTts = {
-  generateAsync(request: {
-    text: string;
-    sid: number;
-    speed: number;
-    enableExternalBuffer: boolean;
-  }): Promise<GeneratedAudio>;
-};
-type SherpaModule = {
-  OfflineTts: { createAsync(config: unknown): Promise<OfflineTts> };
-};
-type ModuleLoader = () => SherpaModule;
+type EngineFactory = (
+  modelId: string,
+  modelDir: string,
+) => Promise<TTSModelEngine>;
 
-/** 缓存异步创建的 Kokoro 引擎；生成工作由原生异步接口执行。 */
+/** 仅缓存当前激活模型的引擎，切换时立即释放旧引擎引用。 */
 export default class TTSEngine {
-  private enginePromise: Promise<OfflineTts> | null = null;
+  private activeModelId: string | null = null;
 
-  private readonly runtime: TTSRuntimeService;
+  private enginePromise: Promise<TTSModelEngine> | null = null;
 
-  private readonly loadModule: ModuleLoader;
+  private readonly createEngine: EngineFactory;
 
-  public constructor(
-    runtime: TTSRuntimeService,
-    loadModule: ModuleLoader = TTSEngine.requireModule,
-  ) {
-    this.runtime = runtime;
-    this.loadModule = loadModule;
+  public constructor(createEngine: EngineFactory = TTSEngine.createEngine) {
+    this.createEngine = createEngine;
   }
 
   public async generate(
+    modelId: string,
+    modelDir: string,
     text: string,
-    speakerId: number,
+    speakerId: string,
     speed: number,
-  ): Promise<GeneratedAudio> {
-    const engine = await this.getEngine();
-    const generated = await engine.generateAsync({
-      text,
-      sid: speakerId,
-      speed,
-      enableExternalBuffer: false,
-    });
-    if (!generated?.samples?.length || !generated.sampleRate) {
-      throw new Error('本地 TTS 没有返回音频 / TTS returned no audio');
+  ): Promise<GeneratedTTSAudio> {
+    if (this.activeModelId !== modelId) this.dispose();
+    this.activeModelId = modelId;
+    if (!this.enginePromise) {
+      this.enginePromise = this.createEngine(modelId, modelDir).catch(
+        (error) => {
+          this.enginePromise = null;
+          this.activeModelId = null;
+          throw error;
+        },
+      );
     }
-    // 脱离原生缓冲区后再通过 Electron IPC 传递。
-    return {
-      samples: Float32Array.from(generated.samples),
-      sampleRate: generated.sampleRate,
-    };
+    const engine = await this.enginePromise;
+    return engine.generate(text, speakerId, speed);
   }
 
   public dispose(): void {
+    const current = this.enginePromise;
     this.enginePromise = null;
+    this.activeModelId = null;
+    current?.then((engine) => engine.dispose()).catch(() => undefined);
   }
 
-  private getEngine(): Promise<OfflineTts> {
-    if (!this.enginePromise) {
-      const required = this.runtime.getRequiredFiles();
-      const config = {
-        model: {
-          kokoro: {
-            model: required.model,
-            voices: required.voices,
-            tokens: required.tokens,
-            dataDir: required.dataDir,
-            lexicon: `${required.lexiconUs},${required.lexiconZh}`,
-          },
-        },
-        numThreads: Math.max(1, Math.min(os.cpus().length - 1, 4)),
-        maxNumSentences: 1,
-        silenceScale: 0.2,
-        provider: 'cpu',
-      };
-      this.enginePromise = this.loadModule().OfflineTts.createAsync(config);
-    }
-    return this.enginePromise;
-  }
-
-  private static requireModule(): SherpaModule {
-    // 原生依赖位于 release/app，按需加载避免主进程启动阶段硬依赖。
-    return requireAtRuntime<SherpaModule>('sherpa-onnx-node');
+  private static async createEngine(
+    modelId: string,
+    modelDir: string,
+  ): Promise<TTSModelEngine> {
+    const item = getTTSModelCatalogItem(modelId);
+    if (item.engine === 'moss-onnx') return MossOnnxRuntime.create(modelDir);
+    return SherpaTTSEngine.create(modelId, modelDir);
   }
 }

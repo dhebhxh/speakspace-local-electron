@@ -30,6 +30,7 @@ function toPercent(received?: number, total?: number): number | null {
  */
 export default function useModelManager() {
   const [sttModels, setSttModels] = useState<Model[]>([]);
+  const [ttsModels, setTtsModels] = useState<Model[]>([]);
   const [llmModels, setLlmModels] = useState<Model[]>([]);
   const [runtime, setRuntime] = useState<RuntimeStatusSummary | null>(null);
   const [embedding, setEmbedding] = useState<EmbeddingModelStatus | null>(null);
@@ -61,13 +62,15 @@ export default function useModelManager() {
   }, []);
 
   const loadModels = useCallback(async () => {
-    const [stt, llm] = await Promise.all([
+    const [stt, tts, llm] = await Promise.all([
       window.electron.modelManagement.getModelList('stt'),
+      window.electron.modelManagement.getModelList('tts'),
       window.electron.modelManagement.getModelList('llm'),
     ]);
     setSttModels(stt);
+    setTtsModels(tts);
     setLlmModels(llm);
-    return { stt, llm };
+    return { stt, tts, llm };
   }, []);
 
   const refreshAll = useCallback(async () => {
@@ -157,7 +160,7 @@ export default function useModelManager() {
   );
 
   const modelActions = useCallback(
-    (module: 'stt' | 'llm') => ({
+    (module: 'stt' | 'tts' | 'llm') => ({
       select: (id: string) =>
         run(
           module,
@@ -185,6 +188,7 @@ export default function useModelManager() {
 
   return {
     sttModels,
+    ttsModels,
     llmModels,
     runtime,
     embedding,
@@ -194,6 +198,7 @@ export default function useModelManager() {
     progress,
     refreshAll,
     stt: modelActions('stt'),
+    tts: modelActions('tts'),
     llm: modelActions('llm'),
     installWhisper: () =>
       run(
@@ -215,13 +220,6 @@ export default function useModelManager() {
         'runtime:ollama',
         () => window.electron.runtime.installOllama(),
         'Ollama 运行时安装失败',
-      ),
-    installTTS: () =>
-      run(
-        'tts',
-        'runtime:tts',
-        () => window.electron.runtime.installTTS(),
-        'TTS 模型安装失败',
       ),
     installEmbedding: () =>
       run(

@@ -1,19 +1,21 @@
-import TTSRuntimeService, { TTS_MODEL_NAME } from './TTSRuntimeService';
+import TTSRuntimeService from './TTSRuntimeService';
 import TTSEngine from './TTSEngine';
 import { normalizeTTSInput } from './TTSInput';
-import { getTTSSpeakers } from './TTSVoices';
+import { TTSBackend } from './TTSModelCatalog';
 
 export type TTSAudioResult = {
   source: 'local';
-  backend: 'sherpa-onnx-node';
+  backend: TTSBackend;
+  modelId: string;
   modelName: string;
-  speakerId: number;
+  speakerId: string;
   speakerName: string;
   sampleRate: number;
-  samples: Float32Array;
+  channelCount: number;
+  channelData: Float32Array[];
 };
 
-/** 验证运行时与输入后执行本地合成，结果不写入磁盘。 */
+/** 验证当前激活模型、运行时和输入后执行本地合成，结果不写入磁盘。 */
 export default class TTSService {
   private readonly runtime: TTSRuntimeService;
 
@@ -21,7 +23,7 @@ export default class TTSService {
 
   public constructor(
     runtime = new TTSRuntimeService(),
-    engine = new TTSEngine(runtime),
+    engine = new TTSEngine(),
   ) {
     this.runtime = runtime;
     this.engine = engine;
@@ -32,27 +34,46 @@ export default class TTSService {
     rawOptions: unknown,
   ): Promise<TTSAudioResult> {
     const status = this.runtime.getStatus();
-    if (!status.runtimeReady) {
-      throw new Error('请先在模型管理中安装 Kokoro TTS 模型');
+    if (!status.activeModelId) {
+      throw new Error('请先在模型管理中选择 TTS 模型');
     }
-    const input = normalizeTTSInput(rawText, rawOptions);
-    const speaker = getTTSSpeakers().find(
+    if (!status.runtimeReady || !status.modelDir || !status.modelName) {
+      throw new Error(
+        `当前 TTS 模型未就绪: ${status.missingFiles.join(', ') || '推理依赖缺失'}`,
+      );
+    }
+    const input = normalizeTTSInput(rawText, rawOptions, status.speakers);
+    const speaker = status.speakers.find(
       (candidate) => candidate.id === input.speakerId,
     );
     if (!speaker) throw new Error('TTS 音色不存在 / Speaker not found');
     const audio = await this.engine.generate(
+      status.activeModelId,
+      status.modelDir,
       input.text,
       input.speakerId,
       input.speed,
     );
+    if (audio.channels.length < 1 || audio.channels.length > 2) {
+      throw new Error('TTS 返回了不支持的声道数');
+    }
+    const frameLength = audio.channels[0]?.length ?? 0;
+    if (
+      frameLength === 0 ||
+      audio.channels.some((channel) => channel.length !== frameLength)
+    ) {
+      throw new Error('TTS 返回的音频声道不完整');
+    }
     return {
       source: 'local',
-      backend: 'sherpa-onnx-node',
-      modelName: TTS_MODEL_NAME,
+      backend: status.activeBackend as TTSBackend,
+      modelId: status.activeModelId,
+      modelName: status.modelName,
       speakerId: speaker.id,
       speakerName: speaker.name,
       sampleRate: audio.sampleRate,
-      samples: audio.samples,
+      channelCount: audio.channels.length,
+      channelData: audio.channels,
     };
   }
 

@@ -1,15 +1,43 @@
 import { TTSSpeaker } from '../../main/tts/TTSRuntimeTypes';
 
-const SPEAKER_KEY = 'speakspace:tts:speaker-id';
+const SPEAKER_KEY = 'speakspace:tts:speaker-by-model';
 
-/** 音色偏好只保存 speaker id，不保存播报文字或音频。 */
-export function getPreferredSpeakerId(speakers: TTSSpeaker[]): number {
-  const storedValue = localStorage.getItem(SPEAKER_KEY);
-  const storedId = storedValue === null ? Number.NaN : Number(storedValue);
-  const selected = speakers.find((speaker) => speaker.id === storedId);
-  return selected?.id ?? speakers.find((speaker) => speaker.isDefault)?.id ?? 0;
+function readPreferences(): Record<string, string> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SPEAKER_KEY) ?? '{}') as {
+      [modelId: string]: unknown;
+    };
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string',
+      ),
+    );
+  } catch {
+    return {};
+  }
 }
 
-export function setPreferredSpeakerId(speakerId: number): void {
-  localStorage.setItem(SPEAKER_KEY, String(speakerId));
+/** 每个模型单独记住音色；已失效的音色自动回到该模型默认值。 */
+export function getPreferredSpeakerId(
+  modelId: string,
+  speakers: TTSSpeaker[],
+): string {
+  const storedId = readPreferences()[modelId];
+  const selected = speakers.find((speaker) => speaker.id === storedId);
+  return (
+    selected?.id ??
+    speakers.find((speaker) => speaker.isDefault)?.id ??
+    speakers[0]?.id ??
+    ''
+  );
+}
+
+export function setPreferredSpeakerId(
+  modelId: string,
+  speakerId: string,
+): void {
+  localStorage.setItem(
+    SPEAKER_KEY,
+    JSON.stringify({ ...readPreferences(), [modelId]: speakerId }),
+  );
 }

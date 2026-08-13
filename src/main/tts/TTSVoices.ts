@@ -1,6 +1,13 @@
+import fs from 'fs';
+import path from 'path';
 import { TTSSpeaker } from './TTSRuntimeTypes';
+import {
+  KOKORO_TTS_MODEL_ID,
+  MELO_TTS_MODEL_ID,
+  MOSS_TTS_MODEL_ID,
+} from './TTSModelCatalog';
 
-const VOICE_NAMES = [
+const KOKORO_VOICE_NAMES = [
   'af_alloy',
   'af_aoede',
   'af_bella',
@@ -56,7 +63,7 @@ const VOICE_NAMES = [
   'zm_yunyang',
 ] as const;
 
-const DEFAULT_SPEAKER_ID = 45;
+const KOKORO_DEFAULT_SPEAKER_ID = '45';
 const CHINESE_NAMES: Record<string, string> = {
   zf_xiaobei: '小贝',
   zf_xiaoni: '小妮',
@@ -65,10 +72,10 @@ const CHINESE_NAMES: Record<string, string> = {
   zm_yunjian: '云健',
   zm_yunxi: '云熙',
   zm_yunxia: '云夏',
-  zm_yunyang: '云阳',
+  zm_yunyang: '云扬',
 };
 
-function getLanguage(prefix: string): string {
+function getKokoroLanguage(prefix: string): string {
   const names: Record<string, string> = {
     a: '美式英语',
     b: '英式英语',
@@ -83,19 +90,69 @@ function getLanguage(prefix: string): string {
   return names[prefix[0]] ?? '多语言';
 }
 
-/** Kokoro v1.0 的 speaker id 与模型内 voices.bin 顺序一致。 */
-export function getTTSSpeakers(): TTSSpeaker[] {
-  return VOICE_NAMES.map((name, id) => {
-    const language = getLanguage(name);
+function getKokoroSpeakers(): TTSSpeaker[] {
+  return KOKORO_VOICE_NAMES.map((name, index) => {
+    const id = String(index);
+    const language = getKokoroLanguage(name);
     const displayName = CHINESE_NAMES[name] ?? name.split('_')[1];
     return {
       id,
       name,
-      label: `${language} · ${displayName}${id === DEFAULT_SPEAKER_ID ? '（默认）' : ''}`,
+      label: `${language} · ${displayName}${id === KOKORO_DEFAULT_SPEAKER_ID ? '（默认）' : ''}`,
       language,
-      isDefault: id === DEFAULT_SPEAKER_ID,
+      isDefault: id === KOKORO_DEFAULT_SPEAKER_ID,
     };
   });
 }
 
-export { DEFAULT_SPEAKER_ID };
+type MossManifestVoice = {
+  voice: string;
+  display_name?: string;
+  group?: string;
+};
+
+function getMossSpeakers(modelDir?: string | null): TTSSpeaker[] {
+  if (!modelDir) return [];
+  try {
+    const manifestPath = path.join(
+      modelDir,
+      'MOSS-TTS-Nano-100M-ONNX',
+      'browser_poc_manifest.json',
+    );
+    const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
+      builtin_voices?: MossManifestVoice[];
+    };
+    return (parsed.builtin_voices ?? []).map((voice, index) => ({
+      id: voice.voice,
+      name: voice.voice,
+      label: `${voice.group ?? '官方音色'} · ${voice.voice}${index === 0 ? '（默认）' : ''}`,
+      language: voice.group ?? '多语言',
+      isDefault: index === 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** 返回当前模型的官方内置音色，不接受外部参考音频。 */
+export function getTTSSpeakers(
+  modelId: string,
+  modelDir?: string | null,
+): TTSSpeaker[] {
+  if (modelId === KOKORO_TTS_MODEL_ID) return getKokoroSpeakers();
+  if (modelId === MELO_TTS_MODEL_ID) {
+    return [
+      {
+        id: '0',
+        name: 'default',
+        label: '中英双语 · MeloTTS 默认音色',
+        language: '中英双语',
+        isDefault: true,
+      },
+    ];
+  }
+  if (modelId === MOSS_TTS_MODEL_ID) return getMossSpeakers(modelDir);
+  return [];
+}
+
+export { KOKORO_DEFAULT_SPEAKER_ID };

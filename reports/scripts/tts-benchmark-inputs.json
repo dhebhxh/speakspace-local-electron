@@ -1,0 +1,17 @@
+[
+  {
+    "id": "zh_short",
+    "language": "zh",
+    "text": "人工智能正在改变我们记录、整理和检索知识的方式。"
+  },
+  {
+    "id": "en_short",
+    "language": "en",
+    "text": "Local speech synthesis keeps private notes on the user's own computer."
+  },
+  {
+    "id": "zh_en_mixed",
+    "language": "zh-en",
+    "text": "SpeakSpace 可以在本地运行 text to speech，并保护用户的 private notes。"
+  }
+]

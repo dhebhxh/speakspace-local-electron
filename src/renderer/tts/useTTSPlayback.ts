@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { TTSAudioResult } from '../../main/tts/TTSService';
 import TTSAudioPlayer from './TTSAudioPlayer';
+import { getPreferredSpeakerId } from './TTSPreferences';
 
 export default function useTTSPlayback() {
   const player = useRef<TTSAudioPlayer | null>(null);
@@ -14,14 +15,20 @@ export default function useTTSPlayback() {
   }, []);
 
   const speak = useCallback(
-    async (text: string, speakerId: number, speed = 1) => {
+    async (text: string, speakerId?: string, speed = 1) => {
       try {
         setLoading(true);
         setError('');
         player.current?.stop();
         setPlaying(false);
+        const status = await window.electron.tts.getStatus();
+        const selectedSpeakerId =
+          speakerId ??
+          (status.activeModelId
+            ? getPreferredSpeakerId(status.activeModelId, status.speakers)
+            : undefined);
         const audio = (await window.electron.tts.synthesize(text, {
-          speakerId,
+          speakerId: selectedSpeakerId,
           speed,
         })) as TTSAudioResult;
         setPlaying(true);

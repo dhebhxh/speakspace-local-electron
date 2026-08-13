@@ -16,7 +16,7 @@ import './ModelManagerPage.css';
 
 function toOptions(
   models: Model[],
-  modelType: 'stt' | 'llm',
+  modelType: 'stt' | 'tts' | 'llm',
   recommendedId: string | undefined,
 ): ModelOption[] {
   return models.map((model) => ({
@@ -27,7 +27,9 @@ function toOptions(
     description: getModelDescription(model, modelType),
     downloaded: model.downloaded,
     active: model.activated,
-    recommended: model.id === recommendedId,
+    recommended:
+      model.id === recommendedId ||
+      Boolean((model as { recommended?: boolean }).recommended),
   }));
 }
 
@@ -36,7 +38,7 @@ function toOptions(
 export function ModelManagerPage() {
   const manager = useModelManager();
   const playback = useTTSPlayback();
-  const [speakerId, setSpeakerId] = useState<number | null>(null);
+  const [speakerId, setSpeakerId] = useState<string | null>(null);
 
   const transcription = manager.runtime?.transcription;
   const parakeet = manager.runtime?.parakeetTranscription;
@@ -44,10 +46,14 @@ export function ModelManagerPage() {
   const speech = manager.runtime?.speechSynthesis;
 
   useEffect(() => {
-    if (speech?.speakers.length) {
-      setSpeakerId(getPreferredSpeakerId(speech.speakers));
+    if (speech?.activeModelId && speech.speakers.length) {
+      setSpeakerId(
+        getPreferredSpeakerId(speech.activeModelId, speech.speakers),
+      );
+    } else {
+      setSpeakerId(null);
     }
-  }, [speech?.speakers]);
+  }, [speech?.activeModelId, speech?.speakers]);
 
   const busy = manager.busyId !== null;
   const runtimes = buildModuleRuntimes(manager.runtime, manager.embedding, {
@@ -67,21 +73,7 @@ export function ModelManagerPage() {
     'llm',
     manager.recommendation?.llm?.id,
   );
-
-  const ttsOptions: ModelOption[] = speech
-    ? [
-        {
-          id: 'kokoro',
-          name: speech.modelName,
-          meta: `${speech.speakers.length || 0} 音色`,
-          tags: ['双语', '离线'],
-          description: 'Kokoro 中英双语本地语音模型。',
-          downloaded: speech.modelReady,
-          active: speech.modelReady,
-          recommended: true,
-        },
-      ]
-    : [];
+  const ttsOptions = toOptions(manager.ttsModels, 'tts', undefined);
 
   const speakerOptions: ModelOption[] = (speech?.speakers ?? []).map(
     (speaker) => ({
@@ -108,9 +100,9 @@ export function ModelManagerPage() {
     : [];
 
   const selectSpeaker = (id: string) => {
-    const nextId = Number(id);
-    setSpeakerId(nextId);
-    setPreferredSpeakerId(nextId);
+    if (!speech?.activeModelId) return;
+    setSpeakerId(id);
+    setPreferredSpeakerId(speech.activeModelId, id);
   };
 
   return (
@@ -189,11 +181,11 @@ export function ModelManagerPage() {
           <ModelSelect
             busyId={manager.busyId}
             label="选择语音模型"
-            onDelete={() => manager.uninstallRuntime('tts', 'tts-model')}
-            onDownload={manager.installTTS}
-            onSelect={() => {}}
+            onDelete={manager.tts.remove}
+            onDownload={manager.tts.download}
+            onSelect={manager.tts.select}
             options={ttsOptions}
-            placeholder="未安装"
+            placeholder="未选择模型"
           />
           {speech?.runtimeReady && speakerOptions.length > 0 && (
             <div className="model-select-compact">

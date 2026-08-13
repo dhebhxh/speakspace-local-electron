@@ -97,10 +97,10 @@ export default class RuntimeUninstallService {
 
   private async uninstallTTSModel(): Promise<UninstallResult> {
     const modelDir = this.ttsRuntime.getModelDir();
-    if (!fsSync.existsSync(modelDir)) {
+    if (!modelDir || !fsSync.existsSync(modelDir)) {
       return { removed: false, message: '语音模型未安装' };
     }
-    return this.removeManagedDirectory(modelDir, '语音模型');
+    throw new Error('正在使用的 TTS 模型无法删除，请先在模型管理中切换模型');
   }
 
   /** 删除前统一校验路径仍在 userData 内，避免误删应用目录之外的内容。 */

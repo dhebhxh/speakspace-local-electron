@@ -13,7 +13,10 @@ function parseSizeMb(size: string): number | null {
   return value;
 }
 
-function getCapabilityTag(identity: string, modelType: 'stt' | 'llm'): string {
+function getCapabilityTag(
+  identity: string,
+  modelType: 'stt' | 'tts' | 'llm',
+): string {
   if (modelType === 'stt') {
     if (identity.includes('parakeet')) return '标点好';
     if (identity.includes('tdrz')) return '分角色';
@@ -24,6 +27,13 @@ function getCapabilityTag(identity: string, modelType: 'stt' | 'llm'): string {
     if (identity.includes('medium')) return '较准';
     if (identity.includes('large')) return '最准';
     return '通用';
+  }
+
+  if (modelType === 'tts') {
+    if (identity.includes('melo')) return '中英';
+    if (identity.includes('moss')) return '20语言';
+    if (identity.includes('kokoro')) return '多音色';
+    return '离线';
   }
 
   if (identity.includes('qwen')) return '中文强';
@@ -39,7 +49,7 @@ function getCapabilityTag(identity: string, modelType: 'stt' | 'llm'): string {
  */
 function getSizeTag(
   sizeMb: number | null,
-  modelType: 'stt' | 'llm',
+  modelType: 'stt' | 'tts' | 'llm',
 ): string | null {
   if (sizeMb === null) return null;
   if (modelType === 'llm') {
@@ -47,6 +57,7 @@ function getSizeTag(
     if (sizeMb < 2400) return '中等';
     return '偏大';
   }
+  if (modelType === 'tts') return null;
   if (sizeMb < 200) return '极小';
   if (sizeMb >= 2500) return '偏大';
   return null;
@@ -58,10 +69,19 @@ function getSizeTag(
  */
 // 保留命名导出，与同目录的 ModelDescription 保持一致。
 // eslint-disable-next-line import/prefer-default-export
-export function getModelTags(model: Model, modelType: 'stt' | 'llm'): string[] {
+export function getModelTags(
+  model: Model,
+  modelType: 'stt' | 'tts' | 'llm',
+): string[] {
   const identity = `${model.id} ${model.name}`.toLowerCase();
   const capability = getCapabilityTag(identity, modelType);
   const tags = [capability];
+
+  if (modelType === 'tts') {
+    if (identity.includes('moss')) tags.push('实验性');
+    else if (identity.includes('kokoro')) tags.push('稳定');
+    return tags;
+  }
 
   const sizeTag = getSizeTag(parseSizeMb(model.size), modelType);
   if (sizeTag) tags.push(sizeTag);

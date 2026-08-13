@@ -1,6 +1,6 @@
 import { TTSAudioResult } from '../../main/tts/TTSService';
 
-/** 把主进程返回的单声道 PCM 样本交给 Web Audio 播放。 */
+/** 把主进程返回的 1–2 声道 PCM 样本交给 Web Audio 完整播放。 */
 export default class TTSAudioPlayer {
   private context: AudioContext | null = null;
 
@@ -9,9 +9,23 @@ export default class TTSAudioPlayer {
   public async play(audio: TTSAudioResult, onEnded: () => void): Promise<void> {
     this.stop();
     const context = new AudioContext();
-    const samples = Float32Array.from(audio.samples);
-    const buffer = context.createBuffer(1, samples.length, audio.sampleRate);
-    buffer.copyToChannel(samples, 0);
+    const channels = audio.channelData.map((channel) =>
+      Float32Array.from(channel),
+    );
+    if (
+      channels.length < 1 ||
+      channels.length > 2 ||
+      channels.some((channel) => channel.length !== channels[0].length)
+    ) {
+      await context.close();
+      throw new Error('TTS 音频声道数据无效');
+    }
+    const buffer = context.createBuffer(
+      channels.length,
+      channels[0].length,
+      audio.sampleRate,
+    );
+    channels.forEach((samples, index) => buffer.copyToChannel(samples, index));
     const source = context.createBufferSource();
     source.buffer = buffer;
     source.connect(context.destination);

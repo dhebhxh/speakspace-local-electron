@@ -30,6 +30,19 @@ export function getModelDescription(model: Model, modelType: string): string {
     return '本地语音识别模型，录音无需离开当前设备。';
   }
 
+  if (modelType === 'tts') {
+    if (identity.includes('melo')) {
+      return '中英双语单音色模型，体积和速度最均衡，建议优先使用。';
+    }
+    if (identity.includes('moss')) {
+      return '支持 20 种语言和 18 个官方音色，保留 48 kHz 双声道，占用较高。';
+    }
+    if (identity.includes('kokoro')) {
+      return '成熟的多语言、多音色本地模型，适合需要不同声线的场景。';
+    }
+    return '本地文字转语音模型。';
+  }
+
   if (identity.includes('qwen')) {
     return '中文和多语言表现均衡，适合总结、问答和内容整理。';
   }

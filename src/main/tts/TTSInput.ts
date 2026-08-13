@@ -1,17 +1,18 @@
-import { getTTSSpeakers } from './TTSVoices';
+import { TTSSpeaker } from './TTSRuntimeTypes';
 
 const MAX_TTS_CHARACTERS = 4_000;
 
 export type NormalizedTTSInput = {
   text: string;
-  speakerId: number;
+  speakerId: string;
   speed: number;
 };
 
-/** Renderer 输入先限长、限音色和限速，再进入原生合成模块。 */
+/** Renderer 输入先限长、限当前模型音色和限速，再进入本地合成引擎。 */
 export function normalizeTTSInput(
   rawText: unknown,
   rawOptions: unknown,
+  speakers: TTSSpeaker[],
 ): NormalizedTTSInput {
   const text = typeof rawText === 'string' ? rawText.trim() : '';
   if (!text) throw new Error('待播报文字不能为空 / TTS text is required');
@@ -21,13 +22,16 @@ export function normalizeTTSInput(
 
   const options =
     typeof rawOptions === 'object' && rawOptions !== null ? rawOptions : {};
-  const candidateId =
-    'speakerId' in options ? Number(options.speakerId) : undefined;
-  const defaultSpeaker = getTTSSpeakers().find((speaker) => speaker.isDefault);
-  const speakerId = Number.isInteger(candidateId)
-    ? (candidateId as number)
-    : (defaultSpeaker?.id ?? 0);
-  if (!getTTSSpeakers().some((speaker) => speaker.id === speakerId)) {
+  const requestedSpeakerId =
+    'speakerId' in options &&
+    (typeof options.speakerId === 'string' ||
+      typeof options.speakerId === 'number')
+      ? String(options.speakerId)
+      : null;
+  const defaultSpeaker =
+    speakers.find((speaker) => speaker.isDefault) ?? speakers[0];
+  const speakerId = requestedSpeakerId ?? defaultSpeaker?.id;
+  if (!speakerId || !speakers.some((speaker) => speaker.id === speakerId)) {
     throw new Error('无效的 TTS 音色 / Invalid TTS speaker');
   }
 

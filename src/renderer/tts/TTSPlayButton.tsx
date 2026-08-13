@@ -1,24 +1,20 @@
-import { getTTSSpeakers } from '../../main/tts/TTSVoices';
-import { getPreferredSpeakerId } from './TTSPreferences';
 import toSpeechText from './TTSContent';
 import useTTSPlayback from './useTTSPlayback';
 import './TTSPlayButton.css';
 
-const iconProps = {
-  width: 16,
-  height: 16,
-  viewBox: '0 0 24 24',
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 2,
-  strokeLinecap: 'round' as const,
-  strokeLinejoin: 'round' as const,
-  'aria-hidden': true,
-};
-
 function SpeakerIcon() {
   return (
-    <svg {...iconProps}>
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="16"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+      width="16"
+    >
       <path d="M11 5 6 9H2v6h4l5 4V5Z" />
       <path d="M15.5 8.5a5 5 0 0 1 0 7" />
       <path d="M18.5 5.5a9 9 0 0 1 0 13" />
@@ -28,7 +24,17 @@ function SpeakerIcon() {
 
 function StopIcon() {
   return (
-    <svg {...iconProps}>
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="16"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+      width="16"
+    >
       <rect x="6" y="6" width="12" height="12" rx="2" />
     </svg>
   );
@@ -38,8 +44,7 @@ function StopIcon() {
 export default function TTSPlayButton({ text }: { text: string }) {
   const playback = useTTSPlayback();
   const play = () => {
-    const speakers = getTTSSpeakers();
-    playback.speak(toSpeechText(text), getPreferredSpeakerId(speakers));
+    playback.speak(toSpeechText(text));
   };
 
   return (

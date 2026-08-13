@@ -20,7 +20,7 @@ function describeSource(location: string): string {
 
 /**
  * 按模块整理运行时依赖：每项给出是否就绪、来源说明，以及可用的安装 / 卸载操作。
- * 随应用打包的原生模块（sherpa-onnx-node）只读展示，不提供安装和卸载。
+ * 随应用打包的原生模块只读展示，不提供安装和卸载。
  */
 // 保留命名导出，与同目录其他辅助模块一致。
 // eslint-disable-next-line import/prefer-default-export
@@ -81,18 +81,16 @@ export function buildModuleRuntimes(
         onUninstall: null,
       },
     ],
-    tts: [
-      {
-        key: 'sherpa-tts',
-        name: 'sherpa-onnx',
-        present: speech.packageInstalled,
-        hint: `语音合成依赖 · 随应用打包${
-          speech.packageVersion ? ` · ${speech.packageVersion}` : ''
-        }`,
-        onInstall: null,
-        onUninstall: null,
-      },
-    ],
+    tts: speech.runtimes.map((dependency) => ({
+      key: `tts:${dependency.id}`,
+      name: dependency.name,
+      present: dependency.installed,
+      hint: `TTS 推理依赖 · 随应用打包${
+        dependency.version ? ` · ${dependency.version}` : ''
+      }`,
+      onInstall: null,
+      onUninstall: null,
+    })),
     embedding: [
       {
         key: 'ollama-embedding',

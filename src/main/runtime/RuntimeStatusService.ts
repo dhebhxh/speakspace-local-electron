@@ -82,18 +82,17 @@ export class RuntimeStatusService {
   private static getTTSComponentStatus(
     status: TTSRuntimeStatus,
   ): RuntimeComponentStatus {
-    const installedModelCount = status.modelReady ? 1 : 0;
+    const { installedModelCount } = status;
     const hasPartialState =
-      status.packageInstalled ||
-      status.manifestPresent ||
-      status.missingFiles.length < 6;
+      status.runtimes.some((runtime) => runtime.installed) ||
+      installedModelCount > 0;
     let managedState: ManagedRuntimeState = 'missing';
     if (hasPartialState) managedState = 'partial';
     if (status.runtimeReady) managedState = 'ready';
     return {
       kind: 'tts',
       managedState,
-      runtimePresent: status.packageInstalled,
+      runtimePresent: status.runtimes.some((runtime) => runtime.installed),
       manifestPresent: status.manifestPresent,
       installedModelCount,
     };

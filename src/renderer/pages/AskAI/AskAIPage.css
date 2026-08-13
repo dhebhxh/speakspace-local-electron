@@ -77,8 +77,10 @@
 }
 
 .ask-ai-note-list {
-  display: grid;
-  /* ä¹‹å?æ²¡æ? flex-growï¼Œå?è¡¨ä?ä¼šæ?æ»¡å‰©ä½™é?åº¦ï?çª—å£ä¸€å°å°±è¢«å???*/
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  /* ä¹‹ï¿½?æ²¡ï¿½? flex-growï¼Œï¿½?è¡¨ï¿½?ä¼šï¿½?æ»¡å‰©ä½™ï¿½?åº¦ï¿½?çª—å£ä¸€å°å°±è¢«ï¿½???*/
   flex: 1 1 auto;
   align-content: start;
   gap: 0.4rem;
@@ -88,7 +90,7 @@
   overflow-y: auto;
 }
 
-/* ?ªä??¨ä??—è¡¨?¡ç›®?¬èº«ï¼šç”¨å­é€‰æ‹©?¨ï??¿å?è¯¯ä¼¤?‡é?è¡Œé???ï¼??‰é’® */
+/* ?ï¿½ï¿½??ï¿½ï¿½??ï¿½è¡¨?ï¿½ç›®?ï¿½èº«ï¼šç”¨å­é€‰æ‹©?ï¿½ï¿½??ï¿½ï¿½?è¯¯ä¼¤?ï¿½ï¿½?è¡Œï¿½???ï¿½??ï¿½é’® */
   .ask-ai-note-list > button,
   .ask-ai-note-group > button,
   .ask-ai-recents-list > button {
@@ -115,7 +117,7 @@
   transform: none;
 }
 
-/* ç¬”è®°åº“æ?å·¥ä??ºå?ç»„ï?display:contents è®©ç??…ç?è®°ä??’åœ¨å¤–å??…æ ¼ä¸?*/
+/* ç¬”è®°åº“ï¿½?å·¥ï¿½??ï¿½ï¿½?ç»„ï¿½?display:contents è®©ï¿½??ï¿½ï¿½?è®°ï¿½??ï¿½åœ¨å¤–ï¿½??ï¿½æ ¼ï¿½?*/
 .ask-ai-note-group {
   display: contents;
 }
@@ -138,7 +140,7 @@
   background: var(--surface-soft);
 }
 
-/* å·¥ä??ºå?ç§°å¯?´å??–åˆ°è¾“å…¥æ¡†ï?ç»™ä¸ª?“å??‰æ??šæ?ç¤ºã€?*/
+/* å·¥ï¿½??ï¿½ï¿½?ç§°å¯?ï¿½ï¿½??ï¿½åˆ°è¾“å…¥æ¡†ï¿½?ç»™ä¸ª?ï¿½ï¿½??ï¿½ï¿½??ï¿½ï¿½?ç¤ºï¿½?*/
 .ask-ai-group-name {
   cursor: grab;
 }
@@ -148,8 +150,8 @@
 }
 
 /*
- * ?°å??‰é’®é»˜è®¤?è?ï¼Œæ‚¬?œå¯¹åº”é‚£ä¸€è¡Œæ??ºçŽ°?? * ?¨ä¸¤çº§ç±»?ä¹¦?™ï??Œçº§å®¹å™¨?Œå???`.xxx button` è¿™ç±»?Žä»£?‰æ‹©?¨ï?
- * ä¼˜å?çº?(0,1,1) ä¼šå?è¿‡å?ä¸ªç±»?ï??Šè??Œç?å°ºå¯¸?Œå?è¾¹è?é¡¶æ??? */
+ * ?ï¿½ï¿½??ï¿½é’®é»˜è®¤?ï¿½ï¿½?ï¼Œæ‚¬?ï¿½å¯¹åº”é‚£ä¸€è¡Œï¿½??ï¿½çŽ°?? * ?ï¿½ä¸¤çº§ç±»?ï¿½ä¹¦?ï¿½ï¿½??ï¿½çº§å®¹å™¨?ï¿½ï¿½???`.xxx button` è¿™ç±»?ï¿½ä»£?ï¿½æ‹©?ï¿½ï¿½?
+ * ä¼˜ï¿½?ï¿½?(0,1,1) ä¼šï¿½?è¿‡ï¿½?ä¸ªç±»?ï¿½ï¿½??ï¿½ï¿½??ï¿½ï¿½?å°ºå¯¸?ï¿½ï¿½?è¾¹ï¿½?é¡¶ï¿½??? */
 .ask-ai-note-group h3 .ask-ai-group-add,
 .ask-ai-recents-header .ask-ai-group-add {
   display: inline-flex;
@@ -227,7 +229,7 @@
   letter-spacing: 0.08em;
 }
 
-/* ä¸­æ?æ²¡æ?è¯è¾¹?Œï??¯æ”¶ç¼©ç? flex é¡¹ä?è¢«å??°ä?ä¸ªå?å®½è€Œç??’ï?è¿™é?ç¦æ­¢?¶ç¼©?¢è? */
+/* ä¸­ï¿½?æ²¡ï¿½?è¯è¾¹?ï¿½ï¿½??ï¿½æ”¶ç¼©ï¿½? flex é¡¹ï¿½?è¢«ï¿½??ï¿½ï¿½?ä¸ªï¿½?å®½è€Œï¿½??ï¿½ï¿½?è¿™ï¿½?ç¦æ­¢?ï¿½ç¼©?ï¿½ï¿½? */
 .ask-ai-recents-header > span,
 .ask-ai-note-group h3 > span {
   flex: 1 1 auto;
@@ -242,8 +244,9 @@
 }
 
 .ask-ai-recents-list {
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 0.25rem;
   min-height: 0;
   overflow-x: hidden;
@@ -303,7 +306,7 @@
   white-space: nowrap;
 }
 
-/* é¢„è??†æ??Œæ?è¦ã€å??Œå??‡è½¬å½•ã€ä¸¤æ®µï??„è‡ªå¸¦å??‡é???*/
+/* é¢„ï¿½??ï¿½ï¿½??ï¿½ï¿½?è¦ã€ï¿½??ï¿½ï¿½??ï¿½è½¬å½•ã€ä¸¤æ®µï¿½??ï¿½è‡ªå¸¦ï¿½??ï¿½ï¿½???*/
 .ask-ai-note-section {
   margin-top: 1.1rem;
 }
@@ -384,4 +387,16 @@
   .ask-ai-content {
     grid-template-rows: minmax(160px, auto) minmax(460px, auto);
   }
+}
+
+.ask-ai-recents-list > button {
+  flex-shrink: 0;
+}
+
+.ask-ai-note-list > button {
+  flex-shrink: 0;
+}
+
+.ask-ai-note-list > button, .ask-ai-note-group > button {
+  flex-shrink: 0;
 }

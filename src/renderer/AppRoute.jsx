@@ -9,19 +9,19 @@ import StudioPage from './pages/Studio/StudioPage';
 import WorkflowPage from './pages/Workflow/WorkflowPage';
 import AgentPage from './pages/Agent/AgentPage';
 import { RoutePath } from './router/RouteManager';
-import './SystemPolish.css';
+
 
 export default function AppRoute() {
   return (
     <Routes>
       <Route element={<MainLayout />}>
-        {/* 首頁改為實時轉錄 (StudioPage) */}
+        {/* 首�??�為實�?轉�? (StudioPage) */}
         <Route path="/" element={<StudioPage />} />
         
-        {/* 相容原本的 /Transcription，若有人跳轉過來就正常顯示 */}
+        {/* ?�容?�本??/Transcription，若?�人跳�??��?就正常顯�?*/}
         <Route path="/Transcription" element={<StudioPage />} />
 
-        {/* 相容舊版 /AIChat 路由 */}
+        {/* ?�容?��? /AIChat 路由 */}
         <Route path="/AIChat" element={<Navigate to="/" replace />} />
         
         <Route path="/Agent" element={<AgentPage />} />

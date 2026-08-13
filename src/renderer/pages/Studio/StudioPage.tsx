@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import useAskAIPage from '../AskAI/useAskAIPage';
 import AskAINotesPanel from '../AskAI/components/AskAINotesPanel';
 import AskAINotePreview from '../AskAI/components/AskAINotePreview';
@@ -41,11 +42,14 @@ function buildTranscriptText(
     .trim();
 }
 
-function defaultNoteName(uploadedFileName: string | null): string {
+function defaultNoteName(
+  uploadedFileName: string | null,
+  locale: string,
+): string {
   if (uploadedFileName) {
     return uploadedFileName.replace(/\.[^.]+$/u, '').slice(0, 80);
   }
-  return `Recording ${new Intl.DateTimeFormat('zh-CN', {
+  return `Recording ${new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -54,15 +58,26 @@ function defaultNoteName(uploadedFileName: string | null): string {
   }).format(new Date())}`;
 }
 
+function afterNextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.setTimeout(resolve, 0);
+    });
+  });
+}
+
 /**
  * 对话工作台：以 AI 对话为主，把录音 / 上传 / 转录 / 保存深度整合进输入框。
  * 录音结束弹出复核窗口，保存为笔记后自动把该笔记挂到当前对话上。
  */
 export default function StudioPage() {
+  const { t, i18n } = useTranslation();
   const page = useAskAIPage();
   const [engine, setEngine] = useState<Engine>(createEngine);
   const snapshot = useRecordingSession(engine.session);
-  const transcriptionSnapshot = useTranscriptionController(engine.transcription);
+  const transcriptionSnapshot = useTranscriptionController(
+    engine.transcription,
+  );
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -71,11 +86,13 @@ export default function StudioPage() {
     summaries: string[];
     fileMode: boolean;
   }>({ raw: '', summaries: [], fileMode: false });
+  const [reviewProcessing, setReviewProcessing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [recordError, setRecordError] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const startedAtRef = useRef<number | null>(null);
+  const stopRequestedRef = useRef(false);
 
   const recordingActive =
     snapshot.state === RecordingState.Recording ||
@@ -107,21 +124,27 @@ export default function StudioPage() {
   }, [recordingActive]);
 
   const resetEngine = useCallback(() => {
+    stopRequestedRef.current = false;
+    setReviewProcessing(false);
     setEngine(createEngine());
     setElapsedMs(0);
     startedAtRef.current = null;
   }, []);
 
-  const openReviewFromSnapshot = useCallback((fileMode: boolean) => {
-    const latest = engine.transcription.getSnapshot();
-    setReviewData({
-      raw: buildTranscriptText(latest),
-      summaries: latest.liveSummaries.map((summary) => summary.text),
-      fileMode,
-    });
-    setSaveError(null);
-    setReviewOpen(true);
-  }, [engine.transcription]);
+  const openReviewFromSnapshot = useCallback(
+    (fileMode: boolean, processing = false) => {
+      const latest = engine.transcription.getSnapshot();
+      setReviewData({
+        raw: buildTranscriptText(latest),
+        summaries: latest.liveSummaries.map((summary) => summary.text),
+        fileMode,
+      });
+      setReviewProcessing(processing);
+      setSaveError(null);
+      setReviewOpen(true);
+    },
+    [engine.transcription],
+  );
 
   const startRecording = useCallback(() => {
     setRecordError(null);
@@ -131,23 +154,59 @@ export default function StudioPage() {
   }, [engine]);
 
   const stopRecording = useCallback(async () => {
+    if (stopRequestedRef.current || !recordingActive) return;
+    stopRequestedRef.current = true;
+    openReviewFromSnapshot(false, true);
+
     try {
+      await afterNextPaint();
       await engine.session.stop();
       await engine.transcription.finalizeLiveSummary();
-      openReviewFromSnapshot(false);
     } catch (reason) {
       setRecordError(
-        reason instanceof Error ? reason.message : '录音结束失败',
+        reason instanceof Error ? reason.message : t('studio.error.stop'),
       );
+    } finally {
+      stopRequestedRef.current = false;
+      setReviewProcessing(false);
     }
-  }, [engine, openReviewFromSnapshot]);
+  }, [engine, openReviewFromSnapshot, recordingActive, t]);
+
+  // The review dialog stays mounted while the final audio chunk and summary
+  // arrive, so users see progressive results instead of a second late screen.
+  useEffect(() => {
+    if (!reviewOpen) return;
+    const latest = engine.transcription.getSnapshot();
+    const raw = buildTranscriptText(latest);
+    const summaries = latest.liveSummaries.map((summary) => summary.text);
+    setReviewData((current) => {
+      if (
+        current.raw === raw &&
+        current.summaries.length === summaries.length &&
+        current.summaries.every(
+          (summary, index) => summary === summaries[index],
+        )
+      ) {
+        return current;
+      }
+      return { ...current, raw, summaries };
+    });
+  }, [
+    engine.transcription,
+    reviewOpen,
+    transcriptionSnapshot.job?.result?.text,
+    transcriptionSnapshot.liveSegments,
+    transcriptionSnapshot.liveSummaries,
+  ]);
 
   const uploadAudio = useCallback(() => {
     setRecordError(null);
     engine.transcription.pickFileAndStart().catch((reason: unknown) => {
-      setRecordError(reason instanceof Error ? reason.message : '上传失败');
+      setRecordError(
+        reason instanceof Error ? reason.message : t('studio.error.upload'),
+      );
     });
-  }, [engine]);
+  }, [engine, t]);
 
   // 上传文件转录完成后自动弹出复核窗口。
   useEffect(() => {
@@ -168,20 +227,22 @@ export default function StudioPage() {
   ]);
 
   const reRecord = useCallback(async () => {
+    if (reviewProcessing) return;
     setReviewOpen(false);
     setSaveError(null);
     await engine.session.discard().catch(() => undefined);
     setElapsedMs(0);
     engine.transcription.resetLive('microphone');
     engine.session.start().catch(() => undefined);
-  }, [engine]);
+  }, [engine, reviewProcessing]);
 
   const closeReview = useCallback(() => {
+    if (reviewProcessing) return;
     setReviewOpen(false);
     setSaveError(null);
     // 重置录音引擎：丢弃本次未保存的录音/上传，避免已完成的任务再次触发复核窗。
     resetEngine();
-  }, [resetEngine]);
+  }, [resetEngine, reviewProcessing]);
 
   const saveAsNote = useCallback(
     async (selection: WorkspaceSaveSelection) => {
@@ -190,7 +251,7 @@ export default function StudioPage() {
       const transcript = buildTranscriptText(latest);
       const summaries = latest.liveSummaries.map((summary) => summary.text);
       if (!transcript) {
-        setSaveError('没有可保存的转录内容 / No transcript to save');
+        setSaveError(t('studio.error.noTranscript'));
         return;
       }
 
@@ -242,15 +303,21 @@ export default function StudioPage() {
             .catch(() => undefined);
         }
         setSaveError(
-          reason instanceof Error
-            ? reason.message
-            : '保存到工作空间失败 / Unable to save',
+          reason instanceof Error ? reason.message : t('studio.error.save'),
         );
       } finally {
         setSaving(false);
       }
     },
-    [engine, page, reviewData.fileMode, snapshot.savedRecording, snapshot.state, resetEngine],
+    [
+      engine,
+      page,
+      reviewData.fileMode,
+      snapshot.savedRecording,
+      snapshot.state,
+      resetEngine,
+      t,
+    ],
   );
 
   const recording = useMemo(
@@ -311,12 +378,12 @@ export default function StudioPage() {
         <RecordingReviewDialog
           open={reviewOpen}
           defaultNoteName={defaultNoteName(
-            reviewData.fileMode
-              ? transcriptionSnapshot.uploadedFileName
-              : null,
+            reviewData.fileMode ? transcriptionSnapshot.uploadedFileName : null,
+            i18n.resolvedLanguage,
           )}
           rawTranscript={reviewData.raw}
           summaries={reviewData.summaries}
+          processing={reviewProcessing}
           saving={saving}
           error={saveError}
           onSave={saveAsNote}

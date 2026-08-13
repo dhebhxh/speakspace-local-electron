@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import { AgentEvent } from '../../../main/agent/AgentTypes';
 import { AgentPageState } from './AgentPageTypes';
 
@@ -6,6 +7,7 @@ export default function reduceAgentPageEvent(
   current: AgentPageState,
   event: AgentEvent,
   instruction: string,
+  t: TFunction,
 ): AgentPageState {
   if (event.type === 'step') {
     return {
@@ -14,7 +16,10 @@ export default function reduceAgentPageEvent(
         ...current.steps,
         { id: `${event.runId}-${current.steps.length}`, step: event.step },
       ],
-      status: event.step.type === 'final' ? '任务已完成' : '正在使用本地工具…',
+      status:
+        event.step.type === 'final'
+          ? t('agent.status.completed')
+          : t('agent.status.usingTools'),
     };
   }
   if (event.type === 'completed') {
@@ -30,16 +35,18 @@ export default function reduceAgentPageEvent(
         },
       ],
       running: false,
-      status: event.result.completed ? '任务已完成' : '任务已在安全上限停止',
+      status: event.result.completed
+        ? t('agent.status.completed')
+        : t('agent.status.safetyStop'),
     };
   }
   if (event.type === 'cancelled') {
-    return { ...current, running: false, status: '任务已取消' };
+    return { ...current, running: false, status: t('agent.status.cancelled') };
   }
   return {
     ...current,
     running: false,
     error: event.message,
-    status: '任务失败',
+    status: t('agent.status.failed'),
   };
 }

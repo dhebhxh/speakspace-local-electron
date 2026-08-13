@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { NoteItem } from '../WorkspaceController';
 import { WorkspaceTemplate } from '../WorkspaceWorkflowController';
@@ -18,6 +19,7 @@ export default function KnowledgeOutputPanel({
   generating,
   onGenerate,
 }: Props) {
+  const { t } = useTranslation();
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? 0);
 
   useEffect(() => {
@@ -33,11 +35,11 @@ export default function KnowledgeOutputPanel({
   return (
     <section className="workspace-knowledge-section">
       <div className="workspace-section-heading">
-        <h3>AI 知识输出</h3>
+        <h3>{t('workspace.knowledge.title')}</h3>
         {templates.length > 0 ? (
           <div className="workspace-generate-controls">
             <select
-              aria-label="知识模板"
+              aria-label={t('workspace.knowledge.template')}
               disabled={generating}
               onChange={(event) => setTemplateId(Number(event.target.value))}
               value={templateId}
@@ -53,16 +55,20 @@ export default function KnowledgeOutputPanel({
               onClick={generate}
               type="button"
             >
-              {generating ? '生成中…' : '生成内容'}
+              {generating
+                ? t('workspace.knowledge.generating')
+                : t('workspace.knowledge.generate')}
             </button>
           </div>
         ) : (
-          <Link to="/Workflow">先创建模板</Link>
+          <Link to="/Workflow">{t('workspace.knowledge.createTemplate')}</Link>
         )}
       </div>
 
       {note.knowledge_outputs.length === 0 ? (
-        <span className="workspace-content-empty">暂无 AI 输出</span>
+        <span className="workspace-content-empty">
+          {t('workspace.knowledge.empty')}
+        </span>
       ) : (
         <div className="workspace-content-stack">
           {note.knowledge_outputs.map((output) => (

@@ -2,7 +2,7 @@ import { ModelCard } from './ModelCard';
 import { Model } from '../../../../main/AI-module/Model';
 import './ModelSection.css';
 
-// 保留命名导出，避免扩大本次样式调整的调用范围。
+// Keep the named export for existing callers.
 // eslint-disable-next-line import/prefer-default-export
 export function ModelSection({
   title,
@@ -17,26 +17,43 @@ export function ModelSection({
   modelType: string;
   recommendedModelId: string | undefined;
 }) {
-  const description =
-    modelType === 'stt'
-      ? '将录音转换为可搜索、可整理的文字。'
-      : '用于总结、问答及其他 AI 内容处理。';
+  const activeModel = models.find((model) => model.activated);
+  const downloadedCount = models.filter((model) => model.downloaded).length;
 
   return (
     <section className="model-section">
       <header className="model-section-header">
-        <div>
-          <h2>{title}</h2>
-          <p>{description}</p>
+        <div className="model-section-title">
+          <span className="model-section-icon" aria-hidden="true">
+            {modelType === 'stt' ? (
+              <svg viewBox="0 0 24 24">
+                <path d="M5 10v4M9 7v10M13 4v16M17 8v8M21 10v4" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24">
+                <path d="M5 6h14v10H9l-4 3V6Z" />
+                <path d="M8 10h8M8 13h5" />
+              </svg>
+            )}
+          </span>
+          <div>
+            <h3>{title}</h3>
+            <span title={activeModel?.name}>
+              {activeModel ? activeModel.name : '尚未选择'}
+            </span>
+          </div>
         </div>
-        <span>{models.length}</span>
+        <div className="model-section-counts">
+          <span>{downloadedCount} 已下载</span>
+          <strong>{models.length}</strong>
+        </div>
       </header>
 
       {models.length === 0 ? (
         <p className="model-section-empty">暂无可用模型</p>
       ) : (
         <div
-          aria-label={`${title} 模型列表`}
+          aria-label={`${title}模型列表`}
           className="model-card-list"
           role="region"
         >

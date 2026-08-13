@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import { AgentHistoryMessage, AgentStep } from '../../../main/agent/AgentTypes';
 
 export type AgentPageMessage = AgentHistoryMessage & { id: string };
@@ -11,10 +12,10 @@ export type AgentPageState = {
   status: string;
 };
 
-export const EMPTY_AGENT_PAGE_STATE: AgentPageState = {
+export const createEmptyAgentPageState = (t: TFunction): AgentPageState => ({
   history: [],
   steps: [],
   running: false,
   error: '',
-  status: '选择工作空间后，可以让助理查找和读取本地笔记。',
-};
+  status: t('agent.status.initial'),
+});

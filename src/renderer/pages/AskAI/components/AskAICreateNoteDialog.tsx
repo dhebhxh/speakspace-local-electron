@@ -1,4 +1,5 @@
 import { FormEvent, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type AskAICreateNoteDialogProps = {
   onClose: () => void;
@@ -9,6 +10,7 @@ export default function AskAICreateNoteDialog({
   onClose,
   onCreate,
 }: AskAICreateNoteDialogProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [transcript, setTranscript] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -28,40 +30,46 @@ export default function AskAICreateNoteDialog({
       <form className="ask-ai-dialog" onSubmit={handleSubmit}>
         <header>
           <div>
-            <span>笔记库</span>
-            <h2>新增笔记</h2>
+            <span>{t('studio.library.title')}</span>
+            <h2>{t('studio.createNote.title')}</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="关闭">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('studio.createNote.close')}
+          >
             ×
           </button>
         </header>
 
         <label htmlFor="ask-ai-note-name">
-          标题
+          {t('studio.createNote.name')}
           <input
             id="ask-ai-note-name"
             value={name}
-            placeholder="例如：项目会议"
+            placeholder={t('workspace.home.create.placeholder')}
             onChange={(event) => setName(event.target.value)}
           />
         </label>
 
         <label htmlFor="ask-ai-note-transcript">
-          笔记内容
+          {t('studio.createNote.content')}
           <textarea
             id="ask-ai-note-transcript"
             value={transcript}
-            placeholder="粘贴或输入要供本地模型参考的文字…"
+            placeholder={t('studio.createNote.contentPlaceholder')}
             onChange={(event) => setTranscript(event.target.value)}
           />
         </label>
 
         <footer>
           <button type="button" className="secondary" onClick={onClose}>
-            取消
+            {t('studio.createNote.cancel')}
           </button>
           <button type="submit" disabled={!transcript.trim() || isSaving}>
-            {isSaving ? '保存中…' : '保存笔记'}
+            {isSaving
+              ? t('studio.createNote.saving')
+              : t('studio.createNote.save')}
           </button>
         </footer>
       </form>

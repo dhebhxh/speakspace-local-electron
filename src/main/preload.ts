@@ -208,6 +208,9 @@ const electronHandler = {
     installTTS() {
       return ipcRenderer.invoke('Runtime:installTTS');
     },
+    removeTTS() {
+      return ipcRenderer.invoke('Runtime:removeTTS');
+    },
     installFfmpeg() {
       return ipcRenderer.invoke('Runtime:installFfmpeg');
     },
@@ -278,6 +281,9 @@ const electronHandler = {
     },
     installModel() {
       return ipcRenderer.invoke('Semantic:installModel');
+    },
+    removeModel() {
+      return ipcRenderer.invoke('Semantic:removeModel');
     },
     search(query: string, workspaceId?: number | null, topK = 5) {
       return ipcRenderer.invoke('Semantic:search', query, workspaceId, topK);
@@ -377,7 +383,7 @@ const electronHandler = {
       return ipcRenderer.invoke('Workspace:delete', id);
     },
   },
-  
+
   // Export functionality
   export: {
     note(request: {

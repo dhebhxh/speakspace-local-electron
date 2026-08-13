@@ -1,6 +1,9 @@
 .studio-page {
   display: grid;
-  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) minmax(250px, 330px);
+  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) minmax(
+      250px,
+      330px
+    );
   height: calc(100vh - 5rem);
   min-height: 560px;
   overflow: hidden;
@@ -275,6 +278,47 @@
   border-radius: 50%;
   background: var(--surface-soft);
   font-size: 1.3rem;
+}
+
+.studio-review-processing {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.72rem 0.85rem;
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface-soft));
+}
+
+.studio-review-processing > div {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.studio-review-processing strong {
+  font-size: 0.82rem;
+}
+
+.studio-review-processing span:not(.studio-review-processing__spinner) {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.studio-review-processing__spinner {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 2px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: studio-review-spin 0.8s linear infinite;
+}
+
+@keyframes studio-review-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .studio-review-texts {

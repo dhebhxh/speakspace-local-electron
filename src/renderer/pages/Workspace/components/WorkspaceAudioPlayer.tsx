@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NoteItem, WorkspaceController } from '../WorkspaceController';
 
 export default function WorkspaceAudioPlayer({
@@ -8,6 +9,7 @@ export default function WorkspaceAudioPlayer({
   workspaceId: number;
   note: NoteItem;
 }) {
+  const { t } = useTranslation();
   const [audioUrl, setAudioUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,7 +23,11 @@ export default function WorkspaceAudioPlayer({
   );
 
   if (!note.audio_relative_path) {
-    return <span className="workspace-content-empty">没有关联录音</span>;
+    return (
+      <span className="workspace-content-empty">
+        {t('workspace.audio.empty')}
+      </span>
+    );
   }
 
   const loadAudio = async () => {
@@ -30,7 +36,7 @@ export default function WorkspaceAudioPlayer({
       setError('');
       const audio = await controller.getNoteAudio(workspaceId, note.id);
       if (!audio) {
-        setError('录音文件不存在或已经移动');
+        setError(t('workspace.audio.missing'));
         return;
       }
       const bytes = new Uint8Array(audio.bytes);
@@ -42,7 +48,9 @@ export default function WorkspaceAudioPlayer({
         URL.createObjectURL(new Blob([data], { type: audio.mime_type })),
       );
     } catch (reason) {
-      setError(WorkspaceController.getErrorMessage(reason, '读取录音失败'));
+      setError(
+        WorkspaceController.getErrorMessage(reason, t('workspace.audio.error')),
+      );
     } finally {
       setLoading(false);
     }
@@ -64,7 +72,7 @@ export default function WorkspaceAudioPlayer({
   return (
     <div className="workspace-audio-loader">
       <button disabled={loading} onClick={loadAudio} type="button">
-        {loading ? '读取中…' : '加载录音'}
+        {loading ? t('workspace.audio.loading') : t('workspace.audio.load')}
       </button>
       <small>{error || note.audio_relative_path}</small>
     </div>

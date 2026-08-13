@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AgentEvent } from '../../../main/agent/AgentTypes';
 import { WorkspaceItem } from '../Workspace/WorkspaceController';
 import AgentController from './AgentController';
 import reduceAgentPageEvent from './AgentPageEventReducer';
-import { AgentPageState, EMPTY_AGENT_PAGE_STATE } from './AgentPageTypes';
+import { AgentPageState, createEmptyAgentPageState } from './AgentPageTypes';
 
 const controller = new AgentController();
 
 /** 保留本页会话历史；关闭应用后不会额外持久化 Agent 运行记录。 */
 export default function useAgentPage() {
+  const { t } = useTranslation();
   const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
   const [workspaceId, setWorkspaceId] = useState<number | null>(null);
-  const [page, setPage] = useState<AgentPageState>(EMPTY_AGENT_PAGE_STATE);
+  const [page, setPage] = useState<AgentPageState>(() =>
+    createEmptyAgentPageState(t),
+  );
   const activeRunId = useRef<string | null>(null);
   const pendingInstruction = useRef('');
 
@@ -26,18 +30,24 @@ export default function useAgentPage() {
       .catch((reason) =>
         setPage((current) => ({
           ...current,
-          error: reason instanceof Error ? reason.message : '读取工作空间失败',
+          error:
+            reason instanceof Error
+              ? reason.message
+              : t('workspace.error.load'),
         })),
       );
-  }, []);
+  }, [t]);
 
-  const handleEvent = useCallback((event: AgentEvent) => {
-    if (event.runId !== activeRunId.current) return;
-    setPage((current) =>
-      reduceAgentPageEvent(current, event, pendingInstruction.current),
-    );
-    if (event.type !== 'step') activeRunId.current = null;
-  }, []);
+  const handleEvent = useCallback(
+    (event: AgentEvent) => {
+      if (event.runId !== activeRunId.current) return;
+      setPage((current) =>
+        reduceAgentPageEvent(current, event, pendingInstruction.current, t),
+      );
+      if (event.type !== 'step') activeRunId.current = null;
+    },
+    [t],
+  );
 
   useEffect(() => controller.onEvent(handleEvent), [handleEvent]);
 
@@ -51,7 +61,7 @@ export default function useAgentPage() {
         steps: [],
         running: true,
         error: '',
-        status: '正在启动本地 Agent…',
+        status: t('agent.status.starting'),
       }));
       const started = await controller.start({
         instruction: cleanInstruction,
@@ -63,7 +73,8 @@ export default function useAgentPage() {
       setPage((current) => ({
         ...current,
         running: false,
-        error: reason instanceof Error ? reason.message : '启动 Agent 失败',
+        error:
+          reason instanceof Error ? reason.message : t('agent.error.start'),
       }));
     }
   };
@@ -74,7 +85,7 @@ export default function useAgentPage() {
 
   const selectWorkspace = (nextWorkspaceId: number) => {
     setWorkspaceId(nextWorkspaceId);
-    setPage(EMPTY_AGENT_PAGE_STATE);
+    setPage(createEmptyAgentPageState(t));
     activeRunId.current = null;
     pendingInstruction.current = '';
   };

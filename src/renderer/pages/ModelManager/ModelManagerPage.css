@@ -1,5 +1,5 @@
 .model-manager-page {
-  width: min(1120px, 100%);
+  width: min(1040px, 100%);
   min-height: calc(100vh - 5rem);
   margin: 0 auto;
   padding-bottom: 1rem;
@@ -7,55 +7,71 @@
 
 .model-manager-header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  padding: 1.75rem 1.9rem;
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent) 15%, var(--surface-strong)),
-    var(--surface)
-  );
-  box-shadow: var(--shadow);
+  padding: 0.35rem 0.15rem 1.1rem;
 }
 
 .model-manager-eyebrow {
   color: var(--accent);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.17em;
 }
 
 .model-manager-header h1 {
-  margin: 0.28rem 0 0.3rem;
-  font-size: clamp(1.9rem, 3.5vw, 2.8rem);
+  margin: 0.2rem 0 0;
+  font-size: clamp(1.8rem, 3vw, 2.35rem);
   letter-spacing: -0.04em;
 }
 
-.model-manager-header p { margin: 0; }
-
-.model-manager-summary {
-  flex: none;
-  padding: 0.55rem 0.8rem;
+.model-manager-local-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.65rem;
   color: var(--muted);
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface-soft);
-  font-size: 0.72rem;
+  font-size: 0.62rem;
 }
 
-.model-manager-content {
+.model-manager-local-badge::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  content: '';
+}
+
+.model-manager-error {
+  margin: 0 0 0.8rem;
+  padding: 0.7rem 0.85rem;
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.08);
+  font-size: 0.68rem;
+}
+
+.model-module-grid {
   display: grid;
-  gap: 1rem;
-  margin-top: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 780px) {
+  .model-module-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
   .model-manager-header {
     align-items: flex-start;
     flex-direction: column;
-    padding: 1.35rem;
+    gap: 0.7rem;
   }
 }

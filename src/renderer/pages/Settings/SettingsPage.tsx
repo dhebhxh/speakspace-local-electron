@@ -6,6 +6,7 @@ import FontSizeSettingsPanel from './components/FontSizeSettingsPanel';
 import LanguageSettingsPanel from './components/LanguageSettingsPanel';
 import OnboardingSettingsPanel from './components/OnboardingSettingsPanel';
 import ThemeSettingsPanel from './components/ThemeSettingsPanel';
+import AppIcon, { AppIconName } from '../../components/AppIcon';
 import './SettingsPage.css';
 
 type CategoryId = 'appearance' | 'language' | 'guide';
@@ -14,25 +15,25 @@ const CATEGORIES: Array<{
   id: CategoryId;
   labelKey: string;
   descKey: string;
-  glyph: string;
+  icon: AppIconName;
 }> = [
   {
     id: 'appearance',
     labelKey: 'settings.category.appearance',
     descKey: 'settings.category.appearance.desc',
-    glyph: '◐',
+    icon: 'appearance',
   },
   {
     id: 'language',
     labelKey: 'settings.category.language',
     descKey: 'settings.category.language.desc',
-    glyph: '文',
+    icon: 'language',
   },
   {
     id: 'guide',
     labelKey: 'settings.category.guide',
     descKey: 'settings.category.guide.desc',
-    glyph: '?',
+    icon: 'guide',
   },
 ];
 
@@ -70,7 +71,6 @@ export default function SettingsPage() {
     <section className="settings-page">
       <header className="settings-header">
         <div>
-          <span className="settings-eyebrow">SETTINGS</span>
           <h1>{t('settings.title')}</h1>
           <p>{t('settings.subtitle')}</p>
         </div>
@@ -101,7 +101,7 @@ export default function SettingsPage() {
               onClick={() => setActiveCategory(category.id)}
             >
               <span className="settings-nav-glyph" aria-hidden="true">
-                {category.glyph}
+                <AppIcon name={category.icon} size={18} />
               </span>
               <span>
                 <strong>{t(category.labelKey)}</strong>

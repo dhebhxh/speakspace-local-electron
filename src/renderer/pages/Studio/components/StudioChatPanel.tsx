@@ -1,4 +1,5 @@
 import { FormEvent, KeyboardEvent, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AskAIMessage, AskAINote, AskAIScope } from '../../AskAI/AskAITypes';
 import TTSPlayButton from '../../../tts/TTSPlayButton';
 
@@ -47,6 +48,7 @@ export default function StudioChatPanel({
   onStopRecording,
   onUploadAudio,
 }: StudioChatPanelProps) {
+  const { t } = useTranslation();
   const [question, setQuestion] = useState('');
   const workspaceNoteCount = useMemo(
     () =>
@@ -79,35 +81,43 @@ export default function StudioChatPanel({
     <section className="studio-chat">
       <header className="studio-chat-header">
         <div className="studio-chat-heading">
-          <span>本地问答 · SpeakSpace</span>
-          <h2>{scope === 'note' ? '询问当前笔记' : '询问整个工作区'}</h2>
+          <span>{t('studio.chat.eyebrow')}</span>
+          <h2>
+            {scope === 'note'
+              ? t('studio.chat.title.note')
+              : t('studio.chat.title.workspace')}
+          </h2>
           <p>
             {scope === 'note'
-              ? selectedNote?.name || '录一段音或从左侧选择一条笔记开始'
-              : `${workspaceNoteCount} 条工作区笔记`}
+              ? selectedNote?.name || t('studio.chat.start')
+              : t('studio.chat.workspaceCount', { count: workspaceNoteCount })}
           </p>
         </div>
-        <div className="ask-ai-scope" role="group" aria-label="问答范围">
+        <div
+          className="ask-ai-scope"
+          role="group"
+          aria-label={t('studio.chat.scopeLabel')}
+        >
           <button
             type="button"
             className={scope === 'note' ? 'active' : ''}
             onClick={() => onScopeChange('note')}
           >
-            当前笔记
+            {t('studio.chat.scope.note')}
           </button>
           <button
             type="button"
             className={scope === 'workspace' ? 'active' : ''}
             onClick={() => onScopeChange('workspace')}
           >
-            工作区
+            {t('studio.chat.scope.workspace')}
           </button>
         </div>
       </header>
 
       {sources.length > 0 && (
         <div className="ask-ai-sources">
-          <span>引用</span>
+          <span>{t('studio.chat.sources')}</span>
           {sources.map((source) => (
             <span key={source.id} title={source.transcriptPreview}>
               {source.name}
@@ -119,15 +129,15 @@ export default function StudioChatPanel({
       <div className="ask-ai-messages studio-chat-messages">
         {messages.length === 0 ? (
           <div className="ask-ai-empty">
-            <strong>还没有对话</strong>
-            <span>
-              点击下方麦克风录一段语音，转录整理后即可就地提问；也可以上传音频或选择已有笔记。
-            </span>
+            <strong>{t('studio.chat.empty.title')}</strong>
+            <span>{t('studio.chat.empty.description')}</span>
           </div>
         ) : (
           messages.map((message) => (
             <article key={message.id} className={message.role}>
-              <span>{message.role === 'assistant' ? 'AI' : '你'}</span>
+              <span>
+                {message.role === 'assistant' ? 'AI' : t('studio.chat.you')}
+              </span>
               <p>{message.content}</p>
               {message.role === 'assistant' && (
                 <TTSPlayButton text={message.content} />
@@ -143,7 +153,7 @@ export default function StudioChatPanel({
             ◆
           </span>
           <span className="studio-linked-note__label">
-            已关联笔记：<strong>{selectedNote.name}</strong>
+            {t('studio.chat.linkedNote')} <strong>{selectedNote.name}</strong>
           </span>
         </div>
       )}
@@ -164,7 +174,7 @@ export default function StudioChatPanel({
               disabled={recordingBusy}
             >
               <span className="studio-record-dot" aria-hidden="true" />
-              停止 {formatElapsed(recording.elapsedMs)}
+              {t('studio.chat.stop')} {formatElapsed(recording.elapsedMs)}
             </button>
           ) : (
             <button
@@ -172,12 +182,12 @@ export default function StudioChatPanel({
               className="studio-record-button"
               onClick={onStartRecording}
               disabled={recordingBusy}
-              aria-label="开始录音"
+              aria-label={t('studio.chat.startRecording')}
             >
               <span className="studio-record-mic" aria-hidden="true">
                 ●
               </span>
-              录音
+              {t('studio.chat.record')}
             </button>
           )}
           <button
@@ -186,7 +196,7 @@ export default function StudioChatPanel({
             onClick={onUploadAudio}
             disabled={recording.active || recordingBusy}
           >
-            上传音频
+            {t('studio.chat.upload')}
           </button>
         </div>
 
@@ -194,8 +204,8 @@ export default function StudioChatPanel({
           value={question}
           placeholder={
             recording.active
-              ? '正在录音…结束后会弹出确认窗口'
-              : '输入问题；Enter 发送，Shift+Enter 换行'
+              ? t('studio.chat.placeholder.recording')
+              : t('studio.chat.placeholder.question')
           }
           onChange={(event) => setQuestion(event.target.value)}
           onKeyDown={handleKeyDown}
@@ -205,19 +215,14 @@ export default function StudioChatPanel({
           type="submit"
           className="studio-send-button"
           disabled={
-            !selectedNote ||
-            !question.trim() ||
-            isSending ||
-            recording.active
+            !selectedNote || !question.trim() || isSending || recording.active
           }
         >
-          {isSending ? '思考中…' : '发送'}
+          {isSending ? t('studio.chat.thinking') : t('studio.chat.send')}
         </button>
       </form>
       <div className="ask-ai-status" role="status">
-        {recording.active
-          ? '录音中…点击“停止”结束并整理内容'
-          : status}
+        {recording.active ? t('studio.chat.recordingStatus') : status}
       </div>
     </section>
   );

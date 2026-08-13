@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AskAIConversation,
   AskAIConversationDetail,
@@ -9,6 +10,7 @@ import {
 } from './AskAITypes';
 
 export default function useAskAIPage() {
+  const { t } = useTranslation();
   const [notes, setNotes] = useState<AskAINote[]>([]);
   const [conversations, setConversations] = useState<AskAIConversation[]>([]);
   const [activeConversation, setActiveConversation] =
@@ -41,9 +43,11 @@ export default function useAskAIPage() {
 
   useEffect(() => {
     Promise.all([loadNotes(), loadConversations()]).catch((error: unknown) => {
-      setStatus(error instanceof Error ? error.message : '页面加载失败');
+      setStatus(
+        error instanceof Error ? error.message : t('studio.status.loadError'),
+      );
     });
-  }, [loadConversations, loadNotes]);
+  }, [loadConversations, loadNotes, t]);
 
   const resetChat = useCallback(() => {
     setActiveConversation(null);
@@ -61,26 +65,33 @@ export default function useAskAIPage() {
     [resetChat],
   );
 
-  const openConversation = useCallback(async (conversationId: number) => {
-    setStatus('正在加载会话…');
-    try {
-      const detail = (await window.electron.askAI.getConversation(
-        conversationId,
-      )) as AskAIConversationDetail;
-      setActiveConversation(detail.conversation);
-      setMessages(detail.messages);
-      setSources(detail.sources ?? []);
-      if (detail.sources[0]) setSelectedNoteId(detail.sources[0].id);
-      setScope(detail.sources.length > 1 ? 'workspace' : 'note');
-      setStatus('');
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : '会话加载失败');
-    }
-  }, []);
+  const openConversation = useCallback(
+    async (conversationId: number) => {
+      setStatus(t('studio.status.loadingConversation'));
+      try {
+        const detail = (await window.electron.askAI.getConversation(
+          conversationId,
+        )) as AskAIConversationDetail;
+        setActiveConversation(detail.conversation);
+        setMessages(detail.messages);
+        setSources(detail.sources ?? []);
+        if (detail.sources[0]) setSelectedNoteId(detail.sources[0].id);
+        setScope(detail.sources.length > 1 ? 'workspace' : 'note');
+        setStatus('');
+      } catch (error) {
+        setStatus(
+          error instanceof Error
+            ? error.message
+            : t('studio.status.conversationError'),
+        );
+      }
+    },
+    [t],
+  );
 
   const createNote = useCallback(
     async (name: string, transcript: string): Promise<boolean> => {
-      setStatus('正在保存笔记…');
+      setStatus(t('studio.status.savingNote'));
       try {
         const created = (await window.electron.askAI.createNote({
           workspaceId: selectedNote?.workspaceId ?? null,
@@ -90,21 +101,25 @@ export default function useAskAIPage() {
         await loadNotes(created.id);
         setScope('note');
         resetChat();
-        setStatus('笔记已保存');
+        setStatus(t('studio.status.noteSaved'));
         return true;
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : '笔记保存失败');
+        setStatus(
+          error instanceof Error
+            ? error.message
+            : t('studio.status.noteSaveError'),
+        );
         return false;
       }
     },
-    [loadNotes, resetChat, selectedNote?.workspaceId],
+    [loadNotes, resetChat, selectedNote?.workspaceId, t],
   );
 
   const ask = useCallback(
     async (question: string): Promise<boolean> => {
       if (!selectedNote || isSending) return false;
       setIsSending(true);
-      setStatus('本地模型正在思考…');
+      setStatus(t('studio.status.thinking'));
       try {
         const result = (await window.electron.askAI.ask({
           conversationId: activeConversation?.id ?? null,
@@ -116,17 +131,30 @@ export default function useAskAIPage() {
         setActiveConversation(result.conversation);
         setMessages(result.messages);
         setSources(result.sources ?? []);
-        setStatus(result.modelName ? `本地模型：${result.modelName}` : '');
+        setStatus(
+          result.modelName
+            ? t('studio.status.model', { name: result.modelName })
+            : '',
+        );
         await loadConversations();
         return true;
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : '提问失败');
+        setStatus(
+          error instanceof Error ? error.message : t('studio.status.askError'),
+        );
         return false;
       } finally {
         setIsSending(false);
       }
     },
-    [activeConversation?.id, isSending, loadConversations, scope, selectedNote],
+    [
+      activeConversation?.id,
+      isSending,
+      loadConversations,
+      scope,
+      selectedNote,
+      t,
+    ],
   );
 
   return {

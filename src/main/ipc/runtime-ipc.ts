@@ -38,6 +38,8 @@ ipcMain.handle('Runtime:installTTS', () =>
   }),
 );
 
+ipcMain.handle('Runtime:removeTTS', () => ttsRuntimeInstaller.remove());
+
 ipcMain.handle('Runtime:installFfmpeg', () =>
   ffmpegInstaller.install((progress) => {
     BrowserWindow.getAllWindows().forEach((window) => {

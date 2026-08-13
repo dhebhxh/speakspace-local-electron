@@ -41,7 +41,7 @@ export default function OllamaRuntimePanel(props: { refreshToken: string }) {
       await loadStatus();
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'Ollama 运行时安装失败',
+        error instanceof Error ? error.message : 'Ollama 安装失败',
       );
     } finally {
       setInstalling(false);
@@ -57,33 +57,44 @@ export default function OllamaRuntimePanel(props: { refreshToken: string }) {
   return (
     <section className="ollama-runtime-panel">
       <header>
-        <div>
-          <span className="model-manager-eyebrow">LLM RUNTIME</span>
-          <h2>Ollama 本地运行时</h2>
+        <div className="runtime-panel-title">
+          <span className="runtime-panel-title__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="8" cy="8" r="3" />
+              <circle cx="17" cy="7" r="2" />
+              <circle cx="16" cy="17" r="3" />
+              <path d="m10.5 9.5 4.5-1.7M10 10.5l4 4.5" />
+            </svg>
+          </span>
+          <div>
+            <span>LLM</span>
+            <h3>总结与问答</h3>
+          </div>
         </div>
         <span
           className={`ollama-runtime-badge${runtime?.runtimeReady ? ' is-ready' : ''}`}
         >
-          {runtime?.runtimeReady ? '可对话' : '尚未就绪'}
+          {runtime?.runtimeReady ? '可用' : '未就绪'}
         </span>
       </header>
 
-      <div className="ollama-runtime-grid">
-        <span>Ollama CLI</span>
-        <strong>{runtime?.binaryPresent ? '已安装' : '未安装'}</strong>
-        <span>本地服务</span>
-        <strong>{runtime?.serverRunning ? '运行中' : '未运行'}</strong>
-        <span>当前 LLM</span>
-        <strong>{runtime?.activeModelName ?? '未选择'}</strong>
-        <span>已安装模型</span>
-        <strong>{runtime?.installedModels.length ?? 0}</strong>
+      <strong
+        className="compact-runtime-model"
+        title={runtime?.activeModelName ?? undefined}
+      >
+        {runtime?.activeModelName ?? '未选择模型'}
+      </strong>
+      <div className="compact-runtime-facts" aria-label="Ollama 状态">
+        <span className={runtime?.binaryPresent ? 'is-ready' : ''}>Ollama</span>
+        <span className={runtime?.serverRunning ? 'is-ready' : ''}>服务</span>
+        <span>{runtime?.installedModels.length ?? 0} 个模型</span>
       </div>
 
       {progress && installing && (
-        <p className="ollama-runtime-progress">
-          {progress.message}
-          {percent !== null ? ` · ${percent}%` : ''}
-        </p>
+        <div className="runtime-inline-progress" role="status">
+          <span>{progress.message}</span>
+          <strong>{percent !== null ? `${percent}%` : '…'}</strong>
+        </div>
       )}
       {errorMessage && (
         <p className="ollama-runtime-error" role="alert">
@@ -92,7 +103,7 @@ export default function OllamaRuntimePanel(props: { refreshToken: string }) {
       )}
       {!runtime?.binaryPresent && (
         <button type="button" disabled={installing} onClick={installRuntime}>
-          {installing ? '正在安装…' : '安装 Windows Ollama 运行时'}
+          {installing ? '安装中' : '安装 Ollama'}
         </button>
       )}
     </section>

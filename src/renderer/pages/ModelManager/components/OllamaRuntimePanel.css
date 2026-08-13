@@ -1,66 +1,63 @@
 .ollama-runtime-panel {
   display: grid;
-  gap: 1rem;
-  padding: 1.25rem;
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  background: var(--surface);
+  gap: 0.7rem;
 }
 
-.ollama-runtime-panel header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
+.ollama-runtime-badge.is-ready,
+.tts-runtime-badge.is-ready,
+.embedding-model-badge.is-ready {
+  color: #22c55e;
+  border-color: color-mix(in srgb, #22c55e 35%, var(--border));
+  background: color-mix(in srgb, #22c55e 9%, var(--surface-soft));
 }
 
-.ollama-runtime-panel h2 {
-  margin: 0.25rem 0 0;
-  font-size: 1.15rem;
-}
-
-.ollama-runtime-badge {
-  padding: 0.35rem 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--muted);
-  background: var(--surface-soft);
+.compact-runtime-model {
+  overflow: hidden;
   font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.ollama-runtime-badge.is-ready {
-  border-color: rgba(74, 222, 128, 0.4);
-  background: rgba(20, 83, 45, 0.32);
-  color: #bbf7d0;
+.compact-runtime-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
-.ollama-runtime-grid {
-  display: grid;
-  grid-template-columns: minmax(120px, 0.7fr) minmax(140px, 1fr);
-  gap: 0.55rem 1rem;
-}
-
-.ollama-runtime-grid span,
-.ollama-runtime-progress {
+.compact-runtime-facts span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.28rem 0.45rem;
   color: var(--muted);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  font-size: 0.58rem;
 }
 
-.ollama-runtime-panel p {
-  margin: 0;
+.compact-runtime-facts span::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+
+.compact-runtime-facts span.is-ready {
+  color: #22c55e;
+}
+
+.ollama-runtime-panel > button {
+  justify-self: start;
+  min-height: 29px;
+  padding: 0.32rem 0.58rem;
+  border-radius: 8px;
+  box-shadow: none;
+  font-size: 0.62rem;
 }
 
 .ollama-runtime-error {
-  color: #fecaca !important;
-}
-
-.ollama-runtime-panel button {
-  justify-self: start;
-  padding: 0.65rem 1rem;
-  border-radius: 14px;
-}
-
-@media (max-width: 640px) {
-  .ollama-runtime-grid {
-    grid-template-columns: 1fr;
-  }
+  margin: 0;
+  color: #fca5a5;
+  font-size: 0.62rem;
 }

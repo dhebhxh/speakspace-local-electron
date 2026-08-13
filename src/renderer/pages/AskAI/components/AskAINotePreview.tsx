@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { AskAINote, formatAskAIDate } from '../AskAITypes';
 
 type AskAINotePreviewProps = {
@@ -5,11 +6,13 @@ type AskAINotePreviewProps = {
 };
 
 export default function AskAINotePreview({ note }: AskAINotePreviewProps) {
+  const { t } = useTranslation();
+
   if (!note) {
     return (
       <section className="ask-ai-note-preview ask-ai-empty">
-        <strong>请选择一条笔记</strong>
-        <span>笔记原文将在这里显示。</span>
+        <strong>{t('studio.preview.empty.title')}</strong>
+        <span>{t('studio.preview.empty.description')}</span>
       </section>
     );
   }
@@ -18,7 +21,7 @@ export default function AskAINotePreview({ note }: AskAINotePreviewProps) {
     <section className="ask-ai-note-preview">
       <header>
         <div>
-          <span>当前笔记</span>
+          <span>{t('studio.chat.scope.note')}</span>
           <h1>{note.name}</h1>
         </div>
         <time>{formatAskAIDate(note.updatedAt)}</time>

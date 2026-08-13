@@ -45,7 +45,7 @@
 .ask-ai-toolbar,
 .ask-ai-note-preview header {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   justify-content: space-between;
   gap: 0.75rem;
 }
@@ -78,7 +78,7 @@
 
 .ask-ai-note-list {
   display: grid;
-  /* 之前没有 flex-grow，列表不会撑满剩余高度，窗口一小就被压扁 */
+  /* 之�?没�? flex-grow，�?表�?会�?满剩余�?度�?窗口一小就被�???*/
   flex: 1 1 auto;
   align-content: start;
   gap: 0.4rem;
@@ -88,20 +88,23 @@
   overflow-y: auto;
 }
 
-/* 只作用于列表条目本身：用子选择器，避免误伤标题行里的 ＋ 按钮 */
-.ask-ai-note-list > button,
-.ask-ai-note-group > button,
-.ask-ai-recents-list > button {
-  display: grid;
-  gap: 0.15rem;
-  width: 100%;
-  min-width: 0;
-  /* 收紧一点，窗口变小时能多露出几条 */
-  padding: 0.5rem 0.6rem;
-  background: transparent;
-  color: var(--text);
-  text-align: left;
-}
+/* ?��??��??�表?�目?�身：用子选择?��??��?误伤?��?行�???�??�钮 */
+  .ask-ai-note-list > button,
+  .ask-ai-note-group > button,
+  .ask-ai-recents-list > button {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0.15rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.5rem 0.6rem;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    line-height: 1.4;
+  }
 
 .ask-ai-note-list > button:hover,
 .ask-ai-note-list > button.active,
@@ -112,7 +115,7 @@
   transform: none;
 }
 
-/* 笔记库按工作区分组：display:contents 让组内笔记仍排在外层栅格中 */
+/* 笔记库�?工�??��?组�?display:contents 让�??��?记�??�在外�??�格�?*/
 .ask-ai-note-group {
   display: contents;
 }
@@ -135,7 +138,7 @@
   background: var(--surface-soft);
 }
 
-/* 工作区名称可整块拖到输入框，给个抓取光标做提示。 */
+/* 工�??��?称可?��??�到输入框�?给个?��??��??��?示�?*/
 .ask-ai-group-name {
   cursor: grab;
 }
@@ -145,10 +148,8 @@
 }
 
 /*
- * 新增按钮默认隐藏，悬停对应那一行才出现。
- * 用两级类名书写：同级容器里存在 `.xxx button` 这类后代选择器，
- * 优先级 (0,1,1) 会压过单个类名，把这里的尺寸和内边距顶掉。
- */
+ * ?��??�钮默认?��?，悬?�对应那一行�??�现?? * ?�两级类?�书?��??�级容器?��???`.xxx button` 这类?�代?�择?��?
+ * 优�?�?(0,1,1) 会�?过�?个类?��??��??��?尺寸?��?边�?顶�??? */
 .ask-ai-note-group h3 .ask-ai-group-add,
 .ask-ai-recents-header .ask-ai-group-add {
   display: inline-flex;
@@ -226,7 +227,7 @@
   letter-spacing: 0.08em;
 }
 
-/* 中文没有词边界，可收缩的 flex 项会被压到一个字宽而竖排，这里禁止收缩换行 */
+/* 中�?没�?词边?��??�收缩�? flex 项�?被�??��?个�?宽而�??��?这�?禁止?�缩?��? */
 .ask-ai-recents-header > span,
 .ask-ai-note-group h3 > span {
   flex: 1 1 auto;
@@ -302,7 +303,7 @@
   white-space: nowrap;
 }
 
-/* 预览分成「摘要」和「原文转录」两段，各自带小标题。 */
+/* 预�??��??��?要」�??��??�转录」两段�??�自带�??��???*/
 .ask-ai-note-section {
   margin-top: 1.1rem;
 }

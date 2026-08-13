@@ -226,13 +226,22 @@ a:hover {
     rgba(2, 6, 25, 0.9);
 }
 
-.content-area::-webkit-scrollbar {
-  width: 10px;
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-.content-area::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
-  border-radius: 999px;
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .content-area h1,

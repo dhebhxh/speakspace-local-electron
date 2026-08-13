@@ -2,6 +2,7 @@
   "sidebar.transcription": "Studio",
   "sidebar.aiChat": "AI Chat",
   "sidebar.agent": "Agent",
+  "sidebar.dashBoard": "DashBoard",
   "sidebar.workspace": "Workspace",
   "sidebar.modelManagement": "Model Manage",
   "sidebar.workflow": "Knowledge Templates",

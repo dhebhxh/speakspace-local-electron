@@ -29,7 +29,11 @@ body {
 /* Container & Header */
 .dashboard-page-container {
   width: 100%;
-  min-width: max-content;
+  /* 绝不能用 max-content：那会让整页跟着表格最宽的一行撑开，
+     于是溢出的是整个页面，用户被迫左右横滚。让宽度回到容器，
+     由表格自己在内部收缩。 */
+  max-width: 100%;
+  min-width: 0;
   margin: 0;
   box-sizing: border-box;
   display: flex;
@@ -67,7 +71,7 @@ body {
 }
 
 .header-title {
-  font-size: 26px;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   margin: 0;
   letter-spacing: -0.5px;
@@ -85,7 +89,7 @@ body {
   color: var(--text-main);
   padding: 9px 16px;
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
@@ -103,7 +107,7 @@ body {
   color: #ffffff;
   padding: 9px 20px;
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
@@ -118,14 +122,17 @@ body {
 /* Main Two-Column Content Layout */
 .dashboard-main-content {
   display: grid;
-  grid-template-columns: 460px 1fr;
+  /* minmax(0, …) 两列都必须写：grid 子项默认 min-width:auto，
+     不允许收缩到内容以下，表格就会把右列顶宽。 */
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
   gap: 28px;
   align-items: start;
+  min-width: 0;
 }
 
 @media (max-width: 1200px) {
   .dashboard-main-content {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -134,6 +141,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
+}
+
+.dashboard-right-column {
+  min-width: 0;
 }
 
 .metric-cards-grid {
@@ -206,7 +218,7 @@ body {
 }
 
 .card-value {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 800;
   line-height: 1.2;
   color: var(--text-main);
@@ -216,14 +228,14 @@ body {
 }
 
 .card-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-muted);
   margin-top: 2px;
 }
 
 .card-trend {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   margin-top: 6px;
 }
@@ -252,7 +264,7 @@ body {
 
 .calendar-title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-main) !important;
 }
@@ -262,7 +274,7 @@ body {
   color: #1d4ed8;
   padding: 4px 10px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
@@ -270,7 +282,7 @@ body {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   text-align: center;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-muted);
   margin-bottom: 8px;
@@ -314,7 +326,7 @@ body {
 }
 
 .day-number {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
 }
 
@@ -381,7 +393,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-main);
   border-bottom: 1px solid #e2e8f0;
@@ -395,7 +407,7 @@ body {
   color: #b91c1c;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   cursor: pointer;
 }
 
@@ -428,12 +440,12 @@ body {
 }
 
 .todo-title {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
 .todo-note-link {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: #3b82f6;
   margin-top: 3px;
   text-decoration: underline;
@@ -451,7 +463,7 @@ body {
   text-align: center;
   height: 70px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 0 10px;
 }
 
@@ -467,6 +479,8 @@ body {
   border-radius: var(--radius-lg);
   padding: 24px;
   box-shadow: var(--shadow-md);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .table-header-controls {
@@ -480,7 +494,7 @@ body {
 
 .table-title h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-main) !important;
 }
@@ -506,12 +520,22 @@ body {
   pointer-events: none;
 }
 
+/* 搜索框跟着可用宽度伸缩，不再用固定 240px / 聚焦时跳到 280px，
+   否则窄窗口下它会把整行控件顶出容器。 */
+.search-input-wrapper {
+  flex: 1 1 200px;
+  min-width: 150px;
+  max-width: 280px;
+}
+
 .search-input {
   padding: 8px 32px 8px 34px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  font-size: 13px;
-  width: 240px;
+  font-size: var(--fs-sm);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   transition: var(--transition);
   outline: none;
 }
@@ -519,7 +543,6 @@ body {
 .search-input:focus {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  width: 280px;
 }
 
 .clear-search {
@@ -529,7 +552,7 @@ body {
   border: none;
   color: #94a3b8;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 
 .custom-select {
@@ -537,7 +560,7 @@ body {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--bg-card);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-main);
   cursor: pointer;
@@ -550,23 +573,30 @@ body {
 }
 
 .table-responsive {
+  /* 兜底而已：下面的 table-layout: fixed 已保证表格永远等于容器宽度，
+     正常情况下这里不会出现横向滚动条。 */
   overflow-x: auto;
+  max-width: 100%;
 }
 
 .notes-table {
   width: 100%;
+  /* fixed 布局让列宽由下面的 width 决定，而不是由最长的一条转录文本决定。 */
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
   text-align: left;
 }
 
 .notes-table th {
-  padding: 12px 14px;
-  font-size: 12px;
+  padding: 12px 10px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-muted);
   border-bottom: 2px solid var(--border-color);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .note-row {
@@ -575,9 +605,10 @@ body {
 }
 
 .note-row td {
-  padding: 16px 14px;
+  padding: 16px 10px;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
+  overflow: hidden;
 }
 
 .note-row:hover {
@@ -592,8 +623,13 @@ body {
   background-color: #fef3c7 !important;
 }
 
-.th-checkbox, .td-checkbox { width: 30px; text-align: center; }
-.th-star, .td-star { width: 36px; text-align: center; cursor: pointer; }
+/* 列宽预算：固定列合计 ~400px，剩下的全给标题列。 */
+.th-checkbox, .td-checkbox { width: 34px; text-align: center; }
+.th-star, .td-star { width: 44px; text-align: center; cursor: pointer; }
+.th-type, .td-type { width: 96px; }
+.th-duration, .td-duration { width: 84px; }
+.th-created, .td-created { width: 122px; }
+.th-updated, .td-updated { width: 104px; }
 
 .star-icon {
   font-size: 20px;
@@ -604,28 +640,43 @@ body {
 .star-icon.inactive { color: #cbd5e1; }
 .td-star:hover .star-icon { transform: scale(1.2); }
 
-.td-title { min-width: 240px; }
+/* 标题列吃掉剩余宽度；过长的标题和转录摘要用省略号收尾，
+   不再靠撑宽表格来显示。 */
+.td-title { min-width: 0; }
 
 .note-title-text {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-main);
   margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .note-snippet-text {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .td-type { white-space: nowrap; }
 
 .type-badge {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.type-badge {
   display: inline-block;
   padding: 4px 10px;
   border-radius: 20px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -635,13 +686,13 @@ body {
 .badge-gray { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
 
 .duration-pill {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-main);
 }
 
 .td-created, .td-updated {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -666,4 +717,31 @@ body {
 
 .empty-icon {
   font-size: 36px;
+}
+
+/* =========================================================
+   窄屏降级：按重要性依次隐藏次要列，让标题列始终读得下去。
+   宁可少一列，也不要把整页顶出横向滚动条。
+   ========================================================= */
+
+/* 两栏布局下（>1200px）右栏被左栏挤掉约 450px，先放弃创建时间，再放弃时长 */
+@media (min-width: 1201px) and (max-width: 1450px) {
+  .th-created, .td-created { display: none; }
+}
+
+@media (min-width: 1201px) and (max-width: 1320px) {
+  .th-duration, .td-duration { display: none; }
+}
+
+/* 单栏布局下表格拿回整页宽度，只有窗口真的很窄时才需要收列 */
+@media (max-width: 900px) {
+  .th-created, .td-created { display: none; }
+}
+
+@media (max-width: 760px) {
+  .th-duration, .td-duration { display: none; }
+}
+
+@media (max-width: 640px) {
+  .th-type, .td-type { display: none; }
 }

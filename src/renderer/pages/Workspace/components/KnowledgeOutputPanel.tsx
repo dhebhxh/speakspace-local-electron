@@ -34,7 +34,7 @@ export default function KnowledgeOutputPanel({
   return (
     <section className="workspace-knowledge-section">
       <div className="workspace-section-heading">
-        <h3>AI 知识输出</h3>
+        <h3>✨ AI 输出</h3>
         {templates.length > 0 ? (
           <div className="workspace-generate-controls">
             <select
@@ -50,20 +50,24 @@ export default function KnowledgeOutputPanel({
               ))}
             </select>
             <button
+              className="ws-btn ws-btn-primary"
               disabled={generating || !note.transcript.trim()}
               onClick={generate}
+              title="用所选模板生成 AI 内容"
               type="button"
             >
-              {generating ? '生成中…' : '生成内容'}
+              {generating ? '⏳ 生成中…' : '生成'}
             </button>
           </div>
         ) : (
-          <Link to="/Workflow">先创建模板</Link>
+          <Link className="ws-link" to="/Workflow">
+            先创建模板
+          </Link>
         )}
       </div>
 
       {note.knowledge_outputs.length === 0 ? (
-        <span className="workspace-content-empty">暂无 AI 输出</span>
+        <span className="workspace-content-empty">暂无</span>
       ) : (
         <div className="workspace-content-stack">
           {note.knowledge_outputs.map((output) => (

@@ -48,22 +48,30 @@ export default function WorkspacePage() {
       )}
       {status && <p className="workspace-detail-success">{status}</p>}
 
-      <label className="workspace-detail-search" htmlFor="workspace-search">
-        <span>搜索笔记、转录、子笔记或 AI 内容</span>
-        <input
-          id="workspace-search"
-          onChange={(event) => detail.setQuery(event.target.value)}
-          placeholder="输入标题或内容关键词"
-          type="search"
-          value={query}
-        />
-      </label>
+      {/* 关键词搜索与语义查找合并成一条工具条：
+          搜索框只占它需要的宽度，语义查找就在旁边。 */}
+      <div className="workspace-toolbar">
+        <div className="workspace-search-field">
+          <span aria-hidden="true" className="workspace-search-icon">
+            🔍
+          </span>
+          <input
+            aria-label="搜索标题、转录、子笔记或 AI 内容"
+            id="workspace-search"
+            onChange={(event) => detail.setQuery(event.target.value)}
+            placeholder="搜索笔记…"
+            title="搜索标题、转录、子笔记或 AI 内容"
+            type="search"
+            value={query}
+          />
+        </div>
 
-      <WorkspaceSemanticSearch
-        onSelect={detail.revealNote}
-        query={query}
-        workspaceId={detail.workspaceId}
-      />
+        <WorkspaceSemanticSearch
+          onSelect={detail.revealNote}
+          query={query}
+          workspaceId={detail.workspaceId}
+        />
+      </div>
 
       {visibleNotes.length === 0 && (
         <div className="workspace-detail-empty">
@@ -73,20 +81,15 @@ export default function WorkspacePage() {
       )}
 
       {selectedNoteIds.length > 0 && (
-        <div className="workspace-floating-bar" style={{
-          position: 'sticky', top: '20px', zIndex: 100, backgroundColor: 'var(--accent)', color: '#fff', 
-          padding: '12px 24px', borderRadius: '30px', display: 'flex', justifyContent: 'space-between', 
-          alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', marginBottom: '20px'
-        }}>
-          <span>已選取 {selectedNoteIds.length} 篇筆記</span>
-          <button 
-            type="button" 
-            className="btn-primary btn-sm" 
-            style={{ backgroundColor: '#fff', color: 'var(--accent)', marginLeft: '16px' }}
-            onClick={() => setShowAnalysisModal(true)}
+        <div className="workspace-select-bar">
+          <span>已选取 {selectedNoteIds.length} 篇笔记</span>
+          <button
+            className="ws-btn ws-btn-primary"
             disabled={selectedNoteIds.length < 2}
+            onClick={() => setShowAnalysisModal(true)}
+            type="button"
           >
-            {selectedNoteIds.length < 2 ? '請至少選擇 2 篇' : '分析選中筆記'}
+            {selectedNoteIds.length < 2 ? '请至少选择 2 篇' : '分析选中笔记'}
           </button>
         </div>
       )}

@@ -48,24 +48,35 @@ export default function WorkspaceSemanticSearch({
     }
   };
 
+  // 作为工具条的一员渲染：控件与关键词搜索框同一行，结果另起一整行。
   return (
-    <section className="workspace-semantic-search">
-      <div>
-        <strong>相似笔记</strong>
-        <span>按含义查找，不要求出现完全相同的关键词。</span>
+    <>
+      <div className="workspace-semantic-control">
+        {status?.installed ? (
+          <button
+            className="ws-btn"
+            disabled={!query.trim() || loading}
+            onClick={search}
+            title="按含义查找相似笔记，不要求出现完全相同的关键词"
+            type="button"
+          >
+            {loading ? '⏳ 建立索引…' : '✨ 语义查找'}
+          </button>
+        ) : (
+          <Link
+            className="ws-link"
+            title="语义查找需要先安装 bge-m3 嵌入模型"
+            to="/ModelManagement"
+          >
+            安装 bge-m3
+          </Link>
+        )}
       </div>
-      {status?.installed ? (
-        <button
-          disabled={!query.trim() || loading}
-          onClick={search}
-          type="button"
-        >
-          {loading ? '正在建立索引…' : '语义查找'}
-        </button>
-      ) : (
-        <Link to="/ModelManagement">安装 bge-m3</Link>
+      {error && (
+        <p className="workspace-semantic-error" role="alert">
+          {error}
+        </p>
       )}
-      {error && <p role="alert">{error}</p>}
       {searchedQuery && !error && (
         <div className="workspace-semantic-results">
           <span>
@@ -84,6 +95,6 @@ export default function WorkspaceSemanticSearch({
           ))}
         </div>
       )}
-    </section>
+    </>
   );
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface HeaderBarProps {
     title?: string;
@@ -7,25 +8,27 @@ interface HeaderBarProps {
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
-    title = "儀表板",
+    title,
     onCreateNote = () => console.log("Create Note clicked"),
     onNavigateSettings = () => console.log("Settings clicked")
 }) => {
+    const { t } = useTranslation();
+
     return (
         <header className="dashboard-header">
             <div className="header-main-row">
                 <div className="header-title-container">
                     <h1 className="header-title">
-                        {title}
+                        {title ?? t('dashboard.title')}
                     </h1>
                 </div>
 
                 <div className="header-actions">
                     <button className="btn-secondary" onClick={onNavigateSettings}>
-                        <span>⚙️ 設置</span>
+                        <span>⚙️ {t('dashboard.action.settings')}</span>
                     </button>
                     <button className="btn-primary create-note-btn" onClick={onCreateNote}>
-                        <span>+ 新建筆記</span>
+                        <span>+ {t('dashboard.action.newNote')}</span>
                     </button>
                 </div>
             </div>

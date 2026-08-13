@@ -20,7 +20,7 @@
   min-height: 34px;
   padding: 0.5rem 0.8rem;
   border-radius: 8px;
-  font-size: 0.82rem;
+  font-size: var(--fs-md);
   font-weight: 700;
   box-shadow: none;
 }
@@ -53,7 +53,7 @@
 
 .studio-chat-heading span {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -61,13 +61,13 @@
 
 .studio-chat-heading h2 {
   margin: 0.1rem 0 0;
-  font-size: 0.98rem;
+  font-size: var(--fs-lg);
 }
 
 .studio-chat-heading p {
   margin: 0;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
 }
 
 .studio-chat-messages {
@@ -92,7 +92,7 @@
   border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
   border-radius: 999px;
   background: color-mix(in srgb, var(--accent) 14%, transparent);
-  font-size: 0.74rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
@@ -116,7 +116,7 @@
   border-radius: 50%;
   background: transparent;
   box-shadow: none;
-  font-size: 0.9rem;
+  font-size: var(--fs-lg);
   line-height: 1;
 }
 
@@ -155,7 +155,7 @@
   border-radius: 8px;
   background: transparent;
   box-shadow: none;
-  font-size: 0.78rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   text-align: left;
 }
@@ -175,7 +175,7 @@
 .studio-mention__hint {
   flex: 0 0 auto;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-xs);
   font-weight: 500;
 }
 
@@ -197,7 +197,7 @@
 .studio-agent-steps {
   margin: 0.15rem 0 0.4rem;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-sm);
 }
 
 .studio-agent-steps summary {
@@ -223,7 +223,7 @@
   margin: 0.15rem 0 0.25rem;
   padding-left: 0.8rem;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: var(--fs-xs);
 }
 
 .studio-agent-steps ul li,
@@ -241,7 +241,7 @@
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
   border-radius: 13px;
   background: color-mix(in srgb, var(--accent) 8%, var(--surface-soft));
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
 }
 
 .studio-agent-live > div {
@@ -251,7 +251,7 @@
 
 .studio-agent-live strong {
   color: var(--text);
-  font-size: 0.76rem;
+  font-size: var(--fs-sm);
 }
 
 .studio-agent-live ol {
@@ -285,7 +285,7 @@
   border-radius: 8px;
   background: var(--surface-soft);
   box-shadow: none;
-  font-size: 0.72rem;
+  font-size: var(--fs-sm);
 }
 
 /* 「整个工作区」标签，与单条笔记标签区分开 */
@@ -305,7 +305,7 @@
   border: 1px solid rgba(239, 68, 68, 0.35);
   border-radius: 10px;
   background: rgba(239, 68, 68, 0.08);
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
 }
 
 /* 输入区：OpenAI 风格——所有按钮内嵌在同一个圆角输入框里 */
@@ -338,7 +338,7 @@
   border-radius: 16px;
   background: color-mix(in srgb, var(--accent) 12%, var(--surface-strong));
   color: var(--accent);
-  font-size: 0.82rem;
+  font-size: var(--fs-md);
   font-weight: 700;
   /* 提示层不能吃掉拖拽事件，否则会一直触发 dragleave */
   pointer-events: none;
@@ -369,7 +369,7 @@
   border: 0;
   outline: none;
   background: transparent;
-  font-size: 0.95rem;
+  font-size: var(--fs-lg);
   line-height: 20px;
   resize: none; /* 禁止手动拉伸，改为自动增高 + 滚动 */
   overflow-y: auto;
@@ -412,7 +412,7 @@
 
 .studio-record-time {
   font-variant-numeric: tabular-nums;
-  font-size: 0.78rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
@@ -552,14 +552,14 @@
 
 .studio-review-dialog header span {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.14em;
 }
 
 .studio-review-dialog header h2 {
   margin: 0.15rem 0 0;
-  font-size: 1.2rem;
+  font-size: var(--fs-xl);
 }
 
 /* 后台仍在转录/整理时的进度提示 */
@@ -569,7 +569,7 @@
   gap: 0.4rem;
   margin: 0.3rem 0 0;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
 }
 
 .studio-review-spinner {
@@ -591,7 +591,7 @@
   border: 1px solid var(--border);
   border-radius: 50%;
   background: var(--surface-soft);
-  font-size: 1.3rem;
+  font-size: var(--fs-xl);
 }
 
 .studio-review-texts {
@@ -602,7 +602,7 @@
 
 .studio-review-texts h3 {
   margin: 0 0 0.4rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
   color: var(--muted);
 }
 
@@ -633,7 +633,7 @@
   display: grid;
   gap: 0.35rem;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--fs-md);
 }
 
 .studio-review-form select,

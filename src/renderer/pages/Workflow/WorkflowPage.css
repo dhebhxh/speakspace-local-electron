@@ -20,7 +20,7 @@
 
 .workflow-header span {
   color: var(--accent);
-  font-size: 0.7rem;
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.15em;
 }
@@ -52,12 +52,12 @@
 }
 
 .knowledge-template-card h2 {
-  font-size: 1rem;
+  font-size: var(--fs-lg);
 }
 
 .knowledge-template-card time {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-sm);
 }
 
 .knowledge-template-card p {

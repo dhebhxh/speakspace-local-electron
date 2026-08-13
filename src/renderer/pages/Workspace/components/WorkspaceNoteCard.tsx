@@ -34,53 +34,70 @@ export default function WorkspaceNoteCard({
 
   return (
     <article className={`workspace-detail-note ${isSelected ? 'selected' : ''}`} id={`workspace-note-${note.id}`}>
-      <header style={{ position: 'relative' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {onToggleSelection && (
-            <input 
-              type="checkbox" 
+      <header className="workspace-note-head">
+        {onToggleSelection && (
+          <label className="workspace-note-pick">
+            <input
+              aria-label="选择这篇笔记"
               checked={isSelected}
               onChange={() => onToggleSelection(note.id)}
-              style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
+              type="checkbox"
             />
-          )}
-          <div>
-            <span className="workspace-note-kind">
-              {note.is_pinned ? '置顶笔记' : '工作笔记'}
+          </label>
+        )}
+        <div className="workspace-note-identity">
+          {/* 「工作笔记」对每条都一样，等于没信息；只有置顶才值得占一行。
+              is_pinned 来自 sqlite，是 0/1 而不是布尔值，用 && 会把 0 渲染出来。 */}
+          {note.is_pinned ? (
+            <span className="workspace-note-kind" title="置顶笔记">
+              📌 置顶
             </span>
-            <h2>{note.name || '未命名笔记'}</h2>
-          </div>
+          ) : null}
+          <h2>{note.name || '未命名笔记'}</h2>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button type="button" className="btn-secondary btn-sm" onClick={() => handleExport('word')}>
-            匯出 Word
+        <div className="workspace-note-tools">
+          <button
+            className="ws-btn ws-btn-quiet"
+            onClick={() => handleExport('word')}
+            title="导出为 Word 文档"
+            type="button"
+          >
+            ⬇ Word
           </button>
-          <button type="button" className="btn-secondary btn-sm" onClick={() => handleExport('pdf')}>
-            匯出 PDF
+          <button
+            className="ws-btn ws-btn-quiet"
+            onClick={() => handleExport('pdf')}
+            title="导出为 PDF"
+            type="button"
+          >
+            ⬇ PDF
           </button>
-          <time dateTime={note.updated_at} style={{ marginLeft: '8px' }}>
+          <time dateTime={note.updated_at} title="最后更新">
             {WorkspaceController.formatDate(note.updated_at, 'short')}
           </time>
         </div>
       </header>
 
-      <div className="workspace-content-grid">
-        <section>
-          <h3>录音</h3>
-          <WorkspaceAudioPlayer workspaceId={workspaceId} note={note} />
-        </section>
+      {/* 录音只是一条附件，压成一行放在标题下面 */}
+      <div className="workspace-note-audio">
+        <span aria-hidden="true" className="ws-label" title="录音">
+          🎙
+        </span>
+        <WorkspaceAudioPlayer workspaceId={workspaceId} note={note} />
+      </div>
 
+      <div className="workspace-content-grid">
         <section className="workspace-transcript-section">
-          <h3>完整转录</h3>
+          <h3>📝 转录</h3>
           <p className="workspace-transcript">
             {note.transcript || '暂无转录内容'}
           </p>
         </section>
 
         <section>
-          <h3>子笔记</h3>
+          <h3>🧩 子笔记</h3>
           {note.subnotes.length === 0 ? (
-            <span className="workspace-content-empty">暂无子笔记</span>
+            <span className="workspace-content-empty">暂无</span>
           ) : (
             <div className="workspace-content-stack">
               {note.subnotes.map((subnote) => (
@@ -101,9 +118,9 @@ export default function WorkspaceNoteCard({
         />
 
         <section className="workspace-conversation-section">
-          <h3>关联 AI 对话</h3>
+          <h3>💬 AI 对话</h3>
           {note.conversations.length === 0 ? (
-            <span className="workspace-content-empty">暂无关联对话</span>
+            <span className="workspace-content-empty">暂无</span>
           ) : (
             <div className="workspace-content-stack">
               {note.conversations.map((conversation) => (
@@ -112,7 +129,10 @@ export default function WorkspaceNoteCard({
                   key={conversation.id}
                 >
                   <summary>
-                    {conversation.name} · {conversation.messages.length} 条消息
+                    {conversation.name}
+                    <span className="workspace-conversation-count">
+                      💬 {conversation.messages.length}
+                    </span>
                   </summary>
                   <div>
                     {conversation.messages.map((message) => (

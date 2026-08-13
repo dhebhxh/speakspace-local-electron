@@ -15,7 +15,7 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: none;
-  font-size: 0.86rem;
+  font-size: var(--fs-md);
   text-align: left;
 }
 
@@ -45,7 +45,7 @@
 .model-option-meta {
   flex: none;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -98,7 +98,7 @@
   background: none;
   border-radius: 10px;
   box-shadow: none;
-  font-size: 0.84rem;
+  font-size: var(--fs-md);
   text-align: left;
 }
 
@@ -162,7 +162,7 @@
   color: var(--muted);
   border: 1px solid var(--border);
   border-radius: 999px;
-  font-size: 0.64rem;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   white-space: nowrap;
 }

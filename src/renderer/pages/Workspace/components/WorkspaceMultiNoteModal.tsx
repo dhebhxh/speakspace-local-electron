@@ -23,7 +23,7 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
           id: Date.now(),
           conversationId: 0,
           role: 'user',
-          content: '請針對我選取的筆記進行交叉比對與關聯分析',
+          content: '请针对我选取的笔记进行交叉比对与关联分析',
           createdAt: new Date().toISOString()
         };
         setMessages([userMsg]);
@@ -31,7 +31,7 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
         const result = (await window.electron.askAI.ask({
           workspaceId,
           noteIds: selectedNoteIds,
-          question: '請針對我選取的筆記進行交叉比對與關聯分析',
+          question: '请针对我选取的笔记进行交叉比对与关联分析',
           scope: 'multi-note'
         })) as AskAIResult;
 
@@ -44,7 +44,7 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
           id: Date.now(),
           conversationId: 0,
           role: 'assistant',
-          content: `❌ 分析失敗：\n${errorMessage}\n\n(提示：您可能尚未在設定中下載或啟用 LLM 模型)`,
+          content: `❌ 分析失败：\n${errorMessage}\n\n（提示：你可能尚未在设置中下载或启用 LLM 模型）`,
           createdAt: new Date().toISOString()
         }]);
       } finally {
@@ -65,14 +65,16 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
   }, [messages, loading]);
 
   return (
-    <div style={overlayStyle}>
-      <div style={modalStyle}>
-        <header style={headerStyle}>
-          <h2>多筆記關聯分析 (Multi-Note Analysis)</h2>
-          <button type="button" onClick={onClose} className="btn-secondary btn-sm">關閉</button>
+    <div className="workspace-modal-overlay">
+      <div className="workspace-modal">
+        <header className="workspace-modal-head">
+          <h2>多笔记关联分析</h2>
+          <button type="button" onClick={onClose} className="ws-btn">
+            关闭
+          </button>
         </header>
-        
-        <div className="ask-ai-chat-messages" ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+
+        <div className="ask-ai-chat-messages workspace-modal-body" ref={scrollRef}>
           {messages.map(msg => (
             <div key={msg.id} className={`ask-ai-chat-bubble ask-ai-chat-bubble-${msg.role}`}>
               <div className="ask-ai-chat-bubble-content">
@@ -82,8 +84,8 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
           ))}
           {loading && (
             <div className="ask-ai-chat-bubble ask-ai-chat-bubble-assistant">
-              <div className="ask-ai-chat-bubble-content" style={{ opacity: 0.6 }}>
-                正在分析關聯性... (Generating Analysis...)
+              <div className="ask-ai-chat-bubble-content workspace-modal-pending">
+                正在分析关联性…
               </div>
             </div>
           )}
@@ -92,34 +94,3 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
     </div>
   );
 }
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: 0, left: 0, right: 0, bottom: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  zIndex: 1000
-};
-
-const modalStyle: React.CSSProperties = {
-  width: '80%',
-  maxWidth: '800px',
-  height: '70%',
-  backgroundColor: 'var(--surface)',
-  borderRadius: '12px',
-  display: 'flex',
-  flexDirection: 'column',
-  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.3)',
-  overflow: 'hidden'
-};
-
-const headerStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '16px',
-  borderBottom: '1px solid var(--border)',
-  backgroundColor: 'var(--surface-strong)'
-};

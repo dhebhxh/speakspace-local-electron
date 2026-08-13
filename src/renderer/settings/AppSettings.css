@@ -1,3 +1,6 @@
+/* 这三行是整套 rem 字号刻度的锚点，必须保持 px：
+   --fs-* 全部是 rem，若这里也写成 rem 就会自我引用，
+   而且三档会塌缩成同一个值，「设置 → 输出文字字号」随之失效。 */
 html[data-font-size='small'] { font-size: 14px; }
 html[data-font-size='medium'] { font-size: 16px; }
 html[data-font-size='large'] { font-size: 18px; }

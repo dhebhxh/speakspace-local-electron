@@ -1,5 +1,6 @@
 import { Note } from "../../../../main/entities/Note";
-import { DashboardTimeUtil } from "./DashboardTimeUtil";
+import { DashboardCategory, DashboardCategoryKey } from "./DashboardCategory";
+import { DashboardTimeUtil, RelativeUpdatedTime } from "./DashboardTimeUtil";
 
 export class DashboardNoteItem extends Note {
     private typeCategory: string;
@@ -15,7 +16,7 @@ export class DashboardNoteItem extends Note {
         pinnedAt: Date | null,
         createdAt: Date,
         updatedAt: Date,
-        typeCategory: string = "需求評審",
+        typeCategory: string = "",
         durationSeconds: number = 3600
     ) {
         super(id, workspaceId, name, audioRelativePath, transcript, pinned, pinnedAt, createdAt, updatedAt);
@@ -25,6 +26,11 @@ export class DashboardNoteItem extends Note {
 
     public getTypeCategory(): string {
         return this.typeCategory;
+    }
+
+    /** 语言无关的分类 key，用于筛选与文案渲染。 */
+    public getCategoryKey(): DashboardCategoryKey {
+        return DashboardCategory.resolveKey(this.typeCategory);
     }
 
     public getDurationSeconds(): number {
@@ -39,16 +45,19 @@ export class DashboardNoteItem extends Note {
         return DashboardTimeUtil.formatDateTime(this.getCreatedAt());
     }
 
-    public getFormattedUpdatedDate(): string {
-        return DashboardTimeUtil.formatRelativeUpdatedTime(this.getUpdatedAt());
+    public getUpdatedTimeDescriptor(): RelativeUpdatedTime {
+        return DashboardTimeUtil.describeRelativeUpdatedTime(this.getUpdatedAt());
     }
 
-    public matchesSearch(query: string): boolean {
+    /**
+     * categoryLabel 传入当前界面语言下的分类文案，让搜索匹配用户实际看到的文字。
+     */
+    public matchesSearch(query: string, categoryLabel: string = this.typeCategory): boolean {
         if (!query || query.trim() === "") return true;
         const q = query.toLowerCase();
         const titleMatch = this.getName() ? this.getName()!.toLowerCase().includes(q) : false;
         const transcriptMatch = this.getTranscript() ? this.getTranscript().toLowerCase().includes(q) : false;
-        const typeMatch = this.typeCategory.toLowerCase().includes(q);
+        const typeMatch = categoryLabel.toLowerCase().includes(q);
         return titleMatch || transcriptMatch || typeMatch;
     }
 }

@@ -91,14 +91,14 @@ export default function Sidebar({ collapsed, onToggle }) {
           type="button"
           className="sidebar-toggle"
           onClick={onToggle}
-          aria-label={collapsed ? '展開側邊欄' : '收起側邊欄'}
-          title={collapsed ? '展開側邊欄' : '收起側邊欄'}
+          aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
+          title={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
         >
           <ToggleIcon />
         </button>
       </div>
 
-      <nav aria-label="主要導覽">
+      <nav aria-label={t('sidebar.nav')}>
         <ul>
           {NAV_ITEMS.map((item) => {
             const label = t(`sidebar.${item.key}`);

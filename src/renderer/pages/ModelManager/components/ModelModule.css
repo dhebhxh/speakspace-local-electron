@@ -31,7 +31,7 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.82rem;
+  font-size: var(--fs-md);
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -76,7 +76,7 @@
 .model-module-runtime-label {
   margin-right: 0.1rem;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
 }
 
@@ -88,7 +88,7 @@
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface-soft);
-  font-size: 0.7rem;
+  font-size: var(--fs-xs);
 }
 
 .runtime-chip-dot {
@@ -130,12 +130,12 @@
   right: 0;
   top: -1.1rem;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
 }
 
 .model-module-error {
   margin: 0;
   color: #fb7185;
-  font-size: 0.74rem;
+  font-size: var(--fs-sm);
 }

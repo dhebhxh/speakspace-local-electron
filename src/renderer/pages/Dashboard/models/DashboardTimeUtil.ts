@@ -1,3 +1,13 @@
+/**
+ * 相对时间不直接拼接文案，只描述“今天 / 昨天 / 绝对日期”，
+ * 由组件通过 i18n 渲染，保证跟随设置里的界面语言。
+ */
+export interface RelativeUpdatedTime {
+    labelKey: 'dashboard.time.today' | 'dashboard.time.yesterday' | null;
+    time: string;
+    absoluteText: string;
+}
+
 export class DashboardTimeUtil {
     /**
      * Converts raw duration in seconds to formatted "Xh Ym" or "Ym" string
@@ -29,23 +39,26 @@ export class DashboardTimeUtil {
     }
 
     /**
-     * Formats Date instance relative to current time (今天 / 昨天 / MM-DD HH:MM)
+     * Describes a Date relative to current time (today / yesterday / MM-DD HH:MM)
      */
-    public static formatRelativeUpdatedTime(date: Date, referenceNow: Date = new Date()): string {
+    public static describeRelativeUpdatedTime(date: Date, referenceNow: Date = new Date()): RelativeUpdatedTime {
         const diffMs = referenceNow.getTime() - date.getTime();
         const diffHours = diffMs / (1000 * 60 * 60);
 
         const hours = String(date.getHours()).padStart(2, '0');
         const mins = String(date.getMinutes()).padStart(2, '0');
+        const time = `${hours}:${mins}`;
 
-        if (diffHours < 24 && referenceNow.getDate() === date.getDate()) {
-            return `今天 ${hours}:${mins}`;
-        } else if (diffHours < 48) {
-            return `昨天 ${hours}:${mins}`;
-        }
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        return `${month}-${day} ${hours}:${mins}`;
+        const absoluteText = `${month}-${day} ${time}`;
+
+        if (diffHours < 24 && referenceNow.getDate() === date.getDate()) {
+            return { labelKey: 'dashboard.time.today', time, absoluteText };
+        } else if (diffHours < 48) {
+            return { labelKey: 'dashboard.time.yesterday', time, absoluteText };
+        }
+        return { labelKey: null, time, absoluteText };
     }
 
     /**
@@ -70,10 +83,18 @@ export class DashboardTimeUtil {
     }
 
     /**
-     * Formats display string for Calendar Header (e.g., "2026 年 8 月")
+     * Formats display string for Calendar Header in the given UI language
+     * (e.g., "2026年8月" for zh, "August 2026" for en)
      */
-    public static formatYearMonthDisplay(year: number, month: number): string {
-        return `${year} 年 ${month} 月`;
+    public static formatYearMonthDisplay(year: number, month: number, locale: string = 'zh'): string {
+        try {
+            return new Intl.DateTimeFormat(locale, {
+                year: 'numeric',
+                month: 'long'
+            }).format(new Date(year, month - 1, 1));
+        } catch {
+            return `${year}-${String(month).padStart(2, '0')}`;
+        }
     }
 
     /**

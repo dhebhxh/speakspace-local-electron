@@ -21,7 +21,7 @@ export default function WorkspaceAudioPlayer({
   );
 
   if (!note.audio_relative_path) {
-    return <span className="workspace-content-empty">没有关联录音</span>;
+    return <span className="workspace-content-empty">无录音</span>;
   }
 
   const loadAudio = async () => {
@@ -61,12 +61,18 @@ export default function WorkspaceAudioPlayer({
     );
   }
 
+  // 文件路径又长又没用，平时藏进 title；只有出错时才需要占位说明。
   return (
-    <div className="workspace-audio-loader">
-      <button disabled={loading} onClick={loadAudio} type="button">
-        {loading ? '读取中…' : '加载录音'}
+    <div className="workspace-audio-loader" title={note.audio_relative_path}>
+      <button
+        className="ws-btn"
+        disabled={loading}
+        onClick={loadAudio}
+        type="button"
+      >
+        {loading ? '⏳ 读取中' : '▶ 播放录音'}
       </button>
-      <small>{error || note.audio_relative_path}</small>
+      {error && <small className="workspace-audio-error">{error}</small>}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TodoItem } from '../models/TodoItem';
 import { DashboardTimeUtil } from '../models/DashboardTimeUtil';
 
@@ -7,10 +8,13 @@ interface CalendarWidgetProps {
     onSelectNote?: (noteId: number) => void;
 }
 
+const WEEKDAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
 export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
     todos,
     onSelectNote = () => {}
 }) => {
+    const { t, i18n } = useTranslation();
     const [activePopoverDate, setActivePopoverDate] = useState<string | null>(null);
     const [popoverPos, setPopoverPos] = useState<React.CSSProperties | null>(null);
 
@@ -53,13 +57,17 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
     return (
         <section className="calendar-widget">
             <div className="calendar-header">
-                <h3 className="calendar-title">📅 Calendar & ToDo&apos;s</h3>
-                <div className="calendar-month-badge">{DashboardTimeUtil.formatYearMonthDisplay(year, month)}</div>
+                <h3 className="calendar-title">📅 {t('dashboard.calendar.title')}</h3>
+                <div className="calendar-month-badge">
+                    {DashboardTimeUtil.formatYearMonthDisplay(year, month, i18n.language)}
+                </div>
             </div>
 
             <div className="calendar-grid-container">
                 <div className="calendar-weekdays">
-                    <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+                    {WEEKDAY_KEYS.map((weekdayKey) => (
+                        <span key={weekdayKey}>{t(`dashboard.calendar.weekday.${weekdayKey}`)}</span>
+                    ))}
                 </div>
 
                 <div className="calendar-days">
@@ -134,12 +142,14 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
                 >
                     <div className="event-list">
                         <div className="event-list-header">
-                            <span className="event-date">📌 {activePopoverDate} 行程與待辦</span>
+                            <span className="event-date">
+                                📌 {t('dashboard.calendar.popover.title', { date: activePopoverDate })}
+                            </span>
                             <button className="btn-close-pin" onClick={() => {
                                 setActivePopoverDate(null);
                                 setPopoverPos(null);
                             }}>
-                                ✕ 關閉
+                                ✕ {t('dashboard.calendar.popover.close')}
                             </button>
                         </div>
                         {popoverTodos.map(todo => (
@@ -155,7 +165,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
                                     <div className="todo-title">{todo.getTitle()}</div>
                                     {todo.getNoteTitle() && (
                                         <div className="todo-note-link">
-                                            🔗 跳轉至筆記: {todo.getNoteTitle()}
+                                            🔗 {t('dashboard.calendar.todo.jump', { title: todo.getNoteTitle() })}
                                         </div>
                                     )}
                                 </div>

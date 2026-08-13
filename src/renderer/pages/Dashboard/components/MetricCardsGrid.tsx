@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { DashboardStatistics } from '../models/DashboardStatistics';
 
 interface MetricCardsGridProps {
@@ -16,6 +17,8 @@ export const MetricCardsGrid: React.FC<MetricCardsGridProps> = ({
     isTodoFilterActive,
     onToggleTodoFilter
 }) => {
+    const { t } = useTranslation();
+
     return (
         <section className="metric-cards-grid">
             {/* 🔵 Card 1: Total Notes */}
@@ -25,25 +28,29 @@ export const MetricCardsGrid: React.FC<MetricCardsGridProps> = ({
                 </div>
                 <div className="card-content">
                     <div className="card-value">{stats.getTotalNotesCount()}</div>
-                    <div className="card-label">筆記總數</div>
-                    <div className="card-trend trend-positive">近一週新增 +{stats.getRecentNotesCount()}</div>
+                    <div className="card-label">{t('dashboard.metric.totalNotes')}</div>
+                    <div className="card-trend trend-positive">
+                        {t('dashboard.metric.weeklyDelta', { delta: stats.getRecentNotesCount() })}
+                    </div>
                 </div>
             </div>
 
             {/* 🟢 Card 2: Pinned Notes (Interactive Filter Shortcut) */}
-            <div 
+            <div
                 className={`metric-card card-green interactive-card ${isPinnedFilterActive ? 'active-filter' : ''}`}
                 onClick={onTogglePinnedFilter}
-                title="點擊切換篩選：僅查看釘選重點筆記"
+                title={t('dashboard.metric.pinnedFilter.tooltip')}
             >
                 <div className="card-icon-wrapper icon-green">
                     📌
                 </div>
                 <div className="card-content">
                     <div className="card-value">{stats.getPinnedNotesCount()}</div>
-                    <div className="card-label">釘選的筆記</div>
+                    <div className="card-label">{t('dashboard.metric.pinnedNotes')}</div>
                     <div className="card-trend trend-neutral">
-                        {isPinnedFilterActive ? '✓ 已開啟重點篩選' : '點擊快速篩選重點'}
+                        {isPinnedFilterActive
+                            ? t('dashboard.metric.pinnedFilter.active')
+                            : t('dashboard.metric.pinnedFilter.hint')}
                     </div>
                 </div>
             </div>
@@ -55,25 +62,31 @@ export const MetricCardsGrid: React.FC<MetricCardsGridProps> = ({
                 </div>
                 <div className="card-content">
                     <div className="card-value">{stats.getTotalTranscribedWordCount().toLocaleString()}</div>
-                    <div className="card-label">轉錄總字數</div>
-                    <div className="card-trend trend-positive">近一週新增 +{stats.getRecentTranscribedWordCount().toLocaleString()}</div>
+                    <div className="card-label">{t('dashboard.metric.transcribedWords')}</div>
+                    <div className="card-trend trend-positive">
+                        {t('dashboard.metric.weeklyDelta', {
+                            delta: stats.getRecentTranscribedWordCount().toLocaleString()
+                        })}
+                    </div>
                 </div>
             </div>
 
             {/* 🟠 Card 4: Pending ToDos (Interactive Filter Shortcut) */}
-            <div 
+            <div
                 className={`metric-card card-orange interactive-card ${isTodoFilterActive ? 'active-filter-orange' : ''}`}
                 onClick={onToggleTodoFilter}
-                title="點擊切換篩選：僅查看含待辦事項之筆記"
+                title={t('dashboard.metric.todoFilter.tooltip')}
             >
                 <div className="card-icon-wrapper icon-orange">
                     📅
                 </div>
                 <div className="card-content">
                     <div className="card-value">{stats.getPendingTodosCount()}</div>
-                    <div className="card-label">待辦事項</div>
+                    <div className="card-label">{t('dashboard.metric.pendingTodos')}</div>
                     <div className="card-trend trend-warning">
-                        {isTodoFilterActive ? '✓ 已開啟待辦篩選' : '點擊快速篩選待辦'}
+                        {isTodoFilterActive
+                            ? t('dashboard.metric.todoFilter.active')
+                            : t('dashboard.metric.todoFilter.hint')}
                     </div>
                 </div>
             </div>

@@ -14,7 +14,7 @@
   min-height: 36px;
   padding: 0.55rem 0.85rem;
   border-radius: 8px;
-  font-size: 0.82rem;
+  font-size: var(--fs-md);
   font-weight: 700;
   box-shadow: none;
 }
@@ -54,7 +54,7 @@
 .ask-ai-toolbar span,
 .ask-ai-note-preview header span {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-sm);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -67,13 +67,13 @@
 }
 
 .ask-ai-library-header h2 {
-  font-size: 1rem;
+  font-size: var(--fs-lg);
 }
 
 .ask-ai-library-header > button {
   width: 36px;
   padding: 0;
-  font-size: 1.1rem;
+  font-size: var(--fs-xl);
 }
 
 .ask-ai-note-list {
@@ -131,7 +131,7 @@
   padding: 0.15rem 0.25rem;
   border-radius: 7px;
   color: var(--muted);
-  font-size: 0.66rem;
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -167,7 +167,7 @@
   border-radius: 6px;
   background: transparent;
   box-shadow: none;
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
   line-height: 1;
   opacity: 0;
   transition: opacity 140ms ease;
@@ -200,7 +200,7 @@
 .ask-ai-note-list time,
 .ask-ai-recents time {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-sm);
 }
 
 .ask-ai-recents {
@@ -224,7 +224,7 @@
   padding: 0.15rem 0.25rem;
   border-radius: 7px;
   color: var(--muted);
-  font-size: 0.66rem;
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -296,13 +296,13 @@
 }
 
 .ask-ai-note-preview h1 {
-  font-size: 1.05rem;
+  font-size: var(--fs-lg);
   overflow-wrap: anywhere;
 }
 
 .ask-ai-note-preview time {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
@@ -314,7 +314,7 @@
 .ask-ai-note-section > h2 {
   margin: 0;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-sm);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -331,19 +331,19 @@
 .ask-ai-note-summary h3 {
   margin: 0;
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
 .ask-ai-note-summary p {
   margin: 0.35rem 0 0;
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
   white-space: pre-wrap;
 }
 
 .ask-ai-note-empty {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--fs-md);
 }
 
 .ask-ai-note-preview p {

@@ -22,7 +22,7 @@
 
 .ask-ai-chat-header span {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -35,12 +35,12 @@
 
 .ask-ai-chat-header h2 {
   margin-top: 0.1rem;
-  font-size: 0.95rem;
+  font-size: var(--fs-lg);
 }
 
 .ask-ai-chat-header p {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
 }
 
 .ask-ai-scope {
@@ -81,7 +81,7 @@
   border-radius: 999px;
   padding: 0.18rem 0.48rem;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -118,7 +118,7 @@
 
 .ask-ai-messages article > span {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-xs);
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -156,7 +156,7 @@
   min-height: 1rem;
   padding-top: 0.25rem;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: var(--fs-xs);
 }
 
 @media (max-width: 620px) {

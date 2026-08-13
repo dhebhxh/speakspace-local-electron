@@ -1,12 +1,18 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { DashboardNoteItem } from '../models/DashboardNoteItem';
+import {
+    DASHBOARD_CATEGORY_FILTERS,
+    DashboardCategory,
+    DashboardCategoryKey
+} from '../models/DashboardCategory';
 
 interface NoteListTableProps {
     notes: DashboardNoteItem[];
     searchQuery: string;
     onSearchChange: (query: string) => void;
-    selectedCategory: string;
-    onCategoryChange: (category: string) => void;
+    selectedCategory: DashboardCategoryKey | 'all';
+    onCategoryChange: (category: DashboardCategoryKey | 'all') => void;
     sortOrder: 'updated' | 'created';
     onSortChange: (order: 'updated' | 'created') => void;
     onTogglePin: (noteId: number, e: React.MouseEvent) => void;
@@ -24,18 +30,15 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
     onTogglePin,
     onSelectNote
 }) => {
-    const categories = ["全部", "需求評審", "項目討論", "頭腦風暴", "一般筆記"];
+    const { t } = useTranslation();
 
-    const getCategoryBadgeClass = (category: string) => {
-        switch (category) {
-            case '需求評審':
-            case '需求评审':
+    const getCategoryBadgeClass = (categoryKey: DashboardCategoryKey) => {
+        switch (categoryKey) {
+            case 'review':
                 return 'badge-blue';
-            case '項目討論':
-            case '项目讨论':
+            case 'discussion':
                 return 'badge-green';
-            case '頭腦風暴':
-            case '头脑风暴':
+            case 'brainstorm':
                 return 'badge-purple';
             default:
                 return 'badge-gray';
@@ -46,44 +49,54 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
         <section className="note-list-section">
             <div className="table-header-controls">
                 <div className="table-title">
-                    <h3>筆記列表 ({notes.length})</h3>
+                    <h3>{t('dashboard.notes.title', { total: notes.length })}</h3>
                 </div>
-                
+
                 <div className="table-filters">
                     <div className="search-input-wrapper">
                         <span className="search-icon">🔍</span>
-                        <input 
-                            type="text" 
-                            placeholder="搜尋筆記標題、內容或分類..." 
+                        <input
+                            type="text"
+                            placeholder={t('dashboard.notes.search.placeholder')}
                             value={searchQuery}
                             onChange={(e) => onSearchChange(e.target.value)}
                             className="search-input"
                         />
                         {searchQuery && (
-                            <button className="clear-search" onClick={() => onSearchChange('')}>✕</button>
+                            <button
+                                className="clear-search"
+                                aria-label={t('dashboard.notes.search.clear')}
+                                onClick={() => onSearchChange('')}
+                            >
+                                ✕
+                            </button>
                         )}
                     </div>
 
                     <div className="filter-dropdown">
-                        <select 
-                            value={selectedCategory} 
-                            onChange={(e) => onCategoryChange(e.target.value)}
+                        <select
+                            value={selectedCategory}
+                            onChange={(e) => onCategoryChange(e.target.value as DashboardCategoryKey | 'all')}
                             className="custom-select"
                         >
-                            {categories.map((cat) => (
-                                <option key={cat} value={cat}>▼ 篩選: {cat}</option>
+                            {DASHBOARD_CATEGORY_FILTERS.map((category) => (
+                                <option key={category} value={category}>
+                                    {t('dashboard.notes.filter.label', {
+                                        category: t(DashboardCategory.translationKey(category))
+                                    })}
+                                </option>
                             ))}
                         </select>
                     </div>
 
                     <div className="sort-dropdown">
-                        <select 
-                            value={sortOrder} 
+                        <select
+                            value={sortOrder}
                             onChange={(e) => onSortChange(e.target.value as 'updated' | 'created')}
                             className="custom-select"
                         >
-                            <option value="updated">最新更新</option>
-                            <option value="created">建立時間</option>
+                            <option value="updated">{t('dashboard.notes.sort.updated')}</option>
+                            <option value="created">{t('dashboard.notes.sort.created')}</option>
                         </select>
                     </div>
                 </div>
@@ -94,12 +107,12 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
                     <thead>
                         <tr>
                             <th className="th-checkbox"><input type="checkbox" /></th>
-                            <th className="th-star">釘選</th>
-                            <th className="th-title">筆記標題與概觀</th>
-                            <th className="th-type">類型</th>
-                            <th className="th-duration">錄音時長</th>
-                            <th className="th-created">創建時間</th>
-                            <th className="th-updated">最新更新</th>
+                            <th className="th-star">{t('dashboard.notes.column.pinned')}</th>
+                            <th className="th-title">{t('dashboard.notes.column.title')}</th>
+                            <th className="th-type">{t('dashboard.notes.column.type')}</th>
+                            <th className="th-duration">{t('dashboard.notes.column.duration')}</th>
+                            <th className="th-created">{t('dashboard.notes.column.created')}</th>
+                            <th className="th-updated">{t('dashboard.notes.column.updated')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -108,16 +121,18 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
                                 <td colSpan={7} className="no-data-cell">
                                     <div className="empty-table-state">
                                         <div className="empty-icon">📂</div>
-                                        <p>沒有找到合乎篩選條件的會議或語音筆記紀錄。</p>
+                                        <p>{t('dashboard.notes.empty')}</p>
                                     </div>
                                 </td>
                             </tr>
                         ) : (
                             notes.map((note) => {
                                 const isPinned = note.isPinned();
+                                const categoryKey = note.getCategoryKey();
+                                const updatedTime = note.getUpdatedTimeDescriptor();
                                 return (
-                                    <tr 
-                                        key={note.getId()} 
+                                    <tr
+                                        key={note.getId()}
                                         className={`note-row ${isPinned ? 'pinned-row' : ''}`}
                                         onClick={() => onSelectNote(note.getId())}
                                     >
@@ -134,8 +149,8 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
                                             <div className="note-snippet-text">{note.getTranscript().slice(0, 40)}...</div>
                                         </td>
                                         <td className="td-type">
-                                            <span className={`type-badge ${getCategoryBadgeClass(note.getTypeCategory())}`}>
-                                                {note.getTypeCategory()}
+                                            <span className={`type-badge ${getCategoryBadgeClass(categoryKey)}`}>
+                                                {t(DashboardCategory.translationKey(categoryKey))}
                                             </span>
                                         </td>
                                         <td className="td-duration">
@@ -145,7 +160,11 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
                                             {note.getFormattedCreatedDate()}
                                         </td>
                                         <td className="td-updated">
-                                            <span className="update-highlight">{note.getFormattedUpdatedDate()}</span>
+                                            <span className="update-highlight">
+                                                {updatedTime.labelKey
+                                                    ? t(updatedTime.labelKey, { time: updatedTime.time })
+                                                    : updatedTime.absoluteText}
+                                            </span>
                                         </td>
                                     </tr>
                                 );

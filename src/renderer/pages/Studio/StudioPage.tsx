@@ -420,6 +420,10 @@ export default function StudioPage() {
         // 刷新笔记库并把新笔记挂到对话上。
         await page.reloadNotes(result.noteId);
         page.selectNote(result.noteId);
+        
+        // Trigger Todo Extraction in the background
+        window.electron.dashboard.extractTodosForNote(result.noteId).catch(console.error);
+        
         setReviewOpen(false);
         resetEngine();
       } catch (reason) {

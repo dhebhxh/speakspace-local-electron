@@ -103,6 +103,10 @@ export default function useAskAIPage() {
         setScope('note');
         resetChat();
         setStatus('笔记已保存');
+
+        // Trigger Todo Extraction in the background
+        window.electron.dashboard.extractTodosForNote(created.id).catch(console.error);
+
         return true;
       } catch (error) {
         setStatus(error instanceof Error ? error.message : '笔记保存失败');

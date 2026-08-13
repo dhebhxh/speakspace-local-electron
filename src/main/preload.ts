@@ -356,6 +356,9 @@ const electronHandler = {
     getDashboardOverview() {
       return ipcRenderer.invoke('Dashboard:getDashboardOverview');
     },
+    extractTodosForNote(noteId: number) {
+      return ipcRenderer.invoke('Dashboard:extractTodosForNote', noteId);
+    }
   },
 
   // 操作方法：通过 window.electron.workspace 调用，数据库访问保留在主进程。

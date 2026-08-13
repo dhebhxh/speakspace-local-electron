@@ -24,7 +24,7 @@ export const DashboardPage: React.FC = () => {
     const routeManager = useMemo(() => new RouteManager(navigate), [navigate]);
 
     const [notes, setNotes] = useState<DashboardNoteItem[]>(INITIAL_NOTES);
-    const [todos] = useState<TodoItem[]>(INITIAL_TODOS);
+    const [todos, setTodos] = useState<TodoItem[]>(INITIAL_TODOS);
 
     React.useEffect(() => {
         const fetchDashboardData = async () => {
@@ -36,6 +36,14 @@ export const DashboardPage: React.FC = () => {
                     n.createdAt, n.updatedAt, n.typeCategory, n.durationSeconds
                 ));
                 setNotes(fetchedNotes);
+
+                if (overview.todos) {
+                    const fetchedTodos = overview.todos.map((t: any) => new TodoItem(
+                        t.id, t.title, t.dateString, t.isCompleted, t.noteId,
+                        fetchedNotes.find((n: DashboardNoteItem) => n.getId() === t.noteId)?.getName()
+                    ));
+                    setTodos(fetchedTodos);
+                }
             } catch (error) {
                 console.error("Failed to load dashboard data:", error);
             }

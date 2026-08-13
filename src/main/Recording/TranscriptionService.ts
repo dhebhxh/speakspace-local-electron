@@ -29,7 +29,11 @@ export class TranscriptionService {
             console.error("No active model found.");
             return;
         }
-        const modelPath = sttManager.getModelPath(activeModel);
+        const modelPath = sttManager.getActivatedModelPath();
+        if (!modelPath) {
+            console.error("No active model path found.");
+            return;
+        }
         this.ctx = await whisperFactory.init(modelPath);
     }
 
@@ -72,12 +76,19 @@ export class TranscriptionService {
             throw new Error("No workspace is available to save the recording.");
         }
         
-        noteRepository.create(
+        const { Note } = require('../database/entities/Note');
+        
+        noteRepository.create(new Note(
+            0,
             workspace.id,
             title,
             relativePath,
-            transcript
-        );
+            transcript,
+            false,
+            null,
+            new Date(),
+            new Date()
+        ));
     }
 
     public stop(): void {

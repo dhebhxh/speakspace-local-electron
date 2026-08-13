@@ -6,6 +6,7 @@ import { NoteRepository } from '../database/repositories/NoteRepository';
 import { SubnoteRepository } from '../database/repositories/SubnoteRepository';
 import { Subnote } from '../entities/Subnote';
 import LocalChatService from '../llm/LocalChatService';
+import { TodoExtractionService } from '../dashboard/TodoExtractionService';
 import AskAINoteService from './AskAINoteService';
 import {
   buildAskAIMessages,
@@ -17,6 +18,10 @@ import {
   serializeMessage,
   serializeNote,
 } from './AskAISerializer';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { app } from 'electron';
 import {
   AskAIConversationDTO,
   AskAINoteDetailDTO,
@@ -36,6 +41,7 @@ type AskAIServiceDependencies = {
   chatService?: LocalChatService;
   noteRepository?: NoteRepository;
   subnoteRepository?: SubnoteRepository;
+  todoExtractionService?: TodoExtractionService;
 };
 
 /** 协调笔记证据、会话持久化和本地 Ollama 回复。 */
@@ -54,6 +60,8 @@ export default class AskAIService {
 
   private readonly subnoteRepository: SubnoteRepository;
 
+  private readonly todoExtractionService: TodoExtractionService;
+
   public constructor(dependencies: AskAIServiceDependencies = {}) {
     this.conversationRepository =
       dependencies.conversationRepository ?? new AIConversationRepository();
@@ -65,6 +73,7 @@ export default class AskAIService {
     this.chatService = dependencies.chatService ?? new LocalChatService();
     this.noteRepository = dependencies.noteRepository ?? new NoteRepository();
     this.subnoteRepository = dependencies.subnoteRepository ?? new SubnoteRepository();
+    this.todoExtractionService = dependencies.todoExtractionService ?? new TodoExtractionService();
   }
 
   public listNotes(workspaceId: number | null = null): AskAINoteDTO[] {
@@ -109,9 +118,27 @@ export default class AskAIService {
   }
 
   public async autoSegmentNote(noteId: number): Promise<void> {
+    const logFile = path.join(app.getPath('userData'), 'speakspace_askai.log');
+    fs.appendFileSync(logFile, `\n[${new Date().toISOString()}] autoSegmentNote called for noteId ${noteId}\n`);
     try {
       const note = this.noteRepository.findById(noteId);
-      if (!note || !note.getTranscript().trim()) return;
+      fs.appendFileSync(logFile, `Note found: ${!!note}\n`);
+      if (!note || !note.getTranscript().trim()) {
+        fs.appendFileSync(logFile, `Aborting: note missing or empty transcript.\n`);
+        return;
+      }
+      
+      fs.appendFileSync(logFile, `todoExtractionService exists: ${!!this.todoExtractionService}\n`);
+
+      // Launch Todo Extraction independently so it doesn't block or depend on the summary generation
+      if (this.todoExtractionService) {
+          this.todoExtractionService.extractTodosForNote(noteId).catch(err => {
+            console.error('Failed to extract todos automatically:', err);
+            fs.appendFileSync(logFile, `extractTodosForNote threw: ${err}\n`);
+          });
+      } else {
+          fs.appendFileSync(logFile, `todoExtractionService is UNDEFINED!\n`);
+      }
 
       const prompt = `Please analyze the following transcript and provide a structured summary.
 Break down the transcript into logical segments based on the topics discussed.

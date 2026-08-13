@@ -1,5 +1,6 @@
-﻿import Database from "better-sqlite3";
+import Database from "better-sqlite3";
 import { DatabaseManager } from "../database/DatabaseManager";
+import { TodoRepository, TodoData } from "../database/repositories/TodoRepository";
 
 export interface DashboardNoteDTO {
     id: number;
@@ -17,14 +18,17 @@ export interface DashboardNoteDTO {
 
 export interface DashboardOverviewDTO {
     notes: DashboardNoteDTO[];
+    todos: TodoData[];
 }
 
 export class DashboardService {
     private database: Database.Database;
+    private todoRepository: TodoRepository;
 
     public constructor() {
         const dbManager = DatabaseManager.getInstance();
         this.database = dbManager.getDatabase();
+        this.todoRepository = new TodoRepository();
     }
 
     public getDashboardOverview(): DashboardOverviewDTO {
@@ -51,8 +55,11 @@ export class DashboardService {
             durationSeconds: 0
         }));
 
+        const todos = this.todoRepository.getAllTodos();
+
         return {
-            notes
+            notes,
+            todos
         };
     }
 }

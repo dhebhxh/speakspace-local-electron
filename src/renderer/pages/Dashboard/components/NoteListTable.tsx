@@ -106,7 +106,6 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
                 <table className="notes-table">
                     <thead>
                         <tr>
-                            <th className="th-checkbox"><input type="checkbox" /></th>
                             <th className="th-star">{t('dashboard.notes.column.pinned')}</th>
                             <th className="th-title">{t('dashboard.notes.column.title')}</th>
                             <th className="th-type">{t('dashboard.notes.column.type')}</th>
@@ -118,7 +117,7 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
                     <tbody>
                         {notes.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="no-data-cell">
+                                <td colSpan={6} className="no-data-cell">
                                     <div className="empty-table-state">
                                         <div className="empty-icon">📂</div>
                                         <p>{t('dashboard.notes.empty')}</p>
@@ -136,9 +135,6 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
                                         className={`note-row ${isPinned ? 'pinned-row' : ''}`}
                                         onClick={() => onSelectNote(note.getId())}
                                     >
-                                        <td className="td-checkbox" onClick={(e) => e.stopPropagation()}>
-                                            <input type="checkbox" />
-                                        </td>
                                         <td className="td-star" onClick={(e) => onTogglePin(note.getId(), e)}>
                                             <span className={`star-icon ${isPinned ? 'active' : 'inactive'}`}>
                                                 {isPinned ? '★' : '☆'}

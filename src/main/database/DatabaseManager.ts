@@ -226,6 +226,19 @@ export class DatabaseManager {
                     ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS todos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                note_id INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                date_string TEXT NOT NULL,
+                is_completed INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(note_id)
+                    REFERENCES notes(id)
+                    ON DELETE CASCADE
+            );
+
         `);
   }
 

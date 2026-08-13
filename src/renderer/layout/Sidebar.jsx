@@ -1,77 +1,109 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import AppIcon from '../components/AppIcon';
-import SpotlightSurface from '../components/SpotlightSurface';
 
-const primaryItems = [
-  { to: '/', end: true, labelKey: 'sidebar.transcription', icon: 'studio' },
-  { to: '/Agent', labelKey: 'sidebar.agent', icon: 'agent' },
-  { to: '/Workspace', labelKey: 'sidebar.workspace', icon: 'workspace' },
+const svgProps = {
+  width: 20,
+  height: 20,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 2,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  'aria-hidden': true,
+};
+
+const ICONS = {
+  transcription: (
+    <svg {...svgProps}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" />
+    </svg>
+  ),
+  agent: (
+    <svg {...svgProps}>
+      <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3Z" />
+      <path d="M18 14l.8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8L18 14Z" />
+    </svg>
+  ),
+  workspace: (
+    <svg {...svgProps}>
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+    </svg>
+  ),
+  modelManagement: (
+    <svg {...svgProps}>
+      <path d="M12 2 21 7v10l-9 5-9-5V7Z" />
+      <path d="m3.3 7 8.7 5 8.7-5" />
+      <path d="M12 22V12" />
+    </svg>
+  ),
+  workflow: (
+    <svg {...svgProps}>
+      <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+      <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z" />
+      <path d="M9 13h6M9 17h6" />
+    </svg>
+  ),
+  settings: (
+    <svg {...svgProps}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+    </svg>
+  ),
+};
+
+const NAV_ITEMS = [
+  { to: '/', end: true, key: 'transcription' },
+  // 智能助理已并入对话工作台的输入框（✨ 开关），不再单独占一个入口。
+  { to: '/Workspace', key: 'workspace' },
+  { to: '/ModelManagement', key: 'modelManagement' },
+  { to: '/Workflow', key: 'workflow' },
+  { to: '/Settings', key: 'settings' },
 ];
 
-const systemItems = [
-  { to: '/Workflow', labelKey: 'sidebar.workflow', icon: 'templates' },
-  {
-    to: '/ModelManagement',
-    labelKey: 'sidebar.modelManagement',
-    icon: 'models',
-  },
-  { to: '/Settings', labelKey: 'sidebar.settings', icon: 'settings' },
-];
-
-function NavigationItems({ items, t }) {
-  return items.map((item) => (
-    <li key={item.to}>
-      <NavLink
-        to={item.to}
-        end={item.end}
-        aria-label={t(item.labelKey)}
-        title={t(item.labelKey)}
-      >
-        <AppIcon name={item.icon} size={19} />
-        <span>{t(item.labelKey)}</span>
-      </NavLink>
-    </li>
-  ));
+function ToggleIcon() {
+  return (
+    <svg {...svgProps}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16" />
+    </svg>
+  );
 }
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed, onToggle }) {
   const { t } = useTranslation();
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${collapsed ? ' is-collapsed' : ''}`}>
       <div className="sidebar-brand">
-        <span className="sidebar-brand-mark" aria-hidden="true">
-          SS
-        </span>
-        <span className="sidebar-brand-copy">
-          <strong>SpeakSpace</strong>
-          <small>{t('sidebar.tagline')}</small>
-        </span>
+        <h2 className="sidebar-wordmark">SpeakSpace</h2>
+        <button
+          type="button"
+          className="sidebar-toggle"
+          onClick={onToggle}
+          aria-label={collapsed ? '展开侧边栏' : '收起侧边栏'}
+          title={collapsed ? '展开侧边栏' : '收起侧边栏'}
+        >
+          <ToggleIcon />
+        </button>
       </div>
-      <nav aria-label={t('sidebar.navigation')}>
-        <span className="sidebar-group-label">{t('sidebar.group.work')}</span>
+
+      <nav aria-label="主导航">
         <ul>
-          <NavigationItems items={primaryItems} t={t} />
-        </ul>
-        <span className="sidebar-group-label sidebar-group-label--system">
-          {t('sidebar.group.system')}
-        </span>
-        <ul>
-          <NavigationItems items={systemItems} t={t} />
+          {NAV_ITEMS.map((item) => {
+            const label = t(`sidebar.${item.key}`);
+            return (
+              <li key={item.to}>
+                <NavLink to={item.to} end={item.end} title={label}>
+                  <span className="nav-icon">{ICONS[item.key]}</span>
+                  <span className="nav-label">{label}</span>
+                </NavLink>
+              </li>
+            );
+          })}
         </ul>
       </nav>
-      <SpotlightSurface
-        className="sidebar-local-status"
-        spotlightColor="rgba(56, 210, 188, 0.18)"
-      >
-        <span className="sidebar-local-status__title">
-          <i aria-hidden="true" />
-          {t('sidebar.local')}
-        </span>
-        <small>{t('sidebar.local.detail')}</small>
-      </SpotlightSurface>
     </aside>
   );
 }

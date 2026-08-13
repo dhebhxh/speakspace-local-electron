@@ -1,4 +1,3 @@
-import { useTranslation } from 'react-i18next';
 import { NoteItem, WorkspaceController } from '../WorkspaceController';
 import { WorkspaceTemplate } from '../WorkspaceWorkflowController';
 import KnowledgeOutputPanel from './KnowledgeOutputPanel';
@@ -24,31 +23,22 @@ export default function WorkspaceNoteCard({
   onToggleSelection,
   onGenerate,
 }: Props) {
-  const { t, i18n } = useTranslation();
   const handleExport = (format: 'word' | 'pdf') => {
-    window.electron.export
-      .note({
-        title: note.name || t('workspace.note.untitled'),
-        transcript: note.transcript,
-        subnotes: note.subnotes.map((s) => ({
-          type: s.content_type,
-          content: s.content,
-        })),
-        format,
-      })
-      .catch(console.error);
+    window.electron.export.note({
+      title: note.name || '未命名笔记',
+      transcript: note.transcript,
+      subnotes: note.subnotes.map(s => ({ type: s.content_type, content: s.content })),
+      format
+    }).catch(console.error);
   };
 
   return (
-    <article
-      className={`workspace-detail-note ${isSelected ? 'selected' : ''}`}
-      id={`workspace-note-${note.id}`}
-    >
+    <article className={`workspace-detail-note ${isSelected ? 'selected' : ''}`} id={`workspace-note-${note.id}`}>
       <header style={{ position: 'relative' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {onToggleSelection && (
-            <input
-              type="checkbox"
+            <input 
+              type="checkbox" 
               checked={isSelected}
               onChange={() => onToggleSelection(note.id)}
               style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
@@ -56,57 +46,41 @@ export default function WorkspaceNoteCard({
           )}
           <div>
             <span className="workspace-note-kind">
-              {note.is_pinned
-                ? t('workspace.note.pinned')
-                : t('workspace.note.working')}
+              {note.is_pinned ? '置顶笔记' : '工作笔记'}
             </span>
-            <h2>{note.name || t('workspace.note.untitled')}</h2>
+            <h2>{note.name || '未命名笔记'}</h2>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            onClick={() => handleExport('word')}
-          >
-            {t('workspace.note.exportWord')}
+          <button type="button" className="btn-secondary btn-sm" onClick={() => handleExport('word')}>
+            匯出 Word
           </button>
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            onClick={() => handleExport('pdf')}
-          >
-            {t('workspace.note.exportPdf')}
+          <button type="button" className="btn-secondary btn-sm" onClick={() => handleExport('pdf')}>
+            匯出 PDF
           </button>
           <time dateTime={note.updated_at} style={{ marginLeft: '8px' }}>
-            {WorkspaceController.formatDate(
-              note.updated_at,
-              'short',
-              i18n.resolvedLanguage,
-            )}
+            {WorkspaceController.formatDate(note.updated_at, 'short')}
           </time>
         </div>
       </header>
 
       <div className="workspace-content-grid">
         <section>
-          <h3>{t('workspace.note.audio')}</h3>
+          <h3>录音</h3>
           <WorkspaceAudioPlayer workspaceId={workspaceId} note={note} />
         </section>
 
         <section className="workspace-transcript-section">
-          <h3>{t('workspace.note.transcript')}</h3>
+          <h3>完整转录</h3>
           <p className="workspace-transcript">
-            {note.transcript || t('workspace.note.transcriptEmpty')}
+            {note.transcript || '暂无转录内容'}
           </p>
         </section>
 
         <section>
-          <h3>{t('workspace.note.subnotes')}</h3>
+          <h3>子笔记</h3>
           {note.subnotes.length === 0 ? (
-            <span className="workspace-content-empty">
-              {t('workspace.note.subnotesEmpty')}
-            </span>
+            <span className="workspace-content-empty">暂无子笔记</span>
           ) : (
             <div className="workspace-content-stack">
               {note.subnotes.map((subnote) => (
@@ -127,11 +101,9 @@ export default function WorkspaceNoteCard({
         />
 
         <section className="workspace-conversation-section">
-          <h3>{t('workspace.note.conversations')}</h3>
+          <h3>关联 AI 对话</h3>
           {note.conversations.length === 0 ? (
-            <span className="workspace-content-empty">
-              {t('workspace.note.conversationsEmpty')}
-            </span>
+            <span className="workspace-content-empty">暂无关联对话</span>
           ) : (
             <div className="workspace-content-stack">
               {note.conversations.map((conversation) => (
@@ -140,10 +112,7 @@ export default function WorkspaceNoteCard({
                   key={conversation.id}
                 >
                   <summary>
-                    {t('workspace.note.conversationCount', {
-                      name: conversation.name,
-                      count: conversation.messages.length,
-                    })}
+                    {conversation.name} · {conversation.messages.length} 条消息
                   </summary>
                   <div>
                     {conversation.messages.map((message) => (

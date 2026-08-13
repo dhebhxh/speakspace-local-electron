@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { WorkspaceSuggestion } from './WorkspaceSuggestionController';
 import './WorkspaceSuggestionCard.css';
 
@@ -15,7 +14,6 @@ export default function WorkspaceSuggestionCard({
   onUseName,
   onRename,
 }: WorkspaceSuggestionCardProps) {
-  const { t } = useTranslation();
   const [renaming, setRenaming] = useState(false);
   const [error, setError] = useState('');
 
@@ -28,34 +26,25 @@ export default function WorkspaceSuggestionCard({
       setError('');
       await onRename(suggestion.targetWorkspaceId, suggestion.name);
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : t('workspace.suggestion.error'),
-      );
+      setError(reason instanceof Error ? reason.message : '整理工作空间失败');
     } finally {
       setRenaming(false);
     }
   };
 
   return (
-    <aside
-      className="workspace-suggestion"
-      aria-label={t('workspace.suggestion.label')}
-    >
+    <aside className="workspace-suggestion" aria-label="工作空间整理建议">
       <span className="workspace-suggestion-icon" aria-hidden="true">
         ✦
       </span>
       <div className="workspace-suggestion-copy">
-        <span>
-          {t('workspace.suggestion.title')} · {suggestion.category}
-        </span>
+        <span>智能整理建议 · {suggestion.category}</span>
         <strong>{suggestion.name}</strong>
         <small>{error || suggestion.reason}</small>
       </div>
       <div className="workspace-suggestion-actions">
         <button onClick={() => onUseName(suggestion.name)} type="button">
-          {t('workspace.suggestion.use')}
+          用于新建
         </button>
         {suggestion.targetWorkspaceId && (
           <button
@@ -64,9 +53,7 @@ export default function WorkspaceSuggestionCard({
             onClick={renameWorkspace}
             type="button"
           >
-            {renaming
-              ? t('workspace.suggestion.renaming')
-              : t('workspace.suggestion.rename')}
+            {renaming ? '整理中…' : '整理现有空间'}
           </button>
         )}
       </div>

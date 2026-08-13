@@ -78,19 +78,26 @@
 
 .ask-ai-note-list {
   display: grid;
+  /* 之前没有 flex-grow，列表不会撑满剩余高度，窗口一小就被压扁 */
+  flex: 1 1 auto;
   align-content: start;
   gap: 0.4rem;
   min-height: 0;
-  margin-top: 1rem;
+  margin-top: 0.7rem;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
+/* 只作用于列表条目本身：用子选择器，避免误伤标题行里的 ＋ 按钮 */
 .ask-ai-note-list > button,
-.ask-ai-recents button {
+.ask-ai-note-group > button,
+.ask-ai-recents-list > button {
   display: grid;
-  gap: 0.25rem;
+  gap: 0.15rem;
   width: 100%;
-  padding: 0.7rem;
+  min-width: 0;
+  /* 收紧一点，窗口变小时能多露出几条 */
+  padding: 0.5rem 0.6rem;
   background: transparent;
   color: var(--text);
   text-align: left;
@@ -98,8 +105,81 @@
 
 .ask-ai-note-list > button:hover,
 .ask-ai-note-list > button.active,
-.ask-ai-recents button:hover {
+.ask-ai-note-group > button:hover,
+.ask-ai-note-group > button.active,
+.ask-ai-recents-list > button:hover {
   background: var(--surface-soft);
+  transform: none;
+}
+
+/* 笔记库按工作区分组：display:contents 让组内笔记仍排在外层栅格中 */
+.ask-ai-note-group {
+  display: contents;
+}
+
+.ask-ai-note-group h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.1rem;
+  padding: 0.15rem 0.25rem;
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.ask-ai-note-group h3:hover {
+  background: var(--surface-soft);
+}
+
+/* 工作区名称可整块拖到输入框，给个抓取光标做提示。 */
+.ask-ai-group-name {
+  cursor: grab;
+}
+
+.ask-ai-group-name:active {
+  cursor: grabbing;
+}
+
+/*
+ * 新增按钮默认隐藏，悬停对应那一行才出现。
+ * 用两级类名书写：同级容器里存在 `.xxx button` 这类后代选择器，
+ * 优先级 (0,1,1) 会压过单个类名，把这里的尺寸和内边距顶掉。
+ */
+.ask-ai-note-group h3 .ask-ai-group-add,
+.ask-ai-recents-header .ask-ai-group-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  color: var(--muted);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.85rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.ask-ai-note-group h3:hover .ask-ai-group-add,
+.ask-ai-recents-header:hover .ask-ai-group-add,
+.ask-ai-group-add:focus-visible {
+  opacity: 1;
+}
+
+.ask-ai-note-group h3 .ask-ai-group-add:hover,
+.ask-ai-recents-header .ask-ai-group-add:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
   transform: none;
 }
 
@@ -121,19 +201,52 @@
 }
 
 .ask-ai-recents {
-  flex: 0 0 auto;
-  max-height: 34%;
-  margin-top: 0.8rem;
-  padding-top: 0.8rem;
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 32%;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
   border-top: 1px solid var(--border);
-  overflow-y: auto;
 }
 
-.ask-ai-recents summary {
+.ask-ai-recents-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin: 0 0 0.15rem;
+  padding: 0.15rem 0.25rem;
+  border-radius: 7px;
   color: var(--muted);
-  cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.66rem;
   font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+/* 中文没有词边界，可收缩的 flex 项会被压到一个字宽而竖排，这里禁止收缩换行 */
+.ask-ai-recents-header > span,
+.ask-ai-note-group h3 > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ask-ai-recents-header:hover {
+  background: var(--surface-soft);
+}
+
+.ask-ai-recents-list {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .ask-ai-main {
@@ -187,6 +300,46 @@
   color: var(--muted);
   font-size: 0.72rem;
   white-space: nowrap;
+}
+
+/* 预览分成「摘要」和「原文转录」两段，各自带小标题。 */
+.ask-ai-note-section {
+  margin-top: 1.1rem;
+}
+
+.ask-ai-note-section > h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ask-ai-note-summary {
+  margin-top: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+
+.ask-ai-note-summary h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.ask-ai-note-summary p {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+}
+
+.ask-ai-note-empty {
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
 .ask-ai-note-preview p {

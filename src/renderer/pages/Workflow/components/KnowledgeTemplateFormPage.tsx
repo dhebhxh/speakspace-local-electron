@@ -1,5 +1,4 @@
 import { FormEvent, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { KnowledgeTemplateDTO } from '../../../../main/workflow/WorkflowTypes';
 
 type KnowledgeTemplateFormProps = {
@@ -13,7 +12,6 @@ export default function KnowledgeTemplateFormPage({
   onSubmit,
   onCancel,
 }: KnowledgeTemplateFormProps) {
-  const { t } = useTranslation();
   const [name, setName] = useState(knowledgeTemplate?.name ?? '');
   const [prompt, setPrompt] = useState(knowledgeTemplate?.prompt ?? '');
   const [saving, setSaving] = useState(false);
@@ -27,9 +25,7 @@ export default function KnowledgeTemplateFormPage({
     try {
       await onSubmit(name, prompt);
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : t('workflow.error.save'),
-      );
+      setErrorMessage(error instanceof Error ? error.message : '模板保存失败');
     } finally {
       setSaving(false);
     }
@@ -38,7 +34,7 @@ export default function KnowledgeTemplateFormPage({
   return (
     <form className="knowledge-template-form" onSubmit={handleSubmit}>
       <label htmlFor="knowledge-template-name">
-        {t('workflow.form.name')}
+        模板名称
         <input
           id="knowledge-template-name"
           value={name}
@@ -47,25 +43,25 @@ export default function KnowledgeTemplateFormPage({
         />
       </label>
       <label htmlFor="knowledge-template-prompt">
-        {t('workflow.form.instructions')}
+        整理说明
         <textarea
           id="knowledge-template-prompt"
           value={prompt}
           maxLength={4000}
-          placeholder={t('workflow.form.placeholder')}
+          placeholder="例如：提取会议摘要、关键决定和负责人明确的行动项。"
           onChange={(event) => setPrompt(event.target.value)}
         />
       </label>
       {errorMessage && <p className="workflow-error">{errorMessage}</p>}
       <div className="knowledge-template-form-actions">
         <button type="button" className="secondary-button" onClick={onCancel}>
-          {t('workflow.form.cancel')}
+          取消
         </button>
         <button
           type="submit"
           disabled={saving || !name.trim() || !prompt.trim()}
         >
-          {saving ? t('workflow.form.saving') : t('workflow.form.save')}
+          {saving ? '保存中…' : '保存模板'}
         </button>
       </div>
     </form>

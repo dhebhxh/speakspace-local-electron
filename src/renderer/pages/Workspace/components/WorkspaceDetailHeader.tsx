@@ -1,4 +1,3 @@
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { WorkspaceController, WorkspaceItem } from '../WorkspaceController';
 
@@ -13,56 +12,38 @@ export default function WorkspaceDetailHeader({
   onRename,
   onDelete,
 }: Props) {
-  const { t, i18n } = useTranslation();
-
   return (
     <>
       <Link className="workspace-back-link" to="/">
-        ← {t('workspace.detail.back')}
+        ← 返回最近使用
       </Link>
       <header className="workspace-detail-hero">
         <div>
           <span className="workspace-detail-eyebrow">WORKSPACE DETAIL</span>
           <h1>{workspace.name}</h1>
           <div className="workspace-detail-meta">
+            <span>{workspace.note_count} 篇笔记</span>
+            <span>{workspace.pinned_count} 篇置顶</span>
             <span>
-              {t('workspace.detail.meta.notes', {
-                count: workspace.note_count,
-              })}
+              最近打开{' '}
+              {WorkspaceController.formatDate(workspace.recent_at, 'long')}
             </span>
             <span>
-              {t('workspace.detail.meta.pinned', {
-                count: workspace.pinned_count,
-              })}
-            </span>
-            <span>
-              {t('workspace.detail.meta.opened')}{' '}
-              {WorkspaceController.formatDate(
-                workspace.recent_at,
-                'long',
-                i18n.resolvedLanguage,
-              )}
-            </span>
-            <span>
-              {t('workspace.detail.meta.updated')}{' '}
-              {WorkspaceController.formatDate(
-                workspace.updated_at,
-                'long',
-                i18n.resolvedLanguage,
-              )}
+              内容更新{' '}
+              {WorkspaceController.formatDate(workspace.updated_at, 'long')}
             </span>
           </div>
         </div>
         <div className="workspace-detail-actions">
           <button onClick={onRename} type="button">
-            {t('workspace.detail.rename')}
+            重命名
           </button>
           <button
             className="workspace-delete-button"
             onClick={onDelete}
             type="button"
           >
-            {t('workspace.detail.delete')}
+            删除
           </button>
         </div>
       </header>

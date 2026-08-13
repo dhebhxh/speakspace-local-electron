@@ -28,8 +28,12 @@ export default function createAgentReadNoteTool(
       if (!Number.isInteger(noteId) || noteId <= 0) {
         throw new Error('无效的笔记 ID / Invalid note id');
       }
+      // 限定了工作空间就不允许跨区读取；未限定（null）时可读取任意笔记。
       const note = notes.findById(noteId);
-      if (!note || note.getWorkspaceId() !== context.workspaceId) {
+      const outOfScope =
+        context.workspaceId !== null &&
+        note?.getWorkspaceId() !== context.workspaceId;
+      if (!note || outOfScope) {
         throw new Error('当前工作空间中找不到该笔记 / Note not found');
       }
       return JSON.stringify({

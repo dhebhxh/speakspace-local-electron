@@ -23,6 +23,15 @@ const configuration: webpack.Configuration = {
 
   target: 'electron-main',
 
+  // 同 renderer：Windows 上用轮询监听，确保主进程改动也能被 --watch 可靠捕获。
+  // 注意必须排除构建产物目录（.erb/dll）——否则轮询会把 tsconfig.tsbuildinfo 等
+  // 输出文件的变化误判为源码改动，反复重新编译并触发 electronmon 不断重启（白屏）。
+  watchOptions: {
+    poll: 1000,
+    aggregateTimeout: 300,
+    ignored: /node_modules|[\\/]dll[\\/]/,
+  },
+
   entry: {
     main: path.join(webpackPaths.srcMainPath, 'main.ts'),
     preload: path.join(webpackPaths.srcMainPath, 'preload.ts'),

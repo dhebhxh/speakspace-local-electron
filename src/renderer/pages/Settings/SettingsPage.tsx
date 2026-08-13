@@ -3,37 +3,43 @@ import { useTranslation } from 'react-i18next';
 import { AppSettings } from '../../settings/SettingsController';
 import { useAppSettings } from '../../settings/AppSettingsProvider';
 import FontSizeSettingsPanel from './components/FontSizeSettingsPanel';
+import HardwareSettingsPanel from './components/HardwareSettingsPanel';
 import LanguageSettingsPanel from './components/LanguageSettingsPanel';
 import OnboardingSettingsPanel from './components/OnboardingSettingsPanel';
 import ThemeSettingsPanel from './components/ThemeSettingsPanel';
-import AppIcon, { AppIconName } from '../../components/AppIcon';
 import './SettingsPage.css';
 
-type CategoryId = 'appearance' | 'language' | 'guide';
+type CategoryId = 'appearance' | 'language' | 'hardware' | 'guide';
 
 const CATEGORIES: Array<{
   id: CategoryId;
   labelKey: string;
   descKey: string;
-  icon: AppIconName;
+  glyph: string;
 }> = [
   {
     id: 'appearance',
     labelKey: 'settings.category.appearance',
     descKey: 'settings.category.appearance.desc',
-    icon: 'appearance',
+    glyph: '◐',
   },
   {
     id: 'language',
     labelKey: 'settings.category.language',
     descKey: 'settings.category.language.desc',
-    icon: 'language',
+    glyph: '文',
+  },
+  {
+    id: 'hardware',
+    labelKey: 'settings.category.hardware',
+    descKey: 'settings.category.hardware.desc',
+    glyph: '▣',
   },
   {
     id: 'guide',
     labelKey: 'settings.category.guide',
     descKey: 'settings.category.guide.desc',
-    icon: 'guide',
+    glyph: '?',
   },
 ];
 
@@ -71,6 +77,7 @@ export default function SettingsPage() {
     <section className="settings-page">
       <header className="settings-header">
         <div>
+          <span className="settings-eyebrow">SETTINGS</span>
           <h1>{t('settings.title')}</h1>
           <p>{t('settings.subtitle')}</p>
         </div>
@@ -101,7 +108,7 @@ export default function SettingsPage() {
               onClick={() => setActiveCategory(category.id)}
             >
               <span className="settings-nav-glyph" aria-hidden="true">
-                <AppIcon name={category.icon} size={18} />
+                {category.glyph}
               </span>
               <span>
                 <strong>{t(category.labelKey)}</strong>
@@ -135,6 +142,8 @@ export default function SettingsPage() {
               settings={settings}
             />
           )}
+
+          {activeCategory === 'hardware' && <HardwareSettingsPanel />}
 
           {activeCategory === 'guide' && <OnboardingSettingsPanel />}
         </div>

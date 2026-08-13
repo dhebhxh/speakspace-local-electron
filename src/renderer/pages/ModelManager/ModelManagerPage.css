@@ -1,6 +1,5 @@
 .model-manager-page {
-  width: min(1040px, 100%);
-  min-height: calc(100vh - 5rem);
+  width: min(980px, 100%);
   margin: 0 auto;
   padding-bottom: 1rem;
 }
@@ -9,69 +8,55 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
-  padding: 0.35rem 0.15rem 1.1rem;
-}
-
-.model-manager-eyebrow {
-  color: var(--accent);
-  font-size: 0.62rem;
-  font-weight: 850;
-  letter-spacing: 0.17em;
+  gap: 1rem;
+  padding: 0.25rem 0.25rem 0.9rem;
 }
 
 .model-manager-header h1 {
-  margin: 0.2rem 0 0;
-  font-size: clamp(1.8rem, 3vw, 2.35rem);
-  letter-spacing: -0.04em;
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
-.model-manager-local-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.42rem 0.65rem;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface-soft);
-  font-size: 0.62rem;
-}
-
-.model-manager-local-badge::before {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #22c55e;
-  content: '';
-}
-
-.model-manager-error {
-  margin: 0 0 0.8rem;
-  padding: 0.7rem 0.85rem;
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  border-radius: 12px;
-  background: rgba(239, 68, 68, 0.08);
-  font-size: 0.68rem;
-}
-
-.model-module-grid {
+/* 四个模块按 2×2 排列，窄窗口时退回单列。 */
+.model-module-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.85rem;
+  gap: 0.7rem;
+  align-items: start;
 }
 
-@media (max-width: 780px) {
-  .model-module-grid {
-    grid-template-columns: 1fr;
+@media (max-width: 860px) {
+  .model-module-list {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
-@media (max-width: 560px) {
-  .model-manager-header {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 0.7rem;
+/* 音色下拉是次要选择，宽度收窄，让模型下拉保持主导。 */
+.model-select-compact {
+  display: flex;
+  flex: 0 1 11rem;
+  min-width: 7rem;
+}
+
+.model-icon-button.is-warning {
+  color: #fbbf24;
+}
+
+.model-icon-button.is-warning:hover:not(:disabled) {
+  color: #fcd34d;
+  border-color: color-mix(in srgb, #fbbf24 40%, transparent);
+}
+
+.model-manager-note {
+  margin: 0.7rem 0 0;
+  color: #fb7185;
+  font-size: 0.74rem;
+}
+
+@media (max-width: 720px) {
+  .model-select-compact {
+    flex: 1 1 auto;
   }
 }

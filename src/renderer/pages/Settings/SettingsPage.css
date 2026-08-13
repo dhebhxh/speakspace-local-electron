@@ -54,6 +54,24 @@
 .settings-resolved-theme { margin: 1rem 0 0; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.75rem; }
 .settings-guide-button { width: 100%; padding: 0.7rem; color: var(--text); border: 1px solid var(--border); border-radius: 12px; background: var(--surface-soft); box-shadow: none; font-size: 0.75rem; font-weight: 700; }
 
+.settings-panel-icon.hardware-icon { background: linear-gradient(135deg, #0ea5e9, #6366f1); }
+.settings-hardware-refresh { margin-left: auto; padding: 0.45rem 0.9rem; color: var(--text); border: 1px solid var(--border); border-radius: 999px; background: var(--surface-soft); box-shadow: none; font-size: 0.72rem; font-weight: 700; }
+.settings-hardware-refresh:hover:not(:disabled) { transform: none; box-shadow: none; border-color: var(--accent); }
+.settings-hardware-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+.settings-hardware-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.6rem; margin: 0; }
+.settings-hardware-item { display: flex; align-items: baseline; justify-content: space-between; gap: 0.9rem; min-width: 0; padding: 0.7rem 0.9rem; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-soft); }
+.settings-hardware-item dt { display: flex; align-items: center; gap: 0.45rem; flex: none; color: var(--muted); font-size: 0.75rem; }
+.settings-hardware-item dd { display: flex; align-items: baseline; gap: 0.45rem; min-width: 0; margin: 0; }
+.settings-hardware-item dd strong { overflow: hidden; font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
+.settings-hardware-item dd small { flex: none; color: var(--muted); font-size: 0.7rem; }
+.settings-hardware-glyph { color: var(--accent); font-size: 0.85rem; }
+.settings-hardware-level { display: flex; align-items: center; gap: 0.5rem; margin: 1rem 0 0; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.75rem; }
+.settings-hardware-badge { padding: 0.15rem 0.55rem; color: var(--accent); border: 1px solid var(--border); border-radius: 999px; background: var(--surface-soft); font-size: 0.72rem; font-weight: 700; }
+.settings-hardware-badge.is-high { color: #10b981; }
+.settings-hardware-badge.is-entry { color: #f59e0b; }
+.settings-hardware-level small { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-hardware-hint { margin: 0.6rem 0 0; color: var(--muted); font-size: 0.72rem; }
+
 @keyframes settings-pulse { 50% { opacity: 0.4; transform: scale(0.82); } }
 @media (max-width: 900px) { .settings-grid { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .settings-header { align-items: flex-start; flex-direction: column; padding: 1.4rem; } }

@@ -1,31 +1,85 @@
 import SemanticNoteService from '../semantic/SemanticNoteService';
 import { SemanticNoteResult } from '../semantic/SemanticTypes';
+import { Note } from '../entities/Note';
 import {
   AgentNoteSource,
   listScopedAgentNotes,
+  previewNoteText,
   serializeAgentNote,
 } from './AgentNoteToolSupport';
 import { AgentTool } from './AgentTypes';
 
 const MAX_KEYWORD_NOTES = 100;
 const MAX_RESULTS = 8;
+const SEMANTIC_TOP_K = 8;
+
+/**
+ * RRF（Reciprocal Rank Fusion）常数。取值越大，越淡化排名靠前的优势。
+ * 60 是检索领域的常用默认值。
+ */
+const RRF_K = 60;
 
 type SemanticSearch = Pick<SemanticNoteService, 'search'>;
 
-function serializeSemantic(
-  result: SemanticNoteResult,
-): Record<string, unknown> {
+type FusedEntry = {
+  id: number;
+  score: number;
+  matchedBy: Set<'keyword' | 'semantic'>;
+  note?: Note;
+  semantic?: SemanticNoteResult;
+};
+
+/**
+ * 把一路检索结果按名次累加进融合表：名次越靠前得分越高，
+ * 同时出现在两路里的笔记会自然拿到更高的总分。
+ */
+function fuse(
+  table: Map<number, FusedEntry>,
+  ids: number[],
+  source: 'keyword' | 'semantic',
+  attach: (entry: FusedEntry, id: number) => void,
+): void {
+  ids.forEach((id, rank) => {
+    const existing = table.get(id);
+    const entry: FusedEntry = existing ?? {
+      id,
+      score: 0,
+      matchedBy: new Set(),
+    };
+    entry.score += 1 / (RRF_K + rank + 1);
+    entry.matchedBy.add(source);
+    attach(entry, id);
+    if (!existing) table.set(id, entry);
+  });
+}
+
+function serializeFused(entry: FusedEntry): Record<string, unknown> {
+  const base = entry.note
+    ? serializeAgentNote(entry.note)
+    : {
+        id: entry.id,
+        workspaceId: entry.semantic?.workspaceId ?? null,
+        name: entry.semantic?.name ?? `Note ${entry.id}`,
+        transcriptPreview: previewNoteText(
+          entry.semantic?.transcriptPreview ?? '',
+        ),
+      };
+
   return {
-    id: result.id,
-    workspaceId: result.workspaceId,
-    name: result.name,
-    transcriptPreview: result.transcriptPreview,
-    score: Number(result.score.toFixed(3)),
-    match: 'semantic',
+    ...base,
+    // 让模型知道这条是怎么被找到的：两路都命中通常更可信。
+    match: [...entry.matchedBy].sort().join('+'),
+    score: Number(entry.score.toFixed(4)),
+    ...(entry.semantic
+      ? { similarity: Number(entry.semantic.score.toFixed(3)) }
+      : {}),
   };
 }
 
-/** 先做便宜的关键词匹配，无结果时才调用本地向量模型。 */
+/**
+ * 混合检索：关键词与向量语义两路都跑，再用 RRF 融合排序。
+ * 两路都命中的笔记会排到前面；本地向量模型不可用时自动退化为纯关键词。
+ */
 export default function createAgentSearchNotesTool(
   notes: AgentNoteSource,
   semantic: SemanticSearch,
@@ -60,33 +114,69 @@ export default function createAgentSearchNotesTool(
         });
       }
 
+      // 两路并行：关键词是同步的，语义检索失败不影响整体结果。
       const term = query.toLocaleLowerCase();
       const keywordMatches = candidates.filter((note) =>
         `${note.getName() || ''}\n${note.getTranscript()}`
           .toLocaleLowerCase()
           .includes(term),
       );
-      if (keywordMatches.length > 0) {
-        return JSON.stringify({
-          match: 'keyword',
-          notes: keywordMatches.slice(0, MAX_RESULTS).map(serializeAgentNote),
-        });
+
+      let semanticMatches: SemanticNoteResult[] = [];
+      let semanticError: string | null = null;
+      try {
+        semanticMatches = await semantic.search(
+          query,
+          context.workspaceId,
+          SEMANTIC_TOP_K,
+        );
+      } catch (error) {
+        semanticError = error instanceof Error ? error.message : String(error);
       }
 
-      try {
-        const results = await semantic.search(query, context.workspaceId, 5);
-        return JSON.stringify({
-          match: 'semantic',
-          notes: results.map(serializeSemantic),
-        });
-      } catch (error) {
+      const table = new Map<number, FusedEntry>();
+      const noteById = new Map(keywordMatches.map((n) => [n.getId(), n]));
+      const semanticById = new Map(semanticMatches.map((r) => [r.id, r]));
+
+      fuse(
+        table,
+        keywordMatches.map((note) => note.getId()),
+        'keyword',
+        (entry, id) => {
+          entry.note = noteById.get(id);
+        },
+      );
+      fuse(
+        table,
+        semanticMatches.map((result) => result.id),
+        'semantic',
+        (entry, id) => {
+          entry.semantic = semanticById.get(id);
+          // 语义命中但不在关键词候选里时，补全笔记正文用于预览。
+          if (!entry.note) entry.note = notes.findById(id) ?? undefined;
+        },
+      );
+
+      const fused = [...table.values()]
+        .sort((left, right) => right.score - left.score)
+        .slice(0, MAX_RESULTS);
+
+      if (fused.length === 0) {
         return JSON.stringify({
           match: 'none',
           notes: [],
-          hint: 'No keyword match. Semantic search is unavailable.',
-          error: error instanceof Error ? error.message : String(error),
+          hint: semanticError
+            ? 'No keyword match. Semantic search is unavailable.'
+            : 'No matching notes in this workspace.',
+          ...(semanticError ? { error: semanticError } : {}),
         });
       }
+
+      return JSON.stringify({
+        match: 'hybrid',
+        notes: fused.map(serializeFused),
+        ...(semanticError ? { semanticUnavailable: semanticError } : {}),
+      });
     },
   };
 }

@@ -5,7 +5,7 @@ import {
 } from './SemanticTypes';
 
 export const DEFAULT_EMBEDDING_MODEL = 'bge-m3';
-type Client = Pick<typeof ollama, 'list' | 'pull' | 'delete' | 'embed'>;
+type Client = Pick<typeof ollama, 'list' | 'pull' | 'embed'>;
 
 /** Embedding 复用现有 Ollama，不安装第二套模型运行时。 */
 export default class OllamaEmbeddingService {
@@ -66,13 +66,6 @@ export default class OllamaEmbeddingService {
         total: progress.total ?? 0,
       });
     }
-    return this.getStatus();
-  }
-
-  public async remove(): Promise<EmbeddingModelStatus> {
-    const current = await this.getStatus();
-    if (!current.installed) return current;
-    await this.client.delete({ model: this.modelName });
     return this.getStatus();
   }
 

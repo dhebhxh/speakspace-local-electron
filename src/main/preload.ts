@@ -192,6 +192,9 @@ const electronHandler = {
     getWorkspace() {
       return ipcRenderer.invoke('Recommendation:getWorkspace');
     },
+    getSystemProfile() {
+      return ipcRenderer.invoke('Recommendation:getSystemProfile');
+    },
   },
 
   // 运行时状态为只读汇总；下载和删除仍由各模型管理接口单独处理。
@@ -208,11 +211,11 @@ const electronHandler = {
     installTTS() {
       return ipcRenderer.invoke('Runtime:installTTS');
     },
-    removeTTS() {
-      return ipcRenderer.invoke('Runtime:removeTTS');
-    },
     installFfmpeg() {
       return ipcRenderer.invoke('Runtime:installFfmpeg');
+    },
+    uninstall(target: string) {
+      return ipcRenderer.invoke('Runtime:uninstall', target);
     },
     onInstallProgress(listener: (progress: unknown) => void) {
       const wrapped = (_event: IpcRendererEvent, progress: unknown) =>
@@ -282,9 +285,6 @@ const electronHandler = {
     installModel() {
       return ipcRenderer.invoke('Semantic:installModel');
     },
-    removeModel() {
-      return ipcRenderer.invoke('Semantic:removeModel');
-    },
     search(query: string, workspaceId?: number | null, topK = 5) {
       return ipcRenderer.invoke('Semantic:search', query, workspaceId, topK);
     },
@@ -320,6 +320,9 @@ const electronHandler = {
   askAI: {
     listNotes(workspaceId?: number | null) {
       return ipcRenderer.invoke('AskAI:listNotes', workspaceId);
+    },
+    getNoteDetail(noteId: number) {
+      return ipcRenderer.invoke('AskAI:getNoteDetail', noteId);
     },
     createNote(request: {
       workspaceId?: number | null;
@@ -383,7 +386,7 @@ const electronHandler = {
       return ipcRenderer.invoke('Workspace:delete', id);
     },
   },
-
+  
   // Export functionality
   export: {
     note(request: {

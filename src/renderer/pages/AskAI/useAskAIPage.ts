@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   AskAIConversation,
   AskAIConversationDetail,
@@ -9,8 +8,15 @@ import {
   AskAIScope,
 } from './AskAITypes';
 
+/**
+ * 提问时的上下文：调用方把挂上的工作区展开成笔记后一起传进来，
+ * 因此这里只需要一份笔记 id 列表，天然支持多工作区混合。
+ */
+export type AskAIContext = {
+  noteIds?: number[];
+};
+
 export default function useAskAIPage() {
-  const { t } = useTranslation();
   const [notes, setNotes] = useState<AskAINote[]>([]);
   const [conversations, setConversations] = useState<AskAIConversation[]>([]);
   const [activeConversation, setActiveConversation] =
@@ -43,11 +49,9 @@ export default function useAskAIPage() {
 
   useEffect(() => {
     Promise.all([loadNotes(), loadConversations()]).catch((error: unknown) => {
-      setStatus(
-        error instanceof Error ? error.message : t('studio.status.loadError'),
-      );
+      setStatus(error instanceof Error ? error.message : '页面加载失败');
     });
-  }, [loadConversations, loadNotes, t]);
+  }, [loadConversations, loadNotes]);
 
   const resetChat = useCallback(() => {
     setActiveConversation(null);
@@ -65,83 +69,94 @@ export default function useAskAIPage() {
     [resetChat],
   );
 
-  const openConversation = useCallback(
-    async (conversationId: number) => {
-      setStatus(t('studio.status.loadingConversation'));
-      try {
-        const detail = (await window.electron.askAI.getConversation(
-          conversationId,
-        )) as AskAIConversationDetail;
-        setActiveConversation(detail.conversation);
-        setMessages(detail.messages);
-        setSources(detail.sources ?? []);
-        if (detail.sources[0]) setSelectedNoteId(detail.sources[0].id);
-        setScope(detail.sources.length > 1 ? 'workspace' : 'note');
-        setStatus('');
-      } catch (error) {
-        setStatus(
-          error instanceof Error
-            ? error.message
-            : t('studio.status.conversationError'),
-        );
-      }
-    },
-    [t],
-  );
+  const openConversation = useCallback(async (conversationId: number) => {
+    setStatus('正在加载会话…');
+    try {
+      const detail = (await window.electron.askAI.getConversation(
+        conversationId,
+      )) as AskAIConversationDetail;
+      setActiveConversation(detail.conversation);
+      setMessages(detail.messages);
+      setSources(detail.sources ?? []);
+      if (detail.sources[0]) setSelectedNoteId(detail.sources[0].id);
+      setScope(detail.sources.length > 1 ? 'workspace' : 'note');
+      setStatus('');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : '会话加载失败');
+    }
+  }, []);
 
   const createNote = useCallback(
-    async (name: string, transcript: string): Promise<boolean> => {
-      setStatus(t('studio.status.savingNote'));
+    async (
+      name: string,
+      transcript: string,
+      workspaceId?: number | null,
+    ): Promise<boolean> => {
+      setStatus('正在保存笔记…');
       try {
         const created = (await window.electron.askAI.createNote({
-          workspaceId: selectedNote?.workspaceId ?? null,
+          workspaceId: workspaceId ?? selectedNote?.workspaceId ?? null,
           name,
           transcript,
         })) as AskAINote;
         await loadNotes(created.id);
         setScope('note');
         resetChat();
-        setStatus(t('studio.status.noteSaved'));
+        setStatus('笔记已保存');
         return true;
       } catch (error) {
-        setStatus(
-          error instanceof Error
-            ? error.message
-            : t('studio.status.noteSaveError'),
-        );
+        setStatus(error instanceof Error ? error.message : '笔记保存失败');
         return false;
       }
     },
-    [loadNotes, resetChat, selectedNote?.workspaceId, t],
+    [loadNotes, resetChat, selectedNote?.workspaceId],
   );
 
   const ask = useCallback(
-    async (question: string): Promise<boolean> => {
-      if (!selectedNote || isSending) return false;
+    async (question: string, context?: AskAIContext): Promise<boolean> => {
+      if (isSending) return false;
+
+      // 上下文完全由调用方挂上的内容决定：挂了笔记就问这些笔记（可跨工作区），
+      // 没挂任何东西时沿用 scope 状态（Ask AI 页仍在用）。
+      const linkedIds =
+        context?.noteIds?.filter((id) => Number.isInteger(id)) ?? [];
+
+      let effectiveScope: AskAIScope;
+      let noteIds: number[] | null = null;
+      let anchorNote: AskAINote | null;
+
+      if (linkedIds.length > 0) {
+        effectiveScope = 'multi-note';
+        noteIds = linkedIds;
+        anchorNote =
+          notes.find((note) => note.id === linkedIds[0]) ?? selectedNote;
+      } else {
+        effectiveScope = scope === 'multi-note' ? 'note' : scope;
+        anchorNote = selectedNote;
+      }
+
+      const workspaceId = anchorNote?.workspaceId ?? null;
+      if (!anchorNote) return false;
+
       setIsSending(true);
-      setStatus(t('studio.status.thinking'));
+      setStatus('本地模型正在思考…');
       try {
         const result = (await window.electron.askAI.ask({
           conversationId: activeConversation?.id ?? null,
-          workspaceId: selectedNote.workspaceId,
-          noteId: selectedNote.id,
+          workspaceId,
+          noteId: anchorNote?.id ?? null,
+          noteIds,
           question,
-          scope,
+          scope: effectiveScope,
         })) as AskAIResult;
         setActiveConversation(result.conversation);
         setMessages(result.messages);
         setSources(result.sources ?? []);
-        setStatus(
-          result.modelName
-            ? t('studio.status.model', { name: result.modelName })
-            : '',
-        );
+        setStatus(result.modelName ? `本地模型：${result.modelName}` : '');
         await loadConversations();
         return true;
       } catch (error) {
-        setStatus(
-          error instanceof Error ? error.message : t('studio.status.askError'),
-        );
+        setStatus(error instanceof Error ? error.message : '提问失败');
         return false;
       } finally {
         setIsSending(false);
@@ -151,9 +166,9 @@ export default function useAskAIPage() {
       activeConversation?.id,
       isSending,
       loadConversations,
+      notes,
       scope,
       selectedNote,
-      t,
     ],
   );
 

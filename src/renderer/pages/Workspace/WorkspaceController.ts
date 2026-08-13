@@ -134,16 +134,12 @@ export class WorkspaceController {
     });
   }
 
-  public static formatDate(
-    value: string,
-    format: 'long' | 'short',
-    locale = 'zh-CN',
-  ): string {
+  public static formatDate(value: string, format: 'long' | 'short'): string {
     const options: Intl.DateTimeFormatOptions =
       format === 'long'
         ? { dateStyle: 'long' }
         : { month: 'short', day: 'numeric' };
-    return new Intl.DateTimeFormat(locale, options).format(new Date(value));
+    return new Intl.DateTimeFormat('zh-CN', options).format(new Date(value));
   }
 
   public static getErrorMessage(reason: unknown, fallback: string): string {

@@ -1,6 +1,7 @@
 import { FormEvent, KeyboardEvent, useMemo, useState } from 'react';
 import { AskAIMessage, AskAINote, AskAIScope } from '../AskAITypes';
 import TTSPlayButton from '../../../tts/TTSPlayButton';
+import CopyButton from '../../../components/CopyButton';
 
 type AskAIChatPanelProps = {
   messages: AskAIMessage[];
@@ -104,7 +105,10 @@ export default function AskAIChatPanel({
               <span>{message.role === 'assistant' ? 'AI' : '你'}</span>
               <p>{message.content}</p>
               {message.role === 'assistant' && (
-                <TTSPlayButton text={message.content} />
+                <div className="message-actions">
+                  <TTSPlayButton text={message.content} />
+                  <CopyButton text={message.content} />
+                </div>
               )}
             </article>
           ))

@@ -1,7 +1,22 @@
-import { FormEvent, KeyboardEvent, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { AskAIMessage, AskAINote, AskAIScope } from '../../AskAI/AskAITypes';
+import {
+  DragEvent,
+  FormEvent,
+  KeyboardEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { AskAIMessage, AskAINote } from '../../AskAI/AskAITypes';
+import {
+  hasNoteDragPayload,
+  readNoteDragPayload,
+} from '../../AskAI/AskAIDragPayload';
+import { StudioWorkspace } from '../StudioPage';
+import { StudioAgentState } from '../useStudioAgent';
+import { AgentStep } from '../../../../main/agent/AgentTypes';
 import TTSPlayButton from '../../../tts/TTSPlayButton';
+import CopyButton from '../../../components/CopyButton';
 
 type RecordingUiState = {
   active: boolean;
@@ -15,11 +30,21 @@ type StudioChatPanelProps = {
   sources: AskAINote[];
   selectedNote: AskAINote | null;
   allNotes: AskAINote[];
-  scope: AskAIScope;
   status: string;
   isSending: boolean;
   recording: RecordingUiState;
-  onScopeChange: (scope: AskAIScope) => void;
+  workspaces: StudioWorkspace[];
+  conversationName: string;
+  linkedNotes: AskAINote[];
+  linkedWorkspaceIds: number[];
+  onAddLinkedNote: (note: AskAINote) => void;
+  onRemoveLinkedNote: (noteId: number) => void;
+  onLinkWorkspace: (workspaceId: number) => void;
+  onUnlinkWorkspace: (workspaceId: number) => void;
+  agentMode: boolean;
+  agent: StudioAgentState;
+  onToggleAgentMode: () => void;
+  onCancelAgent: () => void;
   onAsk: (question: string) => Promise<boolean>;
   onStartRecording: () => void;
   onStopRecording: () => void;
@@ -33,29 +58,345 @@ function formatElapsed(ms: number): string {
   return `${minutes}:${seconds}`;
 }
 
+const iconProps = {
+  width: 18,
+  height: 18,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 2,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  'aria-hidden': true,
+};
+
+function MicIcon() {
+  return (
+    <svg {...iconProps}>
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0" />
+      <line x1="12" y1="19" x2="12" y2="22" />
+    </svg>
+  );
+}
+
+function StopIcon() {
+  return (
+    <svg {...iconProps}>
+      <rect x="6" y="6" width="12" height="12" rx="2" />
+    </svg>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M12 16V4" />
+      <path d="m7 9 5-5 5 5" />
+      <path d="M5 20h14" />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M22 2 11 13" />
+      <path d="M22 2 15 22l-4-9-9-4Z" />
+    </svg>
+  );
+}
+
+function NoteIcon() {
+  return (
+    <svg {...iconProps} width={14} height={14}>
+      <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+      <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z" />
+    </svg>
+  );
+}
+
+function WorkspaceIcon() {
+  return (
+    <svg {...iconProps} width={14} height={14}>
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+    </svg>
+  );
+}
+
+function AgentIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3Z" />
+      <path d="M18 14l.8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8L18 14Z" />
+    </svg>
+  );
+}
+
+const AGENT_TOOL_NAMES: Record<string, string> = {
+  search_notes: '搜索笔记',
+  read_note: '读取笔记',
+};
+
+const MATCH_LABELS: Record<string, string> = {
+  keyword: '关键词',
+  semantic: '语义',
+  'keyword+semantic': '关键词+语义',
+};
+
+type AgentStepView = { title: string; details: string[] };
+
+type SearchHit = {
+  name?: string;
+  match?: string;
+  similarity?: number;
+};
+
+/** 解析 search_notes 返回的 JSON，列出命中的笔记与命中方式。 */
+function describeSearchResult(raw: string): string[] {
+  const parsed = JSON.parse(raw) as {
+    match?: string;
+    notes?: SearchHit[];
+    hint?: string;
+    semanticUnavailable?: string;
+  };
+  const hits = parsed.notes ?? [];
+
+  if (hits.length === 0) {
+    return [parsed.hint || '没有找到相关笔记'];
+  }
+
+  const lines = hits.map((hit) => {
+    const via = MATCH_LABELS[hit.match ?? ''] ?? hit.match ?? '';
+    const score =
+      typeof hit.similarity === 'number' ? ` ${hit.similarity.toFixed(2)}` : '';
+    return `${hit.name ?? '未命名笔记'}${via ? `（${via}${score}）` : ''}`;
+  });
+
+  if (parsed.semanticUnavailable) {
+    lines.push('语义检索不可用，本次仅用关键词');
+  }
+  return lines;
+}
+
+/** 把 Agent 的公开步骤转成可读的标题 + 明细，不暴露模型内部推理。 */
+function describeAgentStep(step: AgentStep): AgentStepView {
+  if (step.type === 'final') {
+    return {
+      title: step.truncated ? '整理答案（已达步数上限）' : '整理答案',
+      details: [],
+    };
+  }
+
+  const tool = AGENT_TOOL_NAMES[step.tool] ?? step.tool;
+
+  if (step.type === 'tool_call') {
+    const query = String(step.args?.query ?? '').trim();
+    const noteId = step.args?.note_id ?? step.args?.noteId;
+    if (step.tool === 'search_notes') {
+      return { title: query ? `搜索「${query}」` : '列出最近笔记', details: [] };
+    }
+    if (step.tool === 'read_note' && noteId !== undefined) {
+      return { title: `读取笔记 #${noteId}`, details: [] };
+    }
+    return { title: tool, details: [] };
+  }
+
+  if (!step.ok) {
+    return { title: `${tool}失败`, details: [step.result.slice(0, 200)] };
+  }
+
+  try {
+    if (step.tool === 'search_notes') {
+      const details = describeSearchResult(step.result);
+      return { title: `找到 ${details.length} 条结果`, details };
+    }
+    if (step.tool === 'read_note') {
+      const parsed = JSON.parse(step.result) as {
+        name?: string;
+        transcript?: string;
+        transcriptPreview?: string;
+      };
+      const body = parsed.transcript ?? parsed.transcriptPreview ?? '';
+      return {
+        title: `已读取「${parsed.name ?? '未命名笔记'}」`,
+        details: body ? [`${body.slice(0, 120)}…`] : [],
+      };
+    }
+  } catch {
+    // 结果不是预期的 JSON 时退回到概要描述。
+  }
+
+  return { title: `完成：${tool}`, details: [] };
+}
+
+/** # 菜单里的一项：整个工作区，或某一条笔记。 */
+type MentionItem = {
+  kind: 'workspace' | 'note';
+  id: number;
+  name: string;
+  hint?: string;
+  note?: AskAINote;
+};
+
+/** 单行高度，与输入框内图标按钮的高度保持一致，保证同一水平线。 */
+const COMPOSER_MIN_HEIGHT = 36;
+const COMPOSER_MAX_HEIGHT = 160;
+const MENTION_LIMIT = 8;
+
+/** 光标前若存在未闭合的 #关键词，返回它的起点与关键词，用于弹出关联笔记菜单。 */
+function detectMention(
+  value: string,
+  caret: number,
+): { start: number; query: string } | null {
+  const match = /#([^\s#]*)$/u.exec(value.slice(0, caret));
+  if (!match) return null;
+  return { start: caret - match[0].length, query: match[1] };
+}
+
 export default function StudioChatPanel({
   messages,
   sources,
   selectedNote,
   allNotes,
-  scope,
   status,
   isSending,
   recording,
-  onScopeChange,
+  workspaces,
+  conversationName,
+  linkedNotes,
+  linkedWorkspaceIds,
+  onAddLinkedNote,
+  onRemoveLinkedNote,
+  onLinkWorkspace,
+  onUnlinkWorkspace,
+  agentMode,
+  agent,
+  onToggleAgentMode,
+  onCancelAgent,
   onAsk,
   onStartRecording,
   onStopRecording,
   onUploadAudio,
 }: StudioChatPanelProps) {
-  const { t } = useTranslation();
   const [question, setQuestion] = useState('');
-  const workspaceNoteCount = useMemo(
-    () =>
-      allNotes.filter((note) => note.workspaceId === selectedNote?.workspaceId)
-        .length,
-    [allNotes, selectedNote?.workspaceId],
+  const [mention, setMention] = useState<{
+    start: number;
+    query: string;
+  } | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [dragOver, setDragOver] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 自动增高：内容变多时撑大，达到上限后固定高度并出现滚动条。
+  // 空内容时不去测量 scrollHeight——空状态下测得的值会偏大，把输入框撑成两行，
+  // 导致占位文字和左侧图标不在同一水平线上。直接用单行高度即可。
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    if (!question) {
+      el.style.height = `${COMPOSER_MIN_HEIGHT}px`;
+      return;
+    }
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(
+      Math.min(el.scrollHeight, COMPOSER_MAX_HEIGHT),
+      COMPOSER_MIN_HEIGHT,
+    )}px`;
+  }, [question]);
+
+  const linkedWorkspaces = useMemo(
+    () => workspaces.filter((item) => linkedWorkspaceIds.includes(item.id)),
+    [linkedWorkspaceIds, workspaces],
   );
+
+  // # 菜单候选：工作区（= 整个工作区的全部笔记）在前，具体笔记在后。
+  const mentionCandidates = useMemo((): MentionItem[] => {
+    if (!mention) return [];
+    const keyword = mention.query.trim().toLowerCase();
+    const linkedIds = new Set(linkedNotes.map((note) => note.id));
+
+    const workspaceItems: MentionItem[] = workspaces
+      .filter((item) => !linkedWorkspaceIds.includes(item.id))
+      .filter((item) => !keyword || item.name.toLowerCase().includes(keyword))
+      .map((item) => ({
+        kind: 'workspace',
+        id: item.id,
+        name: item.name,
+        hint: `${allNotes.filter((n) => n.workspaceId === item.id).length} 条笔记`,
+      }));
+
+    const noteItems: MentionItem[] = allNotes
+      .filter((note) => !linkedIds.has(note.id))
+      .filter((note) => {
+        if (!keyword) return true;
+        return (
+          note.name.toLowerCase().includes(keyword) ||
+          (note.transcriptPreview ?? '').toLowerCase().includes(keyword)
+        );
+      })
+      .map((note) => ({ kind: 'note', id: note.id, name: note.name, note }));
+
+    return [...workspaceItems, ...noteItems].slice(0, MENTION_LIMIT);
+  }, [allNotes, linkedNotes, linkedWorkspaceIds, mention, workspaces]);
+
+  const mentionOpen = mention !== null && mentionCandidates.length > 0;
+
+  function closeMention() {
+    setMention(null);
+    setMentionIndex(0);
+  }
+
+  function syncMention(value: string, caret: number) {
+    const next = detectMention(value, caret);
+    setMention(next);
+    setMentionIndex(0);
+  }
+
+  /** 选中候选项：把输入框里的 #关键词删掉，改为挂成一个关联标签。 */
+  function pickMention(item: MentionItem) {
+    if (!mention) return;
+    const end = mention.start + 1 + mention.query.length;
+    const next = question.slice(0, mention.start) + question.slice(end);
+    setQuestion(next);
+    closeMention();
+    if (item.kind === 'workspace') onLinkWorkspace(item.id);
+    else if (item.note) onAddLinkedNote(item.note);
+    window.requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(mention.start, mention.start);
+    });
+  }
+
+  /** 拖拽只接受笔记库拖过来的载荷，落点限定在输入框这一块。 */
+  function handleDragOver(event: DragEvent<HTMLFormElement>) {
+    if (!hasNoteDragPayload(event.dataTransfer)) return;
+    event.preventDefault();
+    // eslint-disable-next-line no-param-reassign
+    event.dataTransfer.dropEffect = 'copy';
+    setDragOver(true);
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLFormElement>) {
+    // 移动到输入框内部的子元素上时不算离开。
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    setDragOver(false);
+  }
+
+  function handleDrop(event: DragEvent<HTMLFormElement>) {
+    const payload = readNoteDragPayload(event.dataTransfer);
+    if (!payload) return;
+    event.preventDefault();
+    setDragOver(false);
+    if (payload.kind === 'workspace') {
+      onLinkWorkspace(payload.id);
+      return;
+    }
+    const note = allNotes.find((item) => item.id === payload.id);
+    if (note) onAddLinkedNote(note);
+  }
 
   async function submitQuestion() {
     const cleanQuestion = question.trim();
@@ -69,6 +410,33 @@ export default function StudioChatPanel({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    // # 菜单打开时，方向键/回车先由菜单消费，避免误发送。
+    if (mentionOpen) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setMentionIndex((prev) => (prev + 1) % mentionCandidates.length);
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setMentionIndex(
+          (prev) =>
+            (prev - 1 + mentionCandidates.length) % mentionCandidates.length,
+        );
+        return;
+      }
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        event.preventDefault();
+        pickMention(mentionCandidates[mentionIndex]);
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeMention();
+        return;
+      }
+    }
+
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       submitQuestion();
@@ -76,48 +444,23 @@ export default function StudioChatPanel({
   }
 
   const recordingBusy = recording.busy;
+  // 挂了笔记或整个工作区，才有可提问的上下文。
+  const hasContext =
+    selectedNote !== null ||
+    linkedNotes.length > 0 ||
+    linkedWorkspaceIds.length > 0;
 
   return (
     <section className="studio-chat">
       <header className="studio-chat-header">
         <div className="studio-chat-heading">
-          <span>{t('studio.chat.eyebrow')}</span>
-          <h2>
-            {scope === 'note'
-              ? t('studio.chat.title.note')
-              : t('studio.chat.title.workspace')}
-          </h2>
-          <p>
-            {scope === 'note'
-              ? selectedNote?.name || t('studio.chat.start')
-              : t('studio.chat.workspaceCount', { count: workspaceNoteCount })}
-          </p>
-        </div>
-        <div
-          className="ask-ai-scope"
-          role="group"
-          aria-label={t('studio.chat.scopeLabel')}
-        >
-          <button
-            type="button"
-            className={scope === 'note' ? 'active' : ''}
-            onClick={() => onScopeChange('note')}
-          >
-            {t('studio.chat.scope.note')}
-          </button>
-          <button
-            type="button"
-            className={scope === 'workspace' ? 'active' : ''}
-            onClick={() => onScopeChange('workspace')}
-          >
-            {t('studio.chat.scope.workspace')}
-          </button>
+          <h2>{conversationName || '新对话'}</h2>
         </div>
       </header>
 
       {sources.length > 0 && (
         <div className="ask-ai-sources">
-          <span>{t('studio.chat.sources')}</span>
+          <span>引用</span>
           {sources.map((source) => (
             <span key={source.id} title={source.transcriptPreview}>
               {source.name}
@@ -127,36 +470,102 @@ export default function StudioChatPanel({
       )}
 
       <div className="ask-ai-messages studio-chat-messages">
-        {messages.length === 0 ? (
+        {messages.length === 0 && agent.turns.length === 0 && !agent.running ? (
           <div className="ask-ai-empty">
-            <strong>{t('studio.chat.empty.title')}</strong>
-            <span>{t('studio.chat.empty.description')}</span>
+            <span>录音或选择笔记后开始提问</span>
           </div>
         ) : (
           messages.map((message) => (
             <article key={message.id} className={message.role}>
-              <span>
-                {message.role === 'assistant' ? 'AI' : t('studio.chat.you')}
-              </span>
+              <span>{message.role === 'assistant' ? 'AI' : '你'}</span>
               <p>{message.content}</p>
               {message.role === 'assistant' && (
-                <TTSPlayButton text={message.content} />
+                <div className="message-actions">
+                  <TTSPlayButton text={message.content} />
+                  <CopyButton text={message.content} />
+                </div>
               )}
             </article>
           ))
         )}
-      </div>
 
-      {selectedNote && (
-        <div className="studio-linked-note" title={selectedNote.name}>
-          <span className="studio-linked-note__icon" aria-hidden="true">
-            ◆
-          </span>
-          <span className="studio-linked-note__label">
-            {t('studio.chat.linkedNote')} <strong>{selectedNote.name}</strong>
-          </span>
-        </div>
-      )}
+        {/* 智能体模式的问答：步骤可折叠，最终答案与普通回答一致 */}
+        {agent.turns.map((turn) => (
+          <div className="studio-agent-turn" key={turn.id}>
+            <article className="user">
+              <span>你</span>
+              <p>{turn.question}</p>
+            </article>
+            <article className="assistant">
+              <span>助理</span>
+              {turn.steps.length > 0 && (
+                <details className="studio-agent-steps">
+                  <summary>{turn.steps.length} 个步骤</summary>
+                  <ol>
+                    {turn.steps.map((step, index) => {
+                      const view = describeAgentStep(step);
+                      return (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <li key={`${turn.id}-${index}`}>
+                          {view.title}
+                          {view.details.length > 0 && (
+                            <ul>
+                              {view.details.map((detail) => (
+                                <li key={detail}>{detail}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </details>
+              )}
+              <p>{turn.answer}</p>
+              <div className="message-actions">
+                <TTSPlayButton text={turn.answer} />
+                <CopyButton text={turn.answer} />
+              </div>
+            </article>
+          </div>
+        ))}
+
+        {agent.running && (
+          <div className="studio-agent-live" aria-live="polite">
+            <span className="studio-agent-live__dot" aria-hidden="true" />
+            <div>
+              <strong>{agent.status || '正在工作…'}</strong>
+              <ol>
+                {agent.liveSteps.map((step, index) => {
+                  const view = describeAgentStep(step);
+                  return (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <li key={`live-${index}`}>
+                      {view.title}
+                      {view.details.length > 0 && (
+                        <ul>
+                          {view.details.map((detail) => (
+                            <li key={detail}>{detail}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+            <button type="button" onClick={onCancelAgent}>
+              取消
+            </button>
+          </div>
+        )}
+
+        {agent.error && (
+          <p className="studio-record-error" role="alert">
+            {agent.error}
+          </p>
+        )}
+      </div>
 
       {recording.error && (
         <p className="studio-record-error" role="alert">
@@ -164,65 +573,182 @@ export default function StudioChatPanel({
         </p>
       )}
 
-      <form className="studio-composer" onSubmit={handleSubmit}>
-        <div className="studio-composer-tools">
-          {recording.active ? (
-            <button
-              type="button"
-              className="studio-record-button is-recording"
-              onClick={onStopRecording}
-              disabled={recordingBusy}
-            >
-              <span className="studio-record-dot" aria-hidden="true" />
-              {t('studio.chat.stop')} {formatElapsed(recording.elapsedMs)}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="studio-record-button"
-              onClick={onStartRecording}
-              disabled={recordingBusy}
-              aria-label={t('studio.chat.startRecording')}
-            >
-              <span className="studio-record-mic" aria-hidden="true">
-                ●
+      <form
+        className={`studio-composer${dragOver ? ' is-drag-over' : ''}`}
+        onSubmit={handleSubmit}
+        onDragEnter={handleDragOver}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {dragOver && (
+          <div className="studio-drop-hint" aria-hidden="true">
+            拖到此处关联笔记
+          </div>
+        )}
+
+        {mentionOpen && (
+          <div className="studio-mention" role="listbox" aria-label="关联笔记">
+            {mentionCandidates.map((item, index) => (
+              <button
+                type="button"
+                key={`${item.kind}-${item.id}`}
+                role="option"
+                aria-selected={index === mentionIndex}
+                className={index === mentionIndex ? 'is-active' : ''}
+                onMouseEnter={() => setMentionIndex(index)}
+                // 用 mousedown 抢在 textarea 失焦之前处理，避免菜单先被关掉。
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  pickMention(item);
+                }}
+              >
+                {item.kind === 'workspace' ? <WorkspaceIcon /> : <NoteIcon />}
+                <span className="studio-mention__name">{item.name}</span>
+                {item.hint && (
+                  <span className="studio-mention__hint">{item.hint}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {(linkedNotes.length > 0 || linkedWorkspaces.length > 0) && (
+          <div className="studio-chips">
+            {linkedWorkspaces.map((workspace) => (
+              <span
+                className="studio-chip studio-chip--workspace"
+                key={`ws-${workspace.id}`}
+                title={workspace.name}
+              >
+                <WorkspaceIcon />
+                <span className="studio-chip__name">
+                  {workspace.name} · 全部
+                </span>
+                <button
+                  type="button"
+                  className="studio-chip__remove"
+                  onClick={() => onUnlinkWorkspace(workspace.id)}
+                  aria-label={`取消关联 ${workspace.name}`}
+                >
+                  ×
+                </button>
               </span>
-              {t('studio.chat.record')}
-            </button>
-          )}
+            ))}
+            {linkedNotes.map((note) => (
+              <span className="studio-chip" key={note.id} title={note.name}>
+                <NoteIcon />
+                <span className="studio-chip__name">{note.name}</span>
+                <button
+                  type="button"
+                  className="studio-chip__remove"
+                  onClick={() => onRemoveLinkedNote(note.id)}
+                  aria-label={`取消关联 ${note.name}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="studio-composer-row">
+        {recording.active ? (
           <button
             type="button"
-            className="studio-upload-button"
-            onClick={onUploadAudio}
-            disabled={recording.active || recordingBusy}
+            className="studio-composer-btn studio-record-button is-recording"
+            onClick={onStopRecording}
+            disabled={recordingBusy}
+            aria-label="停止录音"
+            title="停止录音"
           >
-            {t('studio.chat.upload')}
+            <StopIcon />
+            <span className="studio-record-time">
+              {formatElapsed(recording.elapsedMs)}
+            </span>
           </button>
-        </div>
+        ) : (
+          <button
+            type="button"
+            className="studio-composer-btn studio-record-button"
+            onClick={onStartRecording}
+            disabled={recordingBusy}
+            aria-label="开始录音"
+            title="开始录音"
+          >
+            <MicIcon />
+          </button>
+        )}
+        <button
+          type="button"
+          className="studio-composer-btn studio-upload-button"
+          onClick={onUploadAudio}
+          disabled={recording.active || recordingBusy}
+          aria-label="上传音频"
+          title="上传音频"
+        >
+          <UploadIcon />
+        </button>
+        <button
+          type="button"
+          className={`studio-composer-btn studio-agent-toggle${
+            agentMode ? ' is-active' : ''
+          }`}
+          onClick={onToggleAgentMode}
+          aria-pressed={agentMode}
+          aria-label="智能助理模式"
+          title={
+            agentMode
+              ? '智能助理模式：已开启，助理会自行搜索并读取笔记'
+              : '智能助理模式：开启后助理会自行搜索并读取笔记'
+          }
+        >
+          <AgentIcon />
+        </button>
 
         <textarea
+          ref={textareaRef}
+          rows={1}
+          className="studio-composer-input"
           value={question}
           placeholder={
+            // eslint-disable-next-line no-nested-ternary
             recording.active
-              ? t('studio.chat.placeholder.recording')
-              : t('studio.chat.placeholder.question')
+              ? '正在录音…'
+              : agentMode
+                ? '交给助理去查…（# 关联笔记）'
+                : '输入问题…（# 关联笔记）'
           }
-          onChange={(event) => setQuestion(event.target.value)}
+          onChange={(event) => {
+            setQuestion(event.target.value);
+            syncMention(event.target.value, event.target.selectionStart ?? 0);
+          }}
           onKeyDown={handleKeyDown}
-          disabled={!selectedNote || isSending || recording.active}
+          onBlur={closeMention}
+          disabled={!hasContext || isSending || recording.active}
         />
         <button
           type="submit"
-          className="studio-send-button"
+          className="studio-composer-btn studio-send-button"
+          aria-label="发送"
+          title="发送"
           disabled={
-            !selectedNote || !question.trim() || isSending || recording.active
+            !hasContext ||
+            !question.trim() ||
+            isSending ||
+            recording.active
           }
         >
-          {isSending ? t('studio.chat.thinking') : t('studio.chat.send')}
+          {isSending ? (
+            <span className="studio-send-spinner" aria-hidden="true" />
+          ) : (
+            <SendIcon />
+          )}
         </button>
+        </div>
       </form>
       <div className="ask-ai-status" role="status">
-        {recording.active ? t('studio.chat.recordingStatus') : status}
+        {recording.active ? '录音中…' : status}
       </div>
     </section>
   );

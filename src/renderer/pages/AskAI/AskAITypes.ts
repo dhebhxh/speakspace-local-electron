@@ -1,4 +1,4 @@
-export type AskAIScope = 'note' | 'workspace';
+export type AskAIScope = 'note' | 'workspace' | 'multi-note';
 
 export type AskAINote = {
   id: number;
@@ -7,6 +7,18 @@ export type AskAINote = {
   transcript: string;
   transcriptPreview: string;
   updatedAt: string;
+};
+
+/** 笔记下挂的整理结果，contentType 形如「AI 语义总结 1 / Semantic summary 1」。 */
+export type AskAISubnote = {
+  id: number;
+  contentType: string;
+  content: string;
+  createdAt: string;
+};
+
+export type AskAINoteDetail = AskAINote & {
+  subnotes: AskAISubnote[];
 };
 
 export type AskAIConversation = {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import useAskAIPage from '../AskAI/useAskAIPage';
+import { AskAINote } from '../AskAI/AskAITypes';
 import AskAINotesPanel from '../AskAI/components/AskAINotesPanel';
 import AskAINotePreview from '../AskAI/components/AskAINotePreview';
 import AskAICreateNoteDialog from '../AskAI/components/AskAICreateNoteDialog';
@@ -11,6 +11,7 @@ import useRecordingSession from '../Recording/useRecordingSession';
 import useTranscriptionController from '../Recording/useTranscriptionController';
 import { WorkspaceSaveSelection } from '../Recording/components/SaveToWorkspaceDialog';
 import StudioChatPanel from './components/StudioChatPanel';
+import useStudioAgent from './useStudioAgent';
 import RecordingReviewDialog from './components/RecordingReviewDialog';
 import '../AskAI/AskAIPage.css';
 import '../AskAI/AskAIChat.css';
@@ -21,6 +22,11 @@ type Engine = {
   session: RecordingSession;
   transcription: TranscriptionController;
 };
+
+export type StudioWorkspace = { id: number; name: string };
+
+/** 单次提问最多带多少条笔记，与后端整工作区检索的上限保持一致。 */
+const MAX_CONTEXT_NOTES = 24;
 
 function createEngine(): Engine {
   return {
@@ -42,14 +48,26 @@ function buildTranscriptText(
     .trim();
 }
 
-function defaultNoteName(
-  uploadedFileName: string | null,
-  locale: string,
-): string {
+const TITLE_SYSTEM_PROMPT =
+  '你是笔记标题助手。根据用户给出的录音内容，生成一个概括主题的简短标题。' +
+  '只输出标题本身：不要引号、不要结尾标点、不要任何解释或前缀。' +
+  '使用与内容相同的语言；中文不超过 20 字，英文不超过 8 个词。';
+
+/** 清洗模型返回的标题：取首行、去掉包裹引号与结尾标点。 */
+function sanitizeTitle(raw: string): string {
+  const firstLine = raw.trim().split(/\r?\n/u)[0] ?? '';
+  return firstLine
+    .replace(/^["'“”「」『』\s]+|["'“”「」『』\s]+$/gu, '')
+    .replace(/[。.!！?？,，;；:：]+$/u, '')
+    .trim()
+    .slice(0, 80);
+}
+
+function defaultNoteName(uploadedFileName: string | null): string {
   if (uploadedFileName) {
     return uploadedFileName.replace(/\.[^.]+$/u, '').slice(0, 80);
   }
-  return `Recording ${new Intl.DateTimeFormat(locale, {
+  return `Recording ${new Intl.DateTimeFormat('zh-CN', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -58,41 +76,40 @@ function defaultNoteName(
   }).format(new Date())}`;
 }
 
-function afterNextPaint(): Promise<void> {
-  return new Promise((resolve) => {
-    window.requestAnimationFrame(() => {
-      window.setTimeout(resolve, 0);
-    });
-  });
-}
-
 /**
  * 对话工作台：以 AI 对话为主，把录音 / 上传 / 转录 / 保存深度整合进输入框。
  * 录音结束弹出复核窗口，保存为笔记后自动把该笔记挂到当前对话上。
  */
 export default function StudioPage() {
-  const { t, i18n } = useTranslation();
   const page = useAskAIPage();
   const [engine, setEngine] = useState<Engine>(createEngine);
   const snapshot = useRecordingSession(engine.session);
-  const transcriptionSnapshot = useTranscriptionController(
-    engine.transcription,
-  );
+  const transcriptionSnapshot = useTranscriptionController(engine.transcription);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  // 新增笔记的目标工作区（从左栏某个工作区那一行点 + 时带过来）。
+  const [createWorkspaceId, setCreateWorkspaceId] = useState<number | null>(
+    null,
+  );
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [reviewData, setReviewData] = useState<{
-    raw: string;
-    summaries: string[];
-    fileMode: boolean;
-  }>({ raw: '', summaries: [], fileMode: false });
-  const [reviewProcessing, setReviewProcessing] = useState(false);
+  const [reviewFileMode, setReviewFileMode] = useState(false);
+  // 右侧笔记原文默认收起，双击左侧笔记才打开。
+  const [previewNoteId, setPreviewNoteId] = useState<number | null>(null);
+  // 输入框里挂着的关联笔记，可用 # 追加多条。
+  const [linkedNotes, setLinkedNotes] = useState<AskAINote[]>([]);
+  // 也可以挂「整个工作区」，支持多个，并且能和单条笔记混着挂。
+  const [linkedWorkspaceIds, setLinkedWorkspaceIds] = useState<number[]>([]);
+  const [workspaces, setWorkspaces] = useState<StudioWorkspace[]>([]);
+  // 智能体模式：开启后由本地 Agent 调用工具自行查找，而不是直接问挂上的笔记。
+  const [agentMode, setAgentMode] = useState(false);
+  const { agent, runAgent, cancelAgent, resetAgent } = useStudioAgent();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [aiTitle, setAiTitle] = useState<string | null>(null);
+  const [titlePending, setTitlePending] = useState(false);
   const [recordError, setRecordError] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const startedAtRef = useRef<number | null>(null);
-  const stopRequestedRef = useRef(false);
 
   const recordingActive =
     snapshot.state === RecordingState.Recording ||
@@ -124,27 +141,172 @@ export default function StudioPage() {
   }, [recordingActive]);
 
   const resetEngine = useCallback(() => {
-    stopRequestedRef.current = false;
-    setReviewProcessing(false);
     setEngine(createEngine());
     setElapsedMs(0);
     startedAtRef.current = null;
   }, []);
 
-  const openReviewFromSnapshot = useCallback(
-    (fileMode: boolean, processing = false) => {
-      const latest = engine.transcription.getSnapshot();
-      setReviewData({
-        raw: buildTranscriptText(latest),
-        summaries: latest.liveSummaries.map((summary) => summary.text),
-        fileMode,
-      });
-      setReviewProcessing(processing);
-      setSaveError(null);
-      setReviewOpen(true);
-    },
-    [engine.transcription],
+  // 只负责「开窗」，不等待任何转录/整理任务；内容由下面的实时快照持续填充。
+  const openReview = useCallback((fileMode: boolean) => {
+    setReviewFileMode(fileMode);
+    setSaveError(null);
+    setAiTitle(null);
+    setReviewOpen(true);
+  }, []);
+
+  // 切换当前笔记时，关联笔记重置为这一条（此时对话也会重置）。
+  // 只依赖笔记 id：笔记列表刷新导致对象身份变化时，不应清掉用户手动挂上的关联。
+  const selectedNoteId = page.selectedNote?.id ?? null;
+  useEffect(() => {
+    const note = page.notes.find((item) => item.id === selectedNoteId) ?? null;
+    setLinkedNotes(note ? [note] : []);
+    setLinkedWorkspaceIds([]);
+    resetAgent(); // 切换笔记等于开新对话，助理的历史一并清空
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNoteId]);
+
+  // 笔记库左栏按工作区分组需要工作区名称。
+  useEffect(() => {
+    window.electron.workspace
+      .getList(100)
+      .then((items) => {
+        setWorkspaces(
+          (items as StudioWorkspace[]).filter(
+            (item) => Number.isInteger(item.id) && item.name,
+          ),
+        );
+        return null;
+      })
+      .catch(() => undefined);
+  }, [page.notes]);
+
+  const addLinkedNote = useCallback((note: AskAINote) => {
+    setLinkedNotes((prev) =>
+      prev.some((item) => item.id === note.id) ? prev : [...prev, note],
+    );
+  }, []);
+
+  const removeLinkedNote = useCallback((noteId: number) => {
+    setLinkedNotes((prev) => prev.filter((item) => item.id !== noteId));
+  }, []);
+
+  const linkWorkspace = useCallback((workspaceId: number) => {
+    setLinkedWorkspaceIds((prev) =>
+      prev.includes(workspaceId) ? prev : [...prev, workspaceId],
+    );
+  }, []);
+
+  const unlinkWorkspace = useCallback((workspaceId: number) => {
+    setLinkedWorkspaceIds((prev) => prev.filter((id) => id !== workspaceId));
+  }, []);
+
+  // 把挂上的工作区展开成它们的全部笔记，与单独挂的笔记合并去重后一起提问。
+  // 这样多个工作区、以及「工作区 + 单条笔记」的混搭都能直接支持。
+  // 智能体在某个工作区里自行检索，范围取挂上的工作区，其次取挂上笔记所属的工作区。
+  const agentWorkspaceId = useMemo(
+    () =>
+      linkedWorkspaceIds[0] ??
+      linkedNotes.find((note) => note.workspaceId !== null)?.workspaceId ??
+      page.selectedNote?.workspaceId ??
+      null,
+    [linkedWorkspaceIds, linkedNotes, page.selectedNote?.workspaceId],
   );
+
+  const askWithLinkedNotes = useCallback(
+    (question: string) => {
+      if (agentMode) return runAgent(question, agentWorkspaceId);
+
+      const ids = new Set<number>();
+      page.notes.forEach((note) => {
+        if (note.workspaceId !== null && linkedWorkspaceIds.includes(note.workspaceId)) {
+          ids.add(note.id);
+        }
+      });
+      linkedNotes.forEach((note) => ids.add(note.id));
+      return page.ask(question, {
+        noteIds: [...ids].slice(0, MAX_CONTEXT_NOTES),
+      });
+    },
+    [
+      agentMode,
+      agentWorkspaceId,
+      runAgent,
+      page,
+      linkedNotes,
+      linkedWorkspaceIds,
+    ],
+  );
+
+  const openPreview = useCallback((noteId: number) => {
+    setPreviewNoteId(noteId);
+  }, []);
+
+  // 新建会话直接开一个空白对话：不预先弹窗让用户配置，
+  // 关联笔记、助理模式都留到输入框里现场决定。
+  const startBlankConversation = useCallback(() => {
+    page.resetChat();
+    resetAgent();
+    setAgentMode(false);
+    setLinkedNotes([]);
+    setLinkedWorkspaceIds([]);
+    setPreviewNoteId(null);
+  }, [page, resetAgent]);
+
+  const previewNote = useMemo(
+    () =>
+      previewNoteId === null
+        ? null
+        : page.notes.find((note) => note.id === previewNoteId) ?? null,
+    [page.notes, previewNoteId],
+  );
+
+  // 复核弹窗的内容实时取自转录快照，转录与语义整理的结果会陆续流入弹窗。
+  const reviewRaw = useMemo(
+    () => buildTranscriptText(transcriptionSnapshot),
+    [transcriptionSnapshot],
+  );
+  const reviewSummaries = useMemo(
+    () => transcriptionSnapshot.liveSummaries.map((summary) => summary.text),
+    [transcriptionSnapshot.liveSummaries],
+  );
+  const reviewProcessing =
+    transcriptionSnapshot.livePendingCount > 0 ||
+    transcriptionSnapshot.summaryPendingCount > 0 ||
+    transcriptionSnapshot.requestPending;
+
+  // 内容整理完成后，用本地模型根据内容自动生成笔记标题。
+  // 失败或未启用 LLM 时保持时间戳默认名；用户手动改过标题则不会被覆盖。
+  useEffect(() => {
+    if (!reviewOpen || reviewProcessing || aiTitle !== null) return undefined;
+    const source = (reviewSummaries.join('\n') || reviewRaw).trim();
+    if (!source) return undefined;
+
+    let cancelled = false;
+    setTitlePending(true);
+    window.electron.llm
+      .chat(
+        [
+          { role: 'system', content: TITLE_SYSTEM_PROMPT },
+          { role: 'user', content: source.slice(0, 2000) },
+        ],
+        { temperature: 0.2 },
+      )
+      .then((result) => {
+        if (cancelled) return;
+        const title = sanitizeTitle(
+          (result as { content?: string })?.content ?? '',
+        );
+        if (title) setAiTitle(title);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setTitlePending(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reviewOpen, reviewProcessing, aiTitle, reviewRaw, reviewSummaries]);
 
   const startRecording = useCallback(() => {
     setRecordError(null);
@@ -154,59 +316,25 @@ export default function StudioPage() {
   }, [engine]);
 
   const stopRecording = useCallback(async () => {
-    if (stopRequestedRef.current || !recordingActive) return;
-    stopRequestedRef.current = true;
-    openReviewFromSnapshot(false, true);
-
     try {
-      await afterNextPaint();
       await engine.session.stop();
-      await engine.transcription.finalizeLiveSummary();
+      // 先弹窗：停止录音后立刻让用户看到复核界面。
+      openReview(false);
+      // 语义整理放到后台继续跑，结果通过实时快照回填到弹窗，避免阻塞弹窗打开。
+      engine.transcription.finalizeLiveSummary().catch(() => undefined);
     } catch (reason) {
       setRecordError(
-        reason instanceof Error ? reason.message : t('studio.error.stop'),
+        reason instanceof Error ? reason.message : '录音结束失败',
       );
-    } finally {
-      stopRequestedRef.current = false;
-      setReviewProcessing(false);
     }
-  }, [engine, openReviewFromSnapshot, recordingActive, t]);
-
-  // The review dialog stays mounted while the final audio chunk and summary
-  // arrive, so users see progressive results instead of a second late screen.
-  useEffect(() => {
-    if (!reviewOpen) return;
-    const latest = engine.transcription.getSnapshot();
-    const raw = buildTranscriptText(latest);
-    const summaries = latest.liveSummaries.map((summary) => summary.text);
-    setReviewData((current) => {
-      if (
-        current.raw === raw &&
-        current.summaries.length === summaries.length &&
-        current.summaries.every(
-          (summary, index) => summary === summaries[index],
-        )
-      ) {
-        return current;
-      }
-      return { ...current, raw, summaries };
-    });
-  }, [
-    engine.transcription,
-    reviewOpen,
-    transcriptionSnapshot.job?.result?.text,
-    transcriptionSnapshot.liveSegments,
-    transcriptionSnapshot.liveSummaries,
-  ]);
+  }, [engine, openReview]);
 
   const uploadAudio = useCallback(() => {
     setRecordError(null);
     engine.transcription.pickFileAndStart().catch((reason: unknown) => {
-      setRecordError(
-        reason instanceof Error ? reason.message : t('studio.error.upload'),
-      );
+      setRecordError(reason instanceof Error ? reason.message : '上传失败');
     });
-  }, [engine, t]);
+  }, [engine]);
 
   // 上传文件转录完成后自动弹出复核窗口。
   useEffect(() => {
@@ -216,33 +344,31 @@ export default function StudioPage() {
       transcriptionSnapshot.job?.status === 'completed' &&
       transcriptionSnapshot.job.result?.text
     ) {
-      openReviewFromSnapshot(true);
+      openReview(true);
     }
   }, [
     reviewOpen,
     transcriptionSnapshot.inputMode,
     transcriptionSnapshot.job?.status,
     transcriptionSnapshot.job?.result?.text,
-    openReviewFromSnapshot,
+    openReview,
   ]);
 
   const reRecord = useCallback(async () => {
-    if (reviewProcessing) return;
     setReviewOpen(false);
     setSaveError(null);
     await engine.session.discard().catch(() => undefined);
     setElapsedMs(0);
     engine.transcription.resetLive('microphone');
     engine.session.start().catch(() => undefined);
-  }, [engine, reviewProcessing]);
+  }, [engine]);
 
   const closeReview = useCallback(() => {
-    if (reviewProcessing) return;
     setReviewOpen(false);
     setSaveError(null);
     // 重置录音引擎：丢弃本次未保存的录音/上传，避免已完成的任务再次触发复核窗。
     resetEngine();
-  }, [resetEngine, reviewProcessing]);
+  }, [resetEngine]);
 
   const saveAsNote = useCallback(
     async (selection: WorkspaceSaveSelection) => {
@@ -251,7 +377,7 @@ export default function StudioPage() {
       const transcript = buildTranscriptText(latest);
       const summaries = latest.liveSummaries.map((summary) => summary.text);
       if (!transcript) {
-        setSaveError(t('studio.error.noTranscript'));
+        setSaveError('没有可保存的转录内容 / No transcript to save');
         return;
       }
 
@@ -269,13 +395,13 @@ export default function StudioPage() {
         }
 
         let audioRelativePath = snapshot.savedRecording?.relativePath ?? null;
-        if (reviewData.fileMode && latest.uploadedFilePath) {
+        if (reviewFileMode && latest.uploadedFilePath) {
           importedRecording = (await window.electron.audio.importRecordingFile(
             latest.uploadedFilePath,
           )) as SavedRecording;
           audioRelativePath = importedRecording.relativePath;
         } else if (
-          !reviewData.fileMode &&
+          !reviewFileMode &&
           snapshot.state === RecordingState.Completed &&
           !audioRelativePath
         ) {
@@ -303,21 +429,15 @@ export default function StudioPage() {
             .catch(() => undefined);
         }
         setSaveError(
-          reason instanceof Error ? reason.message : t('studio.error.save'),
+          reason instanceof Error
+            ? reason.message
+            : '保存到工作空间失败 / Unable to save',
         );
       } finally {
         setSaving(false);
       }
     },
-    [
-      engine,
-      page,
-      reviewData.fileMode,
-      snapshot.savedRecording,
-      snapshot.state,
-      resetEngine,
-      t,
-    ],
+    [engine, page, reviewFileMode, snapshot.savedRecording, snapshot.state, resetEngine],
   );
 
   const recording = useMemo(
@@ -344,13 +464,21 @@ export default function StudioPage() {
   );
 
   return (
-    <section className="studio-page">
+    <section
+      className={`studio-page${previewNote ? '' : ' studio-page--no-preview'}`}
+    >
       <AskAINotesPanel
         notes={page.notes}
+        workspaces={workspaces}
         conversations={page.conversations}
         selectedNoteId={page.selectedNote?.id ?? null}
-        onAddNote={() => setShowCreateDialog(true)}
+        onAddNote={(workspaceId) => {
+          setCreateWorkspaceId(workspaceId ?? null);
+          setShowCreateDialog(true);
+        }}
+        onNewConversation={startBlankConversation}
         onSelectNote={page.selectNote}
+        onPreviewNote={openPreview}
         onOpenConversation={page.openConversation}
       />
 
@@ -359,31 +487,65 @@ export default function StudioPage() {
         sources={page.sources}
         selectedNote={page.selectedNote}
         allNotes={page.notes}
-        scope={page.scope}
-        status={page.status}
-        isSending={page.isSending}
+        status={agentMode ? agent.status || page.status : page.status}
+        isSending={page.isSending || agent.running}
         recording={recording}
-        onScopeChange={page.setScope}
-        onAsk={page.ask}
+        agentMode={agentMode}
+        agent={agent}
+        onToggleAgentMode={() => setAgentMode((prev) => !prev)}
+        onCancelAgent={cancelAgent}
+        workspaces={workspaces}
+        conversationName={page.activeConversation?.name ?? ''}
+        linkedNotes={linkedNotes}
+        linkedWorkspaceIds={linkedWorkspaceIds}
+        onAddLinkedNote={addLinkedNote}
+        onRemoveLinkedNote={removeLinkedNote}
+        onLinkWorkspace={linkWorkspace}
+        onUnlinkWorkspace={unlinkWorkspace}
+        onAsk={askWithLinkedNotes}
         onStartRecording={startRecording}
         onStopRecording={stopRecording}
         onUploadAudio={uploadAudio}
       />
 
-      <aside className="studio-source">
-        <AskAINotePreview note={page.selectedNote} />
-      </aside>
+      {previewNote && (
+        <aside className="studio-source">
+          <button
+            type="button"
+            className="studio-source__close"
+            onClick={() => setPreviewNoteId(null)}
+            aria-label="关闭原文"
+            title="关闭原文"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+          <AskAINotePreview note={previewNote} />
+        </aside>
+      )}
 
       {reviewOpen && (
         <RecordingReviewDialog
           open={reviewOpen}
-          defaultNoteName={defaultNoteName(
-            reviewData.fileMode ? transcriptionSnapshot.uploadedFileName : null,
-            i18n.resolvedLanguage,
-          )}
-          rawTranscript={reviewData.raw}
-          summaries={reviewData.summaries}
-          processing={reviewProcessing}
+          defaultNoteName={
+            aiTitle ??
+            defaultNoteName(
+              reviewFileMode ? transcriptionSnapshot.uploadedFileName : null,
+            )
+          }
+          rawTranscript={reviewRaw}
+          summaries={reviewSummaries}
+          processing={reviewProcessing || titlePending}
           saving={saving}
           error={saveError}
           onSave={saveAsNote}
@@ -395,7 +557,9 @@ export default function StudioPage() {
       {showCreateDialog && (
         <AskAICreateNoteDialog
           onClose={() => setShowCreateDialog(false)}
-          onCreate={page.createNote}
+          onCreate={(name, transcript) =>
+            page.createNote(name, transcript, createWorkspaceId)
+          }
         />
       )}
     </section>

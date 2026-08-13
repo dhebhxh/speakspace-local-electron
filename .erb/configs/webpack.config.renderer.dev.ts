@@ -45,6 +45,14 @@ const configuration: webpack.Configuration = {
 
   target: ['web', 'electron-renderer'],
 
+  // Windows 上原生文件监听经常漏掉外部工具/编辑器的写入（尤其是原子重命名保存），
+  // 导致改了样式却不重新编译、页面还是旧的。改用轮询监听，可靠捕获每一次改动。
+  watchOptions: {
+    poll: 1000,
+    aggregateTimeout: 300,
+    ignored: /node_modules/,
+  },
+
   entry: [
     `webpack-dev-server/client?http://localhost:${port}/dist`,
     'webpack/hot/only-dev-server',

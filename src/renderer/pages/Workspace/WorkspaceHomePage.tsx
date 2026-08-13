@@ -1,5 +1,4 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { WorkspaceController, WorkspaceItem } from './WorkspaceController';
 import WorkspaceSuggestionCard from './WorkspaceSuggestionCard';
@@ -25,7 +24,6 @@ export default function WorkspaceHomePage({
   limit,
   directory,
 }: WorkspaceHomePageProps) {
-  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [items, setItems] = useState<WorkspaceItem[]>([]);
   const [name, setName] = useState('');
@@ -46,13 +44,11 @@ export default function WorkspaceHomePage({
       setItems(workspaces);
       setSuggestion(nextSuggestion);
     } catch (reason) {
-      setError(
-        WorkspaceController.getErrorMessage(reason, t('workspace.error.load')),
-      );
+      setError(WorkspaceController.getErrorMessage(reason, '读取工作空间失败'));
     } finally {
       setLoading(false);
     }
-  }, [limit, t]);
+  }, [limit]);
 
   useEffect(() => {
     loadWorkspaces();
@@ -68,12 +64,7 @@ export default function WorkspaceHomePage({
       const created = await workspaceController.createWorkspace(name);
       navigate(`/Workspace/${created.id}`);
     } catch (reason) {
-      setError(
-        WorkspaceController.getErrorMessage(
-          reason,
-          t('workspace.error.create'),
-        ),
-      );
+      setError(WorkspaceController.getErrorMessage(reason, '创建工作空间失败'));
     } finally {
       setCreating(false);
     }
@@ -87,7 +78,7 @@ export default function WorkspaceHomePage({
       workspaceId,
       suggestedName,
     );
-    if (!renamed) throw new Error(t('workspace.error.missing'));
+    if (!renamed) throw new Error('工作空间不存在');
     await loadWorkspaces();
   };
 
@@ -98,33 +89,27 @@ export default function WorkspaceHomePage({
           <span className="workspace-home-eyebrow">
             {directory ? 'ALL WORKSPACES' : 'RECENT WORKSPACES'}
           </span>
-          <h1>
-            {directory
-              ? t('workspace.home.title.all')
-              : t('workspace.home.title.recent')}
-          </h1>
+          <h1>{directory ? '全部工作空间' : '最近使用'}</h1>
           <p>
             {directory
-              ? t('workspace.home.subtitle.all')
-              : t('workspace.home.subtitle.recent')}
+              ? '选择一个工作空间进入完整内容。'
+              : '从最近进入的工作空间继续，首页仅保留必要摘要。'}
           </p>
         </div>
 
         <form className="workspace-home-create" onSubmit={createWorkspace}>
           <label htmlFor="recent-workspace-name">
-            <span>{t('workspace.home.create.label')}</span>
+            <span>新工作空间名称</span>
             <div>
               <input
                 id="recent-workspace-name"
                 maxLength={80}
                 onChange={(event) => setName(event.target.value)}
-                placeholder={t('workspace.home.create.placeholder')}
+                placeholder="例如：项目会议"
                 value={name}
               />
               <button disabled={!name.trim() || creating} type="submit">
-                {creating
-                  ? t('workspace.home.create.creating')
-                  : t('workspace.home.create.action')}
+                {creating ? '创建中…' : '创建'}
               </button>
             </div>
           </label>
@@ -147,27 +132,19 @@ export default function WorkspaceHomePage({
 
       <div className="workspace-home-section-heading">
         <div>
-          <h2>
-            {directory
-              ? t('workspace.home.section.all')
-              : t('workspace.home.section.recent')}
-          </h2>
-          <p>{t('workspace.home.section.description')}</p>
+          <h2>{directory ? '工作空间目录' : '继续最近工作'}</h2>
+          <p>按最近打开时间排列；从未打开的项目按创建时间排列。</p>
         </div>
-        {!directory && (
-          <Link to="/Workspace">{t('workspace.home.viewAll')}</Link>
-        )}
+        {!directory && <Link to="/Workspace">查看全部工作空间</Link>}
       </div>
 
-      {loading && (
-        <p className="workspace-home-status">{t('workspace.home.loading')}</p>
-      )}
+      {loading && <p className="workspace-home-status">正在读取工作空间…</p>}
 
       {!loading && items.length === 0 && (
         <div className="workspace-home-empty">
           <span aria-hidden="true">◇</span>
-          <h2>{t('workspace.home.empty.title')}</h2>
-          <p>{t('workspace.home.empty.description')}</p>
+          <h2>建立第一个工作空间</h2>
+          <p>输入名称后进入详情，即可归档录音、转录和 AI 内容。</p>
         </div>
       )}
 
@@ -189,20 +166,11 @@ export default function WorkspaceHomePage({
               <span className="workspace-home-card-copy">
                 <strong>{item.name}</strong>
                 <small>
-                  {t('workspace.home.card.counts', {
-                    notes: item.note_count,
-                    pinned: item.pinned_count,
-                  })}
+                  {item.note_count} 篇笔记 · {item.pinned_count} 篇置顶
                 </small>
                 <time dateTime={item.recent_at}>
-                  {item.last_opened_at
-                    ? t('workspace.home.card.opened')
-                    : t('workspace.home.card.created')}{' '}
-                  {WorkspaceController.formatDate(
-                    item.recent_at,
-                    'long',
-                    i18n.resolvedLanguage,
-                  )}
+                  {item.last_opened_at ? '最近打开' : '创建于'}{' '}
+                  {WorkspaceController.formatDate(item.recent_at, 'long')}
                 </time>
               </span>
               <span className="workspace-home-card-arrow" aria-hidden="true">

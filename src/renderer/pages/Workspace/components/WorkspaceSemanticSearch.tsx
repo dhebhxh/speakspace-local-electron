@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   EmbeddingModelStatus,
@@ -21,7 +20,6 @@ export default function WorkspaceSemanticSearch({
   workspaceId,
   onSelect,
 }: Props) {
-  const { t } = useTranslation();
   const [status, setStatus] = useState<EmbeddingModelStatus | null>(null);
   const [results, setResults] = useState<SemanticNoteResult[]>([]);
   const [searchedQuery, setSearchedQuery] = useState('');
@@ -44,11 +42,7 @@ export default function WorkspaceSemanticSearch({
       setResults(await controller.search(cleanQuery, workspaceId));
       setSearchedQuery(cleanQuery);
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : t('workspace.semantic.error'),
-      );
+      setError(reason instanceof Error ? reason.message : '语义搜索失败');
     } finally {
       setLoading(false);
     }
@@ -57,8 +51,8 @@ export default function WorkspaceSemanticSearch({
   return (
     <section className="workspace-semantic-search">
       <div>
-        <strong>{t('workspace.semantic.title')}</strong>
-        <span>{t('workspace.semantic.description')}</span>
+        <strong>相似笔记</strong>
+        <span>按含义查找，不要求出现完全相同的关键词。</span>
       </div>
       {status?.installed ? (
         <button
@@ -66,21 +60,16 @@ export default function WorkspaceSemanticSearch({
           onClick={search}
           type="button"
         >
-          {loading
-            ? t('workspace.semantic.loading')
-            : t('workspace.semantic.search')}
+          {loading ? '正在建立索引…' : '语义查找'}
         </button>
       ) : (
-        <Link to="/ModelManagement">{t('workspace.semantic.install')}</Link>
+        <Link to="/ModelManagement">安装 bge-m3</Link>
       )}
       {error && <p role="alert">{error}</p>}
       {searchedQuery && !error && (
         <div className="workspace-semantic-results">
           <span>
-            {t('workspace.semantic.results', {
-              query: searchedQuery,
-              count: results.length,
-            })}
+            “{searchedQuery}” · {results.length} 条结果
           </span>
           {results.map((result) => (
             <button
@@ -89,11 +78,7 @@ export default function WorkspaceSemanticSearch({
               type="button"
             >
               <strong>{result.name}</strong>
-              <small>
-                {t('workspace.semantic.similarity', {
-                  score: Math.round(result.score * 100),
-                })}
-              </small>
+              <small>{Math.round(result.score * 100)}% 相似</small>
               <span>{result.transcriptPreview}</span>
             </button>
           ))}

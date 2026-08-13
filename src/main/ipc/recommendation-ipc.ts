@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import ModelRecommendationService from '../recommendation/ModelRecommendationService';
+import SystemProfileService from '../recommendation/SystemProfileService';
 import WorkspaceSuggestionService from '../workspace/WorkspaceSuggestionService';
 
 const workspaceSuggestionService = new WorkspaceSuggestionService();
@@ -13,4 +14,9 @@ ipcMain.handle(
 
 ipcMain.handle('Recommendation:getWorkspace', () =>
   workspaceSuggestionService.getSuggestion(),
+);
+
+// 设置页展示本机硬件，供用户自行判断该选哪档模型。
+ipcMain.handle('Recommendation:getSystemProfile', () =>
+  SystemProfileService.detect(),
 );

@@ -19,6 +19,7 @@ import {
 } from './AskAISerializer';
 import {
   AskAIConversationDTO,
+  AskAINoteDetailDTO,
   AskAINoteDTO,
   AskAIRequest,
   AskAIResultDTO,
@@ -72,6 +73,22 @@ export default class AskAIService {
 
   public createNote(request: CreateAskAINoteRequest): AskAINoteDTO {
     return serializeNote(this.noteService.create(request));
+  }
+
+  /** 笔记详情：原文转录之外，一并返回摘要等整理结果，供预览面板完整展示。 */
+  public getNoteDetail(noteId: number): AskAINoteDetailDTO | null {
+    const note = this.noteRepository.findById(noteId);
+    if (!note) return null;
+
+    return {
+      ...serializeNote(note),
+      subnotes: this.subnoteRepository.findAllByNote(noteId).map((subnote) => ({
+        id: subnote.getId(),
+        contentType: subnote.getContentType(),
+        content: subnote.getContent(),
+        createdAt: subnote.getCreatedAt().toISOString(),
+      })),
+    };
   }
 
   public listConversations(): AskAIConversationDTO[] {

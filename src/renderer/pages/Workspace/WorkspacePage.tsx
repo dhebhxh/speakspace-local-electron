@@ -1,11 +1,10 @@
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import WorkspaceDetailHeader from './components/WorkspaceDetailHeader';
 import WorkspaceNoteCard from './components/WorkspaceNoteCard';
 import WorkspaceSemanticSearch from './components/WorkspaceSemanticSearch';
 import WorkspaceMultiNoteModal from './components/WorkspaceMultiNoteModal';
 import useWorkspaceDetail from './useWorkspaceDetail';
+import { useState } from 'react';
 import './WorkspacePage.css';
 
 /**
@@ -13,34 +12,22 @@ import './WorkspacePage.css';
  * updated_at 只用于说明内容或名称最后修改时间。
  */
 export default function WorkspacePage() {
-  const { t } = useTranslation();
   const detail = useWorkspaceDetail();
-  const {
-    workspace,
-    loading,
-    error,
-    status,
-    query,
-    visibleNotes,
-    selectedNoteIds,
-    toggleNoteSelection,
-  } = detail;
+  const { workspace, loading, error, status, query, visibleNotes, selectedNoteIds, toggleNoteSelection } = detail;
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
 
   if (loading) {
-    return (
-      <p className="workspace-detail-status">{t('workspace.detail.loading')}</p>
-    );
+    return <p className="workspace-detail-status">正在进入工作空间…</p>;
   }
 
   if (!workspace) {
     return (
       <section className="workspace-detail-page">
         <p className="workspace-detail-error" role="alert">
-          {error || t('workspace.error.missing')}
+          {error || '工作空间不存在'}
         </p>
         <Link className="workspace-back-link" to="/">
-          ← {t('workspace.detail.back')}
+          ← 返回最近使用
         </Link>
       </section>
     );
@@ -62,11 +49,11 @@ export default function WorkspacePage() {
       {status && <p className="workspace-detail-success">{status}</p>}
 
       <label className="workspace-detail-search" htmlFor="workspace-search">
-        <span>{t('workspace.detail.search.label')}</span>
+        <span>搜索笔记、转录、子笔记或 AI 内容</span>
         <input
           id="workspace-search"
           onChange={(event) => detail.setQuery(event.target.value)}
-          placeholder={t('workspace.detail.search.placeholder')}
+          placeholder="输入标题或内容关键词"
           type="search"
           value={query}
         />
@@ -80,56 +67,26 @@ export default function WorkspacePage() {
 
       {visibleNotes.length === 0 && (
         <div className="workspace-detail-empty">
-          <strong>
-            {query
-              ? t('workspace.detail.empty.searchTitle')
-              : t('workspace.detail.empty.title')}
-          </strong>
-          <span>
-            {query
-              ? t('workspace.detail.empty.searchDescription')
-              : t('workspace.detail.empty.description')}
-          </span>
+          <strong>{query ? '没有找到内容' : '这个工作空间还没有笔记'}</strong>
+          <span>{query ? '尝试更换搜索词' : '完成录音即可归档到这里'}</span>
         </div>
       )}
 
       {selectedNoteIds.length > 0 && (
-        <div
-          className="workspace-floating-bar"
-          style={{
-            position: 'sticky',
-            top: '20px',
-            zIndex: 100,
-            backgroundColor: 'var(--accent)',
-            color: '#fff',
-            padding: '12px 24px',
-            borderRadius: '30px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            marginBottom: '20px',
-          }}
-        >
-          <span>
-            {t('workspace.detail.selection.count', {
-              count: selectedNoteIds.length,
-            })}
-          </span>
-          <button
-            type="button"
-            className="btn-primary btn-sm"
-            style={{
-              backgroundColor: '#fff',
-              color: 'var(--accent)',
-              marginLeft: '16px',
-            }}
+        <div className="workspace-floating-bar" style={{
+          position: 'sticky', top: '20px', zIndex: 100, backgroundColor: 'var(--accent)', color: '#fff', 
+          padding: '12px 24px', borderRadius: '30px', display: 'flex', justifyContent: 'space-between', 
+          alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', marginBottom: '20px'
+        }}>
+          <span>已選取 {selectedNoteIds.length} 篇筆記</span>
+          <button 
+            type="button" 
+            className="btn-primary btn-sm" 
+            style={{ backgroundColor: '#fff', color: 'var(--accent)', marginLeft: '16px' }}
             onClick={() => setShowAnalysisModal(true)}
             disabled={selectedNoteIds.length < 2}
           >
-            {selectedNoteIds.length < 2
-              ? t('workspace.detail.selection.minimum')
-              : t('workspace.detail.selection.analyze')}
+            {selectedNoteIds.length < 2 ? '請至少選擇 2 篇' : '分析選中筆記'}
           </button>
         </div>
       )}
@@ -150,10 +107,10 @@ export default function WorkspacePage() {
       </div>
 
       {showAnalysisModal && (
-        <WorkspaceMultiNoteModal
-          selectedNoteIds={selectedNoteIds}
-          workspaceId={detail.workspaceId}
-          onClose={() => setShowAnalysisModal(false)}
+        <WorkspaceMultiNoteModal 
+          selectedNoteIds={selectedNoteIds} 
+          workspaceId={detail.workspaceId} 
+          onClose={() => setShowAnalysisModal(false)} 
         />
       )}
     </section>

@@ -90,10 +90,8 @@ const createWindow = async () => {
 
   mainWindow = new BrowserWindow({
     show: false,
-    autoHideMenuBar: true,
     width: 1024,
     height: 728,
-    backgroundColor: '#07101d',
     icon: getAssetPath('icon.png'),
     webPreferences: {
       preload: app.isPackaged

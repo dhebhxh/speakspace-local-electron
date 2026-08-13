@@ -22,6 +22,11 @@ ipcMain.handle('AskAI:listNotes', (_event, workspaceId: unknown) =>
   askAIService.listNotes(normalizeId(workspaceId)),
 );
 
+ipcMain.handle('AskAI:getNoteDetail', (_event, noteId: unknown) => {
+  const id = normalizeId(noteId);
+  return id === null ? null : askAIService.getNoteDetail(id);
+});
+
 ipcMain.handle(
   'AskAI:createNote',
   (_event, request: Partial<CreateAskAINoteRequest>) =>

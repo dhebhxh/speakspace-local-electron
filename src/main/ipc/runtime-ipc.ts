@@ -4,8 +4,12 @@ import WhisperRuntimeInstaller from '../transcription/WhisperRuntimeInstaller';
 import OllamaRuntimeInstaller from '../llm/OllamaRuntimeInstaller';
 import TTSRuntimeInstaller from '../tts/TTSRuntimeInstaller';
 import FfmpegInstaller from '../runtime/FfmpegInstaller';
+import RuntimeUninstallService, {
+  UninstallTarget,
+} from '../runtime/RuntimeUninstallService';
 
 const runtimeStatusService = new RuntimeStatusService();
+const runtimeUninstallService = new RuntimeUninstallService();
 const whisperRuntimeInstaller = new WhisperRuntimeInstaller();
 const ollamaRuntimeInstaller = new OllamaRuntimeInstaller();
 const ttsRuntimeInstaller = new TTSRuntimeInstaller();
@@ -38,7 +42,10 @@ ipcMain.handle('Runtime:installTTS', () =>
   }),
 );
 
-ipcMain.handle('Runtime:removeTTS', () => ttsRuntimeInstaller.remove());
+// 只允许卸载应用自己下载到 userData 的运行时，系统安装的副本由服务层拒绝。
+ipcMain.handle('Runtime:uninstall', (_event, target: UninstallTarget) =>
+  runtimeUninstallService.uninstall(target),
+);
 
 ipcMain.handle('Runtime:installFfmpeg', () =>
   ffmpegInstaller.install((progress) => {

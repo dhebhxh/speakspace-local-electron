@@ -39,6 +39,18 @@ export type AskAINoteDTO = {
   updatedAt: string;
 };
 
+/** 笔记下挂的整理结果（AI 语义总结、自动分段等），按创建顺序返回。 */
+export type AskAISubnoteDTO = {
+  id: number;
+  contentType: string;
+  content: string;
+  createdAt: string;
+};
+
+export type AskAINoteDetailDTO = AskAINoteDTO & {
+  subnotes: AskAISubnoteDTO[];
+};
+
 export type AskAIResultDTO = {
   conversation: AskAIConversationDTO;
   messages: AskAIMessageDTO[];

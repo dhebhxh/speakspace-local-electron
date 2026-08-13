@@ -48,27 +48,6 @@ export default class TTSRuntimeInstaller {
     return this.installPromise;
   }
 
-  public async remove(): Promise<TTSRuntimeStatus> {
-    if (this.installPromise) {
-      throw new Error('TTS 模型正在安装，请稍后再删除');
-    }
-
-    const modelDir = this.runtime.getModelDir();
-    const { manifestPath } = this.paths.getRuntimePaths('tts');
-    if (
-      !this.paths.isManagedPath(modelDir) ||
-      !this.paths.isManagedPath(manifestPath)
-    ) {
-      throw new Error('TTS 模型路径不在应用受管目录中');
-    }
-
-    await Promise.all([
-      fs.rm(modelDir, { recursive: true, force: true }),
-      fs.rm(manifestPath, { force: true }),
-    ]);
-    return this.runtime.getStatus();
-  }
-
   private async installModel(
     onProgress?: (progress: TTSInstallProgress) => void,
     signal?: AbortSignal,

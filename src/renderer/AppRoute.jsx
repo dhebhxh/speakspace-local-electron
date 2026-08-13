@@ -1,12 +1,15 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './layout/MainLayout';
 import { ModelManagerPage } from './pages/ModelManager/ModelManagerPage';
+import { DashboardPage } from './pages/Dashboard/DashboardPage';
 import WorkspacePage from './pages/Workspace/WorkspacePage';
 import WorkspaceHomePage from './pages/Workspace/WorkspaceHomePage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import StudioPage from './pages/Studio/StudioPage';
 import WorkflowPage from './pages/Workflow/WorkflowPage';
 import AgentPage from './pages/Agent/AgentPage';
+import { RoutePath } from './router/RouteManager';
+import './SystemPolish.css';
 
 export default function AppRoute() {
   return (
@@ -31,6 +34,7 @@ export default function AppRoute() {
         <Route path="/Workflow" element={<WorkflowPage />} />
         <Route path="/ModelManagement" element={<ModelManagerPage />} />
         <Route path="/Settings" element={<SettingsPage />} />
+        <Route path={RoutePath.Dashboard} element={<DashboardPage />} />
       </Route>
     </Routes>
   );

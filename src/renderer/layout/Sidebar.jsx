@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { RoutePath } from '../router/RouteManager';
 
 const svgProps = {
   width: 20,
@@ -51,11 +52,19 @@ const ICONS = {
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
     </svg>
   ),
+  dashBoard: (
+    <svg {...svgProps}>
+      <rect x="3" y="3" width="7" height="9" rx="1" />
+      <rect x="14" y="3" width="7" height="5" rx="1" />
+      <rect x="14" y="12" width="7" height="9" rx="1" />
+      <rect x="3" y="16" width="7" height="5" rx="1" />
+    </svg>
+  )
 };
 
 const NAV_ITEMS = [
   { to: '/', end: true, key: 'transcription' },
-  // 智能助理已并入对话工作台的输入框（✨ 开关），不再单独占一个入口。
+  { to: RoutePath.Dashboard, key: 'dashBoard' },
   { to: '/Workspace', key: 'workspace' },
   { to: '/ModelManagement', key: 'modelManagement' },
   { to: '/Workflow', key: 'workflow' },
@@ -82,14 +91,14 @@ export default function Sidebar({ collapsed, onToggle }) {
           type="button"
           className="sidebar-toggle"
           onClick={onToggle}
-          aria-label={collapsed ? '展开侧边栏' : '收起侧边栏'}
-          title={collapsed ? '展开侧边栏' : '收起侧边栏'}
+          aria-label={collapsed ? '展開側邊欄' : '收起側邊欄'}
+          title={collapsed ? '展開側邊欄' : '收起側邊欄'}
         >
           <ToggleIcon />
         </button>
       </div>
 
-      <nav aria-label="主导航">
+      <nav aria-label="主要導覽">
         <ul>
           {NAV_ITEMS.map((item) => {
             const label = t(`sidebar.${item.key}`);

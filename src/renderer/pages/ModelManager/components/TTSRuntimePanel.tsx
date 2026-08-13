@@ -19,7 +19,9 @@ export default function TTSRuntimePanel() {
 
   useEffect(() => {
     loadStatus().catch((reason) => {
-      setError(reason instanceof Error ? reason.message : '无法读取 TTS 状态');
+      setError(
+        reason instanceof Error ? reason.message : '无法读取语音合成状态',
+      );
     });
   }, [loadStatus]);
 
@@ -38,7 +40,7 @@ export default function TTSRuntimePanel() {
       await window.electron.runtime.installTTS();
       await loadStatus();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'TTS 模型安装失败');
+      setError(reason instanceof Error ? reason.message : '语音模型安装失败');
     } finally {
       setInstalling(false);
     }
@@ -53,31 +55,40 @@ export default function TTSRuntimePanel() {
   return (
     <section className="tts-runtime-panel">
       <header>
-        <div>
-          <span className="model-manager-eyebrow">TTS RUNTIME</span>
-          <h2>Kokoro 本地语音</h2>
+        <div className="runtime-panel-title">
+          <span className="runtime-panel-title__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 10v4M9 7v10M13 4v16M17 8v8M21 10v4" />
+            </svg>
+          </span>
+          <div>
+            <span>TTS</span>
+            <h3>语音播放</h3>
+          </div>
         </div>
         <span
           className={`tts-runtime-badge${runtime?.runtimeReady ? ' is-ready' : ''}`}
         >
-          {runtime?.runtimeReady ? '可播报' : '尚未就绪'}
+          {runtime?.runtimeReady ? '可用' : '未就绪'}
         </span>
       </header>
 
-      <div className="tts-runtime-grid">
-        <span>原生模块</span>
-        <strong>{runtime?.packageInstalled ? '已安装' : '未安装'}</strong>
-        <span>语音模型</span>
-        <strong>{runtime?.modelReady ? runtime.modelName : '未下载'}</strong>
-        <span>音色数量</span>
-        <strong>{runtime?.speakers.length ?? 0}</strong>
+      <strong className="compact-runtime-model">
+        {runtime?.modelReady ? runtime.modelName : 'Kokoro 未安装'}
+      </strong>
+      <div className="compact-runtime-facts" aria-label="语音播放状态">
+        <span className={runtime?.packageInstalled ? 'is-ready' : ''}>
+          引擎
+        </span>
+        <span className={runtime?.modelReady ? 'is-ready' : ''}>模型</span>
+        <span>{runtime?.speakers.length ?? 0} 个音色</span>
       </div>
 
       {progress && installing && (
-        <p className="tts-runtime-progress">
-          {progress.message}
-          {percent !== null ? ` · ${percent}%` : ''}
-        </p>
+        <div className="runtime-inline-progress" role="status">
+          <span>{progress.message}</span>
+          <strong>{percent !== null ? `${percent}%` : '…'}</strong>
+        </div>
       )}
       {error && (
         <p className="tts-runtime-error" role="alert">
@@ -86,7 +97,7 @@ export default function TTSRuntimePanel() {
       )}
       {runtime && !runtime.modelReady && (
         <button disabled={installing} onClick={install} type="button">
-          {installing ? '正在安装…' : '下载 Kokoro 中英双语模型'}
+          {installing ? '安装中' : '安装 Kokoro'}
         </button>
       )}
       {runtime?.runtimeReady && <TTSVoicePreview runtime={runtime} />}

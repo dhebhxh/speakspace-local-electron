@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { FONT_SIZE_OPTIONS } from '../SettingsOptions';
 import { SettingsPanelProps } from '../SettingsPanelTypes';
 
@@ -6,6 +7,7 @@ export default function FontSizeSettingsPanel({
   disabled,
   save,
 }: SettingsPanelProps) {
+  const { t } = useTranslation();
   return (
     <section className="settings-panel" aria-labelledby="font-size-title">
       <div className="settings-panel-heading">
@@ -13,15 +15,15 @@ export default function FontSizeSettingsPanel({
           A
         </span>
         <div>
-          <h2 id="font-size-title">输出文字字号</h2>
-          <p>用于导航、页面文字和输出内容。</p>
+          <h2 id="font-size-title">{t('settings.font.title')}</h2>
+          <p>{t('settings.font.desc')}</p>
         </div>
       </div>
 
       <div
         className="settings-options"
         role="radiogroup"
-        aria-label="输出文字字号"
+        aria-label={t('settings.font.title')}
       >
         {FONT_SIZE_OPTIONS.map((option) => (
           <button
@@ -37,8 +39,8 @@ export default function FontSizeSettingsPanel({
           >
             <span className="settings-font-sample">{option.sample}</span>
             <span>
-              <strong>{option.label}</strong>
-              <small>{option.description}</small>
+              <strong>{t(option.labelKey)}</strong>
+              <small>{t(option.descKey)}</small>
             </span>
             <span className="settings-check" aria-hidden="true">
               ✓

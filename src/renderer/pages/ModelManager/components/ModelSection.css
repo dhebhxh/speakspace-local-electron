@@ -1,9 +1,9 @@
 .model-section {
-  padding: 1.35rem;
+  min-width: 0;
+  padding: 0.9rem;
   border: 1px solid var(--border);
-  border-radius: 22px;
-  background: var(--surface);
-  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.14);
+  border-radius: 16px;
+  background: var(--surface-strong);
 }
 
 .model-section-header {
@@ -11,46 +11,102 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
-.model-section-header h2 { margin: 0 0 0.18rem; font-size: 1.05rem; }
-.model-section-header p { margin: 0; font-size: 0.74rem; }
+.model-section-title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.6rem;
+}
 
-.model-section-header > span {
+.model-section-icon {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   place-items: center;
   flex: none;
+  color: var(--accent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-soft));
+}
+
+.model-section-icon svg {
+  width: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.model-section-title > div {
+  min-width: 0;
+}
+
+.model-section-title h3 {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.model-section-title > div > span {
+  display: block;
+  max-width: 360px;
+  margin-top: 0.08rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.6rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-section-counts {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--muted);
+  font-size: 0.58rem;
+}
+
+.model-section-counts strong {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 9px;
   background: var(--surface-soft);
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-size: 0.68rem;
 }
 
 .model-card-list {
-  padding: 0.1rem;
+  min-width: 0;
 }
 
 .model-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+  gap: 0.65rem;
 }
 
 .model-section-empty {
   margin: 0;
-  padding: 1.4rem;
+  padding: 1.2rem;
+  color: var(--muted);
   text-align: center;
   border: 1px dashed var(--border);
-  border-radius: 14px;
-  background: var(--surface-soft);
-  font-size: 0.75rem;
+  border-radius: 12px;
+  font-size: 0.65rem;
 }
 
-@media (max-width: 720px) {
-  .model-card-grid { grid-template-columns: 1fr; }
+@media (max-width: 640px) {
+  .model-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .model-section-counts > span {
+    display: none;
+  }
 }

@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import ProcessCancelledError from '../runtime/ProcessCancelledError';
 import TranscriptionSourceResolver from './TranscriptionSourceResolver';
 import {
+  TranscriptSegment,
   TranscriptionJob,
   TranscriptionProgress,
   TranscriptionSource,
@@ -18,6 +19,10 @@ type ActiveJob = {
 };
 
 export type TranscriptionJobListener = (job: TranscriptionJob) => void;
+export type TranscriptionPartialListener = (
+  jobId: string,
+  segment: TranscriptSegment,
+) => void;
 
 /** 管理转写任务状态、取消和重试；实际引擎执行由独立服务负责。 */
 export default class TranscriptionJobManager {
@@ -28,6 +33,8 @@ export default class TranscriptionJobManager {
   private readonly activeJobs = new Map<string, ActiveJob>();
 
   private readonly listeners = new Set<TranscriptionJobListener>();
+
+  private readonly partialListeners = new Set<TranscriptionPartialListener>();
 
   public constructor(transcriptionService = new LocalTranscriptionService()) {
     this.transcriptionService = transcriptionService;
@@ -87,6 +94,13 @@ export default class TranscriptionJobManager {
     };
   }
 
+  public subscribePartial(listener: TranscriptionPartialListener): () => void {
+    this.partialListeners.add(listener);
+    return () => {
+      this.partialListeners.delete(listener);
+    };
+  }
+
   private launch(job: TranscriptionJob): void {
     const controller = new AbortController();
     const completion = this.execute(job, controller).finally(() => {
@@ -105,6 +119,7 @@ export default class TranscriptionJobManager {
       const result = await this.transcriptionService.transcribe(job.source, {
         signal: controller.signal,
         onProgress: (progress) => this.updateProgress(job, progress),
+        onPartial: (segment) => this.notifyPartial(job.id, segment),
       });
       Object.assign(job, {
         status: 'completed',
@@ -145,6 +160,11 @@ export default class TranscriptionJobManager {
   private notify(job: TranscriptionJob): void {
     const snapshot = TranscriptionJobManager.cloneJob(job);
     this.listeners.forEach((listener) => listener(snapshot));
+  }
+
+  private notifyPartial(jobId: string, segment: TranscriptSegment): void {
+    const snapshot = { ...segment };
+    this.partialListeners.forEach((listener) => listener(jobId, snapshot));
   }
 
   private requireJob(rawJobId: unknown): TranscriptionJob {

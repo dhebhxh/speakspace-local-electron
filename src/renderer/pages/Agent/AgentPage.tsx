@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import AgentConversation from './components/AgentConversation';
 import AgentTaskPanel from './components/AgentTaskPanel';
 import AgentTimeline from './components/AgentTimeline';
@@ -5,6 +6,7 @@ import useAgentPage from './useAgentPage';
 import './AgentPage.css';
 
 export default function AgentPage() {
+  const { t } = useTranslation();
   const agent = useAgentPage();
 
   return (
@@ -12,10 +14,10 @@ export default function AgentPage() {
       <header className="agent-page-header">
         <div>
           <span>BOUNDED LOCAL AUTOMATION</span>
-          <h1>智能助理</h1>
-          <p>让本地模型分步骤查找笔记；每次最多执行 6 步，可随时取消。</p>
+          <h1>{t('agent.title')}</h1>
+          <p>{t('agent.subtitle')}</p>
         </div>
-        <strong>只读笔记权限</strong>
+        <strong>{t('agent.permission')}</strong>
       </header>
       <div className="agent-page-grid">
         <aside>

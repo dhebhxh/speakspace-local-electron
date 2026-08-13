@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { AskAIConversation, AskAINote, formatAskAIDate } from '../AskAITypes';
 
 type AskAINotesPanelProps = {
@@ -17,14 +18,20 @@ export default function AskAINotesPanel({
   onSelectNote,
   onOpenConversation,
 }: AskAINotesPanelProps) {
+  const { t } = useTranslation();
+
   return (
     <aside className="ask-ai-library">
       <header className="ask-ai-library-header">
         <div>
           <span>Ask AI</span>
-          <h2>笔记库</h2>
+          <h2>{t('studio.library.title')}</h2>
         </div>
-        <button type="button" onClick={onAddNote} aria-label="新增笔记">
+        <button
+          type="button"
+          onClick={onAddNote}
+          aria-label={t('studio.library.add')}
+        >
           ＋
         </button>
       </header>
@@ -32,8 +39,8 @@ export default function AskAINotesPanel({
       <div className="ask-ai-note-list">
         {notes.length === 0 ? (
           <div className="ask-ai-empty">
-            <strong>还没有笔记</strong>
-            <span>新增一条笔记后即可向本地模型提问。</span>
+            <strong>{t('studio.library.empty.title')}</strong>
+            <span>{t('studio.library.empty.description')}</span>
           </div>
         ) : (
           notes.map((note) => (
@@ -44,7 +51,9 @@ export default function AskAINotesPanel({
               onClick={() => onSelectNote(note.id)}
             >
               <strong>{note.name}</strong>
-              <span>{note.transcriptPreview || '暂无摘要'}</span>
+              <span>
+                {note.transcriptPreview || t('studio.library.noSummary')}
+              </span>
               <time>{formatAskAIDate(note.updatedAt)}</time>
             </button>
           ))
@@ -53,7 +62,7 @@ export default function AskAINotesPanel({
 
       {conversations.length > 0 && (
         <details className="ask-ai-recents">
-          <summary>最近会话</summary>
+          <summary>{t('studio.library.recent')}</summary>
           {conversations.slice(0, 6).map((conversation) => (
             <button
               type="button"

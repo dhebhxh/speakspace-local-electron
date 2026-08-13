@@ -26,6 +26,8 @@ export class RecordingSession {
 
   private savedRecording: SavedRecording | null = null;
 
+  private liveChunkHandler: ((chunk: Blob) => void) | null = null;
+
   public getSnapshot(): RecordingSnapshot {
     return {
       state: this.state,
@@ -37,6 +39,13 @@ export class RecordingSession {
         0,
       ),
       savedRecording: this.savedRecording,
+    };
+  }
+
+  public setLiveChunkHandler(handler: (chunk: Blob) => void): () => void {
+    this.liveChunkHandler = handler;
+    return () => {
+      if (this.liveChunkHandler === handler) this.liveChunkHandler = null;
     };
   }
 
@@ -58,10 +67,13 @@ export class RecordingSession {
 
     try {
       this.chunks = [];
-      await this.mediaRecorder.start((chunk) => {
-        this.chunks.push(chunk);
-        this.notify();
-      });
+      await this.mediaRecorder.start(
+        (chunk) => {
+          this.chunks.push(chunk);
+          this.notify();
+        },
+        (chunk) => this.liveChunkHandler?.(chunk),
+      );
 
       this.update({
         state: RecordingState.Recording,
@@ -120,13 +132,13 @@ export class RecordingSession {
     }
   }
 
-  public async save(): Promise<void> {
-    if (this.state !== RecordingState.Completed || this.busy) return;
+  public async save(): Promise<SavedRecording | null> {
+    if (this.state !== RecordingState.Completed || this.busy) return null;
     if (this.chunks.length === 0) {
       this.update({
         errorMessage: '没有收到录音数据 / No recording data received',
       });
-      return;
+      return null;
     }
 
     this.update({
@@ -151,12 +163,14 @@ export class RecordingSession {
         savedRecording,
         statusMessage: '录音已保存 / Recording saved',
       });
+      return savedRecording;
     } catch (error) {
       this.update({
         busy: false,
         errorMessage: RecordingSession.getErrorMessage(error),
         statusMessage: '保存失败 / Save failed',
       });
+      return null;
     }
   }
 

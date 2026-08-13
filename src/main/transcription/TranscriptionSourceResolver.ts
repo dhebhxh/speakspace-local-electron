@@ -1,7 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { BlobStorage } from '../database/BlobStorage';
-import { TranscriptionSource } from './TranscriptionTypes';
+import {
+  isWhisperLanguage,
+  TranscriptionLanguage,
+  TranscriptionSource,
+} from './TranscriptionTypes';
 
 /** 在主进程验证外部文件或受管录音来源，并返回实际文件路径。 */
 export default class TranscriptionSourceResolver {
@@ -38,7 +42,13 @@ export default class TranscriptionSourceResolver {
       source.filePath.length > 0 &&
       source.filePath.length <= 4096
     ) {
-      return { kind: 'file', filePath: source.filePath };
+      return {
+        kind: 'file',
+        filePath: source.filePath,
+        language: TranscriptionSourceResolver.normalizeLanguage(
+          source.language,
+        ),
+      };
     }
     if (
       source.kind === 'recording' &&
@@ -46,9 +56,25 @@ export default class TranscriptionSourceResolver {
       source.relativePath.length > 0 &&
       source.relativePath.length <= 1024
     ) {
-      return { kind: 'recording', relativePath: source.relativePath };
+      return {
+        kind: 'recording',
+        relativePath: source.relativePath,
+        language: TranscriptionSourceResolver.normalizeLanguage(
+          source.language,
+        ),
+      };
     }
 
     throw new Error('无效的转写来源 / Invalid transcription source');
+  }
+
+  private static normalizeLanguage(
+    rawLanguage: unknown,
+  ): TranscriptionLanguage | undefined {
+    if (rawLanguage === undefined) return undefined;
+    if (rawLanguage === 'auto' || isWhisperLanguage(rawLanguage)) {
+      return rawLanguage;
+    }
+    throw new Error('不支持的转写语言 / Unsupported transcription language');
   }
 }

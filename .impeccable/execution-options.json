@@ -1,0 +1,28 @@
+{
+  "title": "选择执行方式",
+  "question": "语料索引台方向已锁定。接下来决定如何把它落进现有 Electron 应用。",
+  "options": [
+    {
+      "id": "code-led",
+      "label": "Code-led 全产品重构",
+      "kicker": "RECOMMENDED",
+      "lineage": "真实功能与全局系统优先",
+      "thesis": "把方向稿的结构、层级、状态和材料语法直接落到现有组件，覆盖所有主要页面。",
+      "palette": ["#F5F7FB", "#101923", "#1F63FF", "#25A89A", "#F2B84B"],
+      "materials": ["连续语料桌", "深蓝设备导轨", "语义边缘色"],
+      "viewport": "Studio 先形成完整四区工作台，再让 Workspace、Agent、模板、模型和设置继承同一系统。",
+      "risk": "不会逐像素照抄方向图，但能更完整地保留真实功能并统一全项目。"
+    },
+    {
+      "id": "comp-led",
+      "label": "Comp-led 像素级首屏",
+      "kicker": "MAXIMUM FIDELITY",
+      "lineage": "方向图构图优先",
+      "thesis": "先把 Studio 首屏尽量一比一复现，再向其他页面扩展。",
+      "palette": ["#F5F7FB", "#101923", "#1F63FF", "#25A89A", "#F2B84B"],
+      "materials": ["方向图精确复现", "固定首屏拓扑"],
+      "viewport": "先以 1536×1024 完成 Studio 构图重现，再做交互和响应式。",
+      "risk": "对现有复杂状态和其他页面的统一改造投入更大，也更容易牺牲真实功能布局。"
+    }
+  ]
+}

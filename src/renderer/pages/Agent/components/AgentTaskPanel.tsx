@@ -1,4 +1,5 @@
 import { FormEvent, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { WorkspaceItem } from '../../Workspace/WorkspaceController';
 
 type Props = {
@@ -18,6 +19,7 @@ export default function AgentTaskPanel({
   onStart,
   onCancel,
 }: Props) {
+  const { t } = useTranslation();
   const [instruction, setInstruction] = useState('');
 
   const submit = async (event: FormEvent) => {
@@ -31,29 +33,34 @@ export default function AgentTaskPanel({
   return (
     <form className="agent-task-panel" onSubmit={submit}>
       <label htmlFor="agent-workspace">
-        <span>工作空间范围</span>
+        <span>{t('agent.task.workspace')}</span>
         <select
           disabled={running || workspaces.length === 0}
           id="agent-workspace"
           onChange={(event) => onWorkspaceChange(Number(event.target.value))}
           value={workspaceId ?? ''}
         >
-          {workspaces.length === 0 && <option value="">暂无工作空间</option>}
+          {workspaces.length === 0 && (
+            <option value="">{t('agent.task.noWorkspace')}</option>
+          )}
           {workspaces.map((workspace) => (
             <option key={workspace.id} value={workspace.id}>
-              {workspace.name} · {workspace.note_count} 篇笔记
+              {t('agent.task.workspaceOption', {
+                name: workspace.name,
+                count: workspace.note_count,
+              })}
             </option>
           ))}
         </select>
       </label>
       <label htmlFor="agent-instruction">
-        <span>交给助理的任务</span>
+        <span>{t('agent.task.label')}</span>
         <textarea
           disabled={running}
           id="agent-instruction"
           maxLength={4000}
           onChange={(event) => setInstruction(event.target.value)}
-          placeholder="例如：查找关于产品发布的笔记，并总结确定的时间安排。"
+          placeholder={t('agent.task.placeholder')}
           rows={5}
           value={instruction}
         />
@@ -61,14 +68,14 @@ export default function AgentTaskPanel({
       <div>
         {running ? (
           <button className="secondary" onClick={onCancel} type="button">
-            取消任务
+            {t('agent.task.cancel')}
           </button>
         ) : (
           <button
             disabled={!instruction.trim() || workspaceId === null}
             type="submit"
           >
-            开始执行
+            {t('agent.task.start')}
           </button>
         )}
       </div>

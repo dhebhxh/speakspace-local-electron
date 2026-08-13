@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KnowledgeTemplateDTO } from '../../../main/workflow/WorkflowTypes';
 import KnowledgeTemplateCard from './components/KnowledgeTemplateCard';
 import KnowledgeTemplateFormPage from './components/KnowledgeTemplateFormPage';
 import './WorkflowPage.css';
 
 export default function WorkflowPage() {
+  const { t } = useTranslation();
   const [templates, setTemplates] = useState<KnowledgeTemplateDTO[]>([]);
   const [editingTemplate, setEditingTemplate] =
     useState<KnowledgeTemplateDTO | null>(null);
@@ -19,9 +21,11 @@ export default function WorkflowPage() {
 
   useEffect(() => {
     loadTemplates().catch((error) => {
-      setStatus(error instanceof Error ? error.message : '模板加载失败');
+      setStatus(
+        error instanceof Error ? error.message : t('workflow.error.load'),
+      );
     });
-  }, [loadTemplates]);
+  }, [loadTemplates, t]);
 
   const openForm = useCallback((template: KnowledgeTemplateDTO | null) => {
     setEditingTemplate(template);
@@ -46,18 +50,18 @@ export default function WorkflowPage() {
       await loadTemplates();
       setEditingTemplate(null);
       setFormOpen(false);
-      setStatus('模板已保存');
+      setStatus(t('workflow.status.saved'));
     },
-    [editingTemplate, loadTemplates],
+    [editingTemplate, loadTemplates, t],
   );
 
   const deleteTemplate = useCallback(
     async (template: KnowledgeTemplateDTO) => {
       await window.electron.workflow.deleteKnowledgeTemplate(template.id);
       await loadTemplates();
-      setStatus('模板已删除');
+      setStatus(t('workflow.status.deleted'));
     },
-    [loadTemplates],
+    [loadTemplates, t],
   );
 
   return (
@@ -65,12 +69,12 @@ export default function WorkflowPage() {
       <header className="workflow-header">
         <div>
           <span>LOCAL WORKFLOW</span>
-          <h1>知识模板</h1>
-          <p>模板会指导本地模型如何把笔记整理成摘要、行动项或其他格式。</p>
+          <h1>{t('workflow.title')}</h1>
+          <p>{t('workflow.subtitle')}</p>
         </div>
         {!formOpen && (
           <button type="button" onClick={openCreateForm}>
-            新建模板
+            {t('workflow.create')}
           </button>
         )}
       </header>
@@ -85,7 +89,7 @@ export default function WorkflowPage() {
       ) : (
         <div className="workflow-template-list">
           {templates.length === 0 ? (
-            <div className="workflow-empty">还没有知识模板。</div>
+            <div className="workflow-empty">{t('workflow.empty')}</div>
           ) : (
             templates.map((template) => (
               <KnowledgeTemplateCard

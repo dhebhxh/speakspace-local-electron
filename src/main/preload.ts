@@ -7,6 +7,7 @@ import {
   webUtils,
 } from 'electron';
 import { AgentEvent, AgentRunRequest } from './agent/AgentTypes';
+import type { TranscriptionSource } from './transcription/TranscriptionTypes';
 
 export type Channels = 'ipc-example';
 
@@ -74,6 +75,9 @@ const electronHandler = {
     saveRecording(data: ArrayBuffer, mimeType: string) {
       return ipcRenderer.invoke('Audio:saveRecording', data, mimeType);
     },
+    importRecordingFile(filePath: string) {
+      return ipcRenderer.invoke('Audio:importRecordingFile', filePath);
+    },
     discardRecording(relativePath: string) {
       return ipcRenderer.invoke('Audio:discardRecording', relativePath);
     },
@@ -81,19 +85,17 @@ const electronHandler = {
 
   // 单次转写接口先用于功能接线；任务进度、取消和重试由后续 job API 提供。
   transcription: {
-    run(
-      source:
-        | { kind: 'file'; filePath: string }
-        | { kind: 'recording'; relativePath: string },
-    ) {
+    run(source: TranscriptionSource) {
       return ipcRenderer.invoke('Transcription:run', source);
     },
-    start(
-      source:
-        | { kind: 'file'; filePath: string }
-        | { kind: 'recording'; relativePath: string },
-    ) {
+    detectLanguage(source: TranscriptionSource) {
+      return ipcRenderer.invoke('Transcription:detectLanguage', source);
+    },
+    start(source: TranscriptionSource) {
       return ipcRenderer.invoke('Transcription:start', source);
+    },
+    liveRun(data: ArrayBuffer, mimeType: string) {
+      return ipcRenderer.invoke('Transcription:liveRun', data, mimeType);
     },
     get(jobId: string) {
       return ipcRenderer.invoke('Transcription:get', jobId);
@@ -109,6 +111,14 @@ const electronHandler = {
       ipcRenderer.on('Transcription:status', wrapped);
       return () => {
         ipcRenderer.removeListener('Transcription:status', wrapped);
+      };
+    },
+    onPartial(listener: (payload: unknown) => void) {
+      const wrapped = (_event: IpcRendererEvent, payload: unknown) =>
+        listener(payload);
+      ipcRenderer.on('Transcription:partial', wrapped);
+      return () => {
+        ipcRenderer.removeListener('Transcription:partial', wrapped);
       };
     },
   },
@@ -198,6 +208,12 @@ const electronHandler = {
     installTTS() {
       return ipcRenderer.invoke('Runtime:installTTS');
     },
+    removeTTS() {
+      return ipcRenderer.invoke('Runtime:removeTTS');
+    },
+    installFfmpeg() {
+      return ipcRenderer.invoke('Runtime:installFfmpeg');
+    },
     onInstallProgress(listener: (progress: unknown) => void) {
       const wrapped = (_event: IpcRendererEvent, progress: unknown) =>
         listener(progress);
@@ -212,6 +228,14 @@ const electronHandler = {
       ipcRenderer.on('Runtime:installOllamaProgress', wrapped);
       return () => {
         ipcRenderer.removeListener('Runtime:installOllamaProgress', wrapped);
+      };
+    },
+    onFfmpegInstallProgress(listener: (progress: unknown) => void) {
+      const wrapped = (_event: IpcRendererEvent, progress: unknown) =>
+        listener(progress);
+      ipcRenderer.on('Runtime:installFfmpegProgress', wrapped);
+      return () => {
+        ipcRenderer.removeListener('Runtime:installFfmpegProgress', wrapped);
       };
     },
     onTTSInstallProgress(listener: (progress: unknown) => void) {
@@ -257,6 +281,9 @@ const electronHandler = {
     },
     installModel() {
       return ipcRenderer.invoke('Semantic:installModel');
+    },
+    removeModel() {
+      return ipcRenderer.invoke('Semantic:removeModel');
     },
     search(query: string, workspaceId?: number | null, topK = 5) {
       return ipcRenderer.invoke('Semantic:search', query, workspaceId, topK);
@@ -311,10 +338,14 @@ const electronHandler = {
       conversationId?: number | null;
       workspaceId?: number | null;
       noteId?: number | null;
+      noteIds?: number[] | null;
       question: string;
-      scope: 'note' | 'workspace';
+      scope: 'note' | 'workspace' | 'multi-note';
     }) {
       return ipcRenderer.invoke('AskAI:ask', request);
+    },
+    autoSegmentNote(noteId: number) {
+      return ipcRenderer.invoke('AskAI:autoSegmentNote', noteId);
     },
   },
 
@@ -339,6 +370,15 @@ const electronHandler = {
     getNotes(workspaceId: number) {
       return ipcRenderer.invoke('Workspace:getNotes', workspaceId);
     },
+    saveTranscriptionNote(request: {
+      workspaceId: number;
+      name?: string | null;
+      transcript: string;
+      summaries?: string[];
+      audioRelativePath?: string | null;
+    }) {
+      return ipcRenderer.invoke('Workspace:saveTranscriptionNote', request);
+    },
     getNoteAudio(workspaceId: number, noteId: number) {
       return ipcRenderer.invoke('Workspace:getNoteAudio', workspaceId, noteId);
     },
@@ -347,6 +387,18 @@ const electronHandler = {
     },
     delete(id: number) {
       return ipcRenderer.invoke('Workspace:delete', id);
+    },
+  },
+
+  // Export functionality
+  export: {
+    note(request: {
+      title: string;
+      transcript: string;
+      subnotes: { type: string; content: string }[];
+      format: 'word' | 'pdf';
+    }) {
+      return ipcRenderer.invoke('Export:note', request);
     },
   },
 };

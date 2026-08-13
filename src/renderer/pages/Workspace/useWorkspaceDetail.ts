@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   NoteItem,
@@ -15,6 +16,7 @@ const workflowController = new WorkspaceWorkflowController();
 
 /** 工作空间详情的数据读取与修改集中在 Hook，页面组件只负责排版。 */
 export default function useWorkspaceDetail() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { workspaceId: rawWorkspaceId } = useParams();
   const workspaceId = Number(rawWorkspaceId);
@@ -26,11 +28,20 @@ export default function useWorkspaceDetail() {
   const [status, setStatus] = useState('');
   const [query, setQuery] = useState('');
   const [generatingNoteId, setGeneratingNoteId] = useState<number | null>(null);
+  const [selectedNoteIds, setSelectedNoteIds] = useState<number[]>([]);
+
+  const toggleNoteSelection = useCallback((noteId: number) => {
+    setSelectedNoteIds((prev) =>
+      prev.includes(noteId)
+        ? prev.filter((id) => id !== noteId)
+        : [...prev, noteId],
+    );
+  }, []);
 
   const loadWorkspace = useCallback(async () => {
     if (!Number.isInteger(workspaceId) || workspaceId <= 0) {
       setWorkspace(null);
-      setError('无效的工作空间 ID');
+      setError(t('workspace.detail.error.invalidId'));
       setLoading(false);
       return;
     }
@@ -49,11 +60,13 @@ export default function useWorkspaceDetail() {
       setTemplates(knowledgeTemplates);
     } catch (reason) {
       setWorkspace(null);
-      setError(WorkspaceController.getErrorMessage(reason, '读取工作空间失败'));
+      setError(
+        WorkspaceController.getErrorMessage(reason, t('workspace.error.load')),
+      );
     } finally {
       setLoading(false);
     }
-  }, [workspaceId]);
+  }, [t, workspaceId]);
 
   useEffect(() => {
     loadWorkspace();
@@ -67,43 +80,65 @@ export default function useWorkspaceDetail() {
         setStatus('');
         await workflowController.generate(noteId, templateId);
         setNotes(await workspaceController.getWorkspaceNotes(workspaceId));
-        setStatus('AI 知识输出已生成并保存在当前笔记中。');
+        setStatus(t('workspace.detail.status.generated'));
       } catch (reason) {
-        setError(WorkspaceController.getErrorMessage(reason, '生成失败'));
+        setError(
+          WorkspaceController.getErrorMessage(
+            reason,
+            t('workspace.detail.error.generate'),
+          ),
+        );
       } finally {
         setGeneratingNoteId(null);
       }
     },
-    [workspaceId],
+    [t, workspaceId],
   );
 
   const renameWorkspace = useCallback(async () => {
     if (!workspace) return;
     // eslint-disable-next-line no-alert
-    const nextName = window.prompt('输入新的工作空间名称', workspace.name);
+    const nextName = window.prompt(
+      t('workspace.detail.renamePrompt'),
+      workspace.name,
+    );
     if (!nextName?.trim() || nextName.trim() === workspace.name) return;
     try {
       setError('');
       await workspaceController.renameWorkspace(workspace.id, nextName);
       setWorkspace(await workspaceController.openWorkspace(workspace.id));
     } catch (reason) {
-      setError(WorkspaceController.getErrorMessage(reason, '重命名失败'));
+      setError(
+        WorkspaceController.getErrorMessage(
+          reason,
+          t('workspace.detail.error.rename'),
+        ),
+      );
     }
-  }, [workspace]);
+  }, [t, workspace]);
 
   const deleteWorkspace = useCallback(async () => {
     if (!workspace) return;
     // eslint-disable-next-line no-alert
-    if (!window.confirm(`确定删除“${workspace.name}”及其中的全部笔记吗？`)) {
+    if (
+      !window.confirm(
+        t('workspace.detail.deleteConfirm', { name: workspace.name }),
+      )
+    ) {
       return;
     }
     try {
       await workspaceController.deleteWorkspace(workspace.id);
       navigate('/');
     } catch (reason) {
-      setError(WorkspaceController.getErrorMessage(reason, '删除失败'));
+      setError(
+        WorkspaceController.getErrorMessage(
+          reason,
+          t('workspace.detail.error.delete'),
+        ),
+      );
     }
-  }, [navigate, workspace]);
+  }, [navigate, t, workspace]);
 
   const revealNote = useCallback((noteId: number) => {
     setQuery('');
@@ -125,6 +160,9 @@ export default function useWorkspaceDetail() {
     query,
     setQuery,
     generatingNoteId,
+    selectedNoteIds,
+    toggleNoteSelection,
+    setSelectedNoteIds,
     generateOutput,
     renameWorkspace,
     deleteWorkspace,

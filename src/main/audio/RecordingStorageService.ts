@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
 import { BlobStorage } from '../database/BlobStorage';
@@ -16,6 +17,17 @@ const RECORDING_EXTENSIONS: Record<string, string> = {
   'audio/webm': 'webm',
   'audio/x-wav': 'wav',
 };
+
+const RECORDING_MIME_TYPES_BY_EXTENSION: Record<string, string> =
+  Object.entries(RECORDING_EXTENSIONS).reduce<Record<string, string>>(
+    (result, [mimeType, extension]) => {
+      if (!result[extension]) result[extension] = mimeType;
+      return result;
+    },
+    {},
+  );
+RECORDING_MIME_TYPES_BY_EXTENSION.flac = 'audio/flac';
+RECORDING_MIME_TYPES_BY_EXTENSION.mp4 = 'audio/mp4';
 
 export type SavedRecording = {
   relativePath: string;
@@ -65,6 +77,38 @@ export default class RecordingStorageService {
       relativePath,
       mimeType,
       byteLength: bytes.byteLength,
+      createdAt,
+    };
+  }
+
+  public importRecordingFile(rawFilePath: unknown): SavedRecording {
+    if (typeof rawFilePath !== 'string' || !rawFilePath.trim()) {
+      throw new Error('无效的音频文件路径 / Invalid audio file path');
+    }
+
+    const filePath = path.resolve(rawFilePath);
+    const stat = fs.statSync(filePath);
+    if (!stat.isFile() || stat.size <= 0 || stat.size > MAX_RECORDING_BYTES) {
+      throw new Error('音频文件大小无效 / Invalid audio file size');
+    }
+
+    const extension = path.extname(filePath).slice(1).toLowerCase();
+    const mimeType = RECORDING_MIME_TYPES_BY_EXTENSION[extension];
+    if (!mimeType) {
+      throw new Error('不支持的音频格式 / Unsupported audio format');
+    }
+
+    const createdAt = new Date().toISOString();
+    const fileName = `uploaded-audio-${Date.now()}-${randomUUID()}.${extension}`;
+    const relativePath = path.posix.join('recordings', fileName);
+    const targetPath = this.blobStorage.resolveAbsolutePath(relativePath);
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.copyFileSync(filePath, targetPath);
+
+    return {
+      relativePath,
+      mimeType,
+      byteLength: stat.size,
       createdAt,
     };
   }

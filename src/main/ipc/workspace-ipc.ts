@@ -37,6 +37,10 @@ class WorkspaceIpcController {
       this.service.listNotes(workspaceId),
     );
     this.ipc.handle(
+      'Workspace:saveTranscriptionNote',
+      (_event, request: unknown) => this.service.saveTranscriptionNote(request),
+    );
+    this.ipc.handle(
       'Workspace:getNoteAudio',
       (_event, workspaceId: unknown, noteId: unknown) =>
         this.service.getNoteAudio(workspaceId, noteId),

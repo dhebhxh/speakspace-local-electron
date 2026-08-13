@@ -1,34 +1,35 @@
+import { useTranslation } from 'react-i18next';
 import { AgentStep } from '../../../../main/agent/AgentTypes';
 import { AgentPageStep } from '../AgentPageTypes';
 
 type Props = { steps: AgentPageStep[]; status: string; running: boolean };
 
-const TOOL_NAMES: Record<string, string> = {
-  search_notes: '搜索当前工作空间笔记',
-  read_note: '读取选中的笔记',
-};
-
-function describeStep(step: AgentStep): string {
-  if (step.type === 'final') return '生成最终回答';
-  const tool = TOOL_NAMES[step.tool] ?? step.tool;
-  if (step.type === 'tool_call') return `准备：${tool}`;
-  return `${step.ok ? '完成' : '失败'}：${tool}`;
-}
-
 export default function AgentTimeline({ steps, status, running }: Props) {
+  const { t } = useTranslation();
+  const describeStep = (step: AgentStep): string => {
+    if (step.type === 'final') return t('agent.timeline.final');
+    const tool = t(`agent.tool.${step.tool}`, { defaultValue: step.tool });
+    if (step.type === 'tool_call') {
+      return t('agent.timeline.preparing', { tool });
+    }
+    return t(step.ok ? 'agent.timeline.done' : 'agent.timeline.failed', {
+      tool,
+    });
+  };
+
   return (
     <section className="agent-timeline" aria-live="polite">
       <header>
         <div>
-          <span>公开执行步骤</span>
+          <span>{t('agent.timeline.title')}</span>
           <h2>{status}</h2>
         </div>
         <span className={running ? 'is-running' : ''}>
-          {running ? '运行中' : '就绪'}
+          {running ? t('agent.timeline.running') : t('agent.timeline.ready')}
         </span>
       </header>
       {steps.length === 0 ? (
-        <p>运行后会显示工具调用和成功状态，不显示模型内部推理。</p>
+        <p>{t('agent.timeline.empty')}</p>
       ) : (
         <ol>
           {steps.map((item) => (

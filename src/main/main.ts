@@ -28,6 +28,7 @@ import './ipc/ask-ai-ipc';
 import './ipc/tts-ipc';
 import './ipc/semantic-ipc';
 import './ipc/agent-ipc';
+import './ipc/export-ipc';
 // 工作空间 IPC 在主进程启动时注册。 / Register Workspace IPC when the main process starts.
 import './ipc/workspace-ipc';
 import './ipc/dashboard-ipc';
@@ -90,8 +91,10 @@ const createWindow = async () => {
 
   mainWindow = new BrowserWindow({
     show: false,
+    autoHideMenuBar: true,
     width: 1024,
     height: 728,
+    backgroundColor: '#07101d',
     icon: getAssetPath('icon.png'),
     webPreferences: {
       preload: app.isPackaged

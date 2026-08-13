@@ -64,6 +64,20 @@ export type WorkspaceAudioData = {
   bytes: Uint8Array;
 };
 
+export type SaveTranscriptionNoteRequest = {
+  workspaceId: number;
+  name?: string | null;
+  transcript: string;
+  summaries?: string[];
+  audioRelativePath?: string | null;
+};
+
+export type SaveTranscriptionNoteResult = {
+  noteId: number;
+  workspaceId: number;
+  name: string;
+};
+
 /**
  * 工作空间业务服务：集中处理验证与数据库操作。
  * Workspace service: encapsulates validation and database operations.
@@ -242,6 +256,67 @@ export class WorkspaceService {
     };
   }
 
+  public saveTranscriptionNote(
+    rawRequest: unknown,
+  ): SaveTranscriptionNoteResult {
+    if (typeof rawRequest !== 'object' || rawRequest === null) {
+      throw new Error('无效的保存请求 / Invalid save request');
+    }
+
+    const request = rawRequest as Partial<SaveTranscriptionNoteRequest>;
+    const workspaceId = WorkspaceService.normalizeId(request.workspaceId);
+    this.getWorkspaceSummary(workspaceId);
+
+    const transcript = String(request.transcript ?? '').trim();
+    if (!transcript) {
+      throw new Error('转录内容不能为空 / Transcript is required');
+    }
+
+    const defaultName = transcript.replace(/\s+/g, ' ').trim().slice(0, 64);
+    const name = WorkspaceService.normalizeOptionalNoteName(
+      request.name,
+      defaultName || 'Untitled Note',
+    );
+    const summaries = WorkspaceService.normalizeSummaries(request.summaries);
+    const audioRelativePath = WorkspaceService.normalizeAudioRelativePath(
+      request.audioRelativePath,
+    );
+    const now = new Date().toISOString();
+
+    const save = this.database.transaction(() => {
+      const noteResult = this.database
+        .prepare(
+          `INSERT INTO notes (
+            workspace_id, name, audio_relative_path, transcript,
+            is_pinned, pinned_at, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, 0, NULL, ?, ?)`,
+        )
+        .run(workspaceId, name, audioRelativePath, transcript, now, now);
+      const noteId = Number(noteResult.lastInsertRowid);
+
+      const insertSummary = this.database.prepare(
+        `INSERT INTO subnotes (note_id, content_type, content, created_at)
+         VALUES (?, ?, ?, ?)`,
+      );
+      summaries.forEach((summary, index) => {
+        insertSummary.run(
+          noteId,
+          `AI 语义总结 ${index + 1} / Semantic summary ${index + 1}`,
+          summary,
+          now,
+        );
+      });
+
+      this.database
+        .prepare('UPDATE workspaces SET updated_at = ? WHERE id = ?')
+        .run(now, workspaceId);
+
+      return { noteId, workspaceId, name };
+    });
+
+    return save();
+  }
+
   // 修改工作空间名称
   // Rename a workspace
   public renameWorkspace(rawId: unknown, rawName: unknown): boolean {
@@ -267,6 +342,50 @@ export class WorkspaceService {
     const result = statement.run(id);
 
     return result.changes > 0;
+  }
+
+  private static normalizeOptionalNoteName(
+    value: unknown,
+    fallback: string,
+  ): string {
+    if (typeof value !== 'string' || !value.trim())
+      return fallback.slice(0, 80);
+    return value.trim().slice(0, 80);
+  }
+
+  private static normalizeSummaries(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 100)
+      .map((item) => item.slice(0, 12000));
+  }
+
+  private static normalizeAudioRelativePath(value: unknown): string | null {
+    if (value === null || value === undefined || value === '') return null;
+    if (typeof value !== 'string') {
+      throw new Error('无效的录音路径 / Invalid recording path');
+    }
+
+    const normalized = value.replaceAll('\\', '/');
+    const segments = normalized.split('/');
+    if (
+      segments.length !== 2 ||
+      segments[0] !== 'recordings' ||
+      !segments[1] ||
+      segments[1] === '.' ||
+      segments[1] === '..'
+    ) {
+      throw new Error('录音不在受管目录中 / Recording is not managed');
+    }
+
+    const storage = BlobStorage.getInstance();
+    if (!storage.exists(normalized)) {
+      throw new Error('关联录音不存在 / Linked recording was not found');
+    }
+    return normalized;
   }
 
   private static normalizeName(value: unknown): string {
@@ -321,6 +440,8 @@ export class WorkspaceService {
     const mimeTypes: Record<string, string> = {
       wav: 'audio/wav',
       mp3: 'audio/mpeg',
+      flac: 'audio/flac',
+      aac: 'audio/aac',
       m4a: 'audio/mp4',
       mp4: 'audio/mp4',
       webm: 'audio/webm',

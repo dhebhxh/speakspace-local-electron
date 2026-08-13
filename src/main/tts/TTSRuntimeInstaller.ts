@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import CommandLocator from '../runtime/CommandLocator';
+import ArchiveExtractor from '../runtime/ArchiveExtractor';
 import FileDownloadService from '../runtime/FileDownloadService';
 import LocalProcessRunner from '../runtime/LocalProcessRunner';
 import { ManagedPaths } from '../runtime/ManagedPaths';
@@ -48,6 +48,27 @@ export default class TTSRuntimeInstaller {
     return this.installPromise;
   }
 
+  public async remove(): Promise<TTSRuntimeStatus> {
+    if (this.installPromise) {
+      throw new Error('TTS 模型正在安装，请稍后再删除');
+    }
+
+    const modelDir = this.runtime.getModelDir();
+    const { manifestPath } = this.paths.getRuntimePaths('tts');
+    if (
+      !this.paths.isManagedPath(modelDir) ||
+      !this.paths.isManagedPath(manifestPath)
+    ) {
+      throw new Error('TTS 模型路径不在应用受管目录中');
+    }
+
+    await Promise.all([
+      fs.rm(modelDir, { recursive: true, force: true }),
+      fs.rm(manifestPath, { force: true }),
+    ]);
+    return this.runtime.getStatus();
+  }
+
   private async installModel(
     onProgress?: (progress: TTSInstallProgress) => void,
     signal?: AbortSignal,
@@ -83,10 +104,8 @@ export default class TTSRuntimeInstaller {
         onProgress: (progress) => onProgress?.(toTTSDownloadProgress(progress)),
       });
 
-      const tarPath = CommandLocator.resolve(['tar.exe', 'tar']);
-      if (!tarPath) throw new Error('未找到系统 tar 解压工具');
       onProgress?.({ phase: 'extracting', message: '正在解压 TTS 模型' });
-      await this.runner.run(tarPath, ['-xf', archivePath, '-C', extractRoot], {
+      await ArchiveExtractor.extract(archivePath, extractRoot, this.runner, {
         signal,
       });
       const source = await TTSRuntimeArchive.findModelRoot(extractRoot);

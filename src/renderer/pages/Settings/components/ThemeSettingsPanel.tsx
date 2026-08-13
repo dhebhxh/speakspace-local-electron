@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { THEME_OPTIONS } from '../SettingsOptions';
 import { SettingsPanelProps } from '../SettingsPanelTypes';
 
@@ -11,6 +12,7 @@ export default function ThemeSettingsPanel({
   save,
   resolvedTheme,
 }: ThemeSettingsPanelProps) {
+  const { t } = useTranslation();
   return (
     <section className="settings-panel" aria-labelledby="theme-title">
       <div className="settings-panel-heading">
@@ -18,15 +20,15 @@ export default function ThemeSettingsPanel({
           ◐
         </span>
         <div>
-          <h2 id="theme-title">系统颜色</h2>
-          <p>选择浅色、深色，或自动跟随系统。</p>
+          <h2 id="theme-title">{t('settings.theme.title')}</h2>
+          <p>{t('settings.theme.desc')}</p>
         </div>
       </div>
 
       <div
         className="settings-options theme-options"
         role="radiogroup"
-        aria-label="系统颜色"
+        aria-label={t('settings.theme.title')}
       >
         {THEME_OPTIONS.map((option) => (
           <button
@@ -46,8 +48,8 @@ export default function ThemeSettingsPanel({
               <i />
             </span>
             <span>
-              <strong>{option.label}</strong>
-              <small>{option.description}</small>
+              <strong>{t(option.labelKey)}</strong>
+              <small>{t(option.descKey)}</small>
             </span>
             <span className="settings-check" aria-hidden="true">
               ✓
@@ -57,7 +59,10 @@ export default function ThemeSettingsPanel({
       </div>
 
       <p className="settings-resolved-theme">
-        当前实际显示：{resolvedTheme === 'dark' ? '深色模式' : '浅色模式'}
+        {t('settings.theme.resolved')}
+        {resolvedTheme === 'dark'
+          ? t('settings.theme.resolved.dark')
+          : t('settings.theme.resolved.light')}
       </p>
     </section>
   );

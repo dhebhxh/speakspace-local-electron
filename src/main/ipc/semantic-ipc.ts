@@ -21,6 +21,11 @@ ipcMain.handle('Semantic:installModel', async () => {
   });
 });
 
+ipcMain.handle('Semantic:removeModel', async () => {
+  await ollamaServerController.ensureRunning();
+  return embeddingService.remove();
+});
+
 ipcMain.handle(
   'Semantic:search',
   async (_event, query: unknown, workspaceId: unknown, topK: unknown) => {

@@ -52,7 +52,7 @@
     "test": "jest"
   },
   "browserslist": [
-    "extends browserslist-config-erb"
+    "last 2 Electron versions"
   ],
   "prettier": {
     "singleQuote": true,

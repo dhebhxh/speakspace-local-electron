@@ -19,6 +19,10 @@ class DashboardIpcController {
         ipcMain.handle("Dashboard:extractTodosForNote", async (event, noteId: number) => {
             return await this.extractionService.extractTodosForNote(noteId);
         });
+
+        ipcMain.handle("Dashboard:toggleNotePin", async (event, noteId: number, isPinned: boolean) => {
+            return await this.service.toggleNotePin(noteId, isPinned);
+        });
     }
 }
 

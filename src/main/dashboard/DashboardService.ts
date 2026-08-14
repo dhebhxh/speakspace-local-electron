@@ -62,4 +62,20 @@ export class DashboardService {
             todos
         };
     }
+
+    public async toggleNotePin(noteId: number, isPinned: boolean): Promise<boolean> {
+        try {
+            const statement = this.database.prepare(`
+                UPDATE notes
+                SET is_pinned = ?, pinned_at = ?
+                WHERE id = ?
+            `);
+            const pinnedAt = isPinned ? new Date().toISOString() : null;
+            statement.run(isPinned ? 1 : 0, pinnedAt, noteId);
+            return true;
+        } catch (error) {
+            console.error('Failed to toggle note pin:', error);
+            return false;
+        }
+    }
 }

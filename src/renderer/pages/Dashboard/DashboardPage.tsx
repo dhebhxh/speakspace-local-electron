@@ -90,19 +90,32 @@ export const DashboardPage: React.FC = () => {
         return () => window.removeEventListener('click', closeContextMenu);
     }, []);
 
-    const handleTogglePin = (noteId: number, e: React.MouseEvent) => {
+    const handleTogglePin = async (noteId: number, e: React.MouseEvent) => {
         e.stopPropagation();
+        
+        const noteToToggle = notes.find(n => n.getId() === noteId);
+        if (!noteToToggle) return;
+        
+        const newPinnedState = !noteToToggle.isPinned();
+
         setNotes(prevNotes => prevNotes.map(n => {
             if (n.getId() === noteId) {
                 const updated = new DashboardNoteItem(
                     n.getId(), n.getWorkspaceId(), n.getName(), n.getAudioRelativePath(),
-                    n.getTranscript(), !n.isPinned(), !n.isPinned() ? new Date() : null,
+                    n.getTranscript(), newPinnedState, newPinnedState ? new Date() : null,
                     n.getCreatedAt(), n.getUpdatedAt(), n.getTypeCategory(), n.getDurationSeconds()
                 );
                 return updated;
             }
             return n;
         }));
+
+        try {
+            await window.electron.dashboard.toggleNotePin(noteId, newPinnedState);
+        } catch (error) {
+            console.error("Failed to toggle pin state on backend:", error);
+            // Optionally revert the state here on failure
+        }
     };
 
     // Filter and Sort Notes cleanly utilizing OOP helper methods on each instance

@@ -29,6 +29,22 @@ export class DatabaseManager {
 
     this.createCoreTables();
     this.ensureWorkspaceLastOpenedColumn();
+    this.cleanupOrphanedConversations();
+  }
+
+  /**
+   * 刪除所有沒有關聯筆記的對話。
+   * 這可以清理過去因為只刪除筆記而殘留下來的空對話。
+   */
+  private cleanupOrphanedConversations(): void {
+    try {
+      this.database.exec(`
+        DELETE FROM ai_conversations
+        WHERE id NOT IN (SELECT conversation_id FROM conversation_contexts)
+      `);
+    } catch (err) {
+      console.error('Failed to clean up orphaned conversations:', err);
+    }
   }
 
   public static getInstance(): DatabaseManager {

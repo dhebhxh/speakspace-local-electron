@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import useAskAIPage from '../AskAI/useAskAIPage';
 import { AskAINote } from '../AskAI/AskAITypes';
 import AskAINotesPanel from '../AskAI/components/AskAINotesPanel';
@@ -81,6 +82,7 @@ function defaultNoteName(uploadedFileName: string | null): string {
  * 录音结束弹出复核窗口，保存为笔记后自动把该笔记挂到当前对话上。
  */
 export default function StudioPage() {
+  const location = useLocation();
   const page = useAskAIPage();
   const [engine, setEngine] = useState<Engine>(createEngine);
   const snapshot = useRecordingSession(engine.session);
@@ -100,6 +102,17 @@ export default function StudioPage() {
   // 也可以挂「整个工作区」，支持多个，并且能和单条笔记混着挂。
   const [linkedWorkspaceIds, setLinkedWorkspaceIds] = useState<number[]>([]);
   const [workspaces, setWorkspaces] = useState<StudioWorkspace[]>([]);
+
+  useEffect(() => {
+    if (location.state && (location.state as any).noteId) {
+      page.selectNote((location.state as any).noteId);
+    }
+  }, [location.state, page.selectNote]);
+
+  const loadData = useCallback(async () => {
+    await page.reloadNotes();
+  }, [page.reloadNotes]);
+
   // 智能体模式：开启后由本地 Agent 调用工具自行查找，而不是直接问挂上的笔记。
   const [agentMode, setAgentMode] = useState(false);
   const { agent, runAgent, cancelAgent, resetAgent } = useStudioAgent();

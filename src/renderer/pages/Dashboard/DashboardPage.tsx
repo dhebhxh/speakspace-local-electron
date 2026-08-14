@@ -128,7 +128,7 @@ export const DashboardPage: React.FC = () => {
 
     const handleSelectNote = (noteId: number) => {
         console.log(`Navigate to note ID: ${noteId}`);
-        // Can integrate with React Router navigate inside full app context
+        routeManager.navigateToTranscription({ state: { noteId } });
     };
 
     return (

@@ -35,14 +35,15 @@ export class TodoExtractionService {
 You are an AI assistant that extracts actionable to-do items from meeting transcripts.
 Analyze the following transcript and extract all action items and tasks.
 Output your response as a raw JSON array of objects.
-EACH object MUST have exactly one key "title" containing the task description.
+EACH object MUST have exactly two keys: "title" (the task description) and "dueDate" (the due date in YYYY-MM-DD format, or null if no date is implied).
+If the transcript mentions dates relative to "today", use the current date (${new Date().toISOString().split('T')[0]}) as reference.
 Do NOT include markdown formatting, code blocks, or any other text outside the JSON array.
 If no tasks are found, return an empty array [].
 
 Example output:
 [
-  {"title": "Schedule follow-up meeting with design team"},
-  {"title": "Send the weekly report"}
+  {"title": "Schedule follow-up meeting with design team", "dueDate": "2026-08-20"},
+  {"title": "Send the weekly report", "dueDate": null}
 ]
 
 Transcript:
@@ -76,7 +77,7 @@ ${transcript}
                 return false;
             }
 
-            let extractedItems: Array<{title: string}> = [];
+            let extractedItems: Array<{title: string, dueDate: string | null}> = [];
             try {
                 extractedItems = JSON.parse(content);
                 if (!Array.isArray(extractedItems)) {
@@ -99,7 +100,7 @@ ${transcript}
                     this.todoRepository.createTodo({
                         noteId: noteId,
                         title: item.title.trim(),
-                        dateString: today, // Default to today as per design
+                        dateString: item.dueDate || today,
                         isCompleted: false
                     });
                     fs.appendFileSync(logFile, `Saved todo: ${item.title.trim()}\n`);

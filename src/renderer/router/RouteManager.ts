@@ -1,4 +1,4 @@
-import { NavigateFunction } from "react-router-dom";
+import { NavigateFunction, NavigateOptions } from "react-router-dom";
 
 export enum RoutePath {
     Transcription = "/Transcription",
@@ -20,19 +20,19 @@ export class RouteManager {
         this.navigator = navigator;
     }
 
-    public navigateTo(path: RoutePath): void {
-        this.navigator(path);
+    public navigateTo(path: RoutePath, options?: NavigateOptions): void {
+        this.navigator(path, options);
     }
 
-    public navigateToSettings(): void {
-        this.navigator(RoutePath.Settings);
+    public navigateToSettings(options?: NavigateOptions): void {
+        this.navigator(RoutePath.Settings, options);
     }
 
-    public navigateToDashboard(): void {
-        this.navigator(RoutePath.Dashboard);
+    public navigateToDashboard(options?: NavigateOptions): void {
+        this.navigator(RoutePath.Dashboard, options);
     }
 
-    public navigateToTranscription(): void {
-        this.navigator(RoutePath.Transcription);
+    public navigateToTranscription(options?: NavigateOptions): void {
+        this.navigator(RoutePath.Transcription, options);
     }
 }

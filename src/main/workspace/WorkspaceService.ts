@@ -344,6 +344,15 @@ export class WorkspaceService {
     return result.changes > 0;
   }
 
+  public deleteNote(rawId: unknown): boolean {
+    const id = WorkspaceService.normalizeId(rawId);
+    // ON DELETE CASCADE for todos table will remove associated todos
+    const statement = this.database.prepare('DELETE FROM notes WHERE id = ?');
+    const result = statement.run(id);
+
+    return result.changes > 0;
+  }
+
   private static normalizeOptionalNoteName(
     value: unknown,
     fallback: string,

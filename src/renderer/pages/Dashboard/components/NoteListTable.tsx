@@ -17,6 +17,7 @@ interface NoteListTableProps {
     onSortChange: (order: 'updated' | 'created') => void;
     onTogglePin: (noteId: number, e: React.MouseEvent) => void;
     onSelectNote: (noteId: number) => void;
+    onContextMenu?: (noteId: number, e: React.MouseEvent) => void;
 }
 
 export const NoteListTable: React.FC<NoteListTableProps> = ({
@@ -28,7 +29,8 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
     sortOrder,
     onSortChange,
     onTogglePin,
-    onSelectNote
+    onSelectNote,
+    onContextMenu
 }) => {
     const { t } = useTranslation();
 
@@ -134,6 +136,7 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
                                         key={note.getId()}
                                         className={`note-row ${isPinned ? 'pinned-row' : ''}`}
                                         onClick={() => onSelectNote(note.getId())}
+                                        onContextMenu={(e) => onContextMenu && onContextMenu(note.getId(), e)}
                                     >
                                         <td className="td-star" onClick={(e) => onTogglePin(note.getId(), e)}>
                                             <span className={`star-icon ${isPinned ? 'active' : 'inactive'}`}>

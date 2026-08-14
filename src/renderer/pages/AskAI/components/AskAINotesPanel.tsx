@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { AskAIConversation, AskAINote, formatAskAIDate } from '../AskAITypes';
 import { setNoteDragPayload } from '../AskAIDragPayload';
 
@@ -13,9 +13,10 @@ type AskAINotesPanelProps = {
   /** 提供后，「最近会话」旁出现新建会话按钮。 */
   onNewConversation?: () => void;
   onSelectNote: (noteId: number) => void;
-  /** 双击笔记时打开右侧原文预览；未提供则不响应双击。 */
+  /** 点击笔记打开右侧的预览；未提供则双击无效果 */
   onPreviewNote?: (noteId: number) => void;
   onOpenConversation: (conversationId: number) => void;
+  onContextMenu?: (noteId: number, e: React.MouseEvent) => void;
 };
 
 export default function AskAINotesPanel({
@@ -28,6 +29,7 @@ export default function AskAINotesPanel({
   onSelectNote,
   onPreviewNote,
   onOpenConversation,
+  onContextMenu,
 }: AskAINotesPanelProps) {
   // 按工作区分组，保持笔记原有顺序；未归属工作区的归到「未分类」。
   // 空工作区也会列出来，方便直接在它下面新增笔记。
@@ -71,6 +73,7 @@ export default function AskAINotesPanel({
       }
       onClick={() => onSelectNote(note.id)}
       onDoubleClick={() => onPreviewNote?.(note.id)}
+      onContextMenu={(e) => onContextMenu && onContextMenu(note.id, e)}
     >
       <strong>{note.name}</strong>
       <span>{note.transcriptPreview || '暂无摘要'}</span>

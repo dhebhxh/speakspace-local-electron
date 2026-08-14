@@ -53,6 +53,9 @@ class WorkspaceIpcController {
     this.ipc.handle('Workspace:delete', (_event, workspaceId: unknown) =>
       this.service.deleteWorkspace(workspaceId),
     );
+    this.ipc.handle('Workspace:deleteNote', (_event, noteId: unknown) =>
+      this.service.deleteNote(noteId),
+    );
   }
 }
 

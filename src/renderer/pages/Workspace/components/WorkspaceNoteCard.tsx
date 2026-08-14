@@ -1,3 +1,4 @@
+import React from 'react';
 import { NoteItem, WorkspaceController } from '../WorkspaceController';
 import { WorkspaceTemplate } from '../WorkspaceWorkflowController';
 import KnowledgeOutputPanel from './KnowledgeOutputPanel';
@@ -10,6 +11,7 @@ type Props = {
   generating: boolean;
   isSelected?: boolean;
   onToggleSelection?: (noteId: number) => void;
+  onContextMenu?: (noteId: number, e: React.MouseEvent) => void;
   onGenerate(noteId: number, templateId: number): Promise<void>;
 };
 
@@ -21,6 +23,7 @@ export default function WorkspaceNoteCard({
   generating,
   isSelected = false,
   onToggleSelection,
+  onContextMenu,
   onGenerate,
 }: Props) {
   const handleExport = (format: 'word' | 'pdf') => {
@@ -33,7 +36,11 @@ export default function WorkspaceNoteCard({
   };
 
   return (
-    <article className={`workspace-detail-note ${isSelected ? 'selected' : ''}`} id={`workspace-note-${note.id}`}>
+    <article 
+      className={`workspace-detail-note ${isSelected ? 'selected' : ''}`} 
+      id={`workspace-note-${note.id}`}
+      onContextMenu={(e) => onContextMenu && onContextMenu(note.id, e)}
+    >
       <header className="workspace-note-head">
         {onToggleSelection && (
           <label className="workspace-note-pick">

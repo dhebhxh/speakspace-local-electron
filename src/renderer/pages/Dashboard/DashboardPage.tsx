@@ -65,6 +65,31 @@ export const DashboardPage: React.FC = () => {
     }, [notes, todos]);
 
     // Handle Pin Toggle using OOP entity cloning and state update
+    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, noteId: number } | null>(null);
+
+    const handleContextMenu = (noteId: number, e: React.MouseEvent) => {
+        e.preventDefault();
+        setContextMenu({ x: e.clientX, y: e.clientY, noteId });
+    };
+
+    const closeContextMenu = () => setContextMenu(null);
+
+    const handleDeleteNote = async (noteId: number) => {
+        try {
+            await window.electron.workspace.deleteNote(noteId);
+            setNotes(prev => prev.filter(n => n.getId() !== noteId));
+            setTodos(prev => prev.filter(t => t.getNoteId() !== noteId));
+        } catch (e) {
+            console.error("Failed to delete note", e);
+        }
+        closeContextMenu();
+    };
+
+    React.useEffect(() => {
+        window.addEventListener('click', closeContextMenu);
+        return () => window.removeEventListener('click', closeContextMenu);
+    }, []);
+
     const handleTogglePin = (noteId: number, e: React.MouseEvent) => {
         e.stopPropagation();
         setNotes(prevNotes => prevNotes.map(n => {
@@ -142,9 +167,31 @@ export const DashboardPage: React.FC = () => {
                         onSortChange={setSortOrder}
                         onTogglePin={handleTogglePin}
                         onSelectNote={handleSelectNote}
+                        onContextMenu={handleContextMenu}
                     />
                 </section>
             </main>
+            {contextMenu && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: contextMenu.y,
+                        left: contextMenu.x,
+                        backgroundColor: '#fff',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        borderRadius: '6px',
+                        padding: '8px 0',
+                        zIndex: 9999,
+                        cursor: 'pointer',
+                        minWidth: '120px'
+                    }}
+                    onClick={() => handleDeleteNote(contextMenu.noteId)}
+                >
+                    <div style={{ padding: '8px 16px', color: '#ff4d4f', fontSize: '14px', fontWeight: 500 }} className="context-menu-item">
+                        {t('delete', '刪除筆記')}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

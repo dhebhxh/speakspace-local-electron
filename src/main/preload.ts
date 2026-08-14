@@ -394,6 +394,9 @@ const electronHandler = {
     delete(id: number) {
       return ipcRenderer.invoke('Workspace:delete', id);
     },
+    deleteNote(id: number) {
+      return ipcRenderer.invoke('Workspace:deleteNote', id);
+    },
   },
 
   // Export functionality

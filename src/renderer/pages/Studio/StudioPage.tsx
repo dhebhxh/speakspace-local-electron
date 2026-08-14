@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useAskAIPage from '../AskAI/useAskAIPage';
 import { AskAINote } from '../AskAI/AskAITypes';
 import AskAINotesPanel from '../AskAI/components/AskAINotesPanel';
@@ -110,6 +110,36 @@ export default function StudioPage() {
   const [recordError, setRecordError] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const startedAtRef = useRef<number | null>(null);
+
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, noteId: number } | null>(null);
+
+  const handleContextMenu = (noteId: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, noteId });
+  };
+
+  const closeContextMenu = () => setContextMenu(null);
+
+  const handleDeleteNote = async (noteId: number) => {
+    try {
+      await window.electron.workspace.deleteNote(noteId);
+      if (page.selectedNote?.id === noteId) {
+        page.selectNote(-1);
+      }
+      if (previewNoteId === noteId) {
+        setPreviewNoteId(null);
+      }
+      await page.reloadNotes();
+    } catch (e) {
+      console.error("Failed to delete note", e);
+    }
+    closeContextMenu();
+  };
+
+  useEffect(() => {
+    window.addEventListener('click', closeContextMenu);
+    return () => window.removeEventListener('click', closeContextMenu);
+  }, []);
 
   const recordingActive =
     snapshot.state === RecordingState.Recording ||
@@ -484,6 +514,7 @@ export default function StudioPage() {
         onSelectNote={page.selectNote}
         onPreviewNote={openPreview}
         onOpenConversation={page.openConversation}
+        onContextMenu={handleContextMenu}
       />
 
       <StudioChatPanel
@@ -565,6 +596,28 @@ export default function StudioPage() {
             page.createNote(name, transcript, createWorkspaceId)
           }
         />
+      )}
+
+      {contextMenu && (
+        <div
+          style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            backgroundColor: '#fff',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            borderRadius: '6px',
+            padding: '8px 0',
+            zIndex: 9999,
+            cursor: 'pointer',
+            minWidth: '120px'
+          }}
+          onClick={() => handleDeleteNote(contextMenu.noteId)}
+        >
+          <div style={{ padding: '8px 16px', color: '#ff4d4f', fontSize: '14px', fontWeight: 500 }}>
+            刪除筆記
+          </div>
+        </div>
       )}
     </section>
   );

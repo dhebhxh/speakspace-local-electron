@@ -4,7 +4,7 @@ import WorkspaceNoteCard from './components/WorkspaceNoteCard';
 import WorkspaceSemanticSearch from './components/WorkspaceSemanticSearch';
 import WorkspaceMultiNoteModal from './components/WorkspaceMultiNoteModal';
 import useWorkspaceDetail from './useWorkspaceDetail';
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './WorkspacePage.css';
 
 /**
@@ -15,6 +15,25 @@ export default function WorkspacePage() {
   const detail = useWorkspaceDetail();
   const { workspace, loading, error, status, query, visibleNotes, selectedNoteIds, toggleNoteSelection } = detail;
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, noteId: number } | null>(null);
+
+  const handleContextMenu = (noteId: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, noteId });
+  };
+
+  const closeContextMenu = () => setContextMenu(null);
+
+  const handleDeleteNote = async (noteId: number) => {
+    await detail.deleteNote(noteId);
+    closeContextMenu();
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    window.addEventListener('click', closeContextMenu);
+    return () => window.removeEventListener('click', closeContextMenu);
+  }, []);
 
   if (loading) {
     return <p className="workspace-detail-status">正在进入工作空间…</p>;
@@ -102,6 +121,7 @@ export default function WorkspacePage() {
             note={note}
             isSelected={selectedNoteIds.includes(note.id)}
             onToggleSelection={toggleNoteSelection}
+            onContextMenu={handleContextMenu}
             onGenerate={detail.generateOutput}
             templates={detail.templates}
             workspaceId={detail.workspaceId}
@@ -115,6 +135,28 @@ export default function WorkspacePage() {
           workspaceId={detail.workspaceId} 
           onClose={() => setShowAnalysisModal(false)} 
         />
+      )}
+
+      {contextMenu && (
+        <div
+          style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            backgroundColor: '#fff',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            borderRadius: '6px',
+            padding: '8px 0',
+            zIndex: 9999,
+            cursor: 'pointer',
+            minWidth: '120px'
+          }}
+          onClick={() => handleDeleteNote(contextMenu.noteId)}
+        >
+          <div style={{ padding: '8px 16px', color: '#ff4d4f', fontSize: '14px', fontWeight: 500 }}>
+            刪除筆記
+          </div>
+        </div>
       )}
     </section>
   );

@@ -112,6 +112,15 @@ export default function useWorkspaceDetail() {
     }
   }, [navigate, workspace]);
 
+  const deleteNote = useCallback(async (noteId: number) => {
+    try {
+      await window.electron.workspace.deleteNote(noteId);
+      setNotes((prev) => prev.filter((n) => n.id !== noteId));
+    } catch (reason) {
+      setError(WorkspaceController.getErrorMessage(reason, '刪除筆記失敗'));
+    }
+  }, []);
+
   const revealNote = useCallback((noteId: number) => {
     setQuery('');
     requestAnimationFrame(() => {
@@ -138,6 +147,7 @@ export default function useWorkspaceDetail() {
     generateOutput,
     renameWorkspace,
     deleteWorkspace,
+    deleteNote,
     revealNote,
     visibleNotes: WorkspaceController.filterNotes(notes, query),
   };

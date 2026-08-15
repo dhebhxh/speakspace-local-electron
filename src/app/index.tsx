@@ -22,7 +22,7 @@ export default function Index() {
           Start with a workspace, then keep every note close to its context.
         </Text>
       </View>
-      <Link href="/workspaces/index" asChild>
+      <Link href="/workspaces" asChild>
         <AppButton label="Open workspaces" />
       </Link>
     </View>

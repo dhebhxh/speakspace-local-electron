@@ -9,38 +9,47 @@ import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { formatDate } from "@/utils/format-date";
 
+type NoteDetailState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | {
+      status: "success";
+      note: NonNullable<
+        Awaited<ReturnType<typeof appContainer.noteService.getNote>>
+      >;
+      workspaceName: string | null;
+    };
+
 export default function NoteDetailScreen() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
   const theme = useTheme();
   const colors = Colors[theme.mode];
   const { noteService, workspaceService } = appContainer;
-  const [note, setNote] =
-    useState<Awaited<ReturnType<typeof noteService.getNote>>>(null);
-  const [workspaceName, setWorkspaceName] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<NoteDetailState>({
+    status: "loading",
+  });
 
   const loadNote = async () => {
-    setIsLoading(true);
-    setError(null);
+    setState({ status: "loading" });
 
     try {
       const loadedNote = await noteService.getNote(noteId);
 
       if (loadedNote === null) {
-        setError("Note not found.");
+        setState({ status: "error", message: "Note not found." });
         return;
       }
 
       const workspace = await workspaceService.getWorkspace(
         loadedNote.getWorkspaceId(),
       );
-      setNote(loadedNote);
-      setWorkspaceName(workspace?.getName() ?? null);
+      setState({
+        status: "success",
+        note: loadedNote,
+        workspaceName: workspace?.getName() ?? null,
+      });
     } catch {
-      setError("Unable to load note.");
-    } finally {
-      setIsLoading(false);
+      setState({ status: "error", message: "Unable to load note." });
     }
   };
 
@@ -50,37 +59,44 @@ export default function NoteDetailScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: note?.getName() ?? "Note" }} />
+      <Stack.Screen
+        options={{
+          title:
+            state.status === "success"
+              ? (state.note.getName() ?? "Note")
+              : "Note",
+        }}
+      />
       <ScrollView contentContainerStyle={styles.content}>
-        {isLoading && <LoadingState />}
-        {!isLoading && error && (
-          <ErrorState message={error} onRetry={() => void loadNote()} />
+        {state.status === "loading" && <LoadingState />}
+        {state.status === "error" && (
+          <ErrorState message={state.message} onRetry={() => void loadNote()} />
         )}
-        {!isLoading && !error && note && (
+        {state.status === "success" && (
           <>
             <View style={styles.header}>
               <Text style={[styles.kicker, { color: colors.accent }]}>
                 NOTE
               </Text>
               <Text style={[styles.title, { color: colors.text }]}>
-                {note.getName() || "Untitled note"}
+                {state.note.getName() || "Untitled note"}
               </Text>
               <View style={styles.metaRow}>
-                {workspaceName && (
+                {state.workspaceName && (
                   <Text style={[styles.meta, { color: colors.textMuted }]}>
-                    {workspaceName}
+                    {state.workspaceName}
                   </Text>
                 )}
                 <Text style={[styles.meta, { color: colors.textMuted }]}>
-                  {formatDate(note.getUpdatedAt())}
+                  {formatDate(state.note.getUpdatedAt())}
                 </Text>
-                {note.getIsPinned() && (
+                {state.note.getIsPinned() && (
                   <Text style={[styles.meta, { color: colors.accent }]}>
                     Pinned
                   </Text>
                 )}
               </View>
-              {note.getAudioRelativePath() && (
+              {state.note.getAudioRelativePath() && (
                 <View
                   style={[
                     styles.audioBadge,
@@ -103,7 +119,7 @@ export default function NoteDetailScreen() {
                 Transcript
               </Text>
               <Text style={[styles.body, { color: colors.text }]}>
-                {note.getTranscript()}
+                {state.note.getTranscript()}
               </Text>
             </View>
           </>

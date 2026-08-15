@@ -1,13 +1,13 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 import { appContainer } from "@/application";
@@ -20,19 +20,28 @@ import { Colors, Radius, Spacing } from "@/constants/theme";
 import { ValidationError } from "@/errors/validation-error";
 import { useTheme } from "@/hooks/use-theme";
 
+type WorkspaceNotesState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | {
+      status: "success";
+      workspace: NonNullable<
+        Awaited<ReturnType<typeof appContainer.workspaceService.getWorkspace>>
+      >;
+      notes: Awaited<
+        ReturnType<typeof appContainer.noteService.getNotesByWorkspace>
+      >;
+    };
+
 export default function WorkspaceDetailScreen() {
   const { workspaceId } = useLocalSearchParams<{ workspaceId: string }>();
   const router = useRouter();
   const theme = useTheme();
   const colors = Colors[theme.mode];
   const { workspaceService, noteService } = appContainer;
-  const [workspace, setWorkspace] =
-    useState<Awaited<ReturnType<typeof workspaceService.getWorkspace>>>(null);
-  const [notes, setNotes] = useState<
-    Awaited<ReturnType<typeof noteService.getNotesByWorkspace>>
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<WorkspaceNotesState>({
+    status: "loading",
+  });
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [noteName, setNoteName] = useState("");
   const [transcript, setTranscript] = useState("");
@@ -40,23 +49,25 @@ export default function WorkspaceDetailScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   const loadWorkspace = async () => {
-    setIsLoading(true);
-    setError(null);
+    setState({ status: "loading" });
 
     try {
       const [loadedWorkspace, loadedNotes] = await Promise.all([
         workspaceService.getWorkspace(workspaceId),
         noteService.getNotesByWorkspace(workspaceId),
       ]);
-      setWorkspace(loadedWorkspace);
-      setNotes(loadedNotes);
       if (loadedWorkspace === null) {
-        setError("Workspace not found.");
+        setState({ status: "error", message: "Workspace not found." });
+        return;
       }
+
+      setState({
+        status: "success",
+        workspace: loadedWorkspace,
+        notes: loadedNotes,
+      });
     } catch {
-      setError("Unable to load workspace.");
-    } finally {
-      setIsLoading(false);
+      setState({ status: "error", message: "Unable to load workspace." });
     }
   };
 
@@ -87,24 +98,34 @@ export default function WorkspaceDetailScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: workspace?.getName() ?? "Workspace" }} />
+      <Stack.Screen
+        options={{
+          title:
+            state.status === "success"
+              ? state.workspace.getName()
+              : "Workspace",
+        }}
+      />
       <ScrollView contentContainerStyle={styles.content}>
-        {isLoading && <LoadingState />}
-        {!isLoading && error && (
-          <ErrorState message={error} onRetry={() => void loadWorkspace()} />
+        {state.status === "loading" && <LoadingState />}
+        {state.status === "error" && (
+          <ErrorState
+            message={state.message}
+            onRetry={() => void loadWorkspace()}
+          />
         )}
-        {!isLoading && !error && workspace && (
+        {state.status === "success" && (
           <>
             <View style={styles.header}>
               <Text style={[styles.kicker, { color: colors.accent }]}>
                 WORKSPACE
               </Text>
               <Text style={[styles.title, { color: colors.text }]}>
-                {workspace.getName()}
+                {state.workspace.getName()}
               </Text>
               <Text style={[styles.meta, { color: colors.textMuted }]}>
                 Updated{" "}
-                {new Date(workspace.getUpdatedAt()).toLocaleDateString()}
+                {new Date(state.workspace.getUpdatedAt()).toLocaleDateString()}
               </Text>
             </View>
             <View style={styles.sectionHeader}>
@@ -113,7 +134,8 @@ export default function WorkspaceDetailScreen() {
                   Notes
                 </Text>
                 <Text style={[styles.meta, { color: colors.textMuted }]}>
-                  {notes.length} {notes.length === 1 ? "note" : "notes"}
+                  {state.notes.length}{" "}
+                  {state.notes.length === 1 ? "note" : "notes"}
                 </Text>
               </View>
               <AppButton
@@ -121,7 +143,7 @@ export default function WorkspaceDetailScreen() {
                 onPress={() => setIsModalVisible(true)}
               />
             </View>
-            {notes.length === 0 && (
+            {state.notes.length === 0 && (
               <EmptyState
                 title="No notes yet"
                 action={
@@ -132,9 +154,9 @@ export default function WorkspaceDetailScreen() {
                 }
               />
             )}
-            {notes.length > 0 && (
+            {state.notes.length > 0 && (
               <View style={styles.list}>
-                {notes.map((note) => (
+                {state.notes.map((note) => (
                   <NoteCard
                     key={note.getId()}
                     note={note}

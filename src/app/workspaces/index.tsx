@@ -1,13 +1,13 @@
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 import { appContainer } from "@/application";
@@ -20,31 +20,39 @@ import { Colors, Radius, Spacing } from "@/constants/theme";
 import { ValidationError } from "@/errors/validation-error";
 import { useTheme } from "@/hooks/use-theme";
 
+type WorkspaceListState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | {
+      status: "success";
+      workspaces: Awaited<
+        ReturnType<typeof appContainer.workspaceService.getWorkspaces>
+      >;
+    };
+
 export default function WorkspacesScreen() {
   const router = useRouter();
   const theme = useTheme();
   const colors = Colors[theme.mode];
   const { workspaceService } = appContainer;
-  const [workspaces, setWorkspaces] = useState<
-    Awaited<ReturnType<typeof workspaceService.getWorkspaces>>
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<WorkspaceListState>({
+    status: "loading",
+  });
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [name, setName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const loadWorkspaces = async () => {
-    setIsLoading(true);
-    setError(null);
+    setState({ status: "loading" });
 
     try {
-      setWorkspaces(await workspaceService.getWorkspaces());
+      setState({
+        status: "success",
+        workspaces: await workspaceService.getWorkspaces(),
+      });
     } catch {
-      setError("Unable to load workspaces.");
-    } finally {
-      setIsLoading(false);
+      setState({ status: "error", message: "Unable to load workspaces." });
     }
   };
 
@@ -88,11 +96,14 @@ export default function WorkspacesScreen() {
           <AppButton label="New" onPress={() => setIsModalVisible(true)} />
         </View>
 
-        {isLoading && <LoadingState />}
-        {!isLoading && error && (
-          <ErrorState message={error} onRetry={() => void loadWorkspaces()} />
+        {state.status === "loading" && <LoadingState />}
+        {state.status === "error" && (
+          <ErrorState
+            message={state.message}
+            onRetry={() => void loadWorkspaces()}
+          />
         )}
-        {!isLoading && !error && workspaces.length === 0 && (
+        {state.status === "success" && state.workspaces.length === 0 && (
           <EmptyState
             title="No workspaces yet"
             action={
@@ -103,15 +114,15 @@ export default function WorkspacesScreen() {
             }
           />
         )}
-        {!isLoading && !error && workspaces.length > 0 && (
+        {state.status === "success" && state.workspaces.length > 0 && (
           <View style={styles.list}>
-            {workspaces.map((workspace) => (
+            {state.workspaces.map((workspace) => (
               <WorkspaceCard
                 key={workspace.getId()}
                 workspace={workspace}
                 onPress={() =>
                   router.push({
-                    pathname: "/workspaces/[workspaceId]/index",
+                    pathname: "/workspaces/[workspaceId]",
                     params: { workspaceId: workspace.getId() },
                   })
                 }

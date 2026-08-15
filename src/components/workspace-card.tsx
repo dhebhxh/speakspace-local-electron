@@ -1,0 +1,77 @@
+import { Pressable, StyleSheet, Text, View } from "react-native";
+
+import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Workspace } from "@/domain/workspace/workspace";
+import { useTheme } from "@/hooks/use-theme";
+import { formatDate } from "@/utils/format-date";
+
+type WorkspaceCardProps = {
+  workspace: Workspace;
+  onPress: () => void;
+};
+
+export function WorkspaceCard({ workspace, onPress }: WorkspaceCardProps) {
+  const theme = useTheme();
+  const colors = Colors[theme.mode];
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        pressed && styles.pressed,
+      ]}
+    >
+      <View style={styles.row}>
+        <View style={[styles.marker, { backgroundColor: colors.accent }]} />
+        <View style={styles.content}>
+          <Text style={[styles.name, { color: colors.text }]}>
+            {workspace.getName()}
+          </Text>
+          <Text style={[styles.meta, { color: colors.textMuted }]}>
+            Updated {formatDate(workspace.getUpdatedAt())}
+          </Text>
+        </View>
+        <Text style={[styles.chevron, { color: colors.textMuted }]}>›</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    padding: Spacing.md,
+  },
+  row: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  marker: {
+    borderRadius: 5,
+    height: 10,
+    width: 10,
+  },
+  content: {
+    flex: 1,
+    gap: Spacing.xs,
+  },
+  name: {
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  meta: {
+    fontSize: 13,
+  },
+  chevron: {
+    fontSize: 26,
+    lineHeight: 26,
+  },
+  pressed: {
+    opacity: 0.72,
+  },
+});

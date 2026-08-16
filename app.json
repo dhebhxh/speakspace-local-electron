@@ -11,7 +11,8 @@
       "icon": "./assets/expo.icon",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "SpeakSpace uses the microphone to create local transcripts and recordings."
-      }
+      },
+      "bundleIdentifier": "com.dhebhxh.speakspacelocalmobile"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +23,13 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.dhebhxh.speakspacelocalmobile",
-      "permissions": ["RECORD_AUDIO"]
+      "permissions": [
+        "RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "output": "static",
@@ -49,6 +56,7 @@
           "enableOpenCLAndHexagon": true
         }
       ]
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,

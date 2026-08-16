@@ -47,6 +47,15 @@
       ],
       "expo-sqlite",
       "expo-audio",
+      [
+        "llama.rn",
+        {
+          "enableEntitlements": true,
+          "entitlementsProfile": "production",
+          "forceCxx20": true,
+          "enableOpenCLAndHexagon": true
+        }
+      ]
       "expo-image"
     ],
     "experiments": {

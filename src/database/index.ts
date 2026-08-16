@@ -4,19 +4,22 @@ import { DatabaseConfig } from "./config/database-config";
 import { DatabaseManager } from "./core/database-manager";
 import { MigrationRunner } from "./core/migration-runner";
 import { InitialSchemaMigration } from "./migrations/initial-schema-migration";
+import { SttModelSchemaMigration } from "./migrations/stt-model-schema-migration";
 
 export { DatabaseConfig } from "./config/database-config";
 export { DatabaseManager } from "./core/database-manager";
 export { Migration } from "./core/migration";
 export { MigrationRunner } from "./core/migration-runner";
 export { InitialSchemaMigration } from "./migrations/initial-schema-migration";
+export { SttModelSchemaMigration } from "./migrations/stt-model-schema-migration";
 export { Repository } from "./repositories/repository";
 export type { DatabaseConnection } from "./types/database-types";
 
-export const databaseConfig = new DatabaseConfig("speakspace.db", 1);
+export const databaseConfig = new DatabaseConfig("speakspace.db", 2);
 
 export const migrationRunner = new MigrationRunner([
   new InitialSchemaMigration(),
+  new SttModelSchemaMigration(),
 ]);
 
 export const databaseManager = new DatabaseManager(

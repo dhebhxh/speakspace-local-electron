@@ -9,7 +9,9 @@ export default function RootLayout() {
       databaseName={databaseConfig.databaseName}
       onInit={initializeDatabase}
     >
-      <Stack screenOptions={{ headerBackTitle: "Back" }} />
+      <Stack screenOptions={{ headerBackTitle: "Back" }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
     </SQLiteProvider>
   );
 }

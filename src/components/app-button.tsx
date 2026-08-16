@@ -19,6 +19,7 @@ export function AppButton({
 
   return (
     <Pressable
+      {...props}
       accessibilityRole="button"
       disabled={disabled}
       style={({ pressed }) => [
@@ -33,7 +34,6 @@ export function AppButton({
         pressed && styles.pressed,
         disabled && styles.disabled,
       ]}
-      {...props}
     >
       <Text
         style={[

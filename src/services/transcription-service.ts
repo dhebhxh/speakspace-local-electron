@@ -3,7 +3,7 @@ import * as LegacyFileSystem from "expo-file-system/legacy";
 import {
   initParakeet,
   type ParakeetContext,
-} from "whisper.rn";
+} from "whisper.rn/index";
 import {
   AudioPcmStreamAdapter,
 } from "whisper.rn/realtime-transcription/adapters/AudioPcmStreamAdapter";

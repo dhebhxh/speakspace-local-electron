@@ -1,38 +1,40 @@
+import { useTranslation } from 'react-i18next';
 import { AgentStep } from '../../../../main/agent/AgentTypes';
 import { AgentPageStep } from '../AgentPageTypes';
 
 type Props = { steps: AgentPageStep[]; status: string; running: boolean };
 
-const TOOL_NAMES: Record<string, string> = {
-  search_notes: '搜索当前工作空间笔记',
-  read_note: '读取选中的笔记',
-};
+function describeStep(step: AgentStep, t: (key: string) => string): string {
+  if (step.type === 'final') return t('agent.timeline.final');
+  
+  // Try to use the pre-defined tool translation, else fallback to raw tool name
+  let tool = step.tool;
+  if (step.tool === 'search_notes') tool = t('agent.timeline.searchNotes');
+  else if (step.tool === 'read_note') tool = t('agent.timeline.readNote');
 
-function describeStep(step: AgentStep): string {
-  if (step.type === 'final') return '生成最终回答';
-  const tool = TOOL_NAMES[step.tool] ?? step.tool;
-  if (step.type === 'tool_call') return `准备：${tool}`;
-  return `${step.ok ? '完成' : '失败'}：${tool}`;
+  if (step.type === 'tool_call') return `${t('agent.timeline.preparePrefix')}${tool}`;
+  return `${step.ok ? t('agent.timeline.completePrefix') : t('agent.timeline.failPrefix')}${tool}`;
 }
 
 export default function AgentTimeline({ steps, status, running }: Props) {
+  const { t } = useTranslation();
   return (
     <section className="agent-timeline" aria-live="polite">
       <header>
         <div>
-          <span>执行步骤</span>
+          <span>{t('agent.timeline.stepsTitle')}</span>
           <h2>{status}</h2>
         </div>
         <span className={running ? 'is-running' : ''}>
-          {running ? '运行中' : '就绪'}
+          {running ? t('agent.timeline.running') : t('agent.timeline.ready')}
         </span>
       </header>
       {steps.length === 0 ? (
-        <p>运行后显示每一步工具调用。</p>
+        <p>{t('agent.timeline.empty')}</p>
       ) : (
         <ol>
           {steps.map((item) => (
-            <li key={item.id}>{describeStep(item.step)}</li>
+            <li key={item.id}>{describeStep(item.step, t)}</li>
           ))}
         </ol>
       )}

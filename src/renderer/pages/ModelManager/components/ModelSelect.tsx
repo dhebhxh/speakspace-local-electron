@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ModelIcons } from './ModelIcons';
 import './ModelSelect.css';
 
@@ -41,6 +42,7 @@ export default function ModelSelect({
   onDownload,
   onDelete,
 }: ModelSelectProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -132,7 +134,7 @@ export default function ModelSelect({
                       <span className="model-option-tags">
                         {option.recommended && (
                           <span className="model-option-tag is-recommended">
-                            推荐
+                            {t('modelManager.tags.recommended')}
                           </span>
                         )}
                         {option.tags?.map((tag) => (
@@ -148,11 +150,11 @@ export default function ModelSelect({
                 <span className="model-option-actions">
                   {!option.downloaded && onDownload && (
                     <button
-                      aria-label={`下载 ${option.name}`}
+                      aria-label={`${t('modelManager.action.download')} ${option.name}`}
                       className="model-icon-button"
                       disabled={busyId !== null}
                       onClick={() => onDownload(option.id)}
-                      title="下载"
+                      title={t('modelManager.action.download')}
                       type="button"
                     >
                       {ModelIcons.download}
@@ -160,11 +162,11 @@ export default function ModelSelect({
                   )}
                   {option.downloaded && onDelete && (
                     <button
-                      aria-label={`删除 ${option.name}`}
+                      aria-label={`${t('modelManager.action.delete')} ${option.name}`}
                       className="model-icon-button is-danger"
                       disabled={busyId !== null || option.active}
                       onClick={() => onDelete(option.id)}
-                      title={option.active ? '使用中，无法删除' : '删除'}
+                      title={option.active ? t('modelManager.action.deleteActive') : t('modelManager.action.delete')}
                       type="button"
                     >
                       {ModelIcons.trash}

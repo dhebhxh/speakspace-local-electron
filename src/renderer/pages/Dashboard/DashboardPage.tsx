@@ -140,8 +140,12 @@ export const DashboardPage: React.FC = () => {
     }, [notes, searchQuery, selectedCategory, isPinnedFilterActive, isTodoFilterActive, sortOrder, stats, t]);
 
     const handleSelectNote = (noteId: number) => {
-        console.log(`Navigate to note ID: ${noteId}`);
-        routeManager.navigateToTranscription({ state: { noteId } });
+        const note = notes.find(n => n.getId() === noteId);
+        if (note && note.getWorkspaceId()) {
+            routeManager.navigateToWorkspace(note.getWorkspaceId()!);
+        } else {
+            routeManager.navigateToTranscription({ state: { noteId } });
+        }
     };
 
     return (
@@ -201,7 +205,7 @@ export const DashboardPage: React.FC = () => {
                     onClick={() => handleDeleteNote(contextMenu.noteId)}
                 >
                     <div style={{ padding: '8px 16px', color: '#ff4d4f', fontSize: '14px', fontWeight: 500 }} className="context-menu-item">
-                        {t('delete', '刪除筆記')}
+                        {t('dashboard.notes.contextMenu.delete', 'Delete note')}
                     </div>
                 </div>
             )}

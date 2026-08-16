@@ -1,4 +1,5 @@
 import { FormEvent, KeyboardEvent, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AskAIMessage, AskAINote, AskAIScope } from '../AskAITypes';
 import TTSPlayButton from '../../../tts/TTSPlayButton';
 import CopyButton from '../../../components/CopyButton';
@@ -26,6 +27,7 @@ export default function AskAIChatPanel({
   onScopeChange,
   onAsk,
 }: AskAIChatPanelProps) {
+  const { t } = useTranslation();
   const [question, setQuestion] = useState('');
   const workspaceNoteCount = useMemo(
     () =>
@@ -56,35 +58,35 @@ export default function AskAIChatPanel({
     <section className="ask-ai-chat">
       <header className="ask-ai-chat-header">
         <div>
-          <span>本地问答</span>
-          <h2>{scope === 'note' ? '询问当前笔记' : '询问整个工作区'}</h2>
+          <span>{t('askAI.chat.localQA')}</span>
+          <h2>{scope === 'note' ? t('askAI.chat.scopeNote') : t('askAI.chat.scopeWorkspace')}</h2>
           <p>
             {scope === 'note'
-              ? selectedNote?.name || '尚未选择笔记'
-              : `${workspaceNoteCount} 条工作区笔记`}
+              ? selectedNote?.name || t('askAI.chat.noNoteSelected')
+              : `${workspaceNoteCount}${t('askAI.chat.workspaceNoteCountSuffix')}`}
           </p>
         </div>
-        <div className="ask-ai-scope" role="group" aria-label="问答范围">
+        <div className="ask-ai-scope" role="group" aria-label={t('askAI.chat.scopeAria')}>
           <button
             type="button"
             className={scope === 'note' ? 'active' : ''}
             onClick={() => onScopeChange('note')}
           >
-            当前笔记
+            {t('askAI.chat.scopeBtnNote')}
           </button>
           <button
             type="button"
             className={scope === 'workspace' ? 'active' : ''}
             onClick={() => onScopeChange('workspace')}
           >
-            工作区
+            {t('askAI.chat.scopeBtnWorkspace')}
           </button>
         </div>
       </header>
 
       {sources.length > 0 && (
         <div className="ask-ai-sources">
-          <span>引用</span>
+          <span>{t('askAI.chat.sources')}</span>
           {sources.map((source) => (
             <span key={source.id} title={source.transcriptPreview}>
               {source.name}
@@ -96,13 +98,13 @@ export default function AskAIChatPanel({
       <div className="ask-ai-messages">
         {messages.length === 0 ? (
           <div className="ask-ai-empty">
-            <strong>还没有消息</strong>
-            <span>回答只使用所选的本地笔记内容。</span>
+            <strong>{t('askAI.chat.noMessagesTitle')}</strong>
+            <span>{t('askAI.chat.noMessagesDesc')}</span>
           </div>
         ) : (
           messages.map((message) => (
             <article key={message.id} className={message.role}>
-              <span>{message.role === 'assistant' ? 'AI' : '你'}</span>
+              <span>{message.role === 'assistant' ? t('askAI.chat.roleAI') : t('askAI.chat.roleYou')}</span>
               <p>{message.content}</p>
               {message.role === 'assistant' && (
                 <div className="message-actions">
@@ -118,7 +120,7 @@ export default function AskAIChatPanel({
       <form className="ask-ai-composer" onSubmit={handleSubmit}>
         <textarea
           value={question}
-          placeholder="输入问题；Enter 发送，Shift+Enter 换行"
+          placeholder={t('askAI.chat.inputPlaceholder')}
           onChange={(event) => setQuestion(event.target.value)}
           onKeyDown={handleKeyDown}
           disabled={!selectedNote || isSending}
@@ -127,7 +129,7 @@ export default function AskAIChatPanel({
           type="submit"
           disabled={!selectedNote || !question.trim() || isSending}
         >
-          {isSending ? '思考中…' : '提问'}
+          {isSending ? t('askAI.chat.sending') : t('askAI.chat.askBtn')}
         </button>
       </form>
       <div className="ask-ai-status" role="status">

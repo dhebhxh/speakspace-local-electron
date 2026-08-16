@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { RefreshCw, Play, Square } from 'lucide-react';
 import { Model } from '../../../main/AI-module/Model';
 import ModelModule from './components/ModelModule';
 import ModelSelect, { ModelOption } from './components/ModelSelect';
@@ -33,9 +35,10 @@ function toOptions(
   }));
 }
 
-// 保留命名导出，与现有路由导入方式一致。
+// 保持默认导出，用于路由导入
 // eslint-disable-next-line import/prefer-default-export
 export function ModelManagerPage() {
+  const { t } = useTranslation();
   const manager = useModelManager();
   const playback = useTTSPlayback();
   const [speakerId, setSpeakerId] = useState<string | null>(null);
@@ -90,8 +93,8 @@ export function ModelManagerPage() {
         {
           id: manager.embedding.modelName,
           name: manager.embedding.modelName,
-          tags: ['多语言', '检索'],
-          description: '用于相似笔记检索的本地向量模型，由 Ollama 运行。',
+          tags: [t('modelManager.tags.multilingual'), t('modelManager.tags.search')],
+          description: t('modelManager.embedding.desc'),
           downloaded: manager.embedding.installed,
           active: manager.embedding.installed,
           recommended: true,
@@ -108,12 +111,12 @@ export function ModelManagerPage() {
   return (
     <div className="model-manager-page">
       <header className="model-manager-header">
-        <h1>模型管理</h1>
+        <h1>{t('modelManager.title')}</h1>
         <button
-          aria-label="刷新状态"
+          aria-label={t('modelManager.refresh')}
           className="model-icon-button"
           onClick={() => manager.refreshAll()}
-          title="刷新状态"
+          title={t('modelManager.refresh')}
           type="button"
         >
           {ModelIcons.refresh}
@@ -125,103 +128,127 @@ export function ModelManagerPage() {
           actions={null}
           busy={busy}
           error={manager.errors.stt}
-          hint="语音转文字：把录音转成文字"
+          hint={t('modelManager.stt.hint')}
           icon="stt"
           name="STT"
           progress={manager.progress.stt}
           ready={Boolean(transcription?.ready || parakeet?.ready)}
           readyHint={
-            transcription?.ready || parakeet?.ready ? '可转写' : '尚未就绪'
+            transcription?.ready || parakeet?.ready
+              ? t('modelManager.status.ready')
+              : t('modelManager.status.notReady')
           }
           runtimes={runtimes.stt}
         >
           <ModelSelect
             busyId={manager.busyId}
-            label="选择语音识别模型"
+            label={t('modelManager.stt.label')}
             onDelete={manager.stt.remove}
             onDownload={manager.stt.download}
             onSelect={manager.stt.select}
             options={sttOptions}
-            placeholder="未选择模型"
+            placeholder={t('modelManager.select.placeholder')}
           />
         </ModelModule>
 
         <ModelModule
           busy={busy}
           error={manager.errors.tts}
-          hint="文字转语音：朗读 AI 回答和笔记"
+          hint={t('modelManager.tts.hint')}
           icon="tts"
           name="TTS"
           progress={manager.progress.tts}
           ready={Boolean(speech?.runtimeReady)}
-          readyHint={speech?.runtimeReady ? '可播报' : '尚未就绪'}
+          readyHint={
+            speech?.runtimeReady
+              ? t('modelManager.tts.ready')
+              : t('modelManager.status.notReady')
+          }
           runtimes={runtimes.tts}
           actions={
             speech?.runtimeReady && speakerId !== null ? (
               <button
-                aria-label={playback.playing ? '停止试听' : '试听音色'}
+                aria-label={
+                  playback.playing
+                    ? t('modelManager.tts.stopPreview')
+                    : t('modelManager.tts.startPreview')
+                }
                 className="model-icon-button"
                 disabled={playback.loading}
                 onClick={() =>
                   playback.playing
                     ? playback.stop()
                     : playback.speak(
-                        '你好，这是 SpeakSpace 的本地语音。',
+                        t('modelManager.tts.previewText'),
                         speakerId,
                       )
                 }
-                title={playback.playing ? '停止试听' : '试听音色'}
+                title={
+                  playback.playing
+                    ? t('modelManager.tts.stopPreview')
+                    : t('modelManager.tts.startPreview')
+                }
                 type="button"
               >
-                {playback.playing ? ModelIcons.stop : ModelIcons.play}
+                {playback.loading ? (
+                  <RefreshCw className="icon spin" size={16} />
+                ) : playback.playing ? (
+                  <Square className="icon" size={16} />
+                ) : (
+                  <Play className="icon" size={16} />
+                )}
               </button>
             ) : null
           }
         >
-          <ModelSelect
-            busyId={manager.busyId}
-            label="选择语音模型"
-            onDelete={manager.tts.remove}
-            onDownload={manager.tts.download}
-            onSelect={manager.tts.select}
-            options={ttsOptions}
-            placeholder="未选择模型"
-          />
-          {speech?.runtimeReady && speakerOptions.length > 0 && (
-            <div className="model-select-compact">
+          <div className="model-selectors">
+            <ModelSelect
+              busyId={manager.busyId}
+              label={t('modelManager.tts.label')}
+              onDelete={manager.tts.remove}
+              onDownload={manager.tts.download}
+              onSelect={manager.tts.select}
+              options={ttsOptions}
+              placeholder={t('modelManager.select.placeholder')}
+            />
+            {speech?.runtimeReady && speakerOptions.length > 0 && (
               <ModelSelect
                 busyId={null}
-                label="选择音色"
+                label={t('modelManager.tts.roleLabel')}
                 onDelete={null}
                 onDownload={null}
                 onSelect={selectSpeaker}
                 options={speakerOptions}
-                placeholder="默认音色"
+                placeholder={t('modelManager.tts.rolePlaceholder')}
               />
-            </div>
-          )}
+            )}
+          </div>
         </ModelModule>
 
         <ModelModule
           actions={null}
           busy={busy}
           error={manager.errors.embedding}
-          hint="向量模型：相似笔记检索与语义搜索"
+          hint={t('modelManager.embedding.hint')}
           icon="embedding"
           name="Embedding"
           progress={manager.progress.embedding}
           ready={Boolean(manager.embedding?.installed)}
-          readyHint={manager.embedding?.installed ? '可搜索' : '尚未安装'}
+          readyHint={
+            manager.embedding?.installed
+              ? t('modelManager.embedding.installed')
+              : t('modelManager.embedding.notInstalled')
+          }
           runtimes={runtimes.embedding}
         >
           <ModelSelect
             busyId={manager.busyId}
-            label="选择向量模型"
+            label={t('modelManager.embedding.label')}
             onDelete={null}
             onDownload={manager.installEmbedding}
             onSelect={() => {}}
             options={embeddingOptions}
-            placeholder="未安装"
+            placeholder={t('modelManager.embedding.placeholder')}
           />
         </ModelModule>
 
@@ -229,22 +256,26 @@ export function ModelManagerPage() {
           actions={null}
           busy={busy}
           error={manager.errors.llm}
-          hint="语言模型：总结、问答与内容整理"
+          hint={t('modelManager.llm.hint')}
           icon="llm"
           name="LLM"
           progress={manager.progress.llm}
           ready={Boolean(languageModel?.runtimeReady)}
-          readyHint={languageModel?.runtimeReady ? '可对话' : '尚未就绪'}
+          readyHint={
+            languageModel?.runtimeReady
+              ? t('modelManager.llm.ready')
+              : t('modelManager.status.notReady')
+          }
           runtimes={runtimes.llm}
         >
           <ModelSelect
             busyId={manager.busyId}
-            label="选择语言模型"
+            label={t('modelManager.llm.label')}
             onDelete={manager.llm.remove}
             onDownload={manager.llm.download}
             onSelect={manager.llm.select}
             options={llmOptions}
-            placeholder="未选择模型"
+            placeholder={t('modelManager.select.placeholder')}
           />
         </ModelModule>
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import './CopyButton.css';
 
 const iconProps = {
@@ -32,6 +33,7 @@ function CheckIcon() {
 
 /** 可复用复制按钮：复制成功后短暂显示对勾。 */
 export default function CopyButton({ text }: { text: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<number | null>(null);
 
@@ -63,8 +65,8 @@ export default function CopyButton({ text }: { text: string }) {
         className={`copy-button${copied ? ' is-copied' : ''}`}
         disabled={!text.trim()}
         onClick={copy}
-        aria-label={copied ? '已复制' : '复制'}
-        title={copied ? '已复制' : '复制'}
+        aria-label={copied ? t('components.copy.copied') : t('components.copy.copy')}
+        title={copied ? t('components.copy.copied') : t('components.copy.copy')}
       >
         {copied ? <CheckIcon /> : <CopyIcon />}
       </button>

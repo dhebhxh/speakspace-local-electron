@@ -1,4 +1,5 @@
 import React, { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 type WorkspaceOption = {
   id: number;
@@ -30,6 +31,7 @@ export default function SaveToWorkspaceDialog({
   onClose,
   onSave,
 }: Props) {
+  const { t } = useTranslation();
   const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
   const [workspaceValue, setWorkspaceValue] = useState('');
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
@@ -66,7 +68,7 @@ export default function SaveToWorkspaceDialog({
         setLoadError(
           reason instanceof Error
             ? reason.message
-            : '无法读取工作空间 / Unable to load workspaces',
+            : t('recording.saveDialog.loadError'),
         );
       } finally {
         if (!cancelled) setLoading(false);
@@ -101,33 +103,31 @@ export default function SaveToWorkspaceDialog({
     <div className="workspace-save-modal" role="presentation">
       <form
         className="workspace-save-dialog"
-        aria-label="保存到工作空间 / Save to workspace"
+        aria-label={t('recording.saveDialog.title')}
         onSubmit={submit}
       >
         <header>
           <div>
             <span>WORKSPACE NOTE</span>
-            <h2>保存到工作空间 / Save to workspace</h2>
+            <h2>{t('recording.saveDialog.title')}</h2>
           </div>
           <button
             className="workspace-save-dialog__close"
             type="button"
             disabled={saving}
             onClick={onClose}
-            aria-label="关闭 / Close"
+            aria-label={t('recording.saveDialog.close')}
           >
             ×
           </button>
         </header>
 
         <p className="workspace-save-dialog__hint">
-          完整转录会保存为笔记正文，右侧语义总结会保存为该笔记的子笔记。
-          Transcript and semantic summaries will stay together in one workspace
-          note.
+          {t('recording.saveDialog.hint')}
         </p>
 
         <label htmlFor="workspace-save-target">
-          <span>工作空间 / Workspace</span>
+          <span>{t('recording.saveDialog.workspaceLabel')}</span>
           <select
             id="workspace-save-target"
             value={workspaceValue}
@@ -140,28 +140,28 @@ export default function SaveToWorkspaceDialog({
               </option>
             ))}
             <option value={NEW_WORKSPACE_VALUE}>
-              + 新建工作空间 / Create new workspace
+              {t('recording.saveDialog.newWorkspaceOption')}
             </option>
           </select>
         </label>
 
         {workspaceValue === NEW_WORKSPACE_VALUE && (
           <label htmlFor="workspace-save-new-name">
-            <span>新工作空间名称 / New workspace name</span>
+            <span>{t('recording.saveDialog.newWorkspaceNameLabel')}</span>
             <input
               id="workspace-save-new-name"
               type="text"
               value={newWorkspaceName}
               disabled={saving}
               maxLength={80}
-              placeholder="例如：Project Meeting"
+              placeholder={t('recording.saveDialog.newWorkspacePlaceholder')}
               onChange={(event) => setNewWorkspaceName(event.target.value)}
             />
           </label>
         )}
 
         <label htmlFor="workspace-save-note-name">
-          <span>笔记标题 / Note title</span>
+          <span>{t('recording.saveDialog.noteTitleLabel')}</span>
           <input
             id="workspace-save-note-name"
             type="text"
@@ -185,7 +185,7 @@ export default function SaveToWorkspaceDialog({
             disabled={saving}
             onClick={onClose}
           >
-            取消 / Cancel
+            {t('recording.saveDialog.cancel')}
           </button>
           <button
             type="submit"
@@ -197,7 +197,7 @@ export default function SaveToWorkspaceDialog({
                 !newWorkspaceName.trim())
             }
           >
-            {saving ? '正在保存… / Saving…' : '保存笔记 / Save note'}
+            {saving ? t('recording.saveDialog.saving') : t('recording.saveDialog.saveNote')}
           </button>
         </footer>
       </form>

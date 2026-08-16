@@ -32,6 +32,10 @@ export class RouteManager {
         this.navigator(RoutePath.Dashboard, options);
     }
 
+    public navigateToWorkspace(workspaceId: number, options?: NavigateOptions): void {
+        this.navigator(`${RoutePath.Workspace}/${workspaceId}`, options);
+    }
+
     public navigateToTranscription(options?: NavigateOptions): void {
         this.navigator(RoutePath.Transcription, options);
     }

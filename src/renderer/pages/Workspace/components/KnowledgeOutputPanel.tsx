@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Sparkles } from 'lucide-react';
 import { NoteItem } from '../WorkspaceController';
 import { WorkspaceTemplate } from '../WorkspaceWorkflowController';
 import TTSPlayButton from '../../../tts/TTSPlayButton';
@@ -19,6 +21,7 @@ export default function KnowledgeOutputPanel({
   generating,
   onGenerate,
 }: Props) {
+  const { t } = useTranslation();
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? 0);
 
   useEffect(() => {
@@ -34,11 +37,14 @@ export default function KnowledgeOutputPanel({
   return (
     <section className="workspace-knowledge-section">
       <div className="workspace-section-heading">
-        <h3>✨ AI 输出</h3>
+        <h3>
+          <Sparkles size={16} style={{ marginRight: 6 }} />
+          {t('workspace.knowledge.title')}
+        </h3>
         {templates.length > 0 ? (
           <div className="workspace-generate-controls">
             <select
-              aria-label="知识模板"
+              aria-label={t('workspace.knowledge.run')}
               disabled={generating}
               onChange={(event) => setTemplateId(Number(event.target.value))}
               value={templateId}
@@ -53,15 +59,15 @@ export default function KnowledgeOutputPanel({
               className="ws-btn ws-btn-primary"
               disabled={generating || !note.transcript.trim()}
               onClick={generate}
-              title="用所选模板生成 AI 内容"
+              title={t('workspace.knowledge.runTitle')}
               type="button"
             >
-              {generating ? '⏳ 生成中…' : '生成'}
+              {generating ? t('workspace.knowledge.generating') : t('workspace.knowledge.generate')}
             </button>
           </div>
         ) : (
           <Link className="ws-link" to="/Workflow">
-            先创建模板
+            {t('workspace.knowledge.newTemplate')}
           </Link>
         )}
       </div>

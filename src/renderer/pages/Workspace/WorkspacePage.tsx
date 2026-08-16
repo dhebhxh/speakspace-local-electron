@@ -1,4 +1,6 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Search, Trash2, MessagesSquare } from 'lucide-react';
 import WorkspaceDetailHeader from './components/WorkspaceDetailHeader';
 import WorkspaceNoteCard from './components/WorkspaceNoteCard';
 import WorkspaceSemanticSearch from './components/WorkspaceSemanticSearch';
@@ -12,9 +14,14 @@ import './WorkspacePage.css';
  * updated_at 只用于说明内容或名称最后修改时间。
  */
 export default function WorkspacePage() {
+  const { t } = useTranslation();
   const detail = useWorkspaceDetail();
-  const { workspace, loading, error, status, query, visibleNotes, selectedNoteIds, toggleNoteSelection } = detail;
-  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const { 
+    workspace, loading, error, status, query, setQuery, 
+    filteredNotes, selectedNoteIds, toggleNoteSelection,
+    setSemanticResults, handleDeleteSelected
+  } = detail;
+  const [showMultiModal, setShowMultiModal] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, noteId: number } | null>(null);
 
   const handleContextMenu = (noteId: number, e: React.MouseEvent) => {
@@ -36,17 +43,17 @@ export default function WorkspacePage() {
   }, []);
 
   if (loading) {
-    return <p className="workspace-detail-status">正在进入工作空间…</p>;
+    return <p className="workspace-detail-status">{t('workspace.detail.loading')}</p>;
   }
 
   if (!workspace) {
     return (
       <section className="workspace-detail-page">
         <p className="workspace-detail-error" role="alert">
-          {error || '工作空间不存在'}
+          {error || t('workspace.error.notFound')}
         </p>
         <Link className="workspace-back-link" to="/">
-          ← 返回最近使用
+          {t('workspace.detail.back')}
         </Link>
       </section>
     );
@@ -67,19 +74,15 @@ export default function WorkspacePage() {
       )}
       {status && <p className="workspace-detail-success">{status}</p>}
 
-      {/* 关键词搜索与语义查找合并成一条工具条：
-          搜索框只占它需要的宽度，语义查找就在旁边。 */}
       <div className="workspace-toolbar">
         <div className="workspace-search-field">
-          <span aria-hidden="true" className="workspace-search-icon">
-            🔍
-          </span>
+          <Search className="workspace-search-icon" size={18} />
           <input
-            aria-label="搜索标题、转录、子笔记或 AI 内容"
+            aria-label={t('workspace.detail.search')}
             id="workspace-search"
-            onChange={(event) => detail.setQuery(event.target.value)}
-            placeholder="搜索笔记…"
-            title="搜索标题、转录、子笔记或 AI 内容"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t('workspace.detail.searchPlaceholder')}
+            title={t('workspace.detail.search')}
             type="search"
             value={query}
           />
@@ -92,29 +95,29 @@ export default function WorkspacePage() {
         />
       </div>
 
-      {visibleNotes.length === 0 && (
+      {filteredNotes.length === 0 && (
         <div className="workspace-detail-empty">
-          <strong>{query ? '没有找到内容' : '这个工作空间还没有笔记'}</strong>
-          <span>{query ? '尝试更换搜索词' : '完成录音即可归档到这里'}</span>
+          <strong>{query ? t('workspace.detail.emptySearch') : t('workspace.detail.empty')}</strong>
+          <span>{query ? t('workspace.detail.emptySearchDesc') : t('workspace.detail.emptyDesc')}</span>
         </div>
       )}
 
       {selectedNoteIds.length > 0 && (
         <div className="workspace-select-bar">
-          <span>已选取 {selectedNoteIds.length} 篇笔记</span>
+          <span>{t('workspace.detail.selected')} {selectedNoteIds.length} {t('workspace.detail.notesSuffix')}</span>
           <button
             className="ws-btn ws-btn-primary"
             disabled={selectedNoteIds.length < 2}
-            onClick={() => setShowAnalysisModal(true)}
+            onClick={() => setShowMultiModal(true)}
             type="button"
           >
-            {selectedNoteIds.length < 2 ? '请至少选择 2 篇' : '分析选中笔记'}
+            {selectedNoteIds.length < 2 ? t('workspace.detail.selectMore') : t('workspace.detail.actionOnSelected')}
           </button>
         </div>
       )}
 
       <div className="workspace-detail-notes">
-        {visibleNotes.map((note) => (
+        {filteredNotes.map((note) => (
           <WorkspaceNoteCard
             generating={detail.generatingNoteId === note.id}
             key={note.id}
@@ -129,11 +132,11 @@ export default function WorkspacePage() {
         ))}
       </div>
 
-      {showAnalysisModal && (
+      {showMultiModal && (
         <WorkspaceMultiNoteModal 
           selectedNoteIds={selectedNoteIds} 
           workspaceId={detail.workspaceId} 
-          onClose={() => setShowAnalysisModal(false)} 
+          onClose={() => setShowMultiModal(false)} 
         />
       )}
 

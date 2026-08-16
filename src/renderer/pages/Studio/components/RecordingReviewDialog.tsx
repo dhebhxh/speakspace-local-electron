@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { WorkspaceSaveSelection } from '../../Recording/components/SaveToWorkspaceDialog';
 
 type WorkspaceOption = { id: number; name: string };
@@ -35,6 +36,7 @@ export default function RecordingReviewDialog({
   onRerecord,
   onClose,
 }: Props) {
+  const { t } = useTranslation();
   const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
   const [workspaceValue, setWorkspaceValue] = useState('');
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
@@ -72,7 +74,7 @@ export default function RecordingReviewDialog({
         setLoadError(
           reason instanceof Error
             ? reason.message
-            : '无法读取工作空间 / Unable to load workspaces',
+            : t('recording.review.loadError'),
         );
       })
       .finally(() => {
@@ -115,11 +117,11 @@ export default function RecordingReviewDialog({
       <form className="studio-review-dialog" onSubmit={submit}>
         <header>
           <div>
-            <h2>录音完成 · 请确认</h2>
+            <h2>{t('recording.review.title')}</h2>
             {processing && (
               <p className="studio-review-progress">
                 <span className="studio-review-spinner" aria-hidden="true" />
-                正在整理…
+                {t('recording.review.summarizing')}
               </p>
             )}
           </div>
@@ -128,7 +130,7 @@ export default function RecordingReviewDialog({
             className="studio-review-dialog__close"
             disabled={saving}
             onClick={onClose}
-            aria-label="关闭 / Close"
+            aria-label={t('recording.review.close')}
           >
             ×
           </button>
@@ -136,23 +138,23 @@ export default function RecordingReviewDialog({
 
         <div className="studio-review-texts">
           <section>
-            <h3>整理文本 / Summary</h3>
+            <h3>{t('recording.review.summaryTitle')}</h3>
             <div className="studio-review-text">
               {cleanedText || (
                 <span className="studio-review-empty">
                   {processing
-                    ? '正在生成…'
-                    : '本次录音未生成语义总结（内容较短或未启用 AI 模型）。'}
+                    ? t('recording.review.summarizing')
+                    : t('recording.review.noSummary')}
                 </span>
               )}
             </div>
           </section>
           <section>
-            <h3>原始转录 / Transcript</h3>
+            <h3>{t('recording.review.transcriptTitle')}</h3>
             <div className="studio-review-text">
               {rawTranscript || (
                 <span className="studio-review-empty">
-                  {processing ? '正在转录…' : '没有识别到文字。'}
+                  {processing ? t('recording.review.transcribing') : t('recording.review.noText')}
                 </span>
               )}
             </div>
@@ -161,7 +163,7 @@ export default function RecordingReviewDialog({
 
         <div className="studio-review-form">
           <label htmlFor="studio-review-workspace">
-            <span>工作空间</span>
+            <span>{t('recording.review.workspace')}</span>
             <select
               id="studio-review-workspace"
               value={workspaceValue}
@@ -173,7 +175,7 @@ export default function RecordingReviewDialog({
                   {workspace.name}
                 </option>
               ))}
-              <option value={NEW_WORKSPACE_VALUE}>+ 新建工作空间</option>
+              <option value={NEW_WORKSPACE_VALUE}>{t('recording.review.newWorkspace')}</option>
             </select>
           </label>
 
@@ -187,14 +189,14 @@ export default function RecordingReviewDialog({
               value={newWorkspaceName}
               disabled={saving}
               maxLength={80}
-              placeholder="新工作空间名称"
-              aria-label="新工作空间名称"
+              placeholder={t('recording.review.newWorkspacePlaceholder')}
+              aria-label={t('recording.review.newWorkspacePlaceholder')}
               onChange={(event) => setNewWorkspaceName(event.target.value)}
             />
           )}
 
           <label htmlFor="studio-review-note-name">
-            <span>笔记标题</span>
+            <span>{t('recording.review.noteNameTitle')}</span>
             <input
               id="studio-review-note-name"
               type="text"
@@ -222,7 +224,7 @@ export default function RecordingReviewDialog({
             disabled={saving}
             onClick={onRerecord}
           >
-            重新录制 / Re-record
+            {t('recording.review.rerecordLabel')}
           </button>
           <button
             type="submit"
@@ -235,7 +237,7 @@ export default function RecordingReviewDialog({
                 !newWorkspaceName.trim())
             }
           >
-            {saving ? '正在保存…' : '保存为笔记并对话'}
+            {saving ? t('recording.review.savingState') : t('recording.review.saveAndChat')}
           </button>
         </footer>
       </form>

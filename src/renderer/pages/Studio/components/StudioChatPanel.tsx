@@ -12,6 +12,8 @@ import {
   hasNoteDragPayload,
   readNoteDragPayload,
 } from '../../AskAI/AskAIDragPayload';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../../../i18n';
 import { StudioWorkspace } from '../StudioPage';
 import { StudioAgentState } from '../useStudioAgent';
 import { AgentStep } from '../../../../main/agent/AgentTypes';
@@ -134,14 +136,14 @@ function AgentIcon() {
 }
 
 const AGENT_TOOL_NAMES: Record<string, string> = {
-  search_notes: '搜索笔记',
-  read_note: '读取笔记',
+  search_notes: 'studio.agent.tool.search',
+  read_note: 'studio.agent.tool.read',
 };
 
 const MATCH_LABELS: Record<string, string> = {
-  keyword: '关键词',
-  semantic: '语义',
-  'keyword+semantic': '关键词+语义',
+  keyword: 'studio.agent.match.keyword',
+  semantic: 'studio.agent.match.semantic',
+  'keyword+semantic': 'studio.agent.match.both',
 };
 
 type AgentStepView = { title: string; details: string[] };
@@ -163,18 +165,19 @@ function describeSearchResult(raw: string): string[] {
   const hits = parsed.notes ?? [];
 
   if (hits.length === 0) {
-    return [parsed.hint || '没有找到相关笔记'];
+    return [parsed.hint || i18n.t('studio.agent.noNotes')];
   }
 
   const lines = hits.map((hit) => {
-    const via = MATCH_LABELS[hit.match ?? ''] ?? hit.match ?? '';
+    const viaKey = MATCH_LABELS[hit.match ?? ''];
+    const via = viaKey ? i18n.t(viaKey) : hit.match ?? '';
     const score =
       typeof hit.similarity === 'number' ? ` ${hit.similarity.toFixed(2)}` : '';
-    return `${hit.name ?? '未命名笔记'}${via ? `（${via}${score}）` : ''}`;
+    return `${hit.name ?? i18n.t('studio.agent.untitledNote')}${via ? `（${via}${score}）` : ''}`;
   });
 
   if (parsed.semanticUnavailable) {
-    lines.push('语义检索不可用，本次仅用关键词');
+    lines.push(i18n.t('studio.agent.semanticUnavailable'));
   }
   return lines;
 }
@@ -183,33 +186,34 @@ function describeSearchResult(raw: string): string[] {
 function describeAgentStep(step: AgentStep): AgentStepView {
   if (step.type === 'final') {
     return {
-      title: step.truncated ? '整理答案（已达步数上限）' : '整理答案',
+      title: step.truncated ? i18n.t('studio.agent.step.finalLimit') : i18n.t('studio.agent.step.final'),
       details: [],
     };
   }
 
-  const tool = AGENT_TOOL_NAMES[step.tool] ?? step.tool;
+  const toolKey = AGENT_TOOL_NAMES[step.tool];
+  const tool = toolKey ? i18n.t(toolKey) : step.tool;
 
   if (step.type === 'tool_call') {
     const query = String(step.args?.query ?? '').trim();
     const noteId = step.args?.note_id ?? step.args?.noteId;
     if (step.tool === 'search_notes') {
-      return { title: query ? `搜索「${query}」` : '列出最近笔记', details: [] };
+      return { title: query ? `${i18n.t('studio.agent.step.searchPrefix')}${query}${i18n.t('studio.agent.step.searchSuffix')}` : i18n.t('studio.agent.step.listRecent'), details: [] };
     }
     if (step.tool === 'read_note' && noteId !== undefined) {
-      return { title: `读取笔记 #${noteId}`, details: [] };
+      return { title: `${i18n.t('studio.agent.step.readPrefix')}${noteId}`, details: [] };
     }
     return { title: tool, details: [] };
   }
 
   if (!step.ok) {
-    return { title: `${tool}失败`, details: [step.result.slice(0, 200)] };
+    return { title: `${tool}${i18n.t('studio.agent.step.failedSuffix')}`, details: [step.result.slice(0, 200)] };
   }
 
   try {
     if (step.tool === 'search_notes') {
       const details = describeSearchResult(step.result);
-      return { title: `找到 ${details.length} 条结果`, details };
+      return { title: `${i18n.t('studio.agent.step.foundPrefix')}${details.length}${i18n.t('studio.agent.step.foundSuffix')}`, details };
     }
     if (step.tool === 'read_note') {
       const parsed = JSON.parse(step.result) as {
@@ -219,7 +223,7 @@ function describeAgentStep(step: AgentStep): AgentStepView {
       };
       const body = parsed.transcript ?? parsed.transcriptPreview ?? '';
       return {
-        title: `已读取「${parsed.name ?? '未命名笔记'}」`,
+        title: `${i18n.t('studio.agent.step.readDonePrefix')}${parsed.name ?? i18n.t('studio.agent.untitledNote')}${i18n.t('studio.agent.step.searchSuffix')}`,
         details: body ? [`${body.slice(0, 120)}…`] : [],
       };
     }
@@ -227,7 +231,7 @@ function describeAgentStep(step: AgentStep): AgentStepView {
     // 结果不是预期的 JSON 时退回到概要描述。
   }
 
-  return { title: `完成：${tool}`, details: [] };
+  return { title: `${i18n.t('studio.agent.step.donePrefix')}${tool}`, details: [] };
 }
 
 /** # 菜单里的一项：整个工作区，或某一条笔记。 */
@@ -279,6 +283,7 @@ export default function StudioChatPanel({
   onStopRecording,
   onUploadAudio,
 }: StudioChatPanelProps) {
+  const { t } = useTranslation();
   const [question, setQuestion] = useState('');
   const [mention, setMention] = useState<{
     start: number;
@@ -323,7 +328,7 @@ export default function StudioChatPanel({
         kind: 'workspace',
         id: item.id,
         name: item.name,
-        hint: `${allNotes.filter((n) => n.workspaceId === item.id).length} 条笔记`,
+        hint: `${allNotes.filter((n) => n.workspaceId === item.id).length} ${t('studio.chat.noteCount')}`,
       }));
 
     const noteItems: MentionItem[] = allNotes
@@ -454,13 +459,13 @@ export default function StudioChatPanel({
     <section className="studio-chat">
       <header className="studio-chat-header">
         <div className="studio-chat-heading">
-          <h2>{conversationName || '新对话'}</h2>
+          <h2>{conversationName || t('studio.chat.newChat')}</h2>
         </div>
       </header>
 
       {sources.length > 0 && (
         <div className="ask-ai-sources">
-          <span>引用</span>
+          <span>{t('studio.chat.citations')}</span>
           {sources.map((source) => (
             <span key={source.id} title={source.transcriptPreview}>
               {source.name}
@@ -472,12 +477,12 @@ export default function StudioChatPanel({
       <div className="ask-ai-messages studio-chat-messages">
         {messages.length === 0 && agent.turns.length === 0 && !agent.running ? (
           <div className="ask-ai-empty">
-            <span>录音或选择笔记后开始提问</span>
+            <span>{t('studio.chat.emptyState')}</span>
           </div>
         ) : (
           messages.map((message) => (
             <article key={message.id} className={message.role}>
-              <span>{message.role === 'assistant' ? 'AI' : '你'}</span>
+              <span>{message.role === 'assistant' ? t('studio.chat.roleAI') : t('studio.chat.roleUser')}</span>
               <p>{message.content}</p>
               {message.role === 'assistant' && (
                 <div className="message-actions">
@@ -493,14 +498,14 @@ export default function StudioChatPanel({
         {agent.turns.map((turn) => (
           <div className="studio-agent-turn" key={turn.id}>
             <article className="user">
-              <span>你</span>
+              <span>{t('studio.chat.roleUser')}</span>
               <p>{turn.question}</p>
             </article>
             <article className="assistant">
-              <span>助理</span>
+              <span>{t('studio.chat.roleAssistant')}</span>
               {turn.steps.length > 0 && (
                 <details className="studio-agent-steps">
-                  <summary>{turn.steps.length} 个步骤</summary>
+                  <summary>{turn.steps.length}{t('studio.chat.stepsSuffix')}</summary>
                   <ol>
                     {turn.steps.map((step, index) => {
                       const view = describeAgentStep(step);
@@ -534,7 +539,7 @@ export default function StudioChatPanel({
           <div className="studio-agent-live" aria-live="polite">
             <span className="studio-agent-live__dot" aria-hidden="true" />
             <div>
-              <strong>{agent.status || '正在工作…'}</strong>
+              <strong>{agent.status || t('studio.chat.working')}</strong>
               <ol>
                 {agent.liveSteps.map((step, index) => {
                   const view = describeAgentStep(step);
@@ -555,7 +560,7 @@ export default function StudioChatPanel({
               </ol>
             </div>
             <button type="button" onClick={onCancelAgent}>
-              取消
+              {t('studio.chat.cancel')}
             </button>
           </div>
         )}
@@ -583,12 +588,12 @@ export default function StudioChatPanel({
       >
         {dragOver && (
           <div className="studio-drop-hint" aria-hidden="true">
-            拖到此处关联笔记
+            {t('studio.chat.dropHint')}
           </div>
         )}
 
         {mentionOpen && (
-          <div className="studio-mention" role="listbox" aria-label="关联笔记">
+          <div className="studio-mention" role="listbox" aria-label={t('studio.chat.mentionAria')}>
             {mentionCandidates.map((item, index) => (
               <button
                 type="button"
@@ -623,13 +628,13 @@ export default function StudioChatPanel({
               >
                 <WorkspaceIcon />
                 <span className="studio-chip__name">
-                  {workspace.name} · 全部
+                  {workspace.name} · {t('studio.chat.all')}
                 </span>
                 <button
                   type="button"
                   className="studio-chip__remove"
                   onClick={() => onUnlinkWorkspace(workspace.id)}
-                  aria-label={`取消关联 ${workspace.name}`}
+                  aria-label={`${t('studio.chat.unlinkPrefix')}${workspace.name}`}
                 >
                   ×
                 </button>
@@ -643,7 +648,7 @@ export default function StudioChatPanel({
                   type="button"
                   className="studio-chip__remove"
                   onClick={() => onRemoveLinkedNote(note.id)}
-                  aria-label={`取消关联 ${note.name}`}
+                  aria-label={`${t('studio.chat.unlinkPrefix')}${note.name}`}
                 >
                   ×
                 </button>
@@ -659,8 +664,8 @@ export default function StudioChatPanel({
             className="studio-composer-btn studio-record-button is-recording"
             onClick={onStopRecording}
             disabled={recordingBusy}
-            aria-label="停止录音"
-            title="停止录音"
+            aria-label={t('studio.chat.stopRecording')}
+            title={t('studio.chat.stopRecording')}
           >
             <StopIcon />
             <span className="studio-record-time">
@@ -673,8 +678,8 @@ export default function StudioChatPanel({
             className="studio-composer-btn studio-record-button"
             onClick={onStartRecording}
             disabled={recordingBusy}
-            aria-label="开始录音"
-            title="开始录音"
+            aria-label={t('studio.chat.startRecording')}
+            title={t('studio.chat.startRecording')}
           >
             <MicIcon />
           </button>
@@ -684,8 +689,8 @@ export default function StudioChatPanel({
           className="studio-composer-btn studio-upload-button"
           onClick={onUploadAudio}
           disabled={recording.active || recordingBusy}
-          aria-label="上传音频"
-          title="上传音频"
+          aria-label={t('studio.chat.uploadAudio')}
+          title={t('studio.chat.uploadAudio')}
         >
           <UploadIcon />
         </button>
@@ -696,11 +701,11 @@ export default function StudioChatPanel({
           }`}
           onClick={onToggleAgentMode}
           aria-pressed={agentMode}
-          aria-label="智能助理模式"
+          aria-label={t('studio.chat.agentToggle')}
           title={
             agentMode
-              ? '智能助理模式：已开启，助理会自行搜索并读取笔记'
-              : '智能助理模式：开启后助理会自行搜索并读取笔记'
+              ? t('studio.chat.agentActive')
+              : t('studio.chat.agentInactive')
           }
         >
           <AgentIcon />
@@ -714,10 +719,10 @@ export default function StudioChatPanel({
           placeholder={
             // eslint-disable-next-line no-nested-ternary
             recording.active
-              ? '正在录音…'
+              ? t('studio.chat.placeholder.recording')
               : agentMode
-                ? '交给助理去查…（# 关联笔记）'
-                : '输入问题…（# 关联笔记）'
+                ? t('studio.chat.placeholder.agent')
+                : t('studio.chat.placeholder.normal')
           }
           onChange={(event) => {
             setQuestion(event.target.value);
@@ -730,8 +735,8 @@ export default function StudioChatPanel({
         <button
           type="submit"
           className="studio-composer-btn studio-send-button"
-          aria-label="发送"
-          title="发送"
+          aria-label={t('studio.chat.send')}
+          title={t('studio.chat.send')}
           disabled={
             !hasContext ||
             !question.trim() ||
@@ -748,7 +753,7 @@ export default function StudioChatPanel({
         </div>
       </form>
       <div className="ask-ai-status" role="status">
-        {recording.active ? '录音中…' : status}
+        {recording.active ? t('studio.chat.status.recording') : status}
       </div>
     </section>
   );

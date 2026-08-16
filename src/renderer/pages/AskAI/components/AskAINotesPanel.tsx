@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AskAIConversation, AskAINote, formatAskAIDate } from '../AskAITypes';
 import { setNoteDragPayload } from '../AskAIDragPayload';
 
@@ -31,6 +32,7 @@ export default function AskAINotesPanel({
   onOpenConversation,
   onContextMenu,
 }: AskAINotesPanelProps) {
+  const { t } = useTranslation();
   // 按工作区分组，保持笔记原有顺序；未归属工作区的归到「未分类」。
   // 空工作区也会列出来，方便直接在它下面新增笔记。
   const groups = useMemo(() => {
@@ -49,8 +51,8 @@ export default function AskAINotesPanel({
         workspaceId,
         name:
           workspaceId === null
-            ? '未分类'
-            : nameById.get(workspaceId) ?? `工作区 ${workspaceId}`,
+            ? t('askAI.notesPanel.unclassified')
+            : nameById.get(workspaceId) ?? `${t('askAI.notesPanel.workspacePrefix')}${workspaceId}`,
         items,
       }))
       // 未分类且为空时不必占一行。
@@ -62,7 +64,7 @@ export default function AskAINotesPanel({
       type="button"
       key={note.id}
       className={selectedNoteId === note.id ? 'active' : ''}
-      title="双击查看原文，拖到输入框可关联"
+      title={t('askAI.notesPanel.noteHint')}
       draggable
       onDragStart={(event) =>
         setNoteDragPayload(
@@ -76,7 +78,7 @@ export default function AskAINotesPanel({
       onContextMenu={(e) => onContextMenu && onContextMenu(note.id, e)}
     >
       <strong>{note.name}</strong>
-      <span>{note.transcriptPreview || '暂无摘要'}</span>
+      <span>{note.transcriptPreview || t('askAI.notesPanel.noSummaryShort')}</span>
       <time>{formatAskAIDate(note.updatedAt)}</time>
     </button>
   );
@@ -86,7 +88,7 @@ export default function AskAINotesPanel({
       <header className="ask-ai-library-header">
         <div>
           <span>Ask AI</span>
-          <h2>笔记库</h2>
+          <h2>{t('askAI.createNote.library')}</h2>
         </div>
         {/* 有工作区分组时，新增按钮移到每个工作区那一行（悬停显示） */}
         {!workspaces && (
@@ -99,8 +101,8 @@ export default function AskAINotesPanel({
       <div className="ask-ai-note-list">
         {notes.length === 0 && !workspaces ? (
           <div className="ask-ai-empty">
-            <strong>还没有笔记</strong>
-            <span>新增一条笔记后即可向本地模型提问。</span>
+            <strong>{t('askAI.notesPanel.noNotesTitle')}</strong>
+            <span>{t('askAI.notesPanel.noNotesDesc')}</span>
           </div>
         ) : (
           groups.map((group) =>
@@ -117,7 +119,7 @@ export default function AskAINotesPanel({
                     <span
                       className="ask-ai-group-name"
                       draggable
-                      title={`拖到输入框可关联「${group.name}」全部笔记`}
+                      title={`${t('askAI.notesPanel.dragWorkspaceHintPrefix')}${group.name}${t('askAI.notesPanel.dragWorkspaceHintSuffix')}`}
                       onDragStart={(event) =>
                         setNoteDragPayload(
                           event.dataTransfer,
@@ -134,8 +136,8 @@ export default function AskAINotesPanel({
                       type="button"
                       className="ask-ai-group-add"
                       onClick={() => onAddNote(group.workspaceId)}
-                      aria-label={`在「${group.name}」新增笔记`}
-                      title={`在「${group.name}」新增笔记`}
+                      aria-label={`${t('askAI.notesPanel.addNoteInWorkspacePrefix')}${group.name}${t('askAI.notesPanel.addNoteInWorkspaceSuffix')}`}
+                      title={`${t('askAI.notesPanel.addNoteInWorkspacePrefix')}${group.name}${t('askAI.notesPanel.addNoteInWorkspaceSuffix')}`}
                     >
                       ＋
                     </button>
@@ -154,14 +156,14 @@ export default function AskAINotesPanel({
         <section className="ask-ai-recents">
           {/* 标题与 ＋ 放在同一个容器里，布局与上面的工作区分组一致 */}
           <h3 className="ask-ai-recents-header">
-            <span>最近会话</span>
+            <span>{t('askAI.notesPanel.recentConversations')}</span>
             {onNewConversation && (
               <button
                 type="button"
                 className="ask-ai-group-add"
                 onClick={onNewConversation}
-                aria-label="新建会话"
-                title="新建会话"
+                aria-label={t('askAI.notesPanel.newConversation')}
+                title={t('askAI.notesPanel.newConversation')}
               >
                 ＋
               </button>

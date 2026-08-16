@@ -1,4 +1,6 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { Pin, Mic, AlignLeft, Sparkles, MessageSquare } from 'lucide-react';
 import { NoteItem, WorkspaceController } from '../WorkspaceController';
 import { WorkspaceTemplate } from '../WorkspaceWorkflowController';
 import KnowledgeOutputPanel from './KnowledgeOutputPanel';
@@ -26,9 +28,10 @@ export default function WorkspaceNoteCard({
   onContextMenu,
   onGenerate,
 }: Props) {
+  const { t } = useTranslation();
   const handleExport = (format: 'word' | 'pdf') => {
     window.electron.export.note({
-      title: note.name || '未命名笔记',
+      title: note.name || t('workspace.note.unnamed'),
       transcript: note.transcript,
       subnotes: note.subnotes.map(s => ({ type: s.content_type, content: s.content })),
       format
@@ -45,7 +48,7 @@ export default function WorkspaceNoteCard({
         {onToggleSelection && (
           <label className="workspace-note-pick">
             <input
-              aria-label="选择这篇笔记"
+              aria-label={t('workspace.note.select')}
               checked={isSelected}
               onChange={() => onToggleSelection(note.id)}
               type="checkbox"
@@ -53,64 +56,79 @@ export default function WorkspaceNoteCard({
           </label>
         )}
         <div className="workspace-note-identity">
-          {/* 「工作笔记」对每条都一样，等于没信息；只有置顶才值得占一行。
-              is_pinned 来自 sqlite，是 0/1 而不是布尔值，用 && 会把 0 渲染出来。 */}
           {note.is_pinned ? (
-            <span className="workspace-note-kind" title="置顶笔记">
-              📌 置顶
+            <span className="workspace-note-kind" title={t('workspace.note.pin')}>
+              <Pin size={14} style={{ marginRight: 4 }} /> {t('workspace.detail.pinnedLabel')}
             </span>
           ) : null}
-          <h2>{note.name || '未命名笔记'}</h2>
+          <h2>{note.name || t('workspace.note.unnamed')}</h2>
         </div>
         <div className="workspace-note-tools">
           <button
             className="ws-btn ws-btn-quiet"
             onClick={() => handleExport('word')}
-            title="导出为 Word 文档"
+            title={t('workspace.note.exportWordTitle')}
             type="button"
           >
-            ⬇ Word
+            {t('workspace.note.exportWord')}
           </button>
           <button
             className="ws-btn ws-btn-quiet"
             onClick={() => handleExport('pdf')}
-            title="导出为 PDF"
+            title={t('workspace.note.exportPdfTitle')}
             type="button"
           >
-            ⬇ PDF
+            {t('workspace.note.exportPdf')}
           </button>
-          <time dateTime={note.updated_at} title="最后更新">
+          <time dateTime={note.updated_at} title={t('workspace.detail.updated')}>
             {WorkspaceController.formatDate(note.updated_at, 'short')}
           </time>
         </div>
       </header>
 
-      {/* 录音只是一条附件，压成一行放在标题下面 */}
       <div className="workspace-note-audio">
-        <span aria-hidden="true" className="ws-label" title="录音">
-          🎙
+        <span aria-hidden="true" className="ws-label" title={t('workspace.note.audioLabel')}>
+          <Mic size={16} />
         </span>
         <WorkspaceAudioPlayer workspaceId={workspaceId} note={note} />
       </div>
 
       <div className="workspace-content-grid">
         <section className="workspace-transcript-section">
-          <h3>📝 转录</h3>
+          <h3>
+            <AlignLeft size={16} style={{ marginRight: 6 }} />
+            {t('workspace.note.transcription')}
+          </h3>
           <p className="workspace-transcript">
-            {note.transcript || '暂无转录内容'}
+            {note.transcript || t('workspace.note.noTranscription')}
           </p>
         </section>
 
-        <section>
-          <h3>🧩 子笔记</h3>
-          {note.subnotes.length === 0 ? (
-            <span className="workspace-content-empty">暂无</span>
-          ) : (
-            <div className="workspace-content-stack">
-              {note.subnotes.map((subnote) => (
-                <div className="workspace-content-item" key={subnote.id}>
-                  <small>{subnote.content_type}</small>
-                  <p>{subnote.content}</p>
+        <section className="workspace-knowledge-section">
+          {note.subnotes.filter(s => s.content_type === 'note').length > 0 && (
+            <div className="workspace-subnotes-list">
+              <h3>
+                <Sparkles size={16} style={{ marginRight: 6 }} />
+                {t('workspace.note.subNotes')}
+              </h3>
+              {note.subnotes.filter(s => s.content_type === 'note').map(s => (
+                <div key={s.id} className="workspace-subnote-item">
+                  <span className="workspace-subnote-badge">{s.template_name || 'Sub-note'}</span>
+                  <div className="workspace-subnote-content">{s.content}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {note.subnotes.filter(s => s.content_type === 'chat').length > 0 && (
+            <div className="workspace-subnotes-list">
+              <h3>
+                <MessageSquare size={16} style={{ marginRight: 6 }} />
+                {t('workspace.note.aiChat')}
+              </h3>
+              {note.subnotes.filter(s => s.content_type === 'chat').map(s => (
+                <div key={s.id} className="workspace-subnote-item is-chat">
+                  <div className="workspace-subnote-content">{s.content}</div>
                 </div>
               ))}
             </div>

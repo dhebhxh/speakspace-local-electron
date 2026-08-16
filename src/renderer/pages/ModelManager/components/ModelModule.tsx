@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ModelIcons } from './ModelIcons';
 import './ModelModule.css';
 
@@ -44,6 +45,7 @@ export default function ModelModule({
   progress,
   error,
 }: ModelModuleProps) {
+  const { t } = useTranslation();
   return (
     <section className="model-module">
       <header className="model-module-head">
@@ -68,7 +70,7 @@ export default function ModelModule({
 
       {runtimes.length > 0 && (
         <div className="model-module-runtimes">
-          <span className="model-module-runtime-label">运行时</span>
+          <span className="model-module-runtime-label">{t('modelManager.runtime')}</span>
           {runtimes.map((runtime) => (
             <span
               className="runtime-chip"
@@ -81,11 +83,11 @@ export default function ModelModule({
               <span className="runtime-chip-name">{runtime.name}</span>
               {!runtime.present && runtime.onInstall && (
                 <button
-                  aria-label={`安装 ${runtime.name}`}
+                  aria-label={`${t('modelManager.action.install')} ${runtime.name}`}
                   className="model-icon-button is-compact"
                   disabled={busy}
                   onClick={runtime.onInstall}
-                  title={`安装 ${runtime.name}`}
+                  title={`${t('modelManager.action.install')} ${runtime.name}`}
                   type="button"
                 >
                   {ModelIcons.download}

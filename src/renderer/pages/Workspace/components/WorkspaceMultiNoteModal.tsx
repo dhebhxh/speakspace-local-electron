@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AskAIMessage, AskAIResult, AskAINote } from '../../AskAI/AskAITypes';
 import '../../AskAI/AskAIChat.css';
 
@@ -9,6 +10,7 @@ type Props = {
 };
 
 export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, onClose }: Props) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<AskAIMessage[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -23,7 +25,7 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
           id: Date.now(),
           conversationId: 0,
           role: 'user',
-          content: '请针对我选取的笔记进行交叉比对与关联分析',
+          content: t('workspace.multi.prompt'),
           createdAt: new Date().toISOString()
         };
         setMessages([userMsg]);
@@ -31,7 +33,7 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
         const result = (await window.electron.askAI.ask({
           workspaceId,
           noteIds: selectedNoteIds,
-          question: '请针对我选取的笔记进行交叉比对与关联分析',
+          question: t('workspace.multi.prompt'),
           scope: 'multi-note'
         })) as AskAIResult;
 
@@ -44,7 +46,7 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
           id: Date.now(),
           conversationId: 0,
           role: 'assistant',
-          content: `❌ 分析失败：\n${errorMessage}\n\n（提示：你可能尚未在设置中下载或启用 LLM 模型）`,
+          content: t('workspace.multi.error').replace('${errorMessage}', errorMessage),
           createdAt: new Date().toISOString()
         }]);
       } finally {
@@ -68,9 +70,9 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
     <div className="workspace-modal-overlay">
       <div className="workspace-modal">
         <header className="workspace-modal-head">
-          <h2>多笔记关联分析</h2>
+          <h2>{t('workspace.multi.title')}</h2>
           <button type="button" onClick={onClose} className="ws-btn">
-            关闭
+            {t('workspace.multi.close')}
           </button>
         </header>
 
@@ -85,7 +87,7 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
           {loading && (
             <div className="ask-ai-chat-bubble ask-ai-chat-bubble-assistant">
               <div className="ask-ai-chat-bubble-content workspace-modal-pending">
-                正在分析关联性…
+                {t('workspace.multi.loading', 'Generating...')}
               </div>
             </div>
           )}

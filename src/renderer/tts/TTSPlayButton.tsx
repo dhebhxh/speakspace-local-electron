@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import toSpeechText from './TTSContent';
 import useTTSPlayback from './useTTSPlayback';
 import './TTSPlayButton.css';
@@ -42,6 +43,7 @@ function StopIcon() {
 
 /** 可复用朗读按钮：使用模型管理页保存的默认音色。 */
 export default function TTSPlayButton({ text }: { text: string }) {
+  const { t } = useTranslation();
   const playback = useTTSPlayback();
   const play = () => {
     playback.speak(toSpeechText(text));
@@ -54,8 +56,8 @@ export default function TTSPlayButton({ text }: { text: string }) {
           className="tts-play-button"
           onClick={playback.stop}
           type="button"
-          aria-label="停止朗读"
-          title="停止朗读"
+          aria-label={t('components.tts.stop')}
+          title={t('components.tts.stop')}
         >
           <StopIcon />
         </button>
@@ -65,8 +67,8 @@ export default function TTSPlayButton({ text }: { text: string }) {
           disabled={playback.loading || !text.trim()}
           onClick={play}
           type="button"
-          aria-label={playback.loading ? '正在生成语音' : '朗读'}
-          title={playback.loading ? '正在生成语音…' : '朗读'}
+          aria-label={playback.loading ? t('components.tts.generatingLabel') : t('components.tts.play')}
+          title={playback.loading ? t('components.tts.generatingTitle') : t('components.tts.play')}
         >
           {playback.loading ? (
             <span className="tts-play-spinner" aria-hidden="true" />

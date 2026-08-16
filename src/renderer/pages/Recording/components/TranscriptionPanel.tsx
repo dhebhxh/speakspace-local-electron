@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { RecordingSession } from '../RecordingSession';
 import { RecordingState } from '../RecordingTypes';
 import TranscriptionController from '../TranscriptionController';
@@ -9,6 +10,7 @@ export default function TranscriptionPanel(props: {
   session: RecordingSession;
   transcription: TranscriptionController;
 }) {
+  const { t } = useTranslation();
   const { session, transcription } = props;
   const snapshot = useRecordingSession(session);
   const transcriptionSnapshot = useTranscriptionController(transcription);
@@ -50,25 +52,25 @@ export default function TranscriptionPanel(props: {
         livePendingCount > 0 ||
         Boolean(liveError));
 
-  let liveStatus = '已完成';
+  let liveStatus = t('recording.panel.status.completed');
   if (fileMode && job?.status === 'processing') {
-    liveStatus = job.phase === 'preparing' ? '准备文件' : '正在转录';
+    liveStatus = job.phase === 'preparing' ? t('recording.panel.status.preparing') : t('recording.panel.status.transcribing');
   } else if (fileMode && job?.status === 'failed') {
-    liveStatus = '转录失败';
+    liveStatus = t('recording.panel.status.failed');
   } else if (fileMode && job?.status === 'cancelled') {
-    liveStatus = '已取消';
+    liveStatus = t('recording.panel.status.cancelled');
   } else if (snapshot.state === RecordingState.Paused) {
-    liveStatus = '已暂停';
+    liveStatus = t('recording.panel.status.paused');
   } else if (snapshot.state === RecordingState.Recording) {
-    liveStatus = '正在监听';
+    liveStatus = t('recording.panel.status.listening');
   } else if (livePendingCount > 0) {
-    liveStatus = `识别中 ${livePendingCount}`;
+    liveStatus = `${t('recording.panel.status.recognizingPrefix')}${livePendingCount}`;
   }
 
-  let summaryStatus = '等待内容';
-  if (liveSummaries.length > 0) summaryStatus = '已更新';
-  if (summaryPendingCount > 0) summaryStatus = '分析语义中';
-  const summaryModeLabel = summaryMode === 'llm' ? 'AI 总结' : '轻量摘要';
+  let summaryStatus = t('recording.panel.summaryStatus.waiting');
+  if (liveSummaries.length > 0) summaryStatus = t('recording.panel.summaryStatus.updated');
+  if (summaryPendingCount > 0) summaryStatus = t('recording.panel.summaryStatus.analyzing');
+  const summaryModeLabel = summaryMode === 'llm' ? t('recording.panel.summaryMode.ai') : t('recording.panel.summaryMode.lightweight');
   let displayState: string = snapshot.state;
   let displayStatus = snapshot.statusMessage;
   if (fileMode && job) {
@@ -77,22 +79,22 @@ export default function TranscriptionPanel(props: {
   }
   if (fileMode && languageDetectionPending) {
     displayState = 'processing';
-    displayStatus = '正在检测音频语言 / Detecting audio language';
+    displayStatus = t('recording.panel.detectingLanguage');
   }
   const transcriptTitle = fileMode
-    ? '文件转录 / File transcription'
-    : '实时转录 / Live transcription';
+    ? t('recording.panel.fileTranscription')
+    : t('recording.panel.liveTranscription');
   const transcriptHint = fileMode
-    ? '上传音频在本地处理 · 识别出的片段会持续追加'
-    : '约每 5 秒更新一次 · 保留原始转录内容';
-  let emptyTranscriptText = '开始说话后，文字会显示在这里。';
+    ? t('recording.panel.hint.file')
+    : t('recording.panel.hint.live');
+  let emptyTranscriptText = t('recording.panel.empty.normal');
   if (fileMode) {
     emptyTranscriptText =
       job?.status === 'processing'
-        ? '正在读取并转录上传的音频… / Transcribing uploaded audio…'
-        : '转录文字会显示在这里。';
+        ? t('recording.panel.empty.transcribingFile')
+        : t('recording.panel.empty.fileReady');
   } else if (livePendingCount > 0) {
-    emptyTranscriptText = '正在识别第一段语音… / Recognising first segment…';
+    emptyTranscriptText = t('recording.panel.empty.firstSegment');
   }
 
   return (
@@ -100,7 +102,7 @@ export default function TranscriptionPanel(props: {
       <div className="recording-panel__header">
         <div>
           <p className="recording-panel__eyebrow">LOCAL AUDIO</p>
-          <h1>录音与转写 / Recording</h1>
+          <h1>{t('recording.panel.title')}</h1>
         </div>
         <span className={`recording-state recording-state--${displayState}`}>
           {displayState}
@@ -136,13 +138,12 @@ export default function TranscriptionPanel(props: {
       <div className="recording-panel__content">
         {snapshot.state === RecordingState.Idle && !fileMode && (
           <div className="recording-input-guide">
-            <strong>选择输入方式 / Choose an input</strong>
+            <strong>{t('recording.panel.chooseInputTitle')}</strong>
             <p>
-              可以直接使用麦克风实时转录，也可以上传已有音频文件。所有音频和 AI
-              处理都保留在本机。
+              {t('recording.panel.chooseInputDesc')}
             </p>
             <div className="recording-input-guide__formats">
-              上传支持 WAV · MP3 · M4A · FLAC · AAC · OGG · WEBM · MP4
+              {t('recording.panel.supportedFormats')}
             </div>
           </div>
         )}
@@ -150,22 +151,22 @@ export default function TranscriptionPanel(props: {
           snapshot.state === RecordingState.Paused ||
           snapshot.state === RecordingState.Completed) && (
           <p>
-            已接收 {(snapshot.bufferedBytes / 1024).toFixed(1)} KB
-            本地音频数据。
+            {t('recording.panel.receivedPrefix')}{(snapshot.bufferedBytes / 1024).toFixed(1)} KB
+            {t('recording.panel.receivedSuffix')}
           </p>
         )}
 
         {fileMode && uploadedFileName && (
           <div className="recording-uploaded-file">
             <div>
-              <span>已上传音频 / Uploaded audio</span>
+              <span>{t('recording.panel.uploadedAudioLabel')}</span>
               <strong>{uploadedFileName}</strong>
               <span className="recording-uploaded-file__language">
                 {languageDetectionPending &&
-                  '正在检测语言… / Detecting language…'}
+                  t('recording.panel.detectingStatus')}
                 {!languageDetectionPending && detectedLanguage && (
                   <>
-                    检测到 / Detected:{' '}
+                    {t('recording.panel.detectedPrefix')}
                     <strong>
                       {getLanguageLabel(detectedLanguage.language)}
                     </strong>
@@ -173,14 +174,14 @@ export default function TranscriptionPanel(props: {
                       detectedLanguage.source === 'whisper' &&
                       ` · ${Math.round(detectedLanguage.confidence * 100)}%`}
                     {detectedLanguage.source === 'model-fixed' &&
-                      ' · 当前模型固定语言 / fixed by model'}
+                      t('recording.panel.fixedByModel')}
                   </>
                 )}
                 {!languageDetectionPending &&
                   !detectedLanguage &&
                   uploadLanguage !== 'auto' && (
                     <>
-                      手动语言 / Manual:{' '}
+                      {t('recording.panel.manualPrefix')}
                       <strong>{getLanguageLabel(uploadLanguage)}</strong>
                     </>
                   )}
@@ -188,19 +189,17 @@ export default function TranscriptionPanel(props: {
             </div>
             <span>
               {languageDetectionPending
-                ? '语言检测中 / Detecting'
-                : (job?.statusMessage ?? '等待转录 / Waiting')}
+                ? t('recording.panel.detectingShort')
+                : (job?.statusMessage ?? t('recording.panel.waitingShort'))}
             </span>
           </div>
         )}
 
         {fileMode && languageConfirmationRequired && (
           <p className="recording-language-warning" role="status">
-            自动检测结果需要确认。请检查下方音频语言；正确时点击“确认语言并转录”，
-            如果不正确请选择其他语言。
+            {t('recording.panel.languageWarning.zh')}
             <span>
-              Auto-detection needs confirmation. Check the language below, then
-              confirm or choose another language.
+              {t('recording.panel.languageWarning.en')}
             </span>
           </p>
         )}
@@ -228,11 +227,11 @@ export default function TranscriptionPanel(props: {
             <section className="live-summary">
               <header>
                 <div>
-                  <strong>实时总结 / Live summary</strong>
+                  <strong>{t('recording.panel.liveSummaryTitle')}</strong>
                   <span>
                     {summaryMode
-                      ? `${summaryModeLabel} · 按语义断点分段`
-                      : '识别语义断点后生成'}
+                      ? `${summaryModeLabel}${t('recording.panel.liveSummaryModeAI')}`
+                      : t('recording.panel.liveSummaryModeLight')}
                   </span>
                 </div>
                 <span className="live-summary__status">{summaryStatus}</span>
@@ -246,7 +245,7 @@ export default function TranscriptionPanel(props: {
                 <ol className="live-summary__segments">
                   {liveSummaries.map((summary) => (
                     <li key={summary.id}>
-                      <span>片段 {summary.id + 1}</span>
+                      <span>{t('recording.panel.segmentPrefix')}{summary.id + 1}</span>
                       <span>{summary.text}</span>
                     </li>
                   ))}
@@ -254,8 +253,8 @@ export default function TranscriptionPanel(props: {
               ) : (
                 <p className="live-summary__empty">
                   {summaryPendingCount > 0
-                    ? '正在判断是否形成完整语义片段…'
-                    : '识别到一个完整观点或话题断点后，这里会生成总结。'}
+                    ? t('recording.panel.summaryEmpty.analyzing')
+                    : t('recording.panel.summaryEmpty.waiting')}
                 </p>
               )}
             </section>
@@ -264,7 +263,7 @@ export default function TranscriptionPanel(props: {
 
         {snapshot.savedRecording && (
           <div className="recording-panel__saved">
-            <strong>本地录音已保存</strong>
+            <strong>{t('recording.panel.savedRecordingTitle')}</strong>
             <span>{snapshot.savedRecording.relativePath}</span>
             <span>
               {(snapshot.savedRecording.byteLength / 1024).toFixed(1)} KB ·{' '}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AskAINote,
   AskAINoteDetail,
@@ -11,6 +12,7 @@ type AskAINotePreviewProps = {
 };
 
 export default function AskAINotePreview({ note }: AskAINotePreviewProps) {
+  const { t } = useTranslation();
   const [subnotes, setSubnotes] = useState<AskAISubnote[]>([]);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const noteId = note?.id ?? null;
@@ -46,8 +48,8 @@ export default function AskAINotePreview({ note }: AskAINotePreviewProps) {
   if (!note) {
     return (
       <section className="ask-ai-note-preview ask-ai-empty">
-        <strong>请选择一条笔记</strong>
-        <span>笔记原文将在这里显示。</span>
+        <strong>{t('askAI.preview.emptyTitle')}</strong>
+        <span>{t('askAI.preview.emptyDesc')}</span>
       </section>
     );
   }
@@ -58,14 +60,14 @@ export default function AskAINotePreview({ note }: AskAINotePreviewProps) {
     <section className="ask-ai-note-preview">
       <header>
         <div>
-          <span>当前笔记</span>
+          <span>{t('askAI.chat.scopeBtnNote')}</span>
           <h1>{note.name}</h1>
         </div>
         <time>{formatAskAIDate(note.updatedAt)}</time>
       </header>
 
       <section className="ask-ai-note-section">
-        <h2>摘要</h2>
+        <h2>{t('askAI.preview.summaryTitle')}</h2>
         {subnotes.length > 0 ? (
           subnotes.map((subnote) => (
             <article className="ask-ai-note-summary" key={subnote.id}>
@@ -75,17 +77,17 @@ export default function AskAINotePreview({ note }: AskAINotePreviewProps) {
           ))
         ) : (
           <p className="ask-ai-note-empty">
-            {loadingSummary ? '正在读取摘要…' : '这条笔记还没有摘要。'}
+            {loadingSummary ? t('askAI.preview.loadingSummary') : t('askAI.preview.noSummary')}
           </p>
         )}
       </section>
 
       <section className="ask-ai-note-section">
-        <h2>原文转录</h2>
+        <h2>{t('askAI.preview.transcriptTitle')}</h2>
         {transcript ? (
           <p>{transcript}</p>
         ) : (
-          <p className="ask-ai-note-empty">这条笔记没有转录内容。</p>
+          <p className="ask-ai-note-empty">{t('askAI.preview.noTranscript')}</p>
         )}
       </section>
     </section>

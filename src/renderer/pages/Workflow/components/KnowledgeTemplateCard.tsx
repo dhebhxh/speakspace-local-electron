@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { KnowledgeTemplateDTO } from '../../../../main/workflow/WorkflowTypes';
 
 type KnowledgeTemplateCardProps = {
@@ -11,25 +12,26 @@ export default function KnowledgeTemplateCard({
   onOpenForm,
   onDelete,
 }: KnowledgeTemplateCardProps) {
+  const { t } = useTranslation();
   return (
     <article className="knowledge-template-card">
       <div>
         <h2>{knowledgeTemplate.name}</h2>
         <time>
-          更新于 {new Date(knowledgeTemplate.updatedAt).toLocaleString()}
+          {t('workflow.card.updatedPrefix')}{new Date(knowledgeTemplate.updatedAt).toLocaleString()}
         </time>
       </div>
       <p>{knowledgeTemplate.prompt}</p>
       <div className="knowledge-template-actions">
         <button type="button" onClick={() => onOpenForm(knowledgeTemplate)}>
-          编辑
+          {t('workflow.card.editBtn')}
         </button>
         <button
           type="button"
           className="secondary-button"
           onClick={() => onDelete(knowledgeTemplate)}
         >
-          删除
+          {t('workflow.card.deleteBtn')}
         </button>
       </div>
     </article>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { TranscriptionLanguage } from '../../../../main/transcription/TranscriptionTypes';
 import { RecordingSession } from '../RecordingSession';
 import { RecordingState, SavedRecording } from '../RecordingTypes';
@@ -20,13 +21,14 @@ function UploadLanguageSelect(props: {
   onChange: (language: TranscriptionLanguage) => void;
 }) {
   const { value, disabled, onChange } = props;
+  const { t } = useTranslation();
 
   return (
     <label
       className="recording-language-select"
       htmlFor="upload-audio-language"
     >
-      <span>音频语言 / Audio language</span>
+      <span>{t('recording.control.audioLanguage')}</span>
       <select
         id="upload-audio-language"
         value={value}
@@ -35,15 +37,15 @@ function UploadLanguageSelect(props: {
           onChange(event.target.value as TranscriptionLanguage)
         }
       >
-        <option value="auto">自动检测 / Auto detect（推荐）</option>
-        <optgroup label="常用语言 / Common languages">
+        <option value="auto">{t('recording.control.autoDetect')}</option>
+        <optgroup label={t('recording.control.commonLanguages')}>
           {COMMON_LANGUAGE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
         </optgroup>
-        <optgroup label="更多语言 / More languages">
+        <optgroup label={t('recording.control.moreLanguages')}>
           {MORE_LANGUAGE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -90,6 +92,7 @@ export default function RecordControlBar(props: {
   session: RecordingSession;
   transcription: TranscriptionController;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { session, transcription } = props;
   const snapshot = useRecordingSession(session);
@@ -155,7 +158,7 @@ export default function RecordControlBar(props: {
       (summary) => summary.text,
     );
     if (!latestTranscriptText) {
-      setWorkspaceSaveError('没有可保存的转录内容 / No transcript to save');
+      setWorkspaceSaveError(t('recording.control.noTranscriptToSave'));
       return;
     }
 
@@ -194,7 +197,7 @@ export default function RecordControlBar(props: {
       ) {
         const savedRecording = await session.save();
         if (!savedRecording) {
-          throw new Error('录音保存失败 / Unable to save recording');
+          throw new Error(t('recording.control.saveRecordingFailed'));
         }
         audioRelativePath = savedRecording.relativePath;
       }
@@ -211,7 +214,7 @@ export default function RecordControlBar(props: {
       window.electron.askAI.autoSegmentNote(saveResult.noteId).catch(console.error);
 
       setWorkspaceSaveSuccess(
-        `已保存到“${workspaceName}” / Saved to “${workspaceName}”`,
+        `${t('recording.control.savedToPrefix')}${workspaceName}${t('recording.control.savedToSuffix')}`,
       );
       setSaveDialogOpen(false);
       navigate('/Workspace');
@@ -224,7 +227,7 @@ export default function RecordControlBar(props: {
       setWorkspaceSaveError(
         reason instanceof Error
           ? reason.message
-          : '保存到工作空间失败 / Unable to save to workspace',
+          : t('recording.control.saveWorkspaceFailed'),
       );
     } finally {
       setWorkspaceSaving(false);
@@ -245,7 +248,7 @@ export default function RecordControlBar(props: {
                 run(() => session.start());
               }}
             >
-              开始录音 / Start
+              {t('recording.control.startRecording')}
             </button>
             <UploadLanguageSelect
               value={transcriptionSnapshot.uploadLanguage}
@@ -261,7 +264,7 @@ export default function RecordControlBar(props: {
                 run(() => transcription.pickFileAndStart());
               }}
             >
-              上传音频文件 / Upload audio
+              {t('recording.control.uploadAudio')}
             </button>
           </>
         )}
@@ -279,8 +282,8 @@ export default function RecordControlBar(props: {
                 onClick={openWorkspaceSave}
               >
                 {workspaceSaveSuccess
-                  ? '已保存到工作空间 / Saved'
-                  : '保存到工作空间 / Save to workspace'}
+                  ? t('recording.control.savedToWorkspace')
+                  : t('recording.control.saveToWorkspace')}
               </button>
             )}
             <UploadLanguageSelect
@@ -298,8 +301,8 @@ export default function RecordControlBar(props: {
               }}
             >
               {transcriptionSnapshot.languageConfirmationRequired
-                ? '确认语言并转录 / Confirm & transcribe'
-                : '重新转录 / Retranscribe'}
+                ? t('recording.control.confirmAndTranscribe')
+                : t('recording.control.retranscribe')}
             </button>
             <button
               className="recording-button--secondary"
@@ -310,7 +313,7 @@ export default function RecordControlBar(props: {
                 run(() => transcription.pickFileAndStart());
               }}
             >
-              上传另一个文件 / Upload another
+              {t('recording.control.uploadAnother')}
             </button>
             <button
               className="recording-button--secondary"
@@ -322,7 +325,7 @@ export default function RecordControlBar(props: {
                 run(() => session.start());
               }}
             >
-              开始新录音 / New recording
+              {t('recording.control.newRecording')}
             </button>
           </>
         )}
@@ -330,14 +333,14 @@ export default function RecordControlBar(props: {
         {snapshot.state === RecordingState.Recording && (
           <>
             <button type="button" onClick={() => session.pause()}>
-              暂停 / Pause
+              {t('recording.control.pause')}
             </button>
             <button
               type="button"
               disabled={snapshot.busy}
               onClick={() => run(stopAndFinalize)}
             >
-              停止 / Stop
+              {t('recording.control.stop')}
             </button>
           </>
         )}
@@ -345,14 +348,14 @@ export default function RecordControlBar(props: {
         {snapshot.state === RecordingState.Paused && (
           <>
             <button type="button" onClick={() => session.resume()}>
-              继续 / Resume
+              {t('recording.control.resume')}
             </button>
             <button
               type="button"
               disabled={snapshot.busy}
               onClick={() => run(stopAndFinalize)}
             >
-              停止 / Stop
+              {t('recording.control.stop')}
             </button>
           </>
         )}
@@ -369,8 +372,8 @@ export default function RecordControlBar(props: {
               onClick={openWorkspaceSave}
             >
               {workspaceSaveSuccess
-                ? '已保存到工作空间 / Saved'
-                : '保存到工作空间 / Save to workspace'}
+                ? t('recording.control.savedToWorkspace')
+                : t('recording.control.saveToWorkspace')}
             </button>
             <button
               className="recording-button--secondary"
@@ -378,7 +381,7 @@ export default function RecordControlBar(props: {
               disabled={snapshot.busy}
               onClick={() => run(() => session.save())}
             >
-              仅保存录音 / Save audio only
+              {t('recording.control.saveAudioOnly')}
             </button>
             <button
               className="recording-button--secondary"
@@ -386,7 +389,7 @@ export default function RecordControlBar(props: {
               disabled={snapshot.busy}
               onClick={() => run(() => session.discard())}
             >
-              放弃 / Discard
+              {t('recording.control.discard')}
             </button>
           </>
         )}
@@ -404,8 +407,8 @@ export default function RecordControlBar(props: {
                 onClick={openWorkspaceSave}
               >
                 {workspaceSaveSuccess
-                  ? '已保存到工作空间 / Saved'
-                  : '保存到工作空间 / Save to workspace'}
+                  ? t('recording.control.savedToWorkspace')
+                  : t('recording.control.saveToWorkspace')}
               </button>
             )}
             <button
@@ -420,7 +423,7 @@ export default function RecordControlBar(props: {
                 )
               }
             >
-              重新完整转写 / Full retranscribe
+              {t('recording.control.fullRetranscribe')}
             </button>
             <button
               className="recording-button--secondary"
@@ -428,7 +431,7 @@ export default function RecordControlBar(props: {
               disabled={snapshot.busy || transcriptionRunning}
               onClick={() => run(() => session.discard())}
             >
-              删除已保存录音 / Delete saved recording
+              {t('recording.control.deleteSavedRecording')}
             </button>
           </>
         )}
@@ -440,7 +443,7 @@ export default function RecordControlBar(props: {
             disabled={transcriptionSnapshot.requestPending}
             onClick={() => run(() => transcription.cancel())}
           >
-            取消转写 / Cancel transcription
+            {t('recording.control.cancelTranscription')}
           </button>
         )}
 
@@ -453,7 +456,7 @@ export default function RecordControlBar(props: {
               disabled={transcriptionSnapshot.requestPending}
               onClick={() => run(() => transcription.retry())}
             >
-              重试转写 / Retry
+              {t('recording.control.retry')}
             </button>
           )}
 

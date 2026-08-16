@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   EmbeddingModelStatus,
   SemanticNoteResult,
@@ -20,6 +21,7 @@ export default function WorkspaceSemanticSearch({
   workspaceId,
   onSelect,
 }: Props) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<EmbeddingModelStatus | null>(null);
   const [results, setResults] = useState<SemanticNoteResult[]>([]);
   const [searchedQuery, setSearchedQuery] = useState('');
@@ -42,7 +44,7 @@ export default function WorkspaceSemanticSearch({
       setResults(await controller.search(cleanQuery, workspaceId));
       setSearchedQuery(cleanQuery);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '语义搜索失败');
+      setError(reason instanceof Error ? reason.message : t('workspace.search.error'));
     } finally {
       setLoading(false);
     }
@@ -57,18 +59,18 @@ export default function WorkspaceSemanticSearch({
             className="ws-btn"
             disabled={!query.trim() || loading}
             onClick={search}
-            title="按含义查找相似笔记，不要求出现完全相同的关键词"
+            title={t('workspace.search.title')}
             type="button"
           >
-            {loading ? '⏳ 建立索引…' : '✨ 语义查找'}
+            {loading ? t('workspace.search.indexing') : t('workspace.search.button')}
           </button>
         ) : (
           <Link
             className="ws-link"
-            title="语义查找需要先安装 bge-m3 嵌入模型"
+            title={t('workspace.search.needModel')}
             to="/ModelManagement"
           >
-            安装 bge-m3
+            {t('workspace.search.installModel')}
           </Link>
         )}
       </div>
@@ -80,7 +82,7 @@ export default function WorkspaceSemanticSearch({
       {searchedQuery && !error && (
         <div className="workspace-semantic-results">
           <span>
-            “{searchedQuery}” · {results.length} 条结果
+            「{searchedQuery}」· {results.length} {t('workspace.detail.noteCount')}
           </span>
           {results.map((result) => (
             <button
@@ -89,7 +91,7 @@ export default function WorkspaceSemanticSearch({
               type="button"
             >
               <strong>{result.name}</strong>
-              <small>{Math.round(result.score * 100)}% 相似</small>
+              <small>{Math.round(result.score * 100)}% {t('workspace.search.similarity')}</small>
               <span>{result.transcriptPreview}</span>
             </button>
           ))}

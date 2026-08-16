@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import useAskAIPage from '../AskAI/useAskAIPage';
 import { AskAINote } from '../AskAI/AskAITypes';
@@ -49,10 +50,7 @@ function buildTranscriptText(
     .trim();
 }
 
-const TITLE_SYSTEM_PROMPT =
-  '你是笔记标题助手。根据用户给出的录音内容，生成一个概括主题的简短标题。' +
-  '只输出标题本身：不要引号、不要结尾标点、不要任何解释或前缀。' +
-  '使用与内容相同的语言；中文不超过 20 字，英文不超过 8 个词。';
+const TITLE_SYSTEM_PROMPT = 'studio.prompt.title';
 
 /** 清洗模型返回的标题：取首行、去掉包裹引号与结尾标点。 */
 function sanitizeTitle(raw: string): string {
@@ -82,11 +80,25 @@ function defaultNoteName(uploadedFileName: string | null): string {
  * 录音结束弹出复核窗口，保存为笔记后自动把该笔记挂到当前对话上。
  */
 export default function StudioPage() {
+  const { t } = useTranslation();
   const location = useLocation();
   const page = useAskAIPage();
   const [engine, setEngine] = useState<Engine>(createEngine);
   const snapshot = useRecordingSession(engine.session);
   const transcriptionSnapshot = useTranscriptionController(engine.transcription);
+
+  const defaultNoteNameMemo = useCallback((uploadedFileName: string | null) => {
+    if (uploadedFileName) {
+      return uploadedFileName.replace(/\.[^.]+$/u, '').slice(0, 80);
+    }
+    return `${t('studio.recording.defaultPrefix')}${new Intl.DateTimeFormat('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date())}`;
+  }, [t]);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   // 新增笔记的目标工作区（从左栏某个工作区那一行点 + 时带过来）。
@@ -326,10 +338,10 @@ export default function StudioPage() {
 
     let cancelled = false;
     setTitlePending(true);
-    window.electron.llm
+      window.electron.llm
       .chat(
         [
-          { role: 'system', content: TITLE_SYSTEM_PROMPT },
+          { role: 'system', content: t(TITLE_SYSTEM_PROMPT) },
           { role: 'user', content: source.slice(0, 2000) },
         ],
         { temperature: 0.2 },
@@ -367,7 +379,7 @@ export default function StudioPage() {
       engine.transcription.finalizeLiveSummary().catch(() => undefined);
     } catch (reason) {
       setRecordError(
-        reason instanceof Error ? reason.message : '录音结束失败',
+        reason instanceof Error ? reason.message : t('studio.recording.stopError'),
       );
     }
   }, [engine, openReview]);
@@ -375,7 +387,7 @@ export default function StudioPage() {
   const uploadAudio = useCallback(() => {
     setRecordError(null);
     engine.transcription.pickFileAndStart().catch((reason: unknown) => {
-      setRecordError(reason instanceof Error ? reason.message : '上传失败');
+      setRecordError(reason instanceof Error ? reason.message : t('studio.recording.uploadError'));
     });
   }, [engine]);
 
@@ -420,7 +432,7 @@ export default function StudioPage() {
       const transcript = buildTranscriptText(latest);
       const summaries = latest.liveSummaries.map((summary) => summary.text);
       if (!transcript) {
-        setSaveError('没有可保存的转录内容 / No transcript to save');
+        setSaveError(t('studio.recording.noTranscript'));
         return;
       }
 
@@ -478,7 +490,7 @@ export default function StudioPage() {
         setSaveError(
           reason instanceof Error
             ? reason.message
-            : '保存到工作空间失败 / Unable to save',
+            : t('studio.recording.saveError'),
         );
       } finally {
         setSaving(false);
@@ -562,8 +574,8 @@ export default function StudioPage() {
             type="button"
             className="studio-source__close"
             onClick={() => setPreviewNoteId(null)}
-            aria-label="关闭原文"
-            title="关闭原文"
+            aria-label={t('studio.preview.close')}
+            title={t('studio.preview.close')}
           >
             <svg
               width="16"
@@ -587,7 +599,7 @@ export default function StudioPage() {
           open={reviewOpen}
           defaultNoteName={
             aiTitle ??
-            defaultNoteName(
+            defaultNoteNameMemo(
               reviewFileMode ? transcriptionSnapshot.uploadedFileName : null,
             )
           }
@@ -628,7 +640,7 @@ export default function StudioPage() {
           onClick={() => handleDeleteNote(contextMenu.noteId)}
         >
           <div style={{ padding: '8px 16px', color: '#ff4d4f', fontSize: '14px', fontWeight: 500 }}>
-            刪除筆記
+            {t('studio.action.deleteNote')}
           </div>
         </div>
       )}

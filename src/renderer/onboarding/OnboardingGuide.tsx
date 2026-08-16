@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
   ONBOARDING_OPEN_EVENT,
@@ -9,6 +10,7 @@ import './OnboardingGuide.css';
 
 /** 首次启动显示 6 步指南；内容独立于业务页面，避免影响现有交互。 */
 export default function OnboardingGuide() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(() => OnboardingController.shouldOpen());
   const [stepIndex, setStepIndex] = useState(0);
@@ -45,31 +47,31 @@ export default function OnboardingGuide() {
       >
         <header className="onboarding-progress-header">
           <span>
-            新手指南 · {stepIndex + 1}/{ONBOARDING_STEPS.length}
+            {t('onboarding.titlePrefix')} · {stepIndex + 1}/{ONBOARDING_STEPS.length}
           </span>
           <button onClick={close} type="button">
-            跳过
+            {t('onboarding.skip')}
           </button>
         </header>
 
         <div className="onboarding-visual" aria-hidden="true">
           {step.icon}
         </div>
-        <h2 id="onboarding-title">{step.title}</h2>
-        <p id="onboarding-description">{step.description}</p>
+        <h2 id="onboarding-title">{t(step.title)}</h2>
+        <p id="onboarding-description">{t(step.description)}</p>
 
         <button
           className="onboarding-route-button"
           onClick={() => navigate(step.route)}
           type="button"
         >
-          {step.action} ↗
+          {t(step.action)} ↗
         </button>
 
-        <div className="onboarding-dots" aria-label="指南进度">
+        <div className="onboarding-dots" aria-label={t('onboarding.progressAria')}>
           {ONBOARDING_STEPS.map((item, index) => (
             <button
-              aria-label={`第 ${index + 1} 步：${item.title}`}
+              aria-label={`${t('onboarding.stepPrefix')}${index + 1}${t('onboarding.stepSuffix')}${t(item.title)}`}
               className={index === stepIndex ? 'is-current' : ''}
               key={item.title}
               onClick={() => setStepIndex(index)}
@@ -84,12 +86,12 @@ export default function OnboardingGuide() {
             onClick={() => setStepIndex((current) => current - 1)}
             type="button"
           >
-            上一步
+            {t('onboarding.prev')}
           </button>
           <button className="is-primary" onClick={next} type="button">
             {stepIndex === ONBOARDING_STEPS.length - 1
-              ? '完成并开始'
-              : '下一步'}
+              ? t('onboarding.finish')
+              : t('onboarding.next')}
           </button>
         </footer>
       </section>

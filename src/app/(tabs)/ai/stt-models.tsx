@@ -16,11 +16,17 @@ type ListState =
 
 type RowState = {
   isBusy: boolean;
+  isDownloading: boolean;
   progress: SttModelDownloadProgress | null;
   error: string | null;
 };
 
-const emptyRowState: RowState = { isBusy: false, progress: null, error: null };
+const emptyRowState: RowState = {
+  isBusy: false,
+  isDownloading: false,
+  progress: null,
+  error: null,
+};
 
 export default function SttModelsScreen() {
   const theme = useTheme();
@@ -55,18 +61,80 @@ export default function SttModelsScreen() {
     void loadInstalledModels();
   }, []);
 
+  useEffect(() => {
+    const unsubscribeCallbacks = catalog.map((entry) => {
+      const downloadState = sttModelService.getDownloadState(entry.id);
+      const downloadPromise = sttModelService.getDownloadPromise(entry.id);
+
+      if (downloadState === null || downloadPromise === null) {
+        return () => undefined;
+      }
+
+      setRowState(entry.id, {
+        isBusy: true,
+        isDownloading: true,
+        progress: downloadState.progress,
+        error: null,
+      });
+
+      const unsubscribe = sttModelService.subscribeToDownload(
+        entry.id,
+        (progress) => setRowState(entry.id, { progress }),
+      );
+
+      void downloadPromise.then(
+        () => {
+          setRowState(entry.id, {
+            isBusy: false,
+            isDownloading: false,
+            progress: null,
+          });
+          void loadInstalledModels();
+        },
+        (error: unknown) => {
+          setRowState(entry.id, {
+            isBusy: false,
+            isDownloading: false,
+            progress: null,
+            error: error instanceof Error ? error.message : "Download failed.",
+          });
+        },
+      );
+
+      return unsubscribe;
+    });
+
+    return () => unsubscribeCallbacks.forEach((unsubscribe) => unsubscribe());
+  }, [catalog, sttModelService]);
+
   const handleDownload = async (catalogId: string) => {
-    setRowState(catalogId, { isBusy: true, error: null, progress: null });
+    setRowState(catalogId, {
+      isBusy: true,
+      isDownloading: true,
+      error: null,
+      progress: null,
+    });
+    // Ignore progress events that arrive after this attempt has settled.
+    let isAttemptActive = true;
 
     try {
-      await sttModelService.downloadModel(catalogId, (progress) =>
-        setRowState(catalogId, { progress }),
-      );
-      setRowState(catalogId, { isBusy: false, progress: null });
-      await loadInstalledModels();
-    } catch (error) {
+      await sttModelService.downloadModel(catalogId, (progress) => {
+        if (isAttemptActive) {
+          setRowState(catalogId, { progress });
+        }
+      });
+      isAttemptActive = false;
       setRowState(catalogId, {
         isBusy: false,
+        isDownloading: false,
+        progress: null,
+      });
+      await loadInstalledModels();
+    } catch (error) {
+      isAttemptActive = false;
+      setRowState(catalogId, {
+        isBusy: false,
+        isDownloading: false,
         progress: null,
         error: error instanceof Error ? error.message : "Download failed.",
       });
@@ -145,7 +213,7 @@ export default function SttModelsScreen() {
                 ? (state.installedById.get(entry.id) ?? null)
                 : null;
             const rowState = rowStates[entry.id] ?? emptyRowState;
-            const status: SttModelCardStatus = rowState.progress
+            const status: SttModelCardStatus = rowState.isDownloading
               ? "downloading"
               : installed
                 ? installed.getIsActive()

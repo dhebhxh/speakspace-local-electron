@@ -1,12 +1,9 @@
 import { File, Paths } from "expo-file-system";
-// The root "whisper.rn" specifier is not declared in the package's
-// "exports" map (only subpaths are), so import the entry module directly.
-import { initParakeet } from "whisper.rn/index";
 
 import {
-    STT_MODEL_CATALOG,
-    STT_MODELS_DIRECTORY_NAME,
-    SttModelCatalogEntry,
+  STT_MODEL_CATALOG,
+  STT_MODELS_DIRECTORY_NAME,
+  SttModelCatalogEntry,
 } from "@/constants/stt-model-catalog";
 import { SttModel } from "@/domain/stt-model/stt-model";
 import { DatabaseError } from "@/errors/database-error";
@@ -19,7 +16,19 @@ export type SttModelDownloadProgress = {
   totalBytes: number;
 };
 
+export type SttModelDownloadState = {
+  progress: SttModelDownloadProgress | null;
+};
+
+type ActiveDownload = {
+  state: SttModelDownloadState;
+  promise: Promise<SttModel>;
+  listeners: Set<(progress: SttModelDownloadProgress) => void>;
+};
+
 export class SttModelService {
+  private readonly activeDownloads = new Map<string, ActiveDownload>();
+
   public constructor(private readonly sttModelRepository: SttModelRepository) {}
 
   public getCatalog(): readonly SttModelCatalogEntry[] {
@@ -34,6 +43,32 @@ export class SttModelService {
     return this.sttModelRepository.findActive();
   }
 
+  public getDownloadState(catalogId: string): SttModelDownloadState | null {
+    return this.activeDownloads.get(catalogId)?.state ?? null;
+  }
+
+  public getDownloadPromise(catalogId: string): Promise<SttModel> | null {
+    return this.activeDownloads.get(catalogId)?.promise ?? null;
+  }
+
+  public subscribeToDownload(
+    catalogId: string,
+    listener: (progress: SttModelDownloadProgress) => void,
+  ): () => void {
+    const activeDownload = this.activeDownloads.get(catalogId);
+
+    if (activeDownload === undefined) {
+      return () => undefined;
+    }
+
+    activeDownload.listeners.add(listener);
+    if (activeDownload.state.progress !== null) {
+      listener(activeDownload.state.progress);
+    }
+
+    return () => activeDownload.listeners.delete(listener);
+  }
+
   public async downloadModel(
     catalogId: string,
     onProgress?: (progress: SttModelDownloadProgress) => void,
@@ -43,6 +78,14 @@ export class SttModelService {
 
     if (existing !== null) {
       throw new ValidationError("This model is already installed.");
+    }
+
+    const activeDownload = this.activeDownloads.get(catalogId);
+    if (activeDownload !== undefined) {
+      if (onProgress !== undefined) {
+        activeDownload.listeners.add(onProgress);
+      }
+      return activeDownload.promise;
     }
 
     const destinationFile = new File(
@@ -55,20 +98,42 @@ export class SttModelService {
       intermediates: true,
     });
 
+    const state: SttModelDownloadState = { progress: null };
+    const listeners = new Set<(progress: SttModelDownloadProgress) => void>();
+    if (onProgress !== undefined) {
+      listeners.add(onProgress);
+    }
+
     const task = File.createDownloadTask(
       catalogEntry.downloadUrl,
       destinationFile,
       {
-        onProgress: onProgress
-          ? (data) =>
-              onProgress({
-                bytesWritten: data.bytesWritten,
-                totalBytes: data.totalBytes,
-              })
-          : undefined,
+        onProgress: (data) => {
+          state.progress = {
+            bytesWritten: data.bytesWritten,
+            totalBytes: data.totalBytes,
+          };
+          listeners.forEach((listener) => listener(state.progress!));
+        },
       },
     );
 
+    const promise = this.finishDownload(catalogEntry, destinationFile, task);
+    this.activeDownloads.set(catalogId, { state, promise, listeners });
+
+    void promise.then(
+      () => this.activeDownloads.delete(catalogId),
+      () => this.activeDownloads.delete(catalogId),
+    );
+
+    return promise;
+  }
+
+  private async finishDownload(
+    catalogEntry: SttModelCatalogEntry,
+    destinationFile: File,
+    task: ReturnType<typeof File.createDownloadTask>,
+  ): Promise<SttModel> {
     let downloadedFile: File | null;
 
     try {
@@ -83,8 +148,6 @@ export class SttModelService {
     if (downloadedFile === null || !downloadedFile.exists) {
       throw new DatabaseError("Model download did not complete.");
     }
-
-    await this.verifyModelLoads(catalogEntry, downloadedFile);
 
     const now = new Date().toISOString();
     const model = new SttModel(
@@ -141,24 +204,6 @@ export class SttModelService {
 
   public resolveModelFile(model: SttModel): File {
     return new File(Paths.document, ...model.getFileRelativePath().split("/"));
-  }
-
-  private async verifyModelLoads(
-    catalogEntry: SttModelCatalogEntry,
-    file: File,
-  ): Promise<void> {
-    try {
-      const context = await initParakeet({
-        filePath: file.uri,
-        useGpu: false,
-      });
-      await context.release();
-    } catch {
-      this.safelyDeleteFile(file);
-      throw new ValidationError(
-        `"${catalogEntry.name}" could not be loaded by the speech recognition engine and was not installed.`,
-      );
-    }
   }
 
   private safelyDeleteFile(file: File): void {

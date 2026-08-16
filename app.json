@@ -55,7 +55,7 @@
           "forceCxx20": true,
           "enableOpenCLAndHexagon": true
         }
-      ]
+      ],
       "expo-image"
     ],
     "experiments": {

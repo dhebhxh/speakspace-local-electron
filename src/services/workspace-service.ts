@@ -4,6 +4,7 @@ import { WorkspaceNotFoundError } from "@/errors/workspace-not-found-error";
 import { WorkspaceRepository } from "@/repositories/workspace-repository";
 
 export class WorkspaceService {
+  private static readonly defaultWorkspaceId = "workspace-default";
   public constructor(
     private readonly workspaceRepository: WorkspaceRepository,
   ) {}
@@ -21,6 +22,25 @@ export class WorkspaceService {
     const now = new Date().toISOString();
     const workspace = new Workspace(this.createId(), normalizedName, now, now);
 
+    await this.workspaceRepository.create(workspace);
+    return workspace;
+  }
+
+  public async getOrCreateDefaultWorkspace(): Promise<Workspace> {
+    const existing = await this.workspaceRepository.findById(
+      WorkspaceService.defaultWorkspaceId,
+    );
+    if (existing !== null) {
+      return existing;
+    }
+
+    const now = new Date().toISOString();
+    const workspace = new Workspace(
+      WorkspaceService.defaultWorkspaceId,
+      "My Workspace",
+      now,
+      now,
+    );
     await this.workspaceRepository.create(workspace);
     return workspace;
   }

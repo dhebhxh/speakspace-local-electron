@@ -5,11 +5,13 @@ import { WorkspaceRepository } from "@/repositories/workspace-repository";
 import { NoteService } from "@/services/note-service";
 import { SttModelService } from "@/services/stt-model-service";
 import { WorkspaceService } from "@/services/workspace-service";
+import { TranscriptionService } from "@/services/transcription-service";
 
 export class AppContainer {
   public readonly workspaceService: WorkspaceService;
   public readonly noteService: NoteService;
   public readonly sttModelService: SttModelService;
+  public readonly transcriptionService: TranscriptionService;
 
   public constructor(databaseManager: DatabaseManager) {
     const workspaceRepository = new WorkspaceRepository(databaseManager);
@@ -19,5 +21,6 @@ export class AppContainer {
     this.workspaceService = new WorkspaceService(workspaceRepository);
     this.noteService = new NoteService(noteRepository);
     this.sttModelService = new SttModelService(sttModelRepository);
+    this.transcriptionService = new TranscriptionService(this.sttModelService);
   }
 }

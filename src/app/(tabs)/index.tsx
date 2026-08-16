@@ -25,6 +25,9 @@ export default function Index() {
       <Link href="/workspaces" asChild>
         <AppButton label="Open workspaces" />
       </Link>
+      <Link href="/transcription" asChild>
+        <AppButton label="Start transcription" />
+      </Link>
     </View>
   );
 }

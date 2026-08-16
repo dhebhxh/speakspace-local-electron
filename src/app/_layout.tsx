@@ -11,6 +11,7 @@ export default function RootLayout() {
     >
       <Stack screenOptions={{ headerBackTitle: "Back" }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="transcription" options={{ title: "Transcription" }} />
       </Stack>
     </SQLiteProvider>
   );

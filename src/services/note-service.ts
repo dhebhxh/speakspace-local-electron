@@ -22,6 +22,7 @@ export class NoteService {
     workspaceId: string,
     name: string | null,
     transcript: string,
+    audioRelativePath: string | null = null,
   ): Promise<Note> {
     const normalizedWorkspaceId = workspaceId.trim();
     const normalizedTranscript = transcript.trim();
@@ -40,7 +41,7 @@ export class NoteService {
       this.createId(),
       normalizedWorkspaceId,
       normalizedName,
-      null,
+      audioRelativePath,
       normalizedTranscript,
       false,
       null,
@@ -68,9 +69,20 @@ export class NoteService {
     }
 
     await this.noteRepository.delete(id);
+    const audioRelativePath = note.getAudioRelativePath();
+    if (audioRelativePath !== null) {
+      const audioFile = new File(
+        Paths.document,
+        ...audioRelativePath.split("/"),
+      );
+      if (audioFile.exists) {
+        audioFile.delete();
+      }
+    }
   }
 
   private createId(): string {
     return `note-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 }
+import { File, Paths } from "expo-file-system";

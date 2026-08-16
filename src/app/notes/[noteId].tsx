@@ -1,8 +1,11 @@
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { File, Paths } from "expo-file-system";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { appContainer } from "@/application";
+import { AppButton } from "@/components/app-button";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 import { Colors, Radius, Spacing } from "@/constants/theme";
@@ -28,6 +31,13 @@ export default function NoteDetailScreen() {
   const [state, setState] = useState<NoteDetailState>({
     status: "loading",
   });
+  const audioRelativePath =
+    state.status === "success" ? state.note.getAudioRelativePath() : null;
+  const audioUri = audioRelativePath
+    ? new File(Paths.document, ...audioRelativePath.split("/")).uri
+    : null;
+  const player = useAudioPlayer(audioUri);
+  const playerStatus = useAudioPlayerStatus(player);
 
   const loadNote = async () => {
     setState({ status: "loading" });
@@ -103,9 +113,17 @@ export default function NoteDetailScreen() {
                     { backgroundColor: colors.accentSoft },
                   ]}
                 >
-                  <Text style={[styles.audioText, { color: colors.accent }]}>
-                    Audio available
-                  </Text>
+                  <AppButton
+                    label={
+                      playerStatus.playing
+                        ? "Pause recording"
+                        : "Play recording"
+                    }
+                    variant="quiet"
+                    onPress={() =>
+                      playerStatus.playing ? player.pause() : player.play()
+                    }
+                  />
                 </View>
               )}
             </View>

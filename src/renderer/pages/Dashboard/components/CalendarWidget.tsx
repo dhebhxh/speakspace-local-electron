@@ -18,9 +18,32 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
     const [activePopoverDate, setActivePopoverDate] = useState<string | null>(null);
     const [popoverPos, setPopoverPos] = useState<React.CSSProperties | null>(null);
 
-    // Dynamically synchronize with computer system time using OOP Time Utility (DRY)
-    const { year, month, currentDay } = DashboardTimeUtil.getCurrentYearMonth();
-    const { daysInMonth, startDayOfWeek } = DashboardTimeUtil.getMonthCalendarInfo(year, month);
+    // Base system date for styling "today"
+    const { year: currentYear, month: currentMonth, currentDay } = DashboardTimeUtil.getCurrentYearMonth();
+    
+    // UI View state
+    const [viewYear, setViewYear] = useState<number>(currentYear);
+    const [viewMonth, setViewMonth] = useState<number>(currentMonth);
+
+    const { daysInMonth, startDayOfWeek } = DashboardTimeUtil.getMonthCalendarInfo(viewYear, viewMonth);
+
+    const handlePrevMonth = () => {
+        if (viewMonth === 1) {
+            setViewMonth(12);
+            setViewYear(v => v - 1);
+        } else {
+            setViewMonth(v => v - 1);
+        }
+    };
+
+    const handleNextMonth = () => {
+        if (viewMonth === 12) {
+            setViewMonth(1);
+            setViewYear(v => v + 1);
+        } else {
+            setViewMonth(v => v + 1);
+        }
+    };
 
     const weeks = [];
     let currentWeek = [];
@@ -45,7 +68,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
     }
 
     const getDateString = (day: number) => {
-        return DashboardTimeUtil.formatYYYYMMDD(year, month, day);
+        return DashboardTimeUtil.formatYYYYMMDD(viewYear, viewMonth, day);
     };
 
     const getTodosForDate = (dateStr: string) => {
@@ -59,7 +82,11 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
             <div className="calendar-header">
                 <h3 className="calendar-title">📅 {t('dashboard.calendar.title')}</h3>
                 <div className="calendar-month-badge">
-                    {DashboardTimeUtil.formatYearMonthDisplay(year, month, i18n.language)}
+                    <button className="calendar-nav-btn" onClick={handlePrevMonth}>&lt;</button>
+                    <span className="calendar-month-text">
+                        {DashboardTimeUtil.formatYearMonthDisplay(viewYear, viewMonth, i18n.language)}
+                    </span>
+                    <button className="calendar-nav-btn" onClick={handleNextMonth}>&gt;</button>
                 </div>
             </div>
 
@@ -80,7 +107,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
                                 const dateStr = getDateString(day);
                                 const dayTodos = getTodosForDate(dateStr);
                                 const hasTodos = dayTodos.length > 0;
-                                const isToday = day === currentDay;
+                                const isToday = day === currentDay && viewYear === currentYear && viewMonth === currentMonth;
 
                                 return (
                                     <div
@@ -149,7 +176,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({
                                 setActivePopoverDate(null);
                                 setPopoverPos(null);
                             }}>
-                                ✕ {t('dashboard.calendar.popover.close')}
+                                ✕
                             </button>
                         </div>
                         {popoverTodos.map(todo => (

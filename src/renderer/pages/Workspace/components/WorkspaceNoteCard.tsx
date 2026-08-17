@@ -28,7 +28,7 @@ export default function WorkspaceNoteCard({
   onContextMenu,
   onGenerate,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const handleExport = (format: 'word' | 'pdf') => {
     window.electron.export.note({
       title: note.name || t('workspace.note.unnamed'),
@@ -81,7 +81,7 @@ export default function WorkspaceNoteCard({
             {t('workspace.note.exportPdf')}
           </button>
           <time dateTime={note.updated_at} title={t('workspace.detail.updated')}>
-            {WorkspaceController.formatDate(note.updated_at, 'short')}
+            {WorkspaceController.formatDate(note.updated_at, 'short', i18n.language)}
           </time>
         </div>
       </header>
@@ -143,9 +143,9 @@ export default function WorkspaceNoteCard({
         />
 
         <section className="workspace-conversation-section">
-          <h3>💬 AI 对话</h3>
+          <h3>💬 {t('workspace.note.aiChat', 'AI 对话')}</h3>
           {note.conversations.length === 0 ? (
-            <span className="workspace-content-empty">暂无</span>
+            <span className="workspace-content-empty">{t('workspace.knowledge.empty', '暂无')}</span>
           ) : (
             <div className="workspace-content-stack">
               {note.conversations.map((conversation) => (

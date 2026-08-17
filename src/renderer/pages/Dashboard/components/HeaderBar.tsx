@@ -24,9 +24,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                 </div>
 
                 <div className="header-actions">
-                    <button className="btn-secondary" onClick={onNavigateSettings}>
-                        <span>⚙️ {t('dashboard.action.settings')}</span>
-                    </button>
                     <button className="btn-primary create-note-btn" onClick={onCreateNote}>
                         <span>+ {t('dashboard.action.newNote')}</span>
                     </button>

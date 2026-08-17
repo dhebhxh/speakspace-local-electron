@@ -90,7 +90,7 @@ export class DashboardTimeUtil {
         try {
             return new Intl.DateTimeFormat(locale, {
                 year: 'numeric',
-                month: 'long'
+                month: 'short'
             }).format(new Date(year, month - 1, 1));
         } catch {
             return `${year}-${String(month).padStart(2, '0')}`;

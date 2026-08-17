@@ -78,7 +78,7 @@ export const DashboardPage: React.FC = () => {
         try {
             await window.electron.workspace.deleteNote(noteId);
             setNotes(prev => prev.filter(n => n.getId() !== noteId));
-            setTodos(prev => prev.filter(t => t.getNoteId() !== noteId));
+            setTodos(prev => prev.filter(t => t.getAssociatedNoteId() !== noteId));
         } catch (e) {
             console.error("Failed to delete note", e);
         }

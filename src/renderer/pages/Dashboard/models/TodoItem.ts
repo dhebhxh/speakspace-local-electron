@@ -48,6 +48,14 @@ export class TodoItem extends Entity {
     }
 
     public isOnDate(targetDateString: string): boolean {
-        return this.dateString === targetDateString;
+        if (!this.dateString) return false;
+        const normalize = (d: string) => {
+            const parts = d.split('-');
+            if (parts.length === 3) {
+                return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            }
+            return d;
+        };
+        return normalize(this.dateString) === targetDateString;
     }
 }

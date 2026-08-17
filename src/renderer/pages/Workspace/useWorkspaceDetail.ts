@@ -84,10 +84,8 @@ export default function useWorkspaceDetail() {
     [workspaceId],
   );
 
-  const renameWorkspace = useCallback(async () => {
+  const renameWorkspace = useCallback(async (nextName: string) => {
     if (!workspace) return;
-    // eslint-disable-next-line no-alert
-    const nextName = window.prompt('输入新的工作空间名称', workspace.name);
     if (!nextName?.trim() || nextName.trim() === workspace.name) return;
     try {
       setError('');
@@ -100,10 +98,6 @@ export default function useWorkspaceDetail() {
 
   const deleteWorkspace = useCallback(async () => {
     if (!workspace) return;
-    // eslint-disable-next-line no-alert
-    if (!window.confirm(`确定删除“${workspace.name}”及其中的全部笔记吗？`)) {
-      return;
-    }
     try {
       await workspaceController.deleteWorkspace(workspace.id);
       navigate('/');

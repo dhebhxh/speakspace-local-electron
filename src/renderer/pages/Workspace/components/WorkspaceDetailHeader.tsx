@@ -18,7 +18,7 @@ export default function WorkspaceDetailHeader({
   onRename,
   onDelete,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   return (
     <>
       <Link className="workspace-back-link" to="/">
@@ -36,10 +36,10 @@ export default function WorkspaceDetailHeader({
               <Pin size={14} style={{ marginRight: 4 }} /> {workspace.pinned_count}
             </span>
             <span title={t('workspace.detail.lastOpened')}>
-              <Clock size={14} style={{ marginRight: 4 }} /> {WorkspaceController.formatDate(workspace.recent_at, 'short')}
+              <Clock size={14} style={{ marginRight: 4 }} /> {WorkspaceController.formatDate(workspace.recent_at, 'short', i18n.language)}
             </span>
             <span title={t('workspace.detail.updated')}>
-              <Activity size={14} style={{ marginRight: 4 }} /> {WorkspaceController.formatDate(workspace.updated_at, 'short')}
+              <Activity size={14} style={{ marginRight: 4 }} /> {WorkspaceController.formatDate(workspace.updated_at, 'short', i18n.language)}
             </span>
           </p>
         </div>

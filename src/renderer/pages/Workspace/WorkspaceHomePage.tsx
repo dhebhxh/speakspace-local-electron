@@ -25,7 +25,7 @@ export default function WorkspaceHomePage({
   limit,
   directory,
 }: WorkspaceHomePageProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [items, setItems] = useState<WorkspaceItem[]>([]);
   const [name, setName] = useState('');
@@ -172,7 +172,7 @@ export default function WorkspaceHomePage({
                 </small>
                 <time dateTime={item.recent_at}>
                   {item.last_opened_at ? t('workspace.opened') : t('workspace.created')}{' '}
-                  {WorkspaceController.formatDate(item.recent_at, 'long')}
+                  {WorkspaceController.formatDate(item.recent_at, 'long', i18n.language)}
                 </time>
               </span>
               <span className="workspace-home-card-arrow" aria-hidden="true">

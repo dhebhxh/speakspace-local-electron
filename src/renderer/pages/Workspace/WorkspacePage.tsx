@@ -1,12 +1,12 @@
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, Trash2, MessagesSquare } from 'lucide-react';
+import { Search } from 'lucide-react';
 import WorkspaceDetailHeader from './components/WorkspaceDetailHeader';
 import WorkspaceNoteCard from './components/WorkspaceNoteCard';
 import WorkspaceSemanticSearch from './components/WorkspaceSemanticSearch';
 import WorkspaceMultiNoteModal from './components/WorkspaceMultiNoteModal';
 import useWorkspaceDetail from './useWorkspaceDetail';
-import React, { useState, useEffect } from 'react';
 import './WorkspacePage.css';
 
 /**
@@ -16,9 +16,15 @@ import './WorkspacePage.css';
 export default function WorkspacePage() {
   const { t } = useTranslation();
   const detail = useWorkspaceDetail();
+<<<<<<< HEAD
   const { 
     workspace, loading, error, status, query, setQuery, 
     visibleNotes: filteredNotes, selectedNoteIds, toggleNoteSelection
+=======
+  const {
+    workspace, loading, error, status, query, setQuery,
+    visibleNotes, selectedNoteIds, toggleNoteSelection,
+>>>>>>> 99460c275682ba4f9cc8bb7fc7432894919fbd3e
   } = detail;
   const [showMultiModal, setShowMultiModal] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, noteId: number } | null>(null);
@@ -101,7 +107,7 @@ export default function WorkspacePage() {
         />
       </div>
 
-      {filteredNotes.length === 0 && (
+      {visibleNotes.length === 0 && (
         <div className="workspace-detail-empty">
           <strong>{query ? t('workspace.detail.emptySearch') : t('workspace.detail.empty')}</strong>
           <span>{query ? t('workspace.detail.emptySearchDesc') : t('workspace.detail.emptyDesc')}</span>
@@ -123,7 +129,7 @@ export default function WorkspacePage() {
       )}
 
       <div className="workspace-detail-notes">
-        {filteredNotes.map((note) => (
+        {visibleNotes.map((note) => (
           <WorkspaceNoteCard
             generating={detail.generatingNoteId === note.id}
             key={note.id}

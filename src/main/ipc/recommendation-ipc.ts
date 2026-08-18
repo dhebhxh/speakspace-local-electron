@@ -17,6 +17,11 @@ ipcMain.handle('Recommendation:getWorkspace', () =>
 );
 
 // 设置页展示本机硬件，供用户自行判断该选哪档模型。
-ipcMain.handle('Recommendation:getSystemProfile', () =>
-  SystemProfileService.detect(),
+// forceRefresh 时先清掉显卡探测缓存，「重新检测」按钮才是真的重新检测。
+ipcMain.handle(
+  'Recommendation:getSystemProfile',
+  (_event, forceRefresh: unknown) => {
+    if (forceRefresh === true) SystemProfileService.invalidateGpuCache();
+    return SystemProfileService.detect();
+  },
 );

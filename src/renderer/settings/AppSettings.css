@@ -1,70 +1,63 @@
-/* 这三行是整套 rem 字号刻度的锚点，必须保持 px：
-   --fs-* 全部是 rem，若这里也写成 rem 就会自我引用，
-   而且三档会塌缩成同一个值，「设置 → 输出文字字号」随之失效。 */
-html[data-font-size='small'] { font-size: 14px; }
-html[data-font-size='medium'] { font-size: 16px; }
-html[data-font-size='large'] { font-size: 18px; }
+/* =========================================================
+   SpeakSpace · 主题微调
+   ---------------------------------------------------------
+   明暗两套颜色令牌和字号锚点都已经收进 styles/tokens.css，
+   这里只放「令牌表达不了」的差异：混合模式、材质强度、
+   以及切换主题时的过渡。
 
-html[data-theme='dark'] { color-scheme: dark; }
-html[data-theme='light'] {
-  color-scheme: light;
-  --bg: #eef2ff;
-  --surface: rgba(255, 255, 255, 0.9);
-  --surface-strong: #ffffff;
-  --surface-soft: rgba(79, 70, 229, 0.08);
-  --text: #172033;
-  --muted: #64708b;
-  --accent: #6757e8;
-  --accent-strong: #7c3aed;
-  --border: rgba(30, 41, 59, 0.14);
-  --shadow: 0 28px 90px rgba(72, 84, 128, 0.18);
+   注意：不要再往这里加 html[data-theme='light'] .某个组件 {...}
+   这类逐个组件的覆盖。那是旧写法，等于把同一个组件的颜色写两遍，
+   漏一处就会出现「深色能看清、浅色看不清」。组件请直接引用令牌。
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   切换主题时的交叉淡入
+   常驻的全局 transition 会拖慢所有交互，也会和各组件自己的
+   hover 过渡打架。所以只在切换那一瞬间由 JS 挂上 .theme-transition，
+   过渡结束后立刻摘掉。
+   --------------------------------------------------------- */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition:
+    background-color var(--dur-slow) var(--ease-smooth),
+    border-color var(--dur-slow) var(--ease-smooth),
+    color var(--dur-slow) var(--ease-smooth),
+    fill var(--dur-slow) var(--ease-smooth),
+    box-shadow var(--dur-slow) var(--ease-smooth) !important;
+  transition-delay: 0ms !important;
 }
 
-html[data-theme='light'] body {
-  background: radial-gradient(circle at top left, rgba(129, 140, 248, 0.24), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(244, 114, 182, 0.15), transparent 24%),
-    linear-gradient(180deg, #f8faff 0%, #e8edfb 100%);
+/* ---------------------------------------------------------
+   浅色下的材质调整
+   噪点在深色上用 overlay 提颗粒感，在浅色上会把画面洗白，
+   要换成 multiply 才是「纸纹」而不是「雾」。
+   --------------------------------------------------------- */
+html[data-theme='light'] .fx-grain::after,
+html[data-theme='light'] .fx-ambient__grain {
+  mix-blend-mode: multiply;
 }
 
-html[data-theme='light'] .sidebar {
-  background: rgba(248, 250, 255, 0.94);
-  box-shadow: inset -1px 0 0 var(--border), var(--shadow);
-}
-
-html[data-theme='light'] .sidebar h2,
-html[data-theme='light'] .content-area h1,
-html[data-theme='light'] .content-area h2,
-html[data-theme='light'] .content-area h3 {
-  color: var(--text);
-}
-
-html[data-theme='light'] .content-area {
-  background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.72), transparent 24%),
-    rgba(238, 242, 255, 0.78);
-}
-
+/* 浅色的玻璃面板需要更明确的一道底边，否则白底叠白卡片会糊在一起 */
 html[data-theme='light'] .main-view,
 html[data-theme='light'] .ask-ai,
 html[data-theme='light'] .transcription-page,
-html[data-theme='light'] .workspace-page {
-  background: rgba(255, 255, 255, 0.72);
-  border-color: var(--border);
-  box-shadow: var(--shadow);
+html[data-theme='light'] .workspace-page,
+html[data-theme='light'] .fx-glass,
+html[data-theme='light'] .fx-glass-strong {
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 var(--highlight),
+    inset 0 -1px 0 rgba(24, 40, 36, 0.06);
 }
 
-/* Workspace 源文件保持不动，仅通过通用主题覆盖现有深色表面。 */
-html[data-theme='light'] .workspace-header,
-html[data-theme='light'] .workspace-detail {
-  background: linear-gradient(135deg, rgba(238, 242, 255, 0.96), rgba(255, 255, 255, 0.9));
-  border-color: var(--border);
+/* 浅色下的极光要收敛一些：同样的透明度在白底上会显得脏 */
+html[data-theme='light'] .fx-ambient__blob {
+  filter: blur(110px);
 }
 
-html[data-theme='light'] .workspace-create input,
-html[data-theme='light'] .workspace-search input {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.9);
-}
-
-html[data-theme='light'] .workspace-note {
-  background: rgba(99, 102, 241, 0.05);
+/* 浅色的侧栏保持接近纯白，靠右侧那道渐变亮边和内容区分层 */
+html[data-theme='light'] .sidebar {
+  background: color-mix(in srgb, #ffffff 72%, transparent);
 }

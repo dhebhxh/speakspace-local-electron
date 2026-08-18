@@ -32,5 +32,5 @@
 }
 
 .copy-control .copy-button.is-copied {
-  color: #22c55e;
+  color: var(--success);
 }

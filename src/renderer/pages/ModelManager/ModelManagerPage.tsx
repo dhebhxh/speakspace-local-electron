@@ -13,6 +13,7 @@ import {
   setPreferredSpeakerId,
 } from '../../tts/TTSPreferences';
 import useTTSPlayback from '../../tts/useTTSPlayback';
+import ModelModuleSkeleton from './components/ModelModuleSkeleton';
 import useModelManager from './useModelManager';
 import './ModelManagerPage.css';
 
@@ -126,171 +127,169 @@ export function ModelManagerPage() {
         </button>
       </header>
 
-      {/* 首屏要等 Ollama 起来 + 四类模型列表，几秒的空白必须有反馈 */}
-      {manager.initialLoading && (
-        <div className="app-loading-panel" role="status">
-          <span className="app-spinner" aria-hidden="true" />
-          <span>{t('modelManager.loading')}</span>
-          <small>{t('modelManager.loadingHint')}</small>
-        </div>
-      )}
-
-      <div className="model-module-list" hidden={manager.initialLoading}>
-        <ModelModule
-          actions={null}
-          busy={busy}
-          error={manager.errors.stt}
-          hint={t('modelManager.stt.hint')}
-          icon="stt"
-          name="STT"
-          progress={manager.progress.stt}
-          ready={Boolean(transcription?.ready || parakeet?.ready)}
-          readyHint={
-            transcription?.ready || parakeet?.ready
-              ? t('modelManager.status.ready')
-              : t('modelManager.status.notReady')
-          }
-          runtimes={runtimes.stt}
-        >
-          <ModelSelect
-            busyId={manager.busyId}
-            label={t('modelManager.stt.label')}
-            onDelete={manager.stt.remove}
-            onDownload={manager.stt.download}
-            onSelect={manager.stt.select}
-            options={sttOptions}
-            placeholder={t('modelManager.select.placeholder')}
-          />
-        </ModelModule>
-
-        <ModelModule
-          busy={busy}
-          error={manager.errors.tts}
-          hint={t('modelManager.tts.hint')}
-          icon="tts"
-          name="TTS"
-          progress={manager.progress.tts}
-          ready={Boolean(speech?.runtimeReady)}
-          readyHint={
-            speech?.runtimeReady
-              ? t('modelManager.tts.ready')
-              : t('modelManager.status.notReady')
-          }
-          runtimes={runtimes.tts}
-          actions={
-            speech?.runtimeReady && speakerId !== null ? (
-              <button
-                aria-label={
-                  playback.playing
-                    ? t('modelManager.tts.stopPreview')
-                    : t('modelManager.tts.startPreview')
-                }
-                className="model-icon-button"
-                disabled={playback.loading}
-                onClick={() =>
-                  playback.playing
-                    ? playback.stop()
-                    : playback.speak(
-                        t('modelManager.tts.previewText'),
-                        speakerId,
-                      )
-                }
-                title={
-                  playback.playing
-                    ? t('modelManager.tts.stopPreview')
-                    : t('modelManager.tts.startPreview')
-                }
-                type="button"
-              >
-                {playback.loading ? (
-                  <RefreshCw className="icon spin" size={16} />
-                ) : playback.playing ? (
-                  <Square className="icon" size={16} />
-                ) : (
-                  <Play className="icon" size={16} />
-                )}
-              </button>
-            ) : null
-          }
-        >
-          <div className="model-selectors">
+      {/* 加载中只挂骨架，不要把真正的模块树用 hidden 藏在后面 ——
+          hidden 只是视觉隐藏，React 该建的 DOM 一个都不少，
+          切换到本页的那一帧就得把整棵树渲染完，卡顿就是这么来的。 */}
+      {manager.initialLoading ? (
+        <ModelModuleSkeleton />
+      ) : (
+        <div className="model-module-list anim-stagger">
+          <ModelModule
+            actions={null}
+            busy={busy}
+            error={manager.errors.stt}
+            hint={t('modelManager.stt.hint')}
+            icon="stt"
+            name="STT"
+            progress={manager.progress.stt}
+            ready={Boolean(transcription?.ready || parakeet?.ready)}
+            readyHint={
+              transcription?.ready || parakeet?.ready
+                ? t('modelManager.status.ready')
+                : t('modelManager.status.notReady')
+            }
+            runtimes={runtimes.stt}
+          >
             <ModelSelect
               busyId={manager.busyId}
-              label={t('modelManager.tts.label')}
-              onDelete={manager.tts.remove}
-              onDownload={manager.tts.download}
-              onSelect={manager.tts.select}
-              options={ttsOptions}
+              label={t('modelManager.stt.label')}
+              onDelete={manager.stt.remove}
+              onDownload={manager.stt.download}
+              onSelect={manager.stt.select}
+              options={sttOptions}
               placeholder={t('modelManager.select.placeholder')}
             />
-            {speech?.runtimeReady && speakerOptions.length > 0 && (
+          </ModelModule>
+
+          <ModelModule
+            busy={busy}
+            error={manager.errors.tts}
+            hint={t('modelManager.tts.hint')}
+            icon="tts"
+            name="TTS"
+            progress={manager.progress.tts}
+            ready={Boolean(speech?.runtimeReady)}
+            readyHint={
+              speech?.runtimeReady
+                ? t('modelManager.tts.ready')
+                : t('modelManager.status.notReady')
+            }
+            runtimes={runtimes.tts}
+            actions={
+              speech?.runtimeReady && speakerId !== null ? (
+                <button
+                  aria-label={
+                    playback.playing
+                      ? t('modelManager.tts.stopPreview')
+                      : t('modelManager.tts.startPreview')
+                  }
+                  className="model-icon-button"
+                  disabled={playback.loading}
+                  onClick={() =>
+                    playback.playing
+                      ? playback.stop()
+                      : playback.speak(
+                          t('modelManager.tts.previewText'),
+                          speakerId,
+                        )
+                  }
+                  title={
+                    playback.playing
+                      ? t('modelManager.tts.stopPreview')
+                      : t('modelManager.tts.startPreview')
+                  }
+                  type="button"
+                >
+                  {playback.loading ? (
+                    <RefreshCw className="icon spin" size={16} />
+                  ) : playback.playing ? (
+                    <Square className="icon" size={16} />
+                  ) : (
+                    <Play className="icon" size={16} />
+                  )}
+                </button>
+              ) : null
+            }
+          >
+            <div className="model-selectors">
               <ModelSelect
-                busyId={null}
-                label={t('modelManager.tts.roleLabel')}
-                onDelete={null}
-                onDownload={null}
-                onSelect={selectSpeaker}
-                options={speakerOptions}
-                placeholder={t('modelManager.tts.rolePlaceholder')}
+                busyId={manager.busyId}
+                label={t('modelManager.tts.label')}
+                onDelete={manager.tts.remove}
+                onDownload={manager.tts.download}
+                onSelect={manager.tts.select}
+                options={ttsOptions}
+                placeholder={t('modelManager.select.placeholder')}
               />
-            )}
-          </div>
-        </ModelModule>
+              {speech?.runtimeReady && speakerOptions.length > 0 && (
+                <ModelSelect
+                  busyId={null}
+                  label={t('modelManager.tts.roleLabel')}
+                  onDelete={null}
+                  onDownload={null}
+                  onSelect={selectSpeaker}
+                  options={speakerOptions}
+                  placeholder={t('modelManager.tts.rolePlaceholder')}
+                />
+              )}
+            </div>
+          </ModelModule>
 
-        <ModelModule
-          actions={null}
-          busy={busy}
-          error={manager.errors.embedding}
-          hint={t('modelManager.embedding.hint')}
-          icon="embedding"
-          name="Embedding"
-          progress={manager.progress.embedding}
-          ready={Boolean(manager.embedding?.installed)}
-          readyHint={
-            manager.embedding?.installed
-              ? t('modelManager.embedding.installed')
-              : t('modelManager.embedding.notInstalled')
-          }
-          runtimes={runtimes.embedding}
-        >
-          <ModelSelect
-            busyId={manager.busyId}
-            label={t('modelManager.embedding.label')}
-            onDelete={null}
-            onDownload={manager.installEmbedding}
-            onSelect={() => {}}
-            options={embeddingOptions}
-            placeholder={t('modelManager.embedding.placeholder')}
-          />
-        </ModelModule>
+          <ModelModule
+            actions={null}
+            busy={busy}
+            error={manager.errors.embedding}
+            hint={t('modelManager.embedding.hint')}
+            icon="embedding"
+            name="Embedding"
+            progress={manager.progress.embedding}
+            ready={Boolean(manager.embedding?.installed)}
+            readyHint={
+              manager.embedding?.installed
+                ? t('modelManager.embedding.installed')
+                : t('modelManager.embedding.notInstalled')
+            }
+            runtimes={runtimes.embedding}
+          >
+            <ModelSelect
+              busyId={manager.busyId}
+              label={t('modelManager.embedding.label')}
+              onDelete={null}
+              onDownload={manager.installEmbedding}
+              onSelect={() => {}}
+              options={embeddingOptions}
+              placeholder={t('modelManager.embedding.placeholder')}
+            />
+          </ModelModule>
 
-        <ModelModule
-          actions={null}
-          busy={busy}
-          error={manager.errors.llm}
-          hint={t('modelManager.llm.hint')}
-          icon="llm"
-          name="LLM"
-          progress={manager.progress.llm}
-          ready={Boolean(languageModel?.runtimeReady)}
-          readyHint={
-            languageModel?.runtimeReady
-              ? t('modelManager.llm.ready')
-              : t('modelManager.status.notReady')
-          }
-          runtimes={runtimes.llm}
-        >
-          <ModelSelect
-            busyId={manager.busyId}
-            label={t('modelManager.llm.label')}
-            onDelete={manager.llm.remove}
-            onDownload={manager.llm.download}
-            onSelect={manager.llm.select}
-            options={llmOptions}
-            placeholder={t('modelManager.select.placeholder')}
-          />
-        </ModelModule>
-      </div>
+          <ModelModule
+            actions={null}
+            busy={busy}
+            error={manager.errors.llm}
+            hint={t('modelManager.llm.hint')}
+            icon="llm"
+            name="LLM"
+            progress={manager.progress.llm}
+            ready={Boolean(languageModel?.runtimeReady)}
+            readyHint={
+              languageModel?.runtimeReady
+                ? t('modelManager.llm.ready')
+                : t('modelManager.status.notReady')
+            }
+            runtimes={runtimes.llm}
+          >
+            <ModelSelect
+              busyId={manager.busyId}
+              label={t('modelManager.llm.label')}
+              onDelete={manager.llm.remove}
+              onDownload={manager.llm.download}
+              onSelect={manager.llm.select}
+              options={llmOptions}
+              placeholder={t('modelManager.select.placeholder')}
+            />
+          </ModelModule>
+        </div>
+      )}
 
       {playback.error && (
         <p className="model-manager-note" role="alert">

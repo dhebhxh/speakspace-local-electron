@@ -1,4 +1,10 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import {
+  CSSProperties,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { WorkspaceController, WorkspaceItem } from './WorkspaceController';
@@ -7,6 +13,7 @@ import {
   WorkspaceSuggestion,
   WorkspaceSuggestionController,
 } from './WorkspaceSuggestionController';
+import useSpotlight from '../../components/useSpotlight';
 import './WorkspaceHomePage.css';
 
 const workspaceController = new WorkspaceController();
@@ -27,6 +34,9 @@ export default function WorkspaceHomePage({
 }: WorkspaceHomePageProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  // 卡片跟随光标的柔光。写的是 CSS 变量，不进 React 状态，
+  // 因此 pointermove 再密也不会触发重渲染。
+  const spotlight = useSpotlight();
   const [items, setItems] = useState<WorkspaceItem[]>([]);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -172,10 +182,15 @@ export default function WorkspaceHomePage({
         <div className="workspace-home-grid">
           {items.map((item, index) => (
             <button
-              className="workspace-home-card"
+              className="workspace-home-card fx-spotlight fx-sheen"
               key={item.id}
               onClick={() => navigate(`/Workspace/${item.id}`)}
               type="button"
+              // 错位进场的序号。上限 10 是故意的：再往后延迟会长到
+              // 让人觉得列表在卡，超出的都跟第 10 张一起出现。
+              style={{ '--i': Math.min(index, 10) } as CSSProperties}
+              onPointerMove={spotlight.onPointerMove}
+              onPointerLeave={spotlight.onPointerLeave}
             >
               <span className="workspace-home-card-index" aria-hidden="true">
                 {String(index + 1).padStart(2, '0')}

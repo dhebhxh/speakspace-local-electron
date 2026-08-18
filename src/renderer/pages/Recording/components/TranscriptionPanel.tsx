@@ -5,6 +5,7 @@ import TranscriptionController from '../TranscriptionController';
 import useRecordingSession from '../useRecordingSession';
 import { getLanguageLabel } from '../TranscriptionLanguageOptions';
 import useTranscriptionController from '../useTranscriptionController';
+import SoundWave from '../../../components/SoundWave';
 
 export default function TranscriptionPanel(props: {
   session: RecordingSession;
@@ -105,14 +106,27 @@ export default function TranscriptionPanel(props: {
     emptyTranscriptText = t('recording.panel.empty.firstSegment');
   }
 
+  // 正在录 / 正在转写时给面板挂上 is-live：状态徽章里的声波开始起伏，
+  // 面板边缘的辉光环开始转。空闲和工作中必须一眼能分辨。
+  const isLive =
+    snapshot.state === RecordingState.Recording ||
+    (fileMode && job?.status === 'processing');
+
   return (
-    <section className="recording-panel">
+    <section className={`recording-panel${isLive ? ' is-live' : ''}`}>
       <div className="recording-panel__header">
         <div>
           <p className="recording-panel__eyebrow">LOCAL AUDIO</p>
           <h1>{t('recording.panel.title')}</h1>
         </div>
-        <span className={`recording-state recording-state--${displayState}`}>
+        {/* 辉光环挂在徽章上而不是整块面板上：面板没有圆角也没有背景，
+            套上去会是一圈方形的光，很脏。徽章是个有底色的胶囊，正合适。 */}
+        <span
+          className={`recording-state recording-state--${displayState} fx-halo${
+            isLive ? ' is-live' : ''
+          }`}
+        >
+          <SoundWave active={isLive} bars={5} size={13} />
           {displayState}
         </span>
       </div>

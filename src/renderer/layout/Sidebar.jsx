@@ -1,7 +1,8 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useLayoutEffect, useRef, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { RoutePath } from '../router/RouteManager';
+import SoundWave from '../components/SoundWave';
 
 const svgProps = {
   width: 20,
@@ -80,13 +81,57 @@ function ToggleIcon() {
   );
 }
 
+/**
+ * 量出当前选中项在导航里的位置，交给那块会滑动的高亮背景。
+ *
+ * 不用「第几项 × 固定行高」来算：行高会随「设置 → 输出文字字号」
+ * 变，也会随 i18n 文案换行变，算出来必错位。直接读实际 DOM 尺寸，
+ * 再用 ResizeObserver 跟住后续变化。
+ */
+function useActiveNavIndicator(pathname) {
+  const trackRef = useRef(null);
+  const [indicator, setIndicator] = useState({ y: 0, h: 0, ready: false });
+
+  useLayoutEffect(() => {
+    const track = trackRef.current;
+    if (!track) return undefined;
+
+    const measure = () => {
+      const active = track.querySelector('a.active');
+      if (!active) {
+        setIndicator((prev) => ({ ...prev, ready: false }));
+        return;
+      }
+      setIndicator({
+        y: active.offsetTop,
+        h: active.offsetHeight,
+        ready: true,
+      });
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(track);
+    return () => observer.disconnect();
+  }, [pathname]);
+
+  return { trackRef, indicator };
+}
+
 export default function Sidebar({ collapsed, onToggle }) {
   const { t } = useTranslation();
+  const { pathname } = useLocation();
+  const { trackRef, indicator } = useActiveNavIndicator(pathname);
 
   return (
     <aside className={`sidebar${collapsed ? ' is-collapsed' : ''}`}>
       <div className="sidebar-brand">
-        <h2 className="sidebar-wordmark">SpeakSpace</h2>
+        <h2 className="sidebar-wordmark">
+          <span className="sidebar-brand-mark">
+            <SoundWave bars={4} size={14} />
+          </span>
+          <span className="sidebar-wordmark-text">SpeakSpace</span>
+        </h2>
         <button
           type="button"
           className="sidebar-toggle"
@@ -98,21 +143,39 @@ export default function Sidebar({ collapsed, onToggle }) {
         </button>
       </div>
 
-      <nav aria-label={t('sidebar.nav')}>
-        <ul>
-          {NAV_ITEMS.map((item) => {
-            const label = t(`sidebar.${item.key}`);
-            return (
-              <li key={item.to}>
-                <NavLink to={item.to} end={item.end} title={label}>
-                  <span className="nav-icon">{ICONS[item.key]}</span>
-                  <span className="nav-label">{label}</span>
-                </NavLink>
-              </li>
-            );
-          })}
-        </ul>
+      {/* data-tour 是手把手引导的锚点（见 onboarding/OnboardingSteps.ts）。
+          用属性而不是类名：类名随时会因为改样式被换掉，属性一眼就能看出
+          「这里被引导引用了」。 */}
+      <nav aria-label={t('sidebar.nav')} data-tour="sidebar-nav">
+        <div className="sidebar-nav-track" ref={trackRef}>
+          <span
+            className={`sidebar-nav-indicator${indicator.ready ? ' is-ready' : ''}`}
+            style={{
+              '--nav-y': `${indicator.y}px`,
+              '--nav-h': `${indicator.h}px`,
+            }}
+            aria-hidden="true"
+          />
+          <ul>
+            {NAV_ITEMS.map((item) => {
+              const label = t(`sidebar.${item.key}`);
+              return (
+                <li key={item.to}>
+                  <NavLink to={item.to} end={item.end} title={label}>
+                    <span className="nav-icon">{ICONS[item.key]}</span>
+                    <span className="nav-label">{label}</span>
+                  </NavLink>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </nav>
+
+      <div className="sidebar-footer" title={t('sidebar.localRuntime')}>
+        <span className="sidebar-status-dot anim-breathe" aria-hidden="true" />
+        <span>{t('sidebar.localRuntime')}</span>
+      </div>
     </aside>
   );
 }

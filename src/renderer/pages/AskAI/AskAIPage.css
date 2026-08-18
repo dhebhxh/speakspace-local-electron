@@ -7,6 +7,8 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--surface);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   box-shadow: var(--shadow);
 }
 

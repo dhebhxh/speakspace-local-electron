@@ -54,8 +54,8 @@ export const MetricCardsGrid: React.FC<MetricCardsGridProps> = ({
       </div>
 
       {/* 🟣 Card 3: Transcribed Total Words (Static Display) */}
-      <div className="metric-card card-purple static-card">
-        <div className="card-icon-wrapper icon-purple">📝</div>
+      <div className="metric-card card-brass static-card">
+        <div className="card-icon-wrapper icon-brass">📝</div>
         <div className="card-content">
           <div className="card-value">
             {stats.getTotalTranscribedWordCount().toLocaleString()}

@@ -139,7 +139,7 @@
 }
 
 .model-option-state.is-local {
-  color: #4ade80;
+  color: var(--success);
 }
 
 .model-option.is-active .model-option-state {
@@ -220,7 +220,7 @@
 }
 
 .model-icon-button.is-danger:hover:not(:disabled) {
-  color: #fb7185;
+  color: var(--danger);
 }
 
 .model-icon-button:disabled {

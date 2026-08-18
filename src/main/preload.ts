@@ -192,8 +192,13 @@ const electronHandler = {
     getWorkspace() {
       return ipcRenderer.invoke('Recommendation:getWorkspace');
     },
-    getSystemProfile() {
-      return ipcRenderer.invoke('Recommendation:getSystemProfile');
+    /**
+     * 显卡探测结果在主进程里是缓存的（探测一次要好几秒）。
+     * forceRefresh 只给设置页那个「重新检测」按钮用，
+     * 普通页面加载一律走缓存。
+     */
+    getSystemProfile(forceRefresh = false) {
+      return ipcRenderer.invoke('Recommendation:getSystemProfile', forceRefresh);
     },
   },
 

@@ -41,7 +41,7 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
       case 'discussion':
         return 'badge-green';
       case 'brainstorm':
-        return 'badge-purple';
+        return 'badge-brass';
       default:
         return 'badge-gray';
     }

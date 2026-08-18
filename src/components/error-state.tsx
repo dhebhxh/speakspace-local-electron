@@ -15,7 +15,9 @@ export function ErrorState({ message, onRetry }: ErrorStateProps) {
 
   return (
     <View style={[styles.container, { borderColor: colors.border }]}>
-      <Text style={[styles.message, { color: colors.danger }]}>{message}</Text>
+      <Text selectable style={[styles.message, { color: colors.danger }]}>
+        {message}
+      </Text>
       <AppButton label="Try again" variant="secondary" onPress={onRetry} />
     </View>
   );
@@ -31,6 +33,7 @@ const styles = StyleSheet.create({
   },
   message: {
     fontSize: 15,
+    lineHeight: 21,
     textAlign: "center",
   },
 });

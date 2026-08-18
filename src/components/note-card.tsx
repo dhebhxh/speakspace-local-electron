@@ -19,6 +19,7 @@ export function NoteCard({ note, onPress }: NoteCardProps) {
   return (
     <Pressable
       accessibilityRole="button"
+      hitSlop={4}
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
@@ -70,6 +71,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 17,
     fontWeight: "700",
+    minWidth: 0,
   },
   pin: {
     fontSize: 12,
@@ -81,6 +83,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
     justifyContent: "space-between",
   },
   meta: {

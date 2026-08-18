@@ -3,7 +3,10 @@ import { Stack, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +14,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
@@ -25,6 +29,7 @@ export default function TranscriptionScreen() {
   const router = useRouter();
   const theme = useTheme();
   const colors = Colors[theme.mode];
+  const insets = useSafeAreaInsets();
   const { transcriptionService, workspaceService, noteService } = appContainer;
   const [status, setStatus] = useState<SessionStatus>("idle");
   const [transcript, setTranscript] = useState("");
@@ -40,6 +45,7 @@ export default function TranscriptionScreen() {
   }, [transcriptionService]);
 
   const start = async () => {
+    Keyboard.dismiss();
     setStatus("starting");
     setError(null);
     setTranscript("");
@@ -130,7 +136,13 @@ export default function TranscriptionScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ title: "Live transcription" }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Spacing.xxl + insets.bottom },
+        ]}
+      >
         <View style={styles.header}>
           <Text style={[styles.kicker, { color: colors.accent }]}>LOCAL SPEECH TO TEXT</Text>
           <Text style={[styles.title, { color: colors.text }]}>Capture the conversation.</Text>
@@ -157,8 +169,21 @@ export default function TranscriptionScreen() {
       </ScrollView>
 
       <Modal visible={finished !== null} animationType="slide" transparent onRequestClose={() => undefined}>
-        <View style={styles.modalBackdrop}>
-          <ScrollView contentContainerStyle={[styles.modal, { backgroundColor: colors.surface }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalBackdrop}
+        >
+          <ScrollView
+            contentContainerStyle={[
+              styles.modal,
+              {
+                backgroundColor: colors.surface,
+                paddingBottom: Spacing.lg + insets.bottom,
+              },
+            ]}
+            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={[styles.modalTitle, { color: colors.text }]}>Save transcription</Text>
             <Text style={[styles.label, { color: colors.textMuted }]}>Note name</Text>
             <TextInput autoFocus value={noteName} onChangeText={setNoteName} placeholder="e.g. Weekly planning" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
@@ -176,7 +201,7 @@ export default function TranscriptionScreen() {
             {error && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
             <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0} onPress={() => void save()} />
           </ScrollView>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -184,7 +209,7 @@ export default function TranscriptionScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { gap: Spacing.xl, padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  content: { gap: Spacing.xl, padding: Spacing.lg },
   header: { gap: Spacing.sm },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 36, fontWeight: "800", lineHeight: 42 },
@@ -194,7 +219,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 18, lineHeight: 29 },
   actions: { flexDirection: "row", gap: Spacing.md },
   modalBackdrop: { backgroundColor: "rgba(0,0,0,0.36)", flex: 1, justifyContent: "flex-end" },
-  modal: { borderTopLeftRadius: Radius.lg, borderTopRightRadius: Radius.lg, gap: Spacing.md, padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  modal: { borderTopLeftRadius: Radius.lg, borderTopRightRadius: Radius.lg, gap: Spacing.md, padding: Spacing.lg },
   modalTitle: { fontSize: 24, fontWeight: "800" },
   label: { fontSize: 14, fontWeight: "700" },
   input: { borderRadius: Radius.sm, borderWidth: 1, fontSize: 16, minHeight: 48, paddingHorizontal: Spacing.md },

@@ -12,6 +12,7 @@ export function AppButton({
   label,
   variant = "primary",
   disabled,
+  hitSlop,
   ...props
 }: AppButtonProps) {
   const theme = useTheme();
@@ -22,6 +23,7 @@ export function AppButton({
       {...props}
       accessibilityRole="button"
       disabled={disabled}
+      hitSlop={hitSlop ?? 4}
       style={({ pressed }) => [
         styles.base,
         variant === "primary" && { backgroundColor: colors.accent },
@@ -59,8 +61,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
   },
   label: {
+    flexShrink: 1,
     fontSize: 15,
     fontWeight: "700",
+    textAlign: "center",
   },
   pressed: {
     opacity: 0.72,

@@ -5,6 +5,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +13,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
@@ -43,6 +45,7 @@ export default function WorkspaceDetailScreen() {
   const router = useRouter();
   const theme = useTheme();
   const colors = Colors[theme.mode];
+  const insets = useSafeAreaInsets();
   const { workspaceService, noteService } = appContainer;
   const [state, setState] = useState<WorkspaceNotesState>({
     status: "loading",
@@ -112,7 +115,13 @@ export default function WorkspaceDetailScreen() {
               : "Workspace",
         }}
       />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Spacing.xxl + insets.bottom },
+        ]}
+      >
         {state.status === "loading" && <LoadingState />}
         {state.status === "error" && (
           <ErrorState
@@ -197,6 +206,18 @@ export default function WorkspaceDetailScreen() {
               { backgroundColor: colors.surface },
             ]}
             keyboardDismissMode="interactive"
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalBackdrop}
+        >
+          <ScrollView
+            contentContainerStyle={[
+              styles.modal,
+              {
+                backgroundColor: colors.surface,
+                paddingBottom: Spacing.lg + insets.bottom,
+              },
+            ]}
+            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.modalHeader}>
@@ -204,6 +225,7 @@ export default function WorkspaceDetailScreen() {
                 New note
               </Text>
               <Pressable
+                hitSlop={10}
                 onPress={() => {
                   Keyboard.dismiss();
                   setIsModalVisible(false);
@@ -288,7 +310,7 @@ export default function WorkspaceDetailScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { gap: Spacing.xl, padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  content: { gap: Spacing.xl, padding: Spacing.lg },
   header: { gap: Spacing.xs },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 36, fontWeight: "800" },
@@ -310,7 +332,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: Radius.lg,
     gap: Spacing.md,
     padding: Spacing.lg,
-    paddingBottom: Spacing.xxl,
   },
   modalScroll: { maxHeight: "92%" },
   inputAccessory: {

@@ -1,0 +1,244 @@
+import { AiConversation } from "@/domain/ai-conversation/ai-conversation";
+import { AiMessage, AiMessageRole } from "@/domain/ai-message/ai-message";
+import { Note } from "@/domain/note/note";
+import { AiConversationNotFoundError } from "@/errors/ai-conversation-not-found-error";
+import { ValidationError } from "@/errors/validation-error";
+import { AiConversationRepository } from "@/repositories/ai-conversation-repository";
+import { AiMessageRepository } from "@/repositories/ai-message-repository";
+import { ConversationContextRepository } from "@/repositories/conversation-context-repository";
+import { NoteRepository } from "@/repositories/note-repository";
+
+export type SendUserMessageInput =
+  | {
+      conversationId: string;
+      content: string;
+    }
+  | {
+      noteId: string;
+      content: string;
+      conversationName?: string | null;
+    };
+
+export type SendUserMessageResult = {
+  conversationId: string;
+  messages: AiMessage[];
+};
+
+export type AiConversationHistoryItem = {
+  conversation: AiConversation;
+  linkedNotes: Note[];
+  latestMessage: AiMessage | null;
+};
+
+export class AiConversationService {
+  public constructor(
+    private readonly conversationRepository: AiConversationRepository,
+    private readonly messageRepository: AiMessageRepository,
+    private readonly contextRepository: ConversationContextRepository,
+    private readonly noteRepository: NoteRepository,
+  ) {}
+
+  public async findConversation(id: string): Promise<AiConversation | null> {
+    return this.conversationRepository.findById(id);
+  }
+
+  public async getConversationHistory(): Promise<AiConversationHistoryItem[]> {
+    const conversations = await this.conversationRepository.findWithMessages();
+    const items: AiConversationHistoryItem[] = [];
+
+    for (const conversation of conversations) {
+      const [linkedNotes, messages] = await Promise.all([
+        this.getLinkedNotes(conversation.getId()),
+        this.messageRepository.findByConversationId(conversation.getId()),
+      ]);
+      items.push({
+        conversation,
+        linkedNotes,
+        latestMessage: messages.at(-1) ?? null,
+      });
+    }
+
+    return items;
+  }
+
+  public async getConversationOrThrow(id: string): Promise<AiConversation> {
+    const conversation = await this.conversationRepository.findById(id);
+    if (conversation === null) {
+      throw new AiConversationNotFoundError(id);
+    }
+    return conversation;
+  }
+
+  public async hasMessages(conversationId: string): Promise<boolean> {
+    const count = await this.messageRepository.countByConversationId(conversationId);
+    return count > 0;
+  }
+
+  public async getCanonicalMessages(conversationId: string): Promise<AiMessage[]> {
+    await this.getConversationOrThrow(conversationId);
+    return this.messageRepository.findByConversationId(conversationId);
+  }
+
+  public async getLinkedNoteIds(conversationId: string): Promise<string[]> {
+    await this.getConversationOrThrow(conversationId);
+    return this.contextRepository.findNoteIdsByConversationId(conversationId);
+  }
+
+  public async getLinkedNotes(conversationId: string): Promise<Note[]> {
+    const noteIds = await this.getLinkedNoteIds(conversationId);
+    const notes: Note[] = [];
+    for (const noteId of noteIds) {
+      const note = await this.noteRepository.findById(noteId);
+      if (note !== null) {
+        notes.push(note);
+      }
+    }
+    return notes;
+  }
+
+  public async linkNote(conversationId: string, noteId: string): Promise<void> {
+    await this.getConversationOrThrow(conversationId);
+    if (await this.hasMessages(conversationId)) {
+      throw new ValidationError(
+        "Cannot change transcript context after the conversation has started.",
+      );
+    }
+
+    const note = await this.noteRepository.findById(noteId);
+    if (note === null) {
+      throw new ValidationError("Note not found.");
+    }
+
+    if (note.getTranscript().trim().length === 0) {
+      throw new ValidationError("Note has no transcript.");
+    }
+
+    await this.contextRepository.link(conversationId, noteId);
+  }
+
+  public async unlinkNote(conversationId: string, noteId: string): Promise<void> {
+    await this.getConversationOrThrow(conversationId);
+    if (await this.hasMessages(conversationId)) {
+      throw new ValidationError(
+        "Cannot change transcript context after the conversation has started.",
+      );
+    }
+    await this.contextRepository.unlink(conversationId, noteId);
+  }
+
+  /**
+   * Saves a user message and returns canonical history from the database.
+   * When conversationId is omitted, atomically creates conversation + context + first message.
+   */
+  public async sendUserMessage(
+    input: SendUserMessageInput,
+  ): Promise<SendUserMessageResult> {
+    const content = input.content.trim();
+    if (content.length === 0) {
+      throw new ValidationError("Message cannot be empty.");
+    }
+
+    if ("conversationId" in input) {
+      const conversationId = input.conversationId;
+      await this.getConversationOrThrow(conversationId);
+      await this.insertUserMessage(conversationId, content);
+      return {
+        conversationId,
+        messages: await this.getCanonicalMessages(conversationId),
+      };
+    }
+
+    const note = await this.noteRepository.findById(input.noteId);
+    if (note === null) {
+      throw new ValidationError("Note not found.");
+    }
+    if (note.getTranscript().trim().length === 0) {
+      throw new ValidationError("Note has no transcript.");
+    }
+
+    const conversationId = await this.createConversationWithFirstMessage(
+      note,
+      content,
+      input.conversationName ?? note.getName(),
+    );
+
+    return {
+      conversationId,
+      messages: await this.getCanonicalMessages(conversationId),
+    };
+  }
+
+  public async addAssistantMessage(
+    conversationId: string,
+    content: string,
+  ): Promise<AiMessage> {
+    const normalized = content.trim();
+    if (normalized.length === 0) {
+      throw new ValidationError("Assistant message cannot be empty.");
+    }
+
+    await this.getConversationOrThrow(conversationId);
+    const message = this.createMessage(conversationId, "assistant", normalized);
+    await this.messageRepository.create(message);
+    await this.conversationRepository.touchUpdatedAt(
+      conversationId,
+      new Date().toISOString(),
+    );
+    return message;
+  }
+
+  private async insertUserMessage(
+    conversationId: string,
+    content: string,
+  ): Promise<void> {
+    const message = this.createMessage(conversationId, "user", content);
+    await this.messageRepository.create(message);
+    await this.conversationRepository.touchUpdatedAt(
+      conversationId,
+      new Date().toISOString(),
+    );
+  }
+
+  private async createConversationWithFirstMessage(
+    note: Note,
+    userContent: string,
+    conversationName: string | null,
+  ): Promise<string> {
+    const now = new Date().toISOString();
+    const conversationId = this.createId("conv");
+    const conversation = new AiConversation(
+      conversationId,
+      conversationName?.trim() || "Ask AI",
+      now,
+      now,
+    );
+    const userMessage = this.createMessage(conversationId, "user", userContent);
+
+    await this.conversationRepository.createWithContextAndFirstMessage(
+      conversation,
+      note.getId(),
+      userMessage,
+    );
+
+    return conversationId;
+  }
+
+  private createMessage(
+    conversationId: string,
+    role: AiMessageRole,
+    content: string,
+  ): AiMessage {
+    const now = new Date().toISOString();
+    return new AiMessage(
+      this.createId("msg"),
+      conversationId,
+      role,
+      content,
+      now,
+    );
+  }
+
+  private createId(prefix: string): string {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}

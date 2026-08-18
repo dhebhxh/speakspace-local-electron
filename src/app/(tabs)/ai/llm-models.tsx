@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { LlmModelCard, LlmModelCardStatus } from "@/components/llm-model-card";
@@ -31,6 +32,7 @@ const emptyRowState: RowState = {
 export default function LlmModelsScreen() {
   const theme = useTheme();
   const colors = Colors[theme.mode];
+  const insets = useSafeAreaInsets();
   const { llmModelService } = appContainer;
   const catalog = llmModelService.getCatalog();
   const [state, setState] = useState<ListState>({ status: "loading" });
@@ -148,8 +150,14 @@ export default function LlmModelsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: "LLM Models", headerLargeTitle: true }} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <Stack.Screen options={{ title: "LLM Models" }} />
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Spacing.xxl + insets.bottom },
+        ]}
+      >
         <View style={styles.heading}>
           <Text style={[styles.kicker, { color: colors.accent }]}>LANGUAGE MODELS</Text>
           <Text style={[styles.title, { color: colors.text }]}>LLM Models</Text>
@@ -197,7 +205,7 @@ export default function LlmModelsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { gap: Spacing.xl, padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  content: { gap: Spacing.xl, padding: Spacing.lg },
   heading: { gap: Spacing.xs },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 34, fontWeight: "800" },

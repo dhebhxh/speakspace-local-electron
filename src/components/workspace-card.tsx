@@ -17,6 +17,7 @@ export function WorkspaceCard({ workspace, onPress }: WorkspaceCardProps) {
   return (
     <Pressable
       accessibilityRole="button"
+      hitSlop={4}
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
@@ -59,6 +60,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     gap: Spacing.xs,
+    minWidth: 0,
   },
   name: {
     fontSize: 17,
@@ -68,6 +70,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   chevron: {
+    flexShrink: 0,
     fontSize: 26,
     lineHeight: 26,
   },

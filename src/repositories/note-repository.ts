@@ -56,6 +56,26 @@ export class NoteRepository {
     }
   }
 
+  public async findAllWithTranscript(): Promise<Note[]> {
+    try {
+      const rows = await this.databaseManager
+        .getDatabase()
+        .getAllAsync<NoteRow>(
+          `SELECT id, workspace_id, name, audio_relative_path, transcript,
+            is_pinned, pinned_at, created_at, updated_at
+           FROM notes
+           WHERE workspace_id IS NOT NULL AND length(trim(transcript)) > 0
+           ORDER BY updated_at DESC`,
+        );
+
+      return rows
+        .filter((row) => row.workspace_id !== null)
+        .map((row) => this.mapRowToEntity(row));
+    } catch (error) {
+      throw this.toDatabaseError("Unable to load transcripts.", error);
+    }
+  }
+
   public async create(note: Note): Promise<void> {
     try {
       await this.databaseManager.getDatabase().runAsync(

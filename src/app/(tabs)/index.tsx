@@ -1,5 +1,6 @@
 import { Link } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppButton } from "@/components/app-button";
 import { Colors, Radius, Spacing } from "@/constants/theme";
@@ -8,9 +9,19 @@ import { useTheme } from "@/hooks/use-theme";
 export default function Index() {
   const theme = useTheme();
   const colors = Colors[theme.mode];
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.background,
+          paddingTop: insets.top + Spacing.xl,
+          paddingBottom: Spacing.xl,
+        },
+      ]}
+    >
       <View style={styles.intro}>
         <Text style={[styles.eyebrow, { color: colors.accent }]}>
           SPEAKSPACE
@@ -37,8 +48,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "space-between",
     padding: Spacing.xl,
-    paddingBottom: Spacing.xxl,
-    paddingTop: Spacing.xxl,
   },
   intro: {
     gap: Spacing.md,

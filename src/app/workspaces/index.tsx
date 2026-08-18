@@ -1,7 +1,10 @@
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
@@ -34,6 +38,7 @@ export default function WorkspacesScreen() {
   const router = useRouter();
   const theme = useTheme();
   const colors = Colors[theme.mode];
+  const insets = useSafeAreaInsets();
   const { workspaceService } = appContainer;
   const [state, setState] = useState<WorkspaceListState>({
     status: "loading",
@@ -82,8 +87,14 @@ export default function WorkspacesScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: "Workspaces", headerLargeTitle: true }} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <Stack.Screen options={{ title: "Workspaces" }} />
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Spacing.xxl + insets.bottom },
+        ]}
+      >
         <View style={styles.headingRow}>
           <View style={styles.heading}>
             <Text style={[styles.kicker, { color: colors.accent }]}>
@@ -138,14 +149,31 @@ export default function WorkspacesScreen() {
         visible={isModalVisible}
         onRequestClose={() => setIsModalVisible(false)}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalBackdrop}
+        >
+          <ScrollView
+            contentContainerStyle={[
+              styles.modal,
+              {
+                backgroundColor: colors.surface,
+                paddingBottom: Spacing.lg + insets.bottom,
+              },
+            ]}
+            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
                 New workspace
               </Text>
               <Pressable
-                onPress={() => setIsModalVisible(false)}
+                hitSlop={10}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setIsModalVisible(false);
+                }}
                 accessibilityLabel="Close"
               >
                 <Text style={[styles.close, { color: colors.textMuted }]}>
@@ -177,8 +205,8 @@ export default function WorkspacesScreen() {
               disabled={isSaving}
               onPress={() => void createWorkspace()}
             />
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -186,7 +214,7 @@ export default function WorkspacesScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { gap: Spacing.xl, padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  content: { gap: Spacing.xl, padding: Spacing.lg },
   headingRow: {
     alignItems: "flex-end",
     flexDirection: "row",
@@ -206,7 +234,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: Radius.lg,
     gap: Spacing.md,
     padding: Spacing.lg,
-    paddingBottom: Spacing.xxl,
   },
   modalHeader: {
     alignItems: "center",

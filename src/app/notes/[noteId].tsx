@@ -95,6 +95,11 @@ export default function NoteDetailScreen() {
 
   const generateKnowledge = async (scenario: KnowledgeScenario) => {
     if (state.status !== "success") return;
+    const startedAt = Date.now();
+    console.info("[NoteDetail] Knowledge generation started", {
+      noteId: state.note.getId(),
+      scenario,
+    });
     setGeneration({ status: "generating", scenario });
     try {
       const knowledge = await knowledgeService.generate(
@@ -102,10 +107,22 @@ export default function NoteDetailScreen() {
       );
       setState({ ...state, knowledge });
       setGeneration({ status: "idle" });
+      console.info("[NoteDetail] Knowledge generation displayed", {
+        noteId: state.note.getId(),
+        scenario,
+        durationMs: Date.now() - startedAt,
+      });
     } catch (error) {
       const message = error instanceof KnowledgeGenerationError
         ? error.message
         : "Knowledge generation did not finish. Please try again.";
+      console.error("[NoteDetail] Knowledge generation failed", {
+        noteId: state.note.getId(),
+        scenario,
+        durationMs: Date.now() - startedAt,
+        errorCode: error instanceof KnowledgeGenerationError ? error.code : "unexpected",
+        error,
+      });
       setGeneration({ status: "error", scenario, message });
     }
   };

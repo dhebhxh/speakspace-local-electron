@@ -1,17 +1,17 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  InputAccessoryView,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    InputAccessoryView,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -203,21 +203,14 @@ export default function WorkspaceDetailScreen() {
             style={styles.modalScroll}
             contentContainerStyle={[
               styles.modal,
-              { backgroundColor: colors.surface },
-            ]}
-            keyboardDismissMode="interactive"
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.modalBackdrop}
-        >
-          <ScrollView
-            contentContainerStyle={[
-              styles.modal,
               {
                 backgroundColor: colors.surface,
                 paddingBottom: Spacing.lg + insets.bottom,
               },
             ]}
-            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+            keyboardDismissMode={
+              Platform.OS === "ios" ? "interactive" : "on-drag"
+            }
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.modalHeader}>
@@ -283,7 +276,10 @@ export default function WorkspaceDetailScreen() {
               <View
                 style={[
                   styles.inputAccessory,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
                 ]}
               >
                 <Pressable

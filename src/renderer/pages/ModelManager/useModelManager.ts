@@ -37,6 +37,9 @@ export default function useModelManager() {
   const [recommendation, setRecommendation] =
     useState<ModelRecommendation | null>(null);
 
+  // 首屏加载：拉起 Ollama + 读四类模型列表可能要好几秒，
+  // 页面在这期间必须给出反馈，不能只留一片空白。
+  const [initialLoading, setInitialLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<ModuleKey, string>>>({});
   const [progress, setProgress] = useState<
@@ -87,12 +90,14 @@ export default function useModelManager() {
   }, [loadModels, loadRuntime, loadEmbedding]);
 
   useEffect(() => {
-    refreshAll().catch((reason) => {
-      setError(
-        'stt',
-        reason instanceof Error ? reason.message : '读取状态失败',
-      );
-    });
+    refreshAll()
+      .catch((reason) => {
+        setError(
+          'stt',
+          reason instanceof Error ? reason.message : '读取状态失败',
+        );
+      })
+      .finally(() => setInitialLoading(false));
   }, [refreshAll, setError]);
 
   useEffect(() => {
@@ -187,6 +192,7 @@ export default function useModelManager() {
   );
 
   return {
+    initialLoading,
     sttModels,
     ttsModels,
     llmModels,

@@ -9,6 +9,18 @@ export type AskAIRequest = {
   scope: AskAIScope;
 };
 
+/**
+ * 记录一轮已经产生好的问答。
+ * 智能体模式的回答是主进程 Agent 生成的，不需要再跑一次模型，
+ * 但同样要落进会话记录里，否则「最近会话」看不到它。
+ */
+export type RecordAskAITurnRequest = {
+  conversationId?: number | null;
+  question: string;
+  answer: string;
+  noteIds?: number[] | null;
+};
+
 export type CreateAskAINoteRequest = {
   workspaceId?: number | null;
   name?: string | null;

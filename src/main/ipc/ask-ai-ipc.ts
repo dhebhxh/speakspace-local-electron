@@ -4,6 +4,7 @@ import {
   AskAIRequest,
   AskAIScope,
   CreateAskAINoteRequest,
+  RecordAskAITurnRequest,
 } from '../ask-ai/AskAITypes';
 
 const askAIService = new AskAIService();
@@ -56,6 +57,22 @@ ipcMain.handle('AskAI:ask', (_event, request: Partial<AskAIRequest>) =>
     question: String(request?.question || ''),
     scope: normalizeScope(request?.scope),
   })
+);
+
+// 智能体模式的问答已经由 Agent 生成好，这里只负责落库，不再跑一次模型。
+ipcMain.handle(
+  'AskAI:recordTurn',
+  (_event, request: Partial<RecordAskAITurnRequest>) =>
+    askAIService.recordTurn({
+      conversationId: normalizeId(request?.conversationId),
+      question: String(request?.question || ''),
+      answer: String(request?.answer || ''),
+      noteIds: Array.isArray(request?.noteIds)
+        ? request.noteIds
+            .map(normalizeId)
+            .filter((id): id is number => id !== null)
+        : null,
+    }),
 );
 
 ipcMain.handle('AskAI:autoSegmentNote', (_event, noteId: unknown) => {

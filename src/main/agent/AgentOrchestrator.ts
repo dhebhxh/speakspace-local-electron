@@ -14,7 +14,14 @@ import {
 } from './AgentTypes';
 
 const DEFAULT_MAX_STEPS = 6;
-const SYSTEM_PROMPT = `You are SpeakSpace's local note assistant. Use one registered tool at a time when the user's saved notes are needed. Never invent note ids or tool results. Only read notes inside the supplied workspace scope. If a tool fails, explain briefly or choose another registered tool. When finished, reply concisely in the user's language. Do not reveal private reasoning.`;
+const SYSTEM_PROMPT = `You are SpeakSpace's local note assistant. Use one registered tool at a time when the user's saved notes are needed. search_notes covers every saved note the user has, so always search there first instead of assuming a note is out of reach. Never invent note ids or tool results. When the user asks about tasks, action items, deadlines or reminders, call extract_todos on the relevant note so the items are saved to their to-do list. If a tool fails, explain briefly or choose another registered tool. When finished, reply concisely in the user's language. Do not reveal private reasoning.`;
+
+/** 挂上的笔记只是给模型的提示，不能变成检索范围的限制。 */
+function describeLinkedNotes(linkedNoteIds: number[]): string {
+  return `The user pinned these note ids to this conversation: ${linkedNoteIds.join(
+    ', ',
+  )}. Treat them as extra context worth reading, but still search all saved notes when looking for anything else.`;
+}
 
 type AgentDependencies = {
   chat: AgentChat;
@@ -49,6 +56,14 @@ export default class AgentOrchestrator {
   ): Promise<AgentRunResult> {
     const messages: Message[] = [
       { role: 'system', content: this.systemPrompt },
+      ...(request.linkedNoteIds.length > 0
+        ? [
+            {
+              role: 'system',
+              content: describeLinkedNotes(request.linkedNoteIds),
+            } as Message,
+          ]
+        : []),
       ...request.history,
       { role: 'user', content: request.instruction },
     ];
@@ -86,7 +101,10 @@ export default class AgentOrchestrator {
         this.tools.get(call.name),
         call.name,
         call.args,
-        { workspaceId: request.workspaceId },
+        {
+          workspaceId: request.workspaceId,
+          linkedNoteIds: request.linkedNoteIds,
+        },
         signal,
       );
       emitAgentStep(steps, result.step, onStep);

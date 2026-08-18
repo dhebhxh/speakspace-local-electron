@@ -8,6 +8,8 @@ export type AgentHistoryMessage = {
 export type AgentRunRequest = {
   instruction: string;
   workspaceId?: number | null;
+  /** 用户手动挂上的笔记，只是额外线索，不收窄检索范围。 */
+  linkedNoteIds?: number[];
   history?: AgentHistoryMessage[];
 };
 
@@ -52,6 +54,8 @@ export type AgentEvent =
 
 export type AgentContext = {
   workspaceId: number | null;
+  /** 用户挂上的笔记 ID：工具用它把这些笔记额外置顶，而不是据此过滤。 */
+  linkedNoteIds?: number[];
 };
 
 export type AgentTool = {

@@ -15,6 +15,8 @@ import { WorkspaceSaveSelection } from '../Recording/components/SaveToWorkspaceD
 import StudioChatPanel from './components/StudioChatPanel';
 import useStudioAgent from './useStudioAgent';
 import RecordingReviewDialog from './components/RecordingReviewDialog';
+import StudioReadinessGate from './components/StudioReadinessGate';
+import useStudioReadiness from './useStudioReadiness';
 import '../AskAI/AskAIPage.css';
 import '../AskAI/AskAIChat.css';
 import '../AskAI/AskAIDialog.css';
@@ -125,8 +127,14 @@ export default function StudioPage() {
     await page.reloadNotes();
   }, [page.reloadNotes]);
 
+  // 开工前检查：STT / TTS / LLM / Embedding / 运行时缺一不可
+  const readiness = useStudioReadiness();
+
   // 智能体模式：开启后由本地 Agent 调用工具自行查找，而不是直接问挂上的笔记。
   const [agentMode, setAgentMode] = useState(false);
+  // 智能体这一串问答落在哪个会话里，以及已经落过库的轮次。
+  const agentConversationId = useRef<number | null>(null);
+  const recordedAgentTurns = useRef(new Set<string>());
   const { agent, runAgent, cancelAgent, resetAgent } = useStudioAgent();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -217,6 +225,7 @@ export default function StudioPage() {
     setLinkedNotes(note ? [note] : []);
     setLinkedWorkspaceIds([]);
     resetAgent(); // 切换笔记等于开新对话，助理的历史一并清空
+    agentConversationId.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNoteId]);
 
@@ -257,39 +266,28 @@ export default function StudioPage() {
 
   // 把挂上的工作区展开成它们的全部笔记，与单独挂的笔记合并去重后一起提问。
   // 这样多个工作区、以及「工作区 + 单条笔记」的混搭都能直接支持。
-  // 智能体在某个工作区里自行检索，范围取挂上的工作区，其次取挂上笔记所属的工作区。
-  const agentWorkspaceId = useMemo(
-    () =>
-      linkedWorkspaceIds[0] ??
-      linkedNotes.find((note) => note.workspaceId !== null)?.workspaceId ??
-      page.selectedNote?.workspaceId ??
-      null,
-    [linkedWorkspaceIds, linkedNotes, page.selectedNote?.workspaceId],
-  );
+  const linkedNoteIds = useMemo(() => {
+    const ids = new Set<number>();
+    page.notes.forEach((note) => {
+      if (
+        note.workspaceId !== null &&
+        linkedWorkspaceIds.includes(note.workspaceId)
+      ) {
+        ids.add(note.id);
+      }
+    });
+    linkedNotes.forEach((note) => ids.add(note.id));
+    return [...ids].slice(0, MAX_CONTEXT_NOTES);
+  }, [page.notes, linkedNotes, linkedWorkspaceIds]);
 
   const askWithLinkedNotes = useCallback(
     (question: string) => {
-      if (agentMode) return runAgent(question, agentWorkspaceId);
+      // 智能体自己在全部笔记里检索，挂上的笔记只作为额外线索一起带过去。
+      if (agentMode) return runAgent(question, linkedNoteIds);
 
-      const ids = new Set<number>();
-      page.notes.forEach((note) => {
-        if (note.workspaceId !== null && linkedWorkspaceIds.includes(note.workspaceId)) {
-          ids.add(note.id);
-        }
-      });
-      linkedNotes.forEach((note) => ids.add(note.id));
-      return page.ask(question, {
-        noteIds: [...ids].slice(0, MAX_CONTEXT_NOTES),
-      });
+      return page.ask(question, { noteIds: linkedNoteIds });
     },
-    [
-      agentMode,
-      agentWorkspaceId,
-      runAgent,
-      page,
-      linkedNotes,
-      linkedWorkspaceIds,
-    ],
+    [agentMode, linkedNoteIds, runAgent, page],
   );
 
   const openPreview = useCallback((noteId: number) => {
@@ -305,7 +303,35 @@ export default function StudioPage() {
     setLinkedNotes([]);
     setLinkedWorkspaceIds([]);
     setPreviewNoteId(null);
+    agentConversationId.current = null;
   }, [page, resetAgent]);
+
+  // 智能体模式的回答由主进程 Agent 生成，不走 askAI.ask，
+  // 所以要在这里补一次落库，否则「最近会话」里永远看不到它。
+  useEffect(() => {
+    const turn = agent.turns.at(-1);
+    if (!turn || recordedAgentTurns.current.has(turn.id)) return;
+    // 先登记再落库：避免重渲染或严格模式下重复执行时写两遍。
+    recordedAgentTurns.current.add(turn.id);
+    window.electron.askAI
+      .recordTurn({
+        conversationId: agentConversationId.current,
+        question: turn.question,
+        answer: turn.answer,
+        noteIds: linkedNoteIds,
+      })
+      .then((result) => {
+        // 记住会话 id，后续追问都追加到同一个会话里，而不是每轮新建一个。
+        agentConversationId.current = result.conversation.id;
+        return page.reloadConversations();
+      })
+      .catch((reason) => {
+        recordedAgentTurns.current.delete(turn.id);
+        console.error('记录智能体会话失败', reason);
+      });
+    // linkedNoteIds / page 变化不该触发补录，只在出现新一轮回答时执行。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agent.turns]);
 
   const previewNote = useMemo(
     () =>
@@ -521,6 +547,12 @@ export default function StudioPage() {
       recordError,
     ],
   );
+
+  // 组件没配齐就不进工作台：缺哪一项在门禁页里列清楚，
+  // 而不是让用户用到某个功能时才撞见静默失败。
+  if (!readiness.ready) {
+    return <StudioReadinessGate readiness={readiness} />;
+  }
 
   return (
     <section

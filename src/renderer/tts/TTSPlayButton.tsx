@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import toSpeechText from './TTSContent';
 import useTTSPlayback from './useTTSPlayback';
@@ -41,13 +42,33 @@ function StopIcon() {
   );
 }
 
-/** 可复用朗读按钮：使用模型管理页保存的默认音色。 */
-export default function TTSPlayButton({ text }: { text: string }) {
+/**
+ * 可复用朗读按钮：使用模型管理页保存的默认音色。
+ * autoPlay 为 true 时挂载即朗读一次，用的是同一个播放实例，
+ * 所以按钮会立刻变成停止键，用户随时能打断。
+ */
+export default function TTSPlayButton({
+  text,
+  autoPlay = false,
+}: {
+  text: string;
+  autoPlay?: boolean;
+}) {
   const { t } = useTranslation();
   const playback = useTTSPlayback();
-  const play = () => {
+  const autoPlayed = useRef(false);
+  const play = useCallback(() => {
     playback.speak(toSpeechText(text));
-  };
+  }, [playback, text]);
+
+  useEffect(() => {
+    if (!autoPlay || autoPlayed.current || !text.trim()) return;
+    // 同一段文字只自动播一次，重渲染不会重复朗读。
+    autoPlayed.current = true;
+    // 失败不再静默跳过：读不出来时把原因显示在按钮旁边，
+    // 否则用户只会看到「没有声音」，不知道是模型没装还是别的问题。
+    play();
+  }, [autoPlay, play, text]);
 
   return (
     <span className="tts-play-control">

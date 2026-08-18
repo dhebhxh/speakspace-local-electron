@@ -2,21 +2,116 @@
    SpeakSpace Dashboard Modern & Premium Aesthetic Styling
    ========================================================= */
 
+/* -----------------------------------------------------------
+   仪表盘配色令牌
+   :root 里是浅色值，html[data-theme='dark'] 整组替换成深色值。
+   页面里一律只引用这些令牌，不要再写死颜色，否则又会出现
+   「深色能看清、浅色看不清」这种只在一种模式下成立的样式。
+   ----------------------------------------------------------- */
 :root {
   --primary-color: #3b82f6;
   --primary-hover: #2563eb;
   --bg-main: #f8fafc;
   --bg-card: #ffffff;
+  /* 次级表面：悬停、弹层、斑马纹 */
+  --bg-subtle: #f8fafc;
+  --bg-hover: #f1f5f9;
+  /* 浮层必须是不透明的，否则底下的内容会透上来 */
+  --bg-elevated: #f8fafc;
   --text-main: #1e293b;
   --text-muted: #64748b;
-  --border-color: #e2e8f0;
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --text-faint: #94a3b8;
+  --border-color: #dbe3ee;
+  --border-strong: #cbd5e1;
+  /* 行分隔线比卡片边框更淡 */
+  --border-faint: #f1f5f9;
+
+  /* 语义色：徽章、图标底、日期状态统一走这三件套（底/边/字） */
+  --tint-blue-bg: #eff6ff;
+  --tint-blue-border: #bfdbfe;
+  --tint-blue-text: #1d4ed8;
+  --tint-green-bg: #ecfdf5;
+  --tint-green-border: #a7f3d0;
+  --tint-green-text: #047857;
+  --tint-purple-bg: #f5f3ff;
+  --tint-purple-border: #ddd6fe;
+  --tint-purple-text: #6d28d9;
+  --tint-orange-bg: #fff7ed;
+  --tint-orange-border: #fed7aa;
+  --tint-orange-text: #ea580c;
+  --tint-amber-bg: #fef3c7;
+  --tint-amber-border: #f59e0b;
+  --tint-amber-soft: #fffbeb;
+  --tint-red-bg: #fee2e2;
+  --tint-red-border: #fca5a5;
+  --tint-red-text: #b91c1c;
+  --tint-gray-bg: #f1f5f9;
+  --tint-gray-border: #cbd5e1;
+  --tint-gray-text: #475569;
+
+  --accent-green: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-star: #eab308;
+  --accent-star-off: #cbd5e1;
+
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 10px -2px rgba(15, 23, 42, 0.1), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.12), 0 4px 6px -4px rgba(15, 23, 42, 0.08);
+  --shadow-popover: 0 4px 24px rgba(15, 23, 42, 0.16);
   --radius-lg: 16px;
   --radius-md: 10px;
   --radius-sm: 6px;
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html[data-theme='dark'] {
+  --primary-color: #60a5fa;
+  --primary-hover: #93c5fd;
+  --bg-main: transparent;
+  /* 与 App.css 的 --surface 对齐，卡片才不会在深色页面上糊成一片白 */
+  --bg-card: rgba(24, 30, 56, 0.88);
+  --bg-subtle: rgba(255, 255, 255, 0.04);
+  --bg-hover: rgba(255, 255, 255, 0.08);
+  --bg-elevated: #1a2039;
+  --text-main: #f7f8ff;
+  --text-muted: #9aa2c1;
+  --text-faint: #78829f;
+  --border-color: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.26);
+  --border-faint: rgba(255, 255, 255, 0.08);
+
+  /* 深色下用低透明度的同色底 + 提亮的字，保持同样的语义 */
+  --tint-blue-bg: rgba(59, 130, 246, 0.16);
+  --tint-blue-border: rgba(96, 165, 250, 0.38);
+  --tint-blue-text: #93c5fd;
+  --tint-green-bg: rgba(16, 185, 129, 0.16);
+  --tint-green-border: rgba(52, 211, 153, 0.38);
+  --tint-green-text: #6ee7b7;
+  --tint-purple-bg: rgba(139, 92, 246, 0.18);
+  --tint-purple-border: rgba(167, 139, 250, 0.38);
+  --tint-purple-text: #c4b5fd;
+  --tint-orange-bg: rgba(249, 115, 22, 0.16);
+  --tint-orange-border: rgba(251, 146, 60, 0.38);
+  --tint-orange-text: #fdba74;
+  --tint-amber-bg: rgba(245, 158, 11, 0.2);
+  --tint-amber-border: rgba(251, 191, 36, 0.55);
+  --tint-amber-soft: rgba(245, 158, 11, 0.1);
+  --tint-red-bg: rgba(239, 68, 68, 0.18);
+  --tint-red-border: rgba(248, 113, 113, 0.42);
+  --tint-red-text: #fca5a5;
+  --tint-gray-bg: rgba(255, 255, 255, 0.08);
+  --tint-gray-border: rgba(255, 255, 255, 0.2);
+  --tint-gray-text: #cbd5e1;
+
+  --accent-green: #34d399;
+  --accent-amber: #fbbf24;
+  --accent-star: #facc15;
+  --accent-star-off: rgba(255, 255, 255, 0.28);
+
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 18px -4px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 14px 32px -8px rgba(0, 0, 0, 0.6);
+  --shadow-popover: 0 10px 34px rgba(0, 0, 0, 0.6);
 }
 
 body {
@@ -66,12 +161,14 @@ body {
   align-items: center;
 }
 
+/* App.css / AppSettings.css 都会按主题给 .content-area h1 上色，
+   这里用 !important 收回控制权，值本身是跟随主题的令牌。 */
 .header-title {
   font-size: var(--fs-2xl);
   font-weight: 700;
   margin: 0;
   letter-spacing: -0.5px;
-  color: #ffffff !important;
+  color: var(--text-main) !important;
 }
 
 .header-actions {
@@ -93,8 +190,8 @@ body {
 }
 
 .btn-secondary:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
 }
 
 .btn-primary {
@@ -167,7 +264,7 @@ body {
 .metric-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  border-color: #cbd5e1;
+  border-color: var(--border-strong);
 }
 
 .interactive-card {
@@ -179,15 +276,15 @@ body {
 }
 
 .active-filter {
-  border: 2px solid #10b981;
-  background: #ecfdf5;
-  box-shadow: 0 0 14px rgba(16, 185, 129, 0.15);
+  border: 2px solid var(--accent-green);
+  background: var(--tint-green-bg);
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.2);
 }
 
 .active-filter-orange {
-  border: 2px solid #f97316;
-  background: #fff7ed;
-  box-shadow: 0 0 14px rgba(249, 115, 22, 0.15);
+  border: 2px solid var(--tint-orange-text);
+  background: var(--tint-orange-bg);
+  box-shadow: 0 0 14px rgba(249, 115, 22, 0.2);
 }
 
 .card-icon-wrapper {
@@ -201,10 +298,10 @@ body {
   flex-shrink: 0;
 }
 
-.icon-blue { background: #eff6ff; border: 1px solid #bfdbfe; color: #2563eb; }
-.icon-green { background: #ecfdf5; border: 1px solid #a7f3d0; color: #059669; }
-.icon-purple { background: #f5f3ff; border: 1px solid #ddd6fe; color: #7c3aed; }
-.icon-orange { background: #fff7ed; border: 1px solid #fed7aa; color: #ea580c; }
+.icon-blue { background: var(--tint-blue-bg); border: 1px solid var(--tint-blue-border); color: var(--tint-blue-text); }
+.icon-green { background: var(--tint-green-bg); border: 1px solid var(--tint-green-border); color: var(--tint-green-text); }
+.icon-purple { background: var(--tint-purple-bg); border: 1px solid var(--tint-purple-border); color: var(--tint-purple-text); }
+.icon-orange { background: var(--tint-orange-bg); border: 1px solid var(--tint-orange-border); color: var(--tint-orange-text); }
 
 .card-content {
   display: flex;
@@ -236,9 +333,9 @@ body {
   margin-top: 6px;
 }
 
-.trend-positive { color: #10b981; }
-.trend-warning { color: #f59e0b; }
-.trend-neutral { color: #3b82f6; }
+.trend-positive { color: var(--accent-green); }
+.trend-warning { color: var(--accent-amber); }
+.trend-neutral { color: var(--primary-color); }
 
 /* Calendar & ToDo Widget */
 .calendar-widget {
@@ -266,8 +363,8 @@ body {
 }
 
 .calendar-month-badge {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--tint-blue-bg);
+  color: var(--tint-blue-text);
   padding: 4px 10px;
   border-radius: 20px;
   font-size: var(--fs-sm);
@@ -280,7 +377,7 @@ body {
 .calendar-nav-btn {
   background: transparent;
   border: none;
-  color: #1d4ed8;
+  color: var(--tint-blue-text);
   cursor: pointer;
   font-weight: bold;
   padding: 0 4px;
@@ -289,7 +386,7 @@ body {
 }
 
 .calendar-nav-btn:hover {
-  background: #dbeafe;
+  background: var(--tint-blue-bg);
 }
 
 .calendar-month-text {
@@ -336,8 +433,8 @@ body {
 }
 
 .calendar-day:hover:not(.empty) {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
 }
 
 .calendar-day.empty {
@@ -350,18 +447,18 @@ body {
 }
 
 .is-today {
-  background: #eff6ff;
-  border-color: #93c5fd !important;
+  background: var(--tint-blue-bg);
+  border-color: var(--tint-blue-border) !important;
 }
 
 .is-today .day-number {
-  color: #1d4ed8;
+  color: var(--tint-blue-text);
   font-weight: 700;
 }
 
 .selected {
-  background: #fef3c7 !important;
-  border-color: #f59e0b !important;
+  background: var(--tint-amber-bg) !important;
+  border-color: var(--tint-amber-border) !important;
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.2);
 }
 
@@ -377,13 +474,13 @@ body {
   border-radius: 50%;
 }
 
-.dot-orange { background-color: #ea580c; }
-.dot-blue { background-color: #3b82f6; }
+.dot-orange { background-color: var(--tint-orange-text); }
+.dot-blue { background-color: var(--primary-color); }
 
 /* Popover Panel */
 .calendar-popover-panel {
   padding: 14px;
-  background: #f8fafc;
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
 }
@@ -393,7 +490,7 @@ body {
   margin-top: 0;
   width: 320px;
   z-index: 9999;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-popover);
   animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -415,15 +512,15 @@ body {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-main);
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 6px;
   margin-bottom: 4px;
 }
 
 .btn-close-pin {
-  background: #fee2e2;
-  border: 1px solid #fca5a5;
-  color: #b91c1c;
+  background: var(--tint-red-bg);
+  border: 1px solid var(--tint-red-border);
+  color: var(--tint-red-text);
   padding: 2px 8px;
   border-radius: 4px;
   font-size: var(--fs-xs);
@@ -435,22 +532,22 @@ body {
   align-items: flex-start;
   gap: 10px;
   padding: 8px 12px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: var(--transition);
 }
 
 .todo-item-card:hover {
-  border-color: #3b82f6;
+  border-color: var(--primary-color);
   transform: translateX(3px);
   box-shadow: var(--shadow-sm);
 }
 
 .todo-checkbox {
   font-size: 16px;
-  color: #3b82f6;
+  color: var(--primary-color);
   line-height: 1;
 }
 
@@ -465,7 +562,7 @@ body {
 
 .todo-note-link {
   font-size: var(--fs-xs);
-  color: #3b82f6;
+  color: var(--primary-color);
   margin-top: 3px;
   text-decoration: underline;
 }
@@ -488,7 +585,7 @@ body {
 
 .default-hint {
   font-style: italic;
-  color: #94a3b8;
+  color: var(--text-faint);
 }
 
 /* Right Column: Note List Table */
@@ -557,6 +654,13 @@ body {
   box-sizing: border-box;
   transition: var(--transition);
   outline: none;
+  /* 不写死就会拿浏览器默认的白底黑字，深色下是一块突兀的白 */
+  background: var(--bg-card);
+  color: var(--text-main);
+}
+
+.search-input::placeholder {
+  color: var(--text-faint);
 }
 
 .search-input:focus {
@@ -569,7 +673,7 @@ body {
   right: 8px;
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--text-faint);
   cursor: pointer;
   font-size: var(--fs-md);
 }
@@ -625,21 +729,21 @@ body {
 
 .note-row td {
   padding: 16px 10px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-faint);
   vertical-align: middle;
   overflow: hidden;
 }
 
 .note-row:hover {
-  background-color: #f8fafc;
+  background-color: var(--bg-hover);
 }
 
 .pinned-row {
-  background-color: #fffbeb !important;
+  background-color: var(--tint-amber-soft) !important;
 }
 
 .pinned-row:hover {
-  background-color: #fef3c7 !important;
+  background-color: var(--tint-amber-bg) !important;
 }
 
 /* 列宽预算：固定列合计 ~400px，剩下的全给标题列。 */
@@ -655,8 +759,8 @@ body {
   transition: var(--transition);
 }
 
-.star-icon.active { color: #eab308; }
-.star-icon.inactive { color: #cbd5e1; }
+.star-icon.active { color: var(--accent-star); }
+.star-icon.inactive { color: var(--accent-star-off); }
 .td-star:hover .star-icon { transform: scale(1.2); }
 
 /* 标题列吃掉剩余宽度；过长的标题和转录摘要用省略号收尾，
@@ -699,10 +803,10 @@ body {
   font-weight: 600;
 }
 
-.badge-blue { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-.badge-green { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
-.badge-purple { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
-.badge-gray { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+.badge-blue { background: var(--tint-blue-bg); color: var(--tint-blue-text); border: 1px solid var(--tint-blue-border); }
+.badge-green { background: var(--tint-green-bg); color: var(--tint-green-text); border: 1px solid var(--tint-green-border); }
+.badge-purple { background: var(--tint-purple-bg); color: var(--tint-purple-text); border: 1px solid var(--tint-purple-border); }
+.badge-gray { background: var(--tint-gray-bg); color: var(--tint-gray-text); border: 1px solid var(--tint-gray-border); }
 
 .duration-pill {
   font-size: var(--fs-sm);
@@ -717,7 +821,7 @@ body {
 }
 
 .update-highlight {
-  color: #0f172a;
+  color: var(--text-main);
   font-weight: 500;
 }
 

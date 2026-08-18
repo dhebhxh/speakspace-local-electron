@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppSettings } from '../../settings/SettingsController';
 import { useAppSettings } from '../../settings/AppSettingsProvider';
+import AgentSettingsPanel from './components/AgentSettingsPanel';
 import FontSizeSettingsPanel from './components/FontSizeSettingsPanel';
 import HardwareSettingsPanel from './components/HardwareSettingsPanel';
 import LanguageSettingsPanel from './components/LanguageSettingsPanel';
@@ -9,7 +10,7 @@ import OnboardingSettingsPanel from './components/OnboardingSettingsPanel';
 import ThemeSettingsPanel from './components/ThemeSettingsPanel';
 import './SettingsPage.css';
 
-type CategoryId = 'appearance' | 'language' | 'hardware' | 'guide';
+type CategoryId = 'appearance' | 'language' | 'agent' | 'hardware' | 'guide';
 
 const CATEGORIES: Array<{
   id: CategoryId;
@@ -28,6 +29,12 @@ const CATEGORIES: Array<{
     labelKey: 'settings.category.language',
     descKey: 'settings.category.language.desc',
     glyph: '文',
+  },
+  {
+    id: 'agent',
+    labelKey: 'settings.category.agent',
+    descKey: 'settings.category.agent.desc',
+    glyph: '✦',
   },
   {
     id: 'hardware',
@@ -137,6 +144,14 @@ export default function SettingsPage() {
 
           {activeCategory === 'language' && (
             <LanguageSettingsPanel
+              disabled={disabled}
+              save={save}
+              settings={settings}
+            />
+          )}
+
+          {activeCategory === 'agent' && (
+            <AgentSettingsPanel
               disabled={disabled}
               save={save}
               settings={settings}

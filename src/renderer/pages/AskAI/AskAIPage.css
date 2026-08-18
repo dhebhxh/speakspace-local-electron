@@ -203,15 +203,49 @@
   font-size: var(--fs-sm);
 }
 
+/* 笔记库与最近会话之间的分隔条：这条线本身就是拖动手柄，
+   所以线画在这里，.ask-ai-recents 不再重复画一条 border-top。
+   手柄有 9px 高的热区，视觉上仍然只是 1px 的细线。 */
+.ask-ai-library-splitter {
+  position: relative;
+  flex: 0 0 auto;
+  height: 9px;
+  margin-top: 0.6rem;
+  cursor: row-resize;
+  /* 拖动时别把两侧的文字选中 */
+  user-select: none;
+  touch-action: none;
+}
+
+.ask-ai-library-splitter::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: var(--border);
+  transition: background 140ms ease, height 140ms ease;
+}
+
+.ask-ai-library-splitter:hover::before,
+.ask-ai-library-splitter:focus-visible::before,
+.ask-ai-library-splitter.is-dragging::before {
+  height: 2px;
+  background: var(--accent);
+}
+
+.ask-ai-library-splitter:focus-visible {
+  outline: none;
+}
+
 .ask-ai-recents {
   display: flex;
   flex: 0 1 auto;
   flex-direction: column;
   min-height: 0;
   max-height: 32%;
-  margin-top: 0.6rem;
   padding-top: 0.6rem;
-  border-top: 1px solid var(--border);
 }
 
 .ask-ai-recents-header {

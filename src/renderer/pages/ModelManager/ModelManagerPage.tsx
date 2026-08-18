@@ -123,7 +123,19 @@ export function ModelManagerPage() {
         </button>
       </header>
 
-      <div className="model-module-list">
+      {/* 首屏要等 Ollama 起来 + 四类模型列表，几秒的空白必须有反馈 */}
+      {manager.initialLoading && (
+        <div className="app-loading-panel" role="status">
+          <span className="app-spinner" aria-hidden="true" />
+          <span>{t('modelManager.loading')}</span>
+          <small>{t('modelManager.loadingHint')}</small>
+        </div>
+      )}
+
+      <div
+        className="model-module-list"
+        hidden={manager.initialLoading}
+      >
         <ModelModule
           actions={null}
           busy={busy}

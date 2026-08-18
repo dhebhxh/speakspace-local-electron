@@ -1,5 +1,6 @@
 import { Note } from '../../entities/Note';
 import createAgentReadNoteTool from '../AgentReadNoteTool';
+import createAgentSearchNotesTool from '../AgentSearchNotesTool';
 import normalizeAgentRequest from '../AgentInput';
 import { AgentContext } from '../AgentTypes';
 
@@ -33,6 +34,62 @@ describe('不限定工作区（workspaceId 为 null）时的行为', () => {
 
     expect(result.id).toBe(7);
     expect(result.workspaceId).toBe(42);
+  });
+
+  it('挂上的笔记只是额外线索：检索仍然覆盖全部笔记，命中之外的挂载笔记也会带上', async () => {
+    const notes = [
+      makeNote(1, 42), // 关键词命中
+      makeNote(9, 77), // 另一个工作区里被手动挂上的笔记
+    ];
+    const source = {
+      findAll: () => notes,
+      findAllByWorkspace: () => [],
+      findById: (id: number) => notes.find((n) => n.getId() === id) ?? null,
+    };
+    const tool = createAgentSearchNotesTool(source, {
+      search: jest.fn().mockResolvedValue([]),
+    });
+
+    const result = JSON.parse(
+      await tool.run(
+        { query: 'body' },
+        { workspaceId: null, linkedNoteIds: [9] },
+      ),
+    );
+
+    expect(result.notes.map((note: { id: number }) => note.id)).toEqual([9, 1]);
+    expect(result.notes[0].match).toBe('linked');
+  });
+
+  it('挂上的笔记不会因为检索没命中就丢失', async () => {
+    const notes = [makeNote(9, 77)];
+    const source = {
+      findAll: () => notes,
+      findAllByWorkspace: () => [],
+      findById: (id: number) => notes.find((n) => n.getId() === id) ?? null,
+    };
+    const tool = createAgentSearchNotesTool(source, {
+      search: jest.fn().mockResolvedValue([]),
+    });
+
+    const result = JSON.parse(
+      await tool.run(
+        { query: '完全对不上的词' },
+        { workspaceId: null, linkedNoteIds: [9] },
+      ),
+    );
+
+    expect(result.match).toBe('linked');
+    expect(result.notes.map((note: { id: number }) => note.id)).toEqual([9]);
+  });
+
+  it('normalizeAgentRequest 会清洗挂载的笔记 ID', () => {
+    const request = normalizeAgentRequest({
+      instruction: '找一下',
+      linkedNoteIds: [3, 3, -1, 'x', 7],
+    });
+
+    expect(request.linkedNoteIds).toEqual([3, 7]);
   });
 
   it('限定了工作区时仍然拒绝跨区读取', async () => {

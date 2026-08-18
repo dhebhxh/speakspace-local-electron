@@ -3,6 +3,8 @@ import { AgentHistoryMessage, AgentRunRequest } from './AgentTypes';
 const MAX_INSTRUCTION_CHARACTERS = 4000;
 const MAX_HISTORY_MESSAGES = 12;
 const MAX_HISTORY_CHARACTERS = 4000;
+/** 挂上的笔记只是额外线索，多了会挤掉检索结果，所以限制条数。 */
+const MAX_LINKED_NOTES = 8;
 
 function normalizeWorkspaceId(value: unknown): number | null {
   if (value === null || value === undefined) return null;
@@ -11,6 +13,15 @@ function normalizeWorkspaceId(value: unknown): number | null {
     throw new Error('无效的工作空间 ID / Invalid workspace ID');
   }
   return id;
+}
+
+/** 非法 ID 直接丢掉而不是报错：挂错一条笔记不该让整次提问失败。 */
+function normalizeLinkedNoteIds(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  const ids = value
+    .map((item) => Number(item))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  return [...new Set(ids)].slice(0, MAX_LINKED_NOTES);
 }
 
 function normalizeHistory(value: unknown): AgentHistoryMessage[] {
@@ -48,6 +59,7 @@ export default function normalizeAgentRequest(
   return {
     instruction: instruction.slice(0, MAX_INSTRUCTION_CHARACTERS),
     workspaceId,
+    linkedNoteIds: normalizeLinkedNoteIds(request.linkedNoteIds),
     history: normalizeHistory(request.history),
   };
 }

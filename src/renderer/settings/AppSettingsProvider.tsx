@@ -22,6 +22,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   fontSize: 'medium',
   theme: 'system',
   language: 'zh',
+  agentAutoSpeak: true,
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);

@@ -16,15 +16,9 @@ import './WorkspacePage.css';
 export default function WorkspacePage() {
   const { t } = useTranslation();
   const detail = useWorkspaceDetail();
-<<<<<<< HEAD
-  const { 
-    workspace, loading, error, status, query, setQuery, 
-    visibleNotes: filteredNotes, selectedNoteIds, toggleNoteSelection
-=======
   const {
     workspace, loading, error, status, query, setQuery,
     visibleNotes, selectedNoteIds, toggleNoteSelection,
->>>>>>> 99460c275682ba4f9cc8bb7fc7432894919fbd3e
   } = detail;
   const [showMultiModal, setShowMultiModal] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, noteId: number } | null>(null);

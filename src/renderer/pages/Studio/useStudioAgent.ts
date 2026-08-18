@@ -28,8 +28,9 @@ const EMPTY: StudioAgentState = {
 };
 
 /**
- * 对话工作台里的智能体模式：复用主进程 Agent（只读搜索 / 读取笔记），
- * 运行过程以步骤流的形式回显，最终答案作为一轮对话追加到列表里。
+ * 对话工作台里的智能体模式：复用主进程 Agent（搜索 / 读取笔记 / 提取待办），
+ * 检索范围固定为全部笔记，运行过程以步骤流的形式回显，
+ * 最终答案作为一轮对话追加到列表里。
  */
 export default function useStudioAgent() {
   const [state, setState] = useState<StudioAgentState>(EMPTY);
@@ -86,11 +87,10 @@ export default function useStudioAgent() {
   useEffect(() => controller.onEvent(handleEvent), [handleEvent]);
 
   const run = useCallback(
-    async (question: string, workspaceId: number | null): Promise<boolean> => {
+    async (question: string, linkedNoteIds: number[] = []): Promise<boolean> => {
       const instruction = question.trim();
       if (!instruction) return false;
 
-      // workspaceId 为 null 时不限定范围，助理会在全部工作区里检索。
       pendingQuestion.current = instruction;
       setState((current) => ({
         ...current,
@@ -104,7 +104,10 @@ export default function useStudioAgent() {
         // 把已有的问答带上，保证多轮追问能延续上下文。
         const started = await controller.start({
           instruction,
-          workspaceId,
+          // 助理模式一律不限定工作区：检索覆盖全部笔记，
+          // 手动挂上的笔记只作为额外线索传下去。
+          workspaceId: null,
+          linkedNoteIds,
           history: state.turns.flatMap((turn) => [
             { role: 'user' as const, content: turn.question },
             { role: 'assistant' as const, content: turn.answer },

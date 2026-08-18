@@ -29,6 +29,7 @@ import {
   AskAIRequest,
   AskAIResultDTO,
   CreateAskAINoteRequest,
+  RecordAskAITurnRequest,
 } from './AskAITypes';
 
 const MAX_QUESTION_CHARACTERS = 5000;
@@ -215,6 +216,50 @@ ${note.getTranscript()}`;
       answer: reply.content,
       modelName: reply.modelName,
       scope,
+    };
+  }
+
+  /**
+   * 把一轮已经生成好的问答写进会话记录，不调用模型。
+   * 智能体模式用它，让 Agent 的问答和普通对话一样出现在「最近会话」里，
+   * 也能被重新打开查看。
+   */
+  public recordTurn(request: RecordAskAITurnRequest): AskAIResultDTO {
+    const question = AskAIService.normalizeQuestion(request.question);
+    const answer = String(request.answer || '').trim();
+    if (!answer) throw new Error('回答不能为空 / Answer is required');
+
+    const conversation =
+      (request.conversationId
+        ? this.requireConversation(request.conversationId)
+        : null) ??
+      this.conversationRepository.createWithName(
+        createConversationName(question),
+      );
+
+    // 智能体自己检索，挂上的笔记只是线索，能对上就记为来源。
+    const noteIds = (request.noteIds ?? []).filter(
+      (id) => Number.isInteger(id) && id > 0,
+    );
+    this.attachSources(conversation.getId(), noteIds);
+    this.messageRepository.createForConversation(
+      conversation.getId(),
+      'user',
+      question,
+    );
+    this.messageRepository.createForConversation(
+      conversation.getId(),
+      'assistant',
+      answer,
+    );
+    conversation.setUpdatedAt(new Date());
+    this.conversationRepository.update(conversation);
+
+    return {
+      ...this.getConversation(conversation.getId()),
+      answer,
+      modelName: null,
+      scope: 'multi-note',
     };
   }
 

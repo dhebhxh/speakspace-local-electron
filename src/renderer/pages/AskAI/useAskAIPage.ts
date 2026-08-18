@@ -194,5 +194,7 @@ export default function useAskAIPage() {
     resetChat,
     // 录音保存新笔记后，用它刷新列表并选中该笔记，让对话立即挂到新内容上。
     reloadNotes: loadNotes,
+    // 智能体模式自己落库，落完用它刷新「最近会话」。
+    reloadConversations: loadConversations,
   };
 }

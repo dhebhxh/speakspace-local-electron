@@ -202,6 +202,10 @@ const electronHandler = {
     getStatus() {
       return ipcRenderer.invoke('Runtime:getStatus');
     },
+    // 开工前检查：先启动 Ollama 再读状态，避免把「还没启动」误判成「没装」。
+    getReadiness() {
+      return ipcRenderer.invoke('Runtime:getReadiness');
+    },
     installWhisper() {
       return ipcRenderer.invoke('Runtime:installWhisper');
     },
@@ -346,6 +350,15 @@ const electronHandler = {
       scope: 'note' | 'workspace' | 'multi-note';
     }) {
       return ipcRenderer.invoke('AskAI:ask', request);
+    },
+    // 智能体模式：回答已由 Agent 生成，这里只把这一轮记进会话。
+    recordTurn(request: {
+      conversationId?: number | null;
+      question: string;
+      answer: string;
+      noteIds?: number[] | null;
+    }) {
+      return ipcRenderer.invoke('AskAI:recordTurn', request);
     },
     autoSegmentNote(noteId: number) {
       return ipcRenderer.invoke('AskAI:autoSegmentNote', noteId);

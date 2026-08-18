@@ -2,6 +2,13 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AskAIConversation, AskAINote, formatAskAIDate } from '../AskAITypes';
 import { setNoteDragPayload } from '../AskAIDragPayload';
+import useLibrarySplit from '../useLibrarySplit';
+
+/**
+ * 分隔条可以把「最近会话」拉高，原来固定只渲染 6 条会让多出来的空间是空的；
+ * 这里放宽上限，同时避免会话很多时无限渲染。
+ */
+const RECENT_CONVERSATION_LIMIT = 50;
 
 type AskAINotesPanelProps = {
   notes: AskAINote[];
@@ -33,6 +40,7 @@ export default function AskAINotesPanel({
   onContextMenu,
 }: AskAINotesPanelProps) {
   const { t } = useTranslation();
+  const split = useLibrarySplit();
   // 按工作区分组，保持笔记原有顺序；未归属工作区的归到「未分类」。
   // 空工作区也会列出来，方便直接在它下面新增笔记。
   const groups = useMemo(() => {
@@ -84,7 +92,7 @@ export default function AskAINotesPanel({
   );
 
   return (
-    <aside className="ask-ai-library">
+    <aside className="ask-ai-library" ref={split.containerRef}>
       <header className="ask-ai-library-header">
         <div>
           <span>Ask AI</span>
@@ -98,7 +106,7 @@ export default function AskAINotesPanel({
         )}
       </header>
 
-      <div className="ask-ai-note-list">
+      <div className="ask-ai-note-list" ref={split.noteListRef}>
         {notes.length === 0 && !workspaces ? (
           <div className="ask-ai-empty">
             <strong>{t('askAI.notesPanel.noNotesTitle')}</strong>
@@ -153,35 +161,57 @@ export default function AskAINotesPanel({
       </div>
 
       {(conversations.length > 0 || onNewConversation) && (
-        <section className="ask-ai-recents">
-          {/* 标题与 ＋ 放在同一个容器里，布局与上面的工作区分组一致 */}
-          <h3 className="ask-ai-recents-header">
-            <span>{t('askAI.notesPanel.recentConversations')}</span>
-            {onNewConversation && (
-              <button
-                type="button"
-                className="ask-ai-group-add"
-                onClick={onNewConversation}
-                aria-label={t('askAI.notesPanel.newConversation')}
-                title={t('askAI.notesPanel.newConversation')}
-              >
-                ＋
-              </button>
-            )}
-          </h3>
-          <div className="ask-ai-recents-list">
-            {conversations.slice(0, 6).map((conversation) => (
-              <button
-                type="button"
-                key={conversation.id}
-                onClick={() => onOpenConversation(conversation.id)}
-              >
-                <strong>{conversation.name}</strong>
-                <time>{formatAskAIDate(conversation.updatedAt)}</time>
-              </button>
-            ))}
-          </div>
-        </section>
+        <>
+          {/* 这条线本身就是分隔条：按住上下拖，或聚焦后按上下方向键 */}
+          <div
+            className={`ask-ai-library-splitter${
+              split.dragging ? ' is-dragging' : ''
+            }`}
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label={t('askAI.notesPanel.resizeHandle')}
+            title={t('askAI.notesPanel.resizeHandle')}
+            tabIndex={0}
+            {...split.splitterHandlers}
+          />
+          <section
+            className="ask-ai-recents"
+            ref={split.recentsRef}
+            style={
+              split.height === null
+                ? undefined
+                : { flex: `0 0 ${split.height}px`, maxHeight: 'none' }
+            }
+          >
+            {/* 标题与 ＋ 放在同一个容器里，布局与上面的工作区分组一致 */}
+            <h3 className="ask-ai-recents-header">
+              <span>{t('askAI.notesPanel.recentConversations')}</span>
+              {onNewConversation && (
+                <button
+                  type="button"
+                  className="ask-ai-group-add"
+                  onClick={onNewConversation}
+                  aria-label={t('askAI.notesPanel.newConversation')}
+                  title={t('askAI.notesPanel.newConversation')}
+                >
+                  ＋
+                </button>
+              )}
+            </h3>
+            <div className="ask-ai-recents-list">
+              {conversations.slice(0, RECENT_CONVERSATION_LIMIT).map((conversation) => (
+                <button
+                  type="button"
+                  key={conversation.id}
+                  onClick={() => onOpenConversation(conversation.id)}
+                >
+                  <strong>{conversation.name}</strong>
+                  <time>{formatAskAIDate(conversation.updatedAt)}</time>
+                </button>
+              ))}
+            </div>
+          </section>
+        </>
       )}
     </aside>
   );

@@ -33,6 +33,7 @@
 
 /* 中间：对话主区 */
 .studio-chat {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -321,24 +322,24 @@
   background: var(--surface-soft);
 }
 
-/* 拖拽笔记 / 工作区到输入框时的落点提示 */
-.studio-composer.is-drag-over {
-  border-color: var(--accent);
-  border-style: dashed;
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface-soft));
+/* 拖拽笔记 / 工作区的落点是整块对话面板，不必精确拖到输入框里 */
+.studio-chat.is-drag-over {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .studio-drop-hint {
   position: absolute;
-  inset: 0;
+  /* 留出内边距，让虚线框看起来是罩在面板上的一层落点区 */
+  inset: 0.6rem;
   z-index: 15;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
+  border: 2px dashed var(--accent);
+  border-radius: 18px;
   background: color-mix(in srgb, var(--accent) 12%, var(--surface-strong));
   color: var(--accent);
-  font-size: var(--fs-md);
+  font-size: var(--fs-lg);
   font-weight: 700;
   /* 提示层不能吃掉拖拽事件，否则会一直触发 dragleave */
   pointer-events: none;
@@ -689,4 +690,147 @@
   .studio-review-dialog footer button {
     width: 100%;
   }
+}
+
+/* =========================================================
+   组件未就绪时的门禁页
+   对话工作台依赖 STT / TTS / LLM / Embedding 和三个运行时，
+   缺任何一项都在这里说清楚，而不是让用户用到一半撞见静默失败。
+   ========================================================= */
+/* 只做居中，不再自己画一层边框背景：
+   外面已经有 .content-area，再套一层看起来就是两个盒子叠着。 */
+.studio-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 10rem);
+}
+
+/* 检测中的加载态：起 Ollama 要几秒，不能只留一片空白 */
+.studio-gate-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  color: var(--muted);
+  font-size: var(--fs-md);
+}
+
+.studio-gate-card {
+  width: min(560px, 100%);
+  padding: 1.6rem;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface-soft);
+}
+
+.studio-gate-eyebrow {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.studio-gate-card h1 {
+  margin: 0.3rem 0 0.4rem;
+  color: var(--text);
+  font-size: var(--fs-xl);
+}
+
+.studio-gate-card > p {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: var(--fs-md);
+}
+
+.studio-gate-error {
+  margin: 0 0 1rem;
+  color: #f87171;
+  font-size: var(--fs-sm);
+  word-break: break-word;
+}
+
+.studio-gate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0 0 1.2rem;
+  padding: 0;
+  list-style: none;
+}
+
+.studio-gate-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-strong);
+}
+
+.studio-gate-list li > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.studio-gate-list strong {
+  color: var(--text);
+  font-size: var(--fs-md);
+}
+
+.studio-gate-list small {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+
+.studio-gate-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+}
+
+.studio-gate-list li.is-ready .studio-gate-mark {
+  color: #34d399;
+  background: color-mix(in srgb, #34d399 18%, transparent);
+}
+
+.studio-gate-list li.is-missing .studio-gate-mark {
+  color: #fbbf24;
+  background: color-mix(in srgb, #fbbf24 18%, transparent);
+}
+
+.studio-gate-list li.is-missing {
+  border-color: color-mix(in srgb, #fbbf24 45%, var(--border));
+}
+
+.studio-gate-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.studio-gate-actions button {
+  min-height: 38px;
+  padding: 0.5rem 1.1rem;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: white;
+  font-size: var(--fs-md);
+  font-weight: 700;
+}
+
+.studio-gate-actions .studio-gate-secondary {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
 }

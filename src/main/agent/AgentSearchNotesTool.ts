@@ -53,6 +53,20 @@ function fuse(
   });
 }
 
+/**
+ * 用户手动挂上的笔记：无论检索是否命中都带上，并标成 linked，
+ * 让模型知道这几条是人指定的重点，但检索本身仍然覆盖全部笔记。
+ */
+function listLinkedNotes(
+  notes: AgentNoteSource,
+  linkedNoteIds: number[] | undefined,
+): Record<string, unknown>[] {
+  return (linkedNoteIds ?? [])
+    .map((id) => notes.findById(id))
+    .filter((note): note is Note => note !== null && note !== undefined)
+    .map((note) => ({ ...serializeAgentNote(note), match: 'linked' }));
+}
+
 function serializeFused(entry: FusedEntry): Record<string, unknown> {
   const base = entry.note
     ? serializeAgentNote(entry.note)
@@ -76,6 +90,15 @@ function serializeFused(entry: FusedEntry): Record<string, unknown> {
   };
 }
 
+/** 挂上的笔记排在最前，其余结果去掉与之重复的条目。 */
+function withLinkedFirst(
+  linked: Record<string, unknown>[],
+  found: Record<string, unknown>[],
+): Record<string, unknown>[] {
+  const linkedIds = new Set(linked.map((note) => note.id));
+  return [...linked, ...found.filter((note) => !linkedIds.has(note.id))];
+}
+
 /**
  * 混合检索：关键词与向量语义两路都跑，再用 RRF 融合排序。
  * 两路都命中的笔记会排到前面；本地向量模型不可用时自动退化为纯关键词。
@@ -90,7 +113,7 @@ export default function createAgentSearchNotesTool(
       function: {
         name: 'search_notes',
         description:
-          'Search saved notes inside the current workspace. Omit query to list recent notes.',
+          'Search every saved note the user has, across all workspaces. Omit query to list recent notes.',
         parameters: {
           type: 'object',
           properties: {
@@ -107,10 +130,14 @@ export default function createAgentSearchNotesTool(
         0,
         MAX_KEYWORD_NOTES,
       );
+      const linked = listLinkedNotes(notes, context.linkedNoteIds);
       if (!query) {
         return JSON.stringify({
           match: 'recent',
-          notes: candidates.slice(0, MAX_RESULTS).map(serializeAgentNote),
+          notes: withLinkedFirst(
+            linked,
+            candidates.slice(0, MAX_RESULTS).map(serializeAgentNote),
+          ),
         });
       }
 
@@ -163,18 +190,18 @@ export default function createAgentSearchNotesTool(
 
       if (fused.length === 0) {
         return JSON.stringify({
-          match: 'none',
-          notes: [],
+          match: linked.length > 0 ? 'linked' : 'none',
+          notes: linked,
           hint: semanticError
             ? 'No keyword match. Semantic search is unavailable.'
-            : 'No matching notes in this workspace.',
+            : 'No matching notes among the saved notes.',
           ...(semanticError ? { error: semanticError } : {}),
         });
       }
 
       return JSON.stringify({
         match: 'hybrid',
-        notes: fused.map(serializeFused),
+        notes: withLinkedFirst(linked, fused.map(serializeFused)),
         ...(semanticError ? { semanticUnavailable: semanticError } : {}),
       });
     },

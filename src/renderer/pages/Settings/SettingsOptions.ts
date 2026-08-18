@@ -56,6 +56,26 @@ export const THEME_OPTIONS: Array<{
   },
 ];
 
+export const AGENT_AUTO_SPEAK_OPTIONS: Array<{
+  value: boolean;
+  labelKey: string;
+  descKey: string;
+  glyph: string;
+}> = [
+  {
+    value: true,
+    labelKey: 'settings.agent.autoSpeak.on',
+    descKey: 'settings.agent.autoSpeak.on.desc',
+    glyph: '♪',
+  },
+  {
+    value: false,
+    labelKey: 'settings.agent.autoSpeak.off',
+    descKey: 'settings.agent.autoSpeak.off.desc',
+    glyph: '✕',
+  },
+];
+
 export const LANGUAGE_OPTIONS: Array<{
   value: LanguageSetting;
   labelKey: string;

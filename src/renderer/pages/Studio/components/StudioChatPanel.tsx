@@ -19,6 +19,7 @@ import { StudioAgentState } from '../useStudioAgent';
 import { AgentStep } from '../../../../main/agent/AgentTypes';
 import TTSPlayButton from '../../../tts/TTSPlayButton';
 import CopyButton from '../../../components/CopyButton';
+import { useAppSettings } from '../../../settings/AppSettingsProvider';
 
 type RecordingUiState = {
   active: boolean;
@@ -138,12 +139,14 @@ function AgentIcon() {
 const AGENT_TOOL_NAMES: Record<string, string> = {
   search_notes: 'studio.agent.tool.search',
   read_note: 'studio.agent.tool.read',
+  extract_todos: 'studio.agent.tool.todos',
 };
 
 const MATCH_LABELS: Record<string, string> = {
   keyword: 'studio.agent.match.keyword',
   semantic: 'studio.agent.match.semantic',
   'keyword+semantic': 'studio.agent.match.both',
+  linked: 'studio.agent.match.linked',
 };
 
 type AgentStepView = { title: string; details: string[] };
@@ -203,6 +206,9 @@ function describeAgentStep(step: AgentStep): AgentStepView {
     if (step.tool === 'read_note' && noteId !== undefined) {
       return { title: `${i18n.t('studio.agent.step.readPrefix')}${noteId}`, details: [] };
     }
+    if (step.tool === 'extract_todos' && noteId !== undefined) {
+      return { title: `${i18n.t('studio.agent.step.todosPrefix')}${noteId}`, details: [] };
+    }
     return { title: tool, details: [] };
   }
 
@@ -225,6 +231,22 @@ function describeAgentStep(step: AgentStep): AgentStepView {
       return {
         title: `${i18n.t('studio.agent.step.readDonePrefix')}${parsed.name ?? i18n.t('studio.agent.untitledNote')}${i18n.t('studio.agent.step.searchSuffix')}`,
         details: body ? [`${body.slice(0, 120)}…`] : [],
+      };
+    }
+    if (step.tool === 'extract_todos') {
+      const parsed = JSON.parse(step.result) as {
+        todos?: { title?: string; dueDate?: string }[];
+        hint?: string;
+      };
+      const items = parsed.todos ?? [];
+      const details = items.map(
+        (todo) =>
+          `${todo.title ?? ''}${todo.dueDate ? `（${todo.dueDate}）` : ''}`,
+      );
+      if (parsed.hint) details.push(i18n.t('studio.agent.todosFailed'));
+      return {
+        title: `${i18n.t('studio.agent.step.todosDonePrefix')}${items.length}${i18n.t('studio.agent.step.todosDoneSuffix')}`,
+        details: details.length > 0 ? details : [i18n.t('studio.agent.noTodos')],
       };
     }
   } catch {
@@ -284,6 +306,9 @@ export default function StudioChatPanel({
   onUploadAudio,
 }: StudioChatPanelProps) {
   const { t } = useTranslation();
+  // 自动朗读开关来自设置页的「智能助理」分类
+  const { settings } = useAppSettings();
+  const agentAutoSpeak = settings.agentAutoSpeak;
   const [question, setQuestion] = useState('');
   const [mention, setMention] = useState<{
     start: number;
@@ -375,8 +400,8 @@ export default function StudioChatPanel({
     });
   }
 
-  /** 拖拽只接受笔记库拖过来的载荷，落点限定在输入框这一块。 */
-  function handleDragOver(event: DragEvent<HTMLFormElement>) {
+  /** 拖拽只接受笔记库拖过来的载荷，整块对话面板都是落点。 */
+  function handleDragOver(event: DragEvent<HTMLElement>) {
     if (!hasNoteDragPayload(event.dataTransfer)) return;
     event.preventDefault();
     // eslint-disable-next-line no-param-reassign
@@ -384,13 +409,13 @@ export default function StudioChatPanel({
     setDragOver(true);
   }
 
-  function handleDragLeave(event: DragEvent<HTMLFormElement>) {
-    // 移动到输入框内部的子元素上时不算离开。
+  function handleDragLeave(event: DragEvent<HTMLElement>) {
+    // 移动到面板内部的子元素上时不算离开。
     if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
     setDragOver(false);
   }
 
-  function handleDrop(event: DragEvent<HTMLFormElement>) {
+  function handleDrop(event: DragEvent<HTMLElement>) {
     const payload = readNoteDragPayload(event.dataTransfer);
     if (!payload) return;
     event.preventDefault();
@@ -449,14 +474,28 @@ export default function StudioChatPanel({
   }
 
   const recordingBusy = recording.busy;
-  // 挂了笔记或整个工作区，才有可提问的上下文。
+  // 挂了笔记或整个工作区，才有可提问的上下文；
+  // 智能体模式自己在全部笔记里检索，不需要先挂任何东西。
   const hasContext =
+    agentMode ||
     selectedNote !== null ||
     linkedNotes.length > 0 ||
     linkedWorkspaceIds.length > 0;
 
   return (
-    <section className="studio-chat">
+    <section
+      className={`studio-chat${dragOver ? ' is-drag-over' : ''}`}
+      onDragEnter={handleDragOver}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {dragOver && (
+        <div className="studio-drop-hint" aria-hidden="true">
+          {t('studio.chat.dropHint')}
+        </div>
+      )}
+
       <header className="studio-chat-header">
         <div className="studio-chat-heading">
           <h2>{conversationName || t('studio.chat.newChat')}</h2>
@@ -528,7 +567,13 @@ export default function StudioChatPanel({
               )}
               <p>{turn.answer}</p>
               <div className="message-actions">
-                <TTSPlayButton text={turn.answer} />
+                {/* 只有刚答完的这一轮自动朗读，历史回答重渲染时不会再响 */}
+                <TTSPlayButton
+                  text={turn.answer}
+                  autoPlay={
+                    agentAutoSpeak && turn.id === agent.turns.at(-1)?.id
+                  }
+                />
                 <CopyButton text={turn.answer} />
               </div>
             </article>
@@ -578,20 +623,7 @@ export default function StudioChatPanel({
         </p>
       )}
 
-      <form
-        className={`studio-composer${dragOver ? ' is-drag-over' : ''}`}
-        onSubmit={handleSubmit}
-        onDragEnter={handleDragOver}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        {dragOver && (
-          <div className="studio-drop-hint" aria-hidden="true">
-            {t('studio.chat.dropHint')}
-          </div>
-        )}
-
+      <form className="studio-composer" onSubmit={handleSubmit}>
         {mentionOpen && (
           <div className="studio-mention" role="listbox" aria-label={t('studio.chat.mentionAria')}>
             {mentionCandidates.map((item, index) => (

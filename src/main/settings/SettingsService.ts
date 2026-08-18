@@ -10,12 +10,16 @@ export type AppSettings = {
   fontSize: FontSizeSetting;
   theme: ThemeSetting;
   language: LanguageSetting;
+  /** 智能助理答完是否自动朗读；TTS 未就绪时静默跳过，不报错。 */
+  agentAutoSpeak: boolean;
 };
 
 const DEFAULT_APPEARANCE = {
   fontSize: 'medium' as FontSizeSetting,
   theme: 'system' as ThemeSetting,
 };
+
+const DEFAULT_AGENT_AUTO_SPEAK = true;
 
 /**
  * 根据操作系统语言推断默认界面语言：中文区域用中文，其余一律英文。
@@ -33,7 +37,11 @@ function detectSystemLanguage(): LanguageSetting {
 }
 
 function buildDefaultSettings(): AppSettings {
-  return { ...DEFAULT_APPEARANCE, language: detectSystemLanguage() };
+  return {
+    ...DEFAULT_APPEARANCE,
+    language: detectSystemLanguage(),
+    agentAutoSpeak: DEFAULT_AGENT_AUTO_SPEAK,
+  };
 }
 
 /**
@@ -100,10 +108,17 @@ export class SettingsService {
         ? candidate.language
         : detectSystemLanguage();
 
+    // 同样是后续新增字段：旧配置里没有时用默认值，不能因此判定整份设置无效。
+    const agentAutoSpeak =
+      typeof candidate.agentAutoSpeak === 'boolean'
+        ? candidate.agentAutoSpeak
+        : DEFAULT_AGENT_AUTO_SPEAK;
+
     return {
       fontSize: candidate.fontSize,
       theme: candidate.theme,
       language,
+      agentAutoSpeak,
     };
   }
 }

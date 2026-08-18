@@ -6,6 +6,8 @@ export type AppSettings = {
   fontSize: FontSizeSetting;
   theme: ThemeSetting;
   language: LanguageSetting;
+  /** 智能助理答完是否自动朗读 */
+  agentAutoSpeak: boolean;
 };
 
 type SettingsApi = {

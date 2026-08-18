@@ -8,6 +8,10 @@ import { LlmModelService } from "@/services/llm-model-service";
 
 type ModelOutput = { summary?: unknown; sections?: Record<string, unknown> };
 
+const MODEL_CONTEXT_SIZE = 3072;
+const MODEL_BATCH_SIZE = 128;
+const MAX_PREDICTED_TOKENS = 768;
+
 export class KnowledgeService {
   public constructor(
     private readonly repository: KnowledgeDocumentRepository,
@@ -39,23 +43,52 @@ export class KnowledgeService {
     let context: LlamaContext | null = null;
     try {
       console.info("[Knowledge] Loading local model", { modelId: model.getId(), modelName: model.getName() });
-      context = await initLlama({ model: modelFile.uri, n_ctx: 4096, n_batch: 256 });
+      context = await initLlama({
+        model: modelFile.uri,
+        n_ctx: MODEL_CONTEXT_SIZE,
+        n_batch: MODEL_BATCH_SIZE,
+      });
+      console.info("[Knowledge] Local model loaded", { modelId: model.getId() });
       const definition = getKnowledgeScenarioDefinition(scenario);
-      const transcriptForPrompt = normalizedTranscript.slice(0, 14000);
+      const transcriptForPrompt = normalizedTranscript.slice(0, 8000);
       if (transcriptForPrompt.length < normalizedTranscript.length) {
         console.warn("[Knowledge] Transcript truncated for local context window", { originalLength: normalizedTranscript.length, usedLength: transcriptForPrompt.length });
       }
       const sectionShape = Object.fromEntries(definition.sections.map((section) => [section.key, []]));
+      const sectionProperties = Object.fromEntries(definition.sections.map((section) => [
+        section.key,
+        { type: "array", items: { type: "string" } },
+      ]));
       const sectionGuide = definition.sections
         .map((section) => `- ${section.key}: ${section.instruction}`)
         .join("\n");
+      console.info("[Knowledge] Starting local completion", { modelId: model.getId(), scenario });
       const result = await context.completion({
         messages: [
           { role: "system", content: "You organize transcripts into faithful, concise knowledge notes. Use only information in the transcript. Never invent names, owners, dates, decisions, quotes, or facts. Use the transcript's primary language. Return only valid JSON." },
           { role: "user", content: `Create a ${definition.name} knowledge note. Return exactly this JSON shape: {\"summary\":\"a concise overview\",\"sections\":${JSON.stringify(sectionShape)}}. Every section value must be an array of concise strings. Use [] when the transcript has no evidence for a section. Section requirements:\n${sectionGuide}\nTranscript:\n---\n${transcriptForPrompt}\n---` },
         ],
-        response_format: { type: "json_object" },
-        n_predict: 1400,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                summary: { type: "string" },
+                sections: {
+                  type: "object",
+                  properties: sectionProperties,
+                  required: definition.sections.map((section) => section.key),
+                  additionalProperties: false,
+                },
+              },
+              required: ["summary", "sections"],
+              additionalProperties: false,
+            },
+          },
+        },
+        n_predict: MAX_PREDICTED_TOKENS,
         temperature: 0.2,
       });
       const document = this.toDocument(noteId, scenario, model.getId(), result.content || result.text);

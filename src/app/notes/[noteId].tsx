@@ -61,17 +61,30 @@ export default function NoteDetailScreen() {
         return;
       }
 
-      const workspace = await workspaceService.getWorkspace(
-        loadedNote.getWorkspaceId(),
-      );
-      const knowledge = await knowledgeService.getForNote(loadedNote.getId());
+      const [workspace, knowledge] = await Promise.all([
+        workspaceService.getWorkspace(loadedNote.getWorkspaceId()).catch((error) => {
+          console.warn("[NoteDetail] Workspace metadata could not be loaded", {
+            noteId: loadedNote.getId(),
+            error,
+          });
+          return null;
+        }),
+        knowledgeService.getForNote(loadedNote.getId()).catch((error) => {
+          console.warn("[NoteDetail] Saved knowledge could not be loaded", {
+            noteId: loadedNote.getId(),
+            error,
+          });
+          return null;
+        }),
+      ]);
       setState({
         status: "success",
         note: loadedNote,
         workspaceName: workspace?.getName() ?? null,
         knowledge,
       });
-    } catch {
+    } catch (error) {
+      console.error("[NoteDetail] Unable to load note", { noteId, error });
       setState({ status: "error", message: "Unable to load note." });
     }
   };

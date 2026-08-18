@@ -17,6 +17,10 @@ export class KnowledgeDocumentRepository {
       );
       return row ? this.map(row) : null;
     } catch (error) {
+      console.error("[Knowledge] Unable to load saved knowledge", {
+        noteId,
+        error,
+      });
       throw new DatabaseError("Unable to load generated knowledge.", { cause: error instanceof Error ? error : undefined });
     }
   }
@@ -36,6 +40,10 @@ export class KnowledgeDocumentRepository {
         document.getCreatedAt(), document.getUpdatedAt(),
       );
     } catch (error) {
+      console.error("[Knowledge] Unable to persist generated knowledge", {
+        noteId: document.getNoteId(),
+        error,
+      });
       throw new DatabaseError("Unable to save generated knowledge.", { cause: error instanceof Error ? error : undefined });
     }
   }

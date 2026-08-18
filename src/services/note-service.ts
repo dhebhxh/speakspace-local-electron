@@ -18,6 +18,10 @@ export class NoteService {
     return this.noteRepository.findById(id);
   }
 
+  public async getTranscriptNotes(): Promise<Note[]> {
+    return this.noteRepository.findAllWithTranscript();
+  }
+
   public async createNote(
     workspaceId: string,
     name: string | null,

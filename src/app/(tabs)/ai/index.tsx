@@ -1,5 +1,6 @@
 import { Stack, type Href, useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
@@ -8,11 +9,18 @@ export default function AiManagementScreen() {
   const theme = useTheme();
   const colors = Colors[theme.mode];
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: "AI Management", headerLargeTitle: true }} />
-      <View style={styles.content}>
+      <Stack.Screen options={{ title: "AI Management" }} />
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Spacing.xxl + insets.bottom },
+        ]}
+      >
         <View style={styles.heading}>
           <Text style={[styles.kicker, { color: colors.accent }]}>ON-DEVICE AI</Text>
           <Text style={[styles.title, { color: colors.text }]}>AI Management</Text>
@@ -66,14 +74,14 @@ export default function AiManagementScreen() {
             </View>
           </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { gap: Spacing.xl, padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  content: { gap: Spacing.xl, padding: Spacing.lg },
   heading: { gap: Spacing.xs },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 34, fontWeight: "800" },
@@ -89,7 +97,7 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     width: "100%",
   },
-  cardText: { flex: 1, gap: Spacing.xs },
+  cardText: { flex: 1, gap: Spacing.xs, minWidth: 0 },
   cardAction: { alignItems: "center", flexDirection: "row", gap: Spacing.xs },
   cardTitle: { fontSize: 17, fontWeight: "700" },
   cardSubtitle: { fontSize: 13, lineHeight: 18 },

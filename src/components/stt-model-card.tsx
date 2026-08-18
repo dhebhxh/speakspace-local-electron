@@ -163,6 +163,7 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
     gap: Spacing.xs,
+    minWidth: 0,
   },
   name: {
     fontSize: 17,
@@ -179,6 +180,7 @@ const styles = StyleSheet.create({
   badge: {
     alignSelf: "flex-start",
     borderRadius: Radius.sm,
+    flexShrink: 0,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
   },
@@ -206,6 +208,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing.sm,
   },
   busyRow: {

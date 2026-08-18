@@ -1,8 +1,9 @@
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { File, Paths } from "expo-file-system";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
@@ -27,6 +28,8 @@ export default function NoteDetailScreen() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
   const theme = useTheme();
   const colors = Colors[theme.mode];
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { noteService, workspaceService } = appContainer;
   const [state, setState] = useState<NoteDetailState>({
     status: "loading",
@@ -77,7 +80,13 @@ export default function NoteDetailScreen() {
               : "Note",
         }}
       />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Spacing.xxl + insets.bottom },
+        ]}
+      >
         {state.status === "loading" && <LoadingState />}
         {state.status === "error" && (
           <ErrorState message={state.message} onRetry={() => void loadNote()} />
@@ -126,6 +135,16 @@ export default function NoteDetailScreen() {
                   />
                 </View>
               )}
+              <AppButton
+                label="Ask AI about this transcript"
+                variant="secondary"
+                onPress={() =>
+                  router.push({
+                    pathname: "/ask-ai",
+                    params: { noteId: state.note.getId() },
+                  } as unknown as Href)
+                }
+              />
             </View>
             <View
               style={[
@@ -149,7 +168,7 @@ export default function NoteDetailScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { gap: Spacing.xl, padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  content: { gap: Spacing.xl, padding: Spacing.lg },
   header: { gap: Spacing.sm },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 36, fontWeight: "800", lineHeight: 42 },

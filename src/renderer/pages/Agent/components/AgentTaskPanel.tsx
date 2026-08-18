@@ -40,10 +40,13 @@ export default function AgentTaskPanel({
           onChange={(event) => onWorkspaceChange(Number(event.target.value))}
           value={workspaceId ?? ''}
         >
-          {workspaces.length === 0 && <option value="">{t('agent.taskPanel.noWorkspaces')}</option>}
+          {workspaces.length === 0 && (
+            <option value="">{t('agent.taskPanel.noWorkspaces')}</option>
+          )}
           {workspaces.map((workspace) => (
             <option key={workspace.id} value={workspace.id}>
-              {workspace.name} · {workspace.note_count}{t('agent.taskPanel.noteCountSuffix')}
+              {workspace.name} · {workspace.note_count}
+              {t('agent.taskPanel.noteCountSuffix')}
             </option>
           ))}
         </select>

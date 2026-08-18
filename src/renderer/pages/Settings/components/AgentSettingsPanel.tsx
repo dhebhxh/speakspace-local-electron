@@ -52,7 +52,9 @@ export default function AgentSettingsPanel({
         ))}
       </div>
 
-      <p className="settings-resolved-theme">{t('settings.agent.autoSpeak.hint')}</p>
+      <p className="settings-resolved-theme">
+        {t('settings.agent.autoSpeak.hint')}
+      </p>
     </section>
   );
 }

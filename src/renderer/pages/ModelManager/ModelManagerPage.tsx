@@ -93,7 +93,10 @@ export function ModelManagerPage() {
         {
           id: manager.embedding.modelName,
           name: manager.embedding.modelName,
-          tags: [t('modelManager.tags.multilingual'), t('modelManager.tags.search')],
+          tags: [
+            t('modelManager.tags.multilingual'),
+            t('modelManager.tags.search'),
+          ],
           description: t('modelManager.embedding.desc'),
           downloaded: manager.embedding.installed,
           active: manager.embedding.installed,
@@ -132,10 +135,7 @@ export function ModelManagerPage() {
         </div>
       )}
 
-      <div
-        className="model-module-list"
-        hidden={manager.initialLoading}
-      >
+      <div className="model-module-list" hidden={manager.initialLoading}>
         <ModelModule
           actions={null}
           busy={busy}

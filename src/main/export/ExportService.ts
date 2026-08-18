@@ -11,7 +11,7 @@ export type ExportRequest = {
 export class ExportService {
   public async exportNote(request: ExportRequest): Promise<void> {
     const { title, transcript, subnotes, format } = request;
-    
+
     // Build HTML representation
     const htmlContent = `
       <!DOCTYPE html>
@@ -30,12 +30,16 @@ export class ExportService {
       </head>
       <body>
         <h1>${title}</h1>
-        ${subnotes.map(sn => `
+        ${subnotes
+          .map(
+            (sn) => `
           <div class="subnote">
             <div class="subnote-title">${sn.type}</div>
             <p>${sn.content}</p>
           </div>
-        `).join('')}
+        `,
+          )
+          .join('')}
         <h2>Transcript</h2>
         <p>${transcript}</p>
       </body>
@@ -67,16 +71,18 @@ export class ExportService {
           webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-          }
+          },
         });
-        
-        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
-        
+
+        await win.loadURL(
+          `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`,
+        );
+
         const pdfData = await win.webContents.printToPDF({
           printBackground: true,
           pageSize: 'A4',
         });
-        
+
         await fs.writeFile(filePath, pdfData);
         win.destroy();
       }

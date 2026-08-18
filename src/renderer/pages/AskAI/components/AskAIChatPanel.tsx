@@ -59,14 +59,22 @@ export default function AskAIChatPanel({
       <header className="ask-ai-chat-header">
         <div>
           <span>{t('askAI.chat.localQA')}</span>
-          <h2>{scope === 'note' ? t('askAI.chat.scopeNote') : t('askAI.chat.scopeWorkspace')}</h2>
+          <h2>
+            {scope === 'note'
+              ? t('askAI.chat.scopeNote')
+              : t('askAI.chat.scopeWorkspace')}
+          </h2>
           <p>
             {scope === 'note'
               ? selectedNote?.name || t('askAI.chat.noNoteSelected')
               : `${workspaceNoteCount}${t('askAI.chat.workspaceNoteCountSuffix')}`}
           </p>
         </div>
-        <div className="ask-ai-scope" role="group" aria-label={t('askAI.chat.scopeAria')}>
+        <div
+          className="ask-ai-scope"
+          role="group"
+          aria-label={t('askAI.chat.scopeAria')}
+        >
           <button
             type="button"
             className={scope === 'note' ? 'active' : ''}
@@ -104,7 +112,11 @@ export default function AskAIChatPanel({
         ) : (
           messages.map((message) => (
             <article key={message.id} className={message.role}>
-              <span>{message.role === 'assistant' ? t('askAI.chat.roleAI') : t('askAI.chat.roleYou')}</span>
+              <span>
+                {message.role === 'assistant'
+                  ? t('askAI.chat.roleAI')
+                  : t('askAI.chat.roleYou')}
+              </span>
               <p>{message.content}</p>
               {message.role === 'assistant' && (
                 <div className="message-actions">

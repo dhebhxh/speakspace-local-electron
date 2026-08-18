@@ -17,8 +17,6 @@ type ByteProgress = {
   totalBytes?: number;
 };
 
-const recommendationController = new ModelRecommendationController();
-
 function toPercent(received?: number, total?: number): number | null {
   if (!received || !total) return null;
   return Math.round((received / total) * 100);
@@ -29,6 +27,9 @@ function toPercent(received?: number, total?: number): number | null {
  * 页面组件只负责展示，所有 IPC 调用集中在这里。
  */
 export default function useModelManager() {
+  const [recommendationController] = useState(
+    () => new ModelRecommendationController(),
+  );
   const [sttModels, setSttModels] = useState<Model[]>([]);
   const [ttsModels, setTtsModels] = useState<Model[]>([]);
   const [llmModels, setLlmModels] = useState<Model[]>([]);

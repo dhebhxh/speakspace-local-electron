@@ -4,6 +4,6 @@
  */
 export function requireAtRuntime<T = unknown>(moduleName: string): T {
   // eslint-disable-next-line no-eval
-  const runtimeRequire = eval('require') as NodeRequire;
+  const runtimeRequire = eval('require') as (id: string) => unknown;
   return runtimeRequire(moduleName) as T;
 }

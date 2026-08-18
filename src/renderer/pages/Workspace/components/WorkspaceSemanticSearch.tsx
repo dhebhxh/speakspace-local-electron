@@ -44,7 +44,9 @@ export default function WorkspaceSemanticSearch({
       setResults(await controller.search(cleanQuery, workspaceId));
       setSearchedQuery(cleanQuery);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t('workspace.search.error'));
+      setError(
+        reason instanceof Error ? reason.message : t('workspace.search.error'),
+      );
     } finally {
       setLoading(false);
     }
@@ -62,7 +64,9 @@ export default function WorkspaceSemanticSearch({
             title={t('workspace.search.title')}
             type="button"
           >
-            {loading ? t('workspace.search.indexing') : t('workspace.search.button')}
+            {loading
+              ? t('workspace.search.indexing')
+              : t('workspace.search.button')}
           </button>
         ) : (
           <Link
@@ -82,7 +86,8 @@ export default function WorkspaceSemanticSearch({
       {searchedQuery && !error && (
         <div className="workspace-semantic-results">
           <span>
-            「{searchedQuery}」· {results.length} {t('workspace.detail.noteCount')}
+            「{searchedQuery}」· {results.length}{' '}
+            {t('workspace.detail.noteCount')}
           </span>
           {results.map((result) => (
             <button
@@ -91,7 +96,10 @@ export default function WorkspaceSemanticSearch({
               type="button"
             >
               <strong>{result.name}</strong>
-              <small>{Math.round(result.score * 100)}% {t('workspace.search.similarity')}</small>
+              <small>
+                {Math.round(result.score * 100)}%{' '}
+                {t('workspace.search.similarity')}
+              </small>
               <span>{result.transcriptPreview}</span>
             </button>
           ))}

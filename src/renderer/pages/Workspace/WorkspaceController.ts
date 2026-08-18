@@ -11,6 +11,7 @@ export type WorkspaceItem = {
 
 export type SubnoteItem = {
   id: number;
+  template_name?: string;
   content_type: string;
   content: string;
   created_at: string;
@@ -134,7 +135,11 @@ export class WorkspaceController {
     });
   }
 
-  public static formatDate(value: string, format: 'long' | 'short', language: string = 'zh-CN'): string {
+  public static formatDate(
+    value: string,
+    format: 'long' | 'short',
+    language: string = 'zh-CN',
+  ): string {
     const options: Intl.DateTimeFormatOptions =
       format === 'long'
         ? { dateStyle: 'long' }

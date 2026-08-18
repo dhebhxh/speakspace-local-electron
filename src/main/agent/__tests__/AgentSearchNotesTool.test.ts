@@ -50,7 +50,9 @@ describe('createAgentSearchNotesTool（混合检索）', () => {
 
     expect(semantic.search).toHaveBeenCalled();
     expect(result.match).toBe('hybrid');
-    expect(result.notes.map((n: { id: number }) => n.id).sort()).toEqual([1, 2]);
+    expect(result.notes.map((n: { id: number }) => n.id).sort()).toEqual([
+      1, 2,
+    ]);
   });
 
   it('两路都命中的笔记排在只命中一路的前面', async () => {

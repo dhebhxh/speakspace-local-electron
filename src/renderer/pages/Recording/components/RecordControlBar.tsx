@@ -211,7 +211,9 @@ export default function RecordControlBar(props: {
       });
 
       // Trigger intelligent auto-segmentation in the background
-      window.electron.askAI.autoSegmentNote(saveResult.noteId).catch(console.error);
+      window.electron.askAI
+        .autoSegmentNote(saveResult.noteId)
+        .catch(console.error);
 
       setWorkspaceSaveSuccess(
         `${t('recording.control.savedToPrefix')}${workspaceName}${t('recording.control.savedToSuffix')}`,

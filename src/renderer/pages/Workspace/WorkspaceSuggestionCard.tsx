@@ -29,19 +29,29 @@ export default function WorkspaceSuggestionCard({
       setError('');
       await onRename(suggestion.targetWorkspaceId, suggestion.name);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t('workspace.error.createFailed'));
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : t('workspace.error.createFailed'),
+      );
     } finally {
       setRenaming(false);
     }
   };
 
   return (
-    <aside className="workspace-suggestion" aria-label={t('workspace.suggestion.prefix')}>
+    <aside
+      className="workspace-suggestion"
+      aria-label={t('workspace.suggestion.prefix')}
+    >
       <span className="workspace-suggestion-icon" aria-hidden="true">
         <Sparkles size={16} />
       </span>
       <div className="workspace-suggestion-copy">
-        <span>{t('workspace.suggestion.prefix')}{suggestion.category}</span>
+        <span>
+          {t('workspace.suggestion.prefix')}
+          {suggestion.category}
+        </span>
         <strong>{suggestion.name}</strong>
         <small>{error || suggestion.reason}</small>
       </div>
@@ -56,7 +66,9 @@ export default function WorkspaceSuggestionCard({
             onClick={renameWorkspace}
             type="button"
           >
-            {renaming ? t('workspace.suggestion.creating') : t('workspace.suggestion.create')}
+            {renaming
+              ? t('workspace.suggestion.creating')
+              : t('workspace.suggestion.create')}
           </button>
         )}
       </div>

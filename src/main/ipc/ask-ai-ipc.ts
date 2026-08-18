@@ -53,10 +53,14 @@ ipcMain.handle('AskAI:ask', (_event, request: Partial<AskAIRequest>) =>
     conversationId: normalizeId(request?.conversationId),
     workspaceId: normalizeId(request?.workspaceId),
     noteId: normalizeId(request?.noteId),
-    noteIds: Array.isArray(request?.noteIds) ? request.noteIds.map(normalizeId).filter((id): id is number => id !== null) : null,
+    noteIds: Array.isArray(request?.noteIds)
+      ? request.noteIds
+          .map(normalizeId)
+          .filter((id): id is number => id !== null)
+      : null,
     question: String(request?.question || ''),
     scope: normalizeScope(request?.scope),
-  })
+  }),
 );
 
 // 智能体模式的问答已经由 Agent 生成好，这里只负责落库，不再跑一次模型。

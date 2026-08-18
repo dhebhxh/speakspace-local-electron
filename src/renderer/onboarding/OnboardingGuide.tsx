@@ -47,7 +47,8 @@ export default function OnboardingGuide() {
       >
         <header className="onboarding-progress-header">
           <span>
-            {t('onboarding.titlePrefix')} · {stepIndex + 1}/{ONBOARDING_STEPS.length}
+            {t('onboarding.titlePrefix')} · {stepIndex + 1}/
+            {ONBOARDING_STEPS.length}
           </span>
           <button onClick={close} type="button">
             {t('onboarding.skip')}
@@ -68,7 +69,10 @@ export default function OnboardingGuide() {
           {t(step.action)} ↗
         </button>
 
-        <div className="onboarding-dots" aria-label={t('onboarding.progressAria')}>
+        <div
+          className="onboarding-dots"
+          aria-label={t('onboarding.progressAria')}
+        >
           {ONBOARDING_STEPS.map((item, index) => (
             <button
               aria-label={`${t('onboarding.stepPrefix')}${index + 1}${t('onboarding.stepSuffix')}${t(item.title)}`}

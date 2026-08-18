@@ -46,7 +46,12 @@ export default function WorkspaceHomePage({
       setItems(workspaces);
       setSuggestion(nextSuggestion);
     } catch (reason) {
-      setError(WorkspaceController.getErrorMessage(reason, t('workspace.error.readFailed')));
+      setError(
+        WorkspaceController.getErrorMessage(
+          reason,
+          t('workspace.error.readFailed'),
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -66,7 +71,12 @@ export default function WorkspaceHomePage({
       const created = await workspaceController.createWorkspace(name);
       navigate(`/Workspace/${created.id}`);
     } catch (reason) {
-      setError(WorkspaceController.getErrorMessage(reason, t('workspace.error.createFailed')));
+      setError(
+        WorkspaceController.getErrorMessage(
+          reason,
+          t('workspace.error.createFailed'),
+        ),
+      );
     } finally {
       setCreating(false);
     }
@@ -91,11 +101,11 @@ export default function WorkspaceHomePage({
           <span className="workspace-home-eyebrow">
             {directory ? t('workspace.title.all') : t('workspace.title.recent')}
           </span>
-          <h1>{directory ? t('workspace.title.all') : t('workspace.title.recent')}</h1>
+          <h1>
+            {directory ? t('workspace.title.all') : t('workspace.title.recent')}
+          </h1>
           <p>
-            {directory
-              ? t('workspace.desc.all')
-              : t('workspace.desc.recent')}
+            {directory ? t('workspace.desc.all') : t('workspace.desc.recent')}
           </p>
         </div>
 
@@ -111,7 +121,9 @@ export default function WorkspaceHomePage({
                 value={name}
               />
               <button disabled={!name.trim() || creating} type="submit">
-                {creating ? t('workspace.create.busy') : t('workspace.create.button')}
+                {creating
+                  ? t('workspace.create.busy')
+                  : t('workspace.create.button')}
               </button>
             </div>
           </label>
@@ -134,13 +146,19 @@ export default function WorkspaceHomePage({
 
       <div className="workspace-home-section-heading">
         <div>
-          <h2>{directory ? t('workspace.list.title') : t('workspace.recent.title')}</h2>
+          <h2>
+            {directory
+              ? t('workspace.list.title')
+              : t('workspace.recent.title')}
+          </h2>
           <p>{t('workspace.list.desc')}</p>
         </div>
         {!directory && <Link to="/Workspace">{t('workspace.viewAll')}</Link>}
       </div>
 
-      {loading && <p className="workspace-home-status">{t('workspace.loading')}</p>}
+      {loading && (
+        <p className="workspace-home-status">{t('workspace.loading')}</p>
+      )}
 
       {!loading && items.length === 0 && (
         <div className="workspace-home-empty">
@@ -168,11 +186,18 @@ export default function WorkspaceHomePage({
               <span className="workspace-home-card-copy">
                 <strong>{item.name}</strong>
                 <small>
-                  {item.note_count} {t('workspace.detail.noteCount')} · {item.pinned_count} {t('workspace.detail.pinnedCount')}
+                  {item.note_count} {t('workspace.detail.noteCount')} ·{' '}
+                  {item.pinned_count} {t('workspace.detail.pinnedCount')}
                 </small>
                 <time dateTime={item.recent_at}>
-                  {item.last_opened_at ? t('workspace.opened') : t('workspace.created')}{' '}
-                  {WorkspaceController.formatDate(item.recent_at, 'long', i18n.language)}
+                  {item.last_opened_at
+                    ? t('workspace.opened')
+                    : t('workspace.created')}{' '}
+                  {WorkspaceController.formatDate(
+                    item.recent_at,
+                    'long',
+                    i18n.language,
+                  )}
                 </time>
               </span>
               <span className="workspace-home-card-arrow" aria-hidden="true">

@@ -70,7 +70,9 @@ export default function ModelModule({
 
       {runtimes.length > 0 && (
         <div className="model-module-runtimes">
-          <span className="model-module-runtime-label">{t('modelManager.runtime')}</span>
+          <span className="model-module-runtime-label">
+            {t('modelManager.runtime')}
+          </span>
           {runtimes.map((runtime) => (
             <span
               className="runtime-chip"

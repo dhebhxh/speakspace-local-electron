@@ -166,7 +166,11 @@ export default function ModelSelect({
                       className="model-icon-button is-danger"
                       disabled={busyId !== null || option.active}
                       onClick={() => onDelete(option.id)}
-                      title={option.active ? t('modelManager.action.deleteActive') : t('modelManager.action.delete')}
+                      title={
+                        option.active
+                          ? t('modelManager.action.deleteActive')
+                          : t('modelManager.action.delete')
+                      }
                       type="button"
                     >
                       {ModelIcons.trash}

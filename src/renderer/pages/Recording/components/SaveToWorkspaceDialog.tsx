@@ -197,7 +197,9 @@ export default function SaveToWorkspaceDialog({
                 !newWorkspaceName.trim())
             }
           >
-            {saving ? t('recording.saveDialog.saving') : t('recording.saveDialog.saveNote')}
+            {saving
+              ? t('recording.saveDialog.saving')
+              : t('recording.saveDialog.saveNote')}
           </button>
         </footer>
       </form>

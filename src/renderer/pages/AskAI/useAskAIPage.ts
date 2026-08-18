@@ -105,7 +105,9 @@ export default function useAskAIPage() {
         setStatus('笔记已保存');
 
         // Trigger Todo Extraction in the background
-        window.electron.dashboard.extractTodosForNote(created.id).catch(console.error);
+        window.electron.dashboard
+          .extractTodosForNote(created.id)
+          .catch(console.error);
 
         return true;
       } catch (error) {

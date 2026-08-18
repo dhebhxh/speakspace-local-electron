@@ -67,7 +67,7 @@ export default class AskAINoteService {
   ): Note[] {
     if (scope === 'multi-note' && noteIds) {
       return noteIds
-        .map(id => this.noteRepository.findById(id))
+        .map((id) => this.noteRepository.findById(id))
         .filter((note): note is Note => note !== null);
     }
 

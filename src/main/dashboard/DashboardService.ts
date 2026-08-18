@@ -1,81 +1,88 @@
-import Database from "better-sqlite3";
-import { DatabaseManager } from "../database/DatabaseManager";
-import { TodoRepository, TodoData } from "../database/repositories/TodoRepository";
+import Database from 'better-sqlite3';
+import { DatabaseManager } from '../database/DatabaseManager';
+import {
+  TodoRepository,
+  TodoData,
+} from '../database/repositories/TodoRepository';
 
 export interface DashboardNoteDTO {
-    id: number;
-    workspaceId: number | null;
-    name: string | null;
-    audioRelativePath: string | null;
-    transcript: string;
-    isPinned: boolean;
-    pinnedAt: Date | null;
-    createdAt: Date;
-    updatedAt: Date;
-    typeCategory: string;
-    durationSeconds: number;
+  id: number;
+  workspaceId: number | null;
+  name: string | null;
+  audioRelativePath: string | null;
+  transcript: string;
+  isPinned: boolean;
+  pinnedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  typeCategory: string;
+  durationSeconds: number;
 }
 
 export interface DashboardOverviewDTO {
-    notes: DashboardNoteDTO[];
-    todos: TodoData[];
+  notes: DashboardNoteDTO[];
+  todos: TodoData[];
 }
 
 export class DashboardService {
-    private database: Database.Database;
-    private todoRepository: TodoRepository;
+  private database: Database.Database;
 
-    public constructor() {
-        const dbManager = DatabaseManager.getInstance();
-        this.database = dbManager.getDatabase();
-        this.todoRepository = new TodoRepository();
-    }
+  private todoRepository: TodoRepository;
 
-    public getDashboardOverview(): DashboardOverviewDTO {
-        const statement = this.database.prepare(`
+  public constructor() {
+    const dbManager = DatabaseManager.getInstance();
+    this.database = dbManager.getDatabase();
+    this.todoRepository = new TodoRepository();
+  }
+
+  public getDashboardOverview(): DashboardOverviewDTO {
+    const statement = this.database.prepare(`
             SELECT *
             FROM notes
             ORDER BY updated_at DESC
             LIMIT 50
         `);
 
-        const rows = statement.all() as any[];
+    const rows = statement.all() as any[];
 
-        const notes: DashboardNoteDTO[] = rows.map(row => ({
-            id: row.id,
-            workspaceId: row.workspace_id,
-            name: row.name,
-            audioRelativePath: row.audio_relative_path,
-            transcript: row.transcript,
-            isPinned: row.is_pinned === 1,
-            pinnedAt: row.pinned_at === null ? null : new Date(row.pinned_at),
-            createdAt: new Date(row.created_at),
-            updatedAt: new Date(row.updated_at),
-            typeCategory: "未分類",
-            durationSeconds: 0
-        }));
+    const notes: DashboardNoteDTO[] = rows.map((row) => ({
+      id: row.id,
+      workspaceId: row.workspace_id,
+      name: row.name,
+      audioRelativePath: row.audio_relative_path,
+      transcript: row.transcript,
+      isPinned: row.is_pinned === 1,
+      pinnedAt: row.pinned_at === null ? null : new Date(row.pinned_at),
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+      typeCategory: '未分類',
+      durationSeconds: 0,
+    }));
 
-        const todos = this.todoRepository.getAllTodos();
+    const todos = this.todoRepository.getAllTodos();
 
-        return {
-            notes,
-            todos
-        };
-    }
+    return {
+      notes,
+      todos,
+    };
+  }
 
-    public async toggleNotePin(noteId: number, isPinned: boolean): Promise<boolean> {
-        try {
-            const statement = this.database.prepare(`
+  public async toggleNotePin(
+    noteId: number,
+    isPinned: boolean,
+  ): Promise<boolean> {
+    try {
+      const statement = this.database.prepare(`
                 UPDATE notes
                 SET is_pinned = ?, pinned_at = ?
                 WHERE id = ?
             `);
-            const pinnedAt = isPinned ? new Date().toISOString() : null;
-            statement.run(isPinned ? 1 : 0, pinnedAt, noteId);
-            return true;
-        } catch (error) {
-            console.error('Failed to toggle note pin:', error);
-            return false;
-        }
+      const pinnedAt = isPinned ? new Date().toISOString() : null;
+      statement.run(isPinned ? 1 : 0, pinnedAt, noteId);
+      return true;
+    } catch (error) {
+      console.error('Failed to toggle note pin:', error);
+      return false;
     }
+  }
 }

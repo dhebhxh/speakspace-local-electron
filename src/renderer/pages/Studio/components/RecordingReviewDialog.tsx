@@ -154,7 +154,9 @@ export default function RecordingReviewDialog({
             <div className="studio-review-text">
               {rawTranscript || (
                 <span className="studio-review-empty">
-                  {processing ? t('recording.review.transcribing') : t('recording.review.noText')}
+                  {processing
+                    ? t('recording.review.transcribing')
+                    : t('recording.review.noText')}
                 </span>
               )}
             </div>
@@ -175,7 +177,9 @@ export default function RecordingReviewDialog({
                   {workspace.name}
                 </option>
               ))}
-              <option value={NEW_WORKSPACE_VALUE}>{t('recording.review.newWorkspace')}</option>
+              <option value={NEW_WORKSPACE_VALUE}>
+                {t('recording.review.newWorkspace')}
+              </option>
             </select>
           </label>
 
@@ -237,7 +241,9 @@ export default function RecordingReviewDialog({
                 !newWorkspaceName.trim())
             }
           >
-            {saving ? t('recording.review.savingState') : t('recording.review.saveAndChat')}
+            {saving
+              ? t('recording.review.savingState')
+              : t('recording.review.saveAndChat')}
           </button>
         </footer>
       </form>

@@ -33,7 +33,11 @@ export default function AskAICreateNoteDialog({
             <span>{t('askAI.createNote.library')}</span>
             <h2>{t('askAI.createNote.title')}</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label={t('askAI.createNote.close')}>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('askAI.createNote.close')}
+          >
             ×
           </button>
         </header>
@@ -63,7 +67,9 @@ export default function AskAICreateNoteDialog({
             {t('askAI.createNote.cancel')}
           </button>
           <button type="submit" disabled={!transcript.trim() || isSaving}>
-            {isSaving ? t('askAI.createNote.saving') : t('askAI.createNote.saveBtn')}
+            {isSaving
+              ? t('askAI.createNote.saving')
+              : t('askAI.createNote.saveBtn')}
           </button>
         </footer>
       </form>

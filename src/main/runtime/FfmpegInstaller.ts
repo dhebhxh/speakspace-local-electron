@@ -48,9 +48,15 @@ export default class FfmpegInstaller {
     const binDir = getManagedFfmpegDir(this.managedPaths);
     const targetPath = getManagedFfmpegPath(this.managedPaths);
 
-    onProgress?.({ phase: 'checking', message: '正在检查 ffmpeg / Checking ffmpeg' });
+    onProgress?.({
+      phase: 'checking',
+      message: '正在检查 ffmpeg / Checking ffmpeg',
+    });
     if (fsSync.existsSync(targetPath)) {
-      onProgress?.({ phase: 'completed', message: 'ffmpeg 已就绪 / ffmpeg ready' });
+      onProgress?.({
+        phase: 'completed',
+        message: 'ffmpeg 已就绪 / ffmpeg ready',
+      });
       return { ffmpegPath: targetPath, ffmpegPresent: true };
     }
 
@@ -92,9 +98,14 @@ export default class FfmpegInstaller {
         phase: 'extracting',
         message: '正在解压 ffmpeg / Extracting ffmpeg',
       });
-      await ArchiveExtractor.extract(archivePath, extractRoot, this.processRunner, {
-        signal,
-      });
+      await ArchiveExtractor.extract(
+        archivePath,
+        extractRoot,
+        this.processRunner,
+        {
+          signal,
+        },
+      );
 
       onProgress?.({
         phase: 'installing',
@@ -105,7 +116,9 @@ export default class FfmpegInstaller {
         'ffmpeg.exe',
       );
       if (!ffmpegSource) {
-        throw new Error('压缩包缺少 ffmpeg.exe / ffmpeg.exe not found in archive');
+        throw new Error(
+          '压缩包缺少 ffmpeg.exe / ffmpeg.exe not found in archive',
+        );
       }
 
       await fs.mkdir(binDir, { recursive: true });
@@ -122,11 +135,16 @@ export default class FfmpegInstaller {
           .catch(() => undefined);
       }
 
-      onProgress?.({ phase: 'completed', message: 'ffmpeg 安装完成 / ffmpeg ready' });
+      onProgress?.({
+        phase: 'completed',
+        message: 'ffmpeg 安装完成 / ffmpeg ready',
+      });
       return { ffmpegPath: targetPath, ffmpegPresent: true };
     } finally {
       await Promise.all([
-        fs.rm(extractRoot, { recursive: true, force: true }).catch(() => undefined),
+        fs
+          .rm(extractRoot, { recursive: true, force: true })
+          .catch(() => undefined),
         fs.rm(archivePath, { force: true }).catch(() => undefined),
       ]);
     }

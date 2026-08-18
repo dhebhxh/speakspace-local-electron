@@ -6,13 +6,14 @@ type Props = { steps: AgentPageStep[]; status: string; running: boolean };
 
 function describeStep(step: AgentStep, t: (key: string) => string): string {
   if (step.type === 'final') return t('agent.timeline.final');
-  
+
   // Try to use the pre-defined tool translation, else fallback to raw tool name
-  let tool = step.tool;
+  let { tool } = step;
   if (step.tool === 'search_notes') tool = t('agent.timeline.searchNotes');
   else if (step.tool === 'read_note') tool = t('agent.timeline.readNote');
 
-  if (step.type === 'tool_call') return `${t('agent.timeline.preparePrefix')}${tool}`;
+  if (step.type === 'tool_call')
+    return `${t('agent.timeline.preparePrefix')}${tool}`;
   return `${step.ok ? t('agent.timeline.completePrefix') : t('agent.timeline.failPrefix')}${tool}`;
 }
 

@@ -18,7 +18,8 @@ export default function KnowledgeTemplateCard({
       <div>
         <h2>{knowledgeTemplate.name}</h2>
         <time>
-          {t('workflow.card.updatedPrefix')}{new Date(knowledgeTemplate.updatedAt).toLocaleString()}
+          {t('workflow.card.updatedPrefix')}
+          {new Date(knowledgeTemplate.updatedAt).toLocaleString()}
         </time>
       </div>
       <p>{knowledgeTemplate.prompt}</p>

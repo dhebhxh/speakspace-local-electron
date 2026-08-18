@@ -1,42 +1,42 @@
-import { Entity } from "./Entity";
-
+import { Entity } from './Entity';
 
 export class Workspace extends Entity {
+  private name: string;
 
-    private name: string;
-    private createdAt: Date;
-    private updatedAt: Date;
+  private createdAt: Date;
 
-    public constructor(
-        id: number,
-        name: string,
-        createdAt: Date,
-        updatedAt: Date
-    ) {
-        super(id);
+  private updatedAt: Date;
 
-        this.name = name;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-    }
+  public constructor(
+    id: number,
+    name: string,
+    createdAt: Date,
+    updatedAt: Date,
+  ) {
+    super(id);
 
-    public getName(): string {
-        return this.name;
-    }
+    this.name = name;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+  }
 
-    public setName(name: string): void {
-        this.name = name;
-    }
+  public getName(): string {
+    return this.name;
+  }
 
-    public getCreatedAt(): Date {
-        return this.createdAt;
-    }
+  public setName(name: string): void {
+    this.name = name;
+  }
 
-    public getUpdatedAt(): Date {
-        return this.updatedAt;
-    }
+  public getCreatedAt(): Date {
+    return this.createdAt;
+  }
 
-    public setUpdatedAt(updatedAt: Date): void {
-        this.updatedAt = updatedAt;
-    }
+  public getUpdatedAt(): Date {
+    return this.updatedAt;
+  }
+
+  public setUpdatedAt(updatedAt: Date): void {
+    this.updatedAt = updatedAt;
+  }
 }

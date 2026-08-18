@@ -17,11 +17,22 @@ export default function WorkspacePage() {
   const { t } = useTranslation();
   const detail = useWorkspaceDetail();
   const {
-    workspace, loading, error, status, query, setQuery,
-    visibleNotes, selectedNoteIds, toggleNoteSelection,
+    workspace,
+    loading,
+    error,
+    status,
+    query,
+    setQuery,
+    visibleNotes,
+    selectedNoteIds,
+    toggleNoteSelection,
   } = detail;
   const [showMultiModal, setShowMultiModal] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, noteId: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    noteId: number;
+  } | null>(null);
 
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameInput, setRenameInput] = useState('');
@@ -46,7 +57,9 @@ export default function WorkspacePage() {
   }, []);
 
   if (loading) {
-    return <p className="workspace-detail-status">{t('workspace.detail.loading')}</p>;
+    return (
+      <p className="workspace-detail-status">{t('workspace.detail.loading')}</p>
+    );
   }
 
   if (!workspace) {
@@ -103,21 +116,34 @@ export default function WorkspacePage() {
 
       {visibleNotes.length === 0 && (
         <div className="workspace-detail-empty">
-          <strong>{query ? t('workspace.detail.emptySearch') : t('workspace.detail.empty')}</strong>
-          <span>{query ? t('workspace.detail.emptySearchDesc') : t('workspace.detail.emptyDesc')}</span>
+          <strong>
+            {query
+              ? t('workspace.detail.emptySearch')
+              : t('workspace.detail.empty')}
+          </strong>
+          <span>
+            {query
+              ? t('workspace.detail.emptySearchDesc')
+              : t('workspace.detail.emptyDesc')}
+          </span>
         </div>
       )}
 
       {selectedNoteIds.length > 0 && (
         <div className="workspace-select-bar">
-          <span>{t('workspace.detail.selected')} {selectedNoteIds.length} {t('workspace.detail.notesSuffix')}</span>
+          <span>
+            {t('workspace.detail.selected')} {selectedNoteIds.length}{' '}
+            {t('workspace.detail.notesSuffix')}
+          </span>
           <button
             className="ws-btn ws-btn-primary"
             disabled={selectedNoteIds.length < 2}
             onClick={() => setShowMultiModal(true)}
             type="button"
           >
-            {selectedNoteIds.length < 2 ? t('workspace.detail.selectMore') : t('workspace.detail.actionOnSelected')}
+            {selectedNoteIds.length < 2
+              ? t('workspace.detail.selectMore')
+              : t('workspace.detail.actionOnSelected')}
           </button>
         </div>
       )}
@@ -139,10 +165,10 @@ export default function WorkspacePage() {
       </div>
 
       {showMultiModal && (
-        <WorkspaceMultiNoteModal 
-          selectedNoteIds={selectedNoteIds} 
-          workspaceId={detail.workspaceId} 
-          onClose={() => setShowMultiModal(false)} 
+        <WorkspaceMultiNoteModal
+          selectedNoteIds={selectedNoteIds}
+          workspaceId={detail.workspaceId}
+          onClose={() => setShowMultiModal(false)}
         />
       )}
 
@@ -158,11 +184,18 @@ export default function WorkspacePage() {
             padding: '8px 0',
             zIndex: 9999,
             cursor: 'pointer',
-            minWidth: '120px'
+            minWidth: '120px',
           }}
           onClick={() => handleDeleteNote(contextMenu.noteId)}
         >
-          <div style={{ padding: '8px 16px', color: '#ff4d4f', fontSize: '14px', fontWeight: 500 }}>
+          <div
+            style={{
+              padding: '8px 16px',
+              color: '#ff4d4f',
+              fontSize: '14px',
+              fontWeight: 500,
+            }}
+          >
             {t('workspace.detail.deleteNote', 'Delete note')}
           </div>
         </div>
@@ -170,30 +203,54 @@ export default function WorkspacePage() {
 
       {showRenameModal && (
         <div className="workspace-modal-overlay">
-          <div className="workspace-modal" style={{ width: '400px', margin: 'auto' }}>
+          <div
+            className="workspace-modal"
+            style={{ width: '400px', margin: 'auto' }}
+          >
             <header className="workspace-modal-head">
               <h2>{t('workspace.detail.rename', 'Rename Workspace')}</h2>
             </header>
             <div className="workspace-modal-body" style={{ padding: '24px' }}>
-              <input 
-                type="text" 
-                value={renameInput} 
-                onChange={e => setRenameInput(e.target.value)} 
-                style={{ width: '100%', padding: '8px', marginBottom: '16px', boxSizing: 'border-box' }}
+              <input
+                type="text"
+                value={renameInput}
+                onChange={(e) => setRenameInput(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  marginBottom: '16px',
+                  boxSizing: 'border-box',
+                }}
                 autoFocus
-                onKeyDown={e => {
+                onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     detail.renameWorkspace(renameInput);
                     setShowRenameModal(false);
                   }
                 }}
               />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                <button className="ws-btn" onClick={() => setShowRenameModal(false)}>{t('common.cancel', 'Cancel')}</button>
-                <button className="ws-btn ws-btn-primary" onClick={() => {
-                  detail.renameWorkspace(renameInput);
-                  setShowRenameModal(false);
-                }}>{t('common.confirm', 'Confirm')}</button>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '8px',
+                }}
+              >
+                <button
+                  className="ws-btn"
+                  onClick={() => setShowRenameModal(false)}
+                >
+                  {t('common.cancel', 'Cancel')}
+                </button>
+                <button
+                  className="ws-btn ws-btn-primary"
+                  onClick={() => {
+                    detail.renameWorkspace(renameInput);
+                    setShowRenameModal(false);
+                  }}
+                >
+                  {t('common.confirm', 'Confirm')}
+                </button>
               </div>
             </div>
           </div>
@@ -202,20 +259,49 @@ export default function WorkspacePage() {
 
       {showDeleteModal && (
         <div className="workspace-modal-overlay">
-          <div className="workspace-modal" style={{ width: '400px', margin: 'auto' }}>
+          <div
+            className="workspace-modal"
+            style={{ width: '400px', margin: 'auto' }}
+          >
             <header className="workspace-modal-head">
-              <h2>{t('workspace.detail.deleteWorkspace', 'Delete Workspace')}</h2>
+              <h2>
+                {t('workspace.detail.deleteWorkspace', 'Delete Workspace')}
+              </h2>
             </header>
             <div className="workspace-modal-body" style={{ padding: '24px' }}>
               <p style={{ marginBottom: '16px', lineHeight: '1.5' }}>
-                {t('workspace.detail.deleteConfirm', 'Are you sure you want to delete this workspace and all its notes?')}
+                {t(
+                  'workspace.detail.deleteConfirm',
+                  'Are you sure you want to delete this workspace and all its notes?',
+                )}
               </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                <button className="ws-btn" onClick={() => setShowDeleteModal(false)}>{t('common.cancel', 'Cancel')}</button>
-                <button className="ws-btn ws-btn-primary" style={{ backgroundColor: '#ff4d4f', color: 'white', border: 'none' }} onClick={() => {
-                  detail.deleteWorkspace();
-                  setShowDeleteModal(false);
-                }}>{t('workspace.detail.deleteWorkspace', 'Delete')}</button>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '8px',
+                }}
+              >
+                <button
+                  className="ws-btn"
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  {t('common.cancel', 'Cancel')}
+                </button>
+                <button
+                  className="ws-btn ws-btn-primary"
+                  style={{
+                    backgroundColor: '#ff4d4f',
+                    color: 'white',
+                    border: 'none',
+                  }}
+                  onClick={() => {
+                    detail.deleteWorkspace();
+                    setShowDeleteModal(false);
+                  }}
+                >
+                  {t('workspace.detail.deleteWorkspace', 'Delete')}
+                </button>
               </div>
             </div>
           </div>

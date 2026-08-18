@@ -78,9 +78,14 @@ export default class WhisperRuntimeInstaller {
         phase: 'extracting',
         message: '正在解压 Whisper 运行时 / Extracting Whisper runtime',
       });
-      await ArchiveExtractor.extract(archivePath, extractRoot, this.processRunner, {
-        signal,
-      });
+      await ArchiveExtractor.extract(
+        archivePath,
+        extractRoot,
+        this.processRunner,
+        {
+          signal,
+        },
+      );
 
       const cliPath = await WhisperRuntimeArchive.findCli(extractRoot);
       if (!cliPath) {

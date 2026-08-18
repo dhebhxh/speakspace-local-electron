@@ -62,7 +62,9 @@ export default function KnowledgeOutputPanel({
               title={t('workspace.knowledge.runTitle')}
               type="button"
             >
-              {generating ? t('workspace.knowledge.generating') : t('workspace.knowledge.generate')}
+              {generating
+                ? t('workspace.knowledge.generating')
+                : t('workspace.knowledge.generate')}
             </button>
           </div>
         ) : (
@@ -73,7 +75,9 @@ export default function KnowledgeOutputPanel({
       </div>
 
       {note.knowledge_outputs.length === 0 ? (
-        <span className="workspace-content-empty">{t('workspace.knowledge.empty', '暂无')}</span>
+        <span className="workspace-content-empty">
+          {t('workspace.knowledge.empty', '暂无')}
+        </span>
       ) : (
         <div className="workspace-content-stack">
           {note.knowledge_outputs.map((output) => (

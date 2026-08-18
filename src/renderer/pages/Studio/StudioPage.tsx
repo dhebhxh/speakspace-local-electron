@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import useAskAIPage from '../AskAI/useAskAIPage';
@@ -87,20 +93,28 @@ export default function StudioPage() {
   const page = useAskAIPage();
   const [engine, setEngine] = useState<Engine>(createEngine);
   const snapshot = useRecordingSession(engine.session);
-  const transcriptionSnapshot = useTranscriptionController(engine.transcription);
+  const transcriptionSnapshot = useTranscriptionController(
+    engine.transcription,
+  );
 
-  const defaultNoteNameMemo = useCallback((uploadedFileName: string | null) => {
-    if (uploadedFileName) {
-      return uploadedFileName.replace(/\.[^.]+$/u, '').slice(0, 80);
-    }
-    return `${t('studio.recording.defaultPrefix')}${new Intl.DateTimeFormat('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date())}`;
-  }, [t]);
+  const defaultNoteNameMemo = useCallback(
+    (uploadedFileName: string | null) => {
+      if (uploadedFileName) {
+        return uploadedFileName.replace(/\.[^.]+$/u, '').slice(0, 80);
+      }
+      return `${t('studio.recording.defaultPrefix')}${new Intl.DateTimeFormat(
+        'zh-CN',
+        {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        },
+      ).format(new Date())}`;
+    },
+    [t],
+  );
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   // 新增笔记的目标工作区（从左栏某个工作区那一行点 + 时带过来）。
@@ -144,7 +158,11 @@ export default function StudioPage() {
   const [elapsedMs, setElapsedMs] = useState(0);
   const startedAtRef = useRef<number | null>(null);
 
-  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, noteId: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    noteId: number;
+  } | null>(null);
 
   const handleContextMenu = (noteId: number, e: React.MouseEvent) => {
     e.preventDefault();
@@ -164,7 +182,7 @@ export default function StudioPage() {
       }
       await page.reloadNotes();
     } catch (e) {
-      console.error("Failed to delete note", e);
+      console.error('Failed to delete note', e);
     }
     closeContextMenu();
   };
@@ -337,7 +355,7 @@ export default function StudioPage() {
     () =>
       previewNoteId === null
         ? null
-        : page.notes.find((note) => note.id === previewNoteId) ?? null,
+        : (page.notes.find((note) => note.id === previewNoteId) ?? null),
     [page.notes, previewNoteId],
   );
 
@@ -364,7 +382,7 @@ export default function StudioPage() {
 
     let cancelled = false;
     setTitlePending(true);
-      window.electron.llm
+    window.electron.llm
       .chat(
         [
           { role: 'system', content: t(TITLE_SYSTEM_PROMPT) },
@@ -405,7 +423,9 @@ export default function StudioPage() {
       engine.transcription.finalizeLiveSummary().catch(() => undefined);
     } catch (reason) {
       setRecordError(
-        reason instanceof Error ? reason.message : t('studio.recording.stopError'),
+        reason instanceof Error
+          ? reason.message
+          : t('studio.recording.stopError'),
       );
     }
   }, [engine, openReview]);
@@ -413,7 +433,11 @@ export default function StudioPage() {
   const uploadAudio = useCallback(() => {
     setRecordError(null);
     engine.transcription.pickFileAndStart().catch((reason: unknown) => {
-      setRecordError(reason instanceof Error ? reason.message : t('studio.recording.uploadError'));
+      setRecordError(
+        reason instanceof Error
+          ? reason.message
+          : t('studio.recording.uploadError'),
+      );
     });
   }, [engine]);
 
@@ -501,10 +525,12 @@ export default function StudioPage() {
         // 刷新笔记库并把新笔记挂到对话上。
         await page.reloadNotes(result.noteId);
         page.selectNote(result.noteId);
-        
+
         // Trigger Todo Extraction in the background
-        window.electron.dashboard.extractTodosForNote(result.noteId).catch(console.error);
-        
+        window.electron.dashboard
+          .extractTodosForNote(result.noteId)
+          .catch(console.error);
+
         setReviewOpen(false);
         resetEngine();
       } catch (reason) {
@@ -522,7 +548,14 @@ export default function StudioPage() {
         setSaving(false);
       }
     },
-    [engine, page, reviewFileMode, snapshot.savedRecording, snapshot.state, resetEngine],
+    [
+      engine,
+      page,
+      reviewFileMode,
+      snapshot.savedRecording,
+      snapshot.state,
+      resetEngine,
+    ],
   );
 
   const recording = useMemo(
@@ -667,11 +700,18 @@ export default function StudioPage() {
             padding: '8px 0',
             zIndex: 9999,
             cursor: 'pointer',
-            minWidth: '120px'
+            minWidth: '120px',
           }}
           onClick={() => handleDeleteNote(contextMenu.noteId)}
         >
-          <div style={{ padding: '8px 16px', color: '#ff4d4f', fontSize: '14px', fontWeight: 500 }}>
+          <div
+            style={{
+              padding: '8px 16px',
+              color: '#ff4d4f',
+              fontSize: '14px',
+              fontWeight: 500,
+            }}
+          >
             {t('studio.action.deleteNote')}
           </div>
         </div>

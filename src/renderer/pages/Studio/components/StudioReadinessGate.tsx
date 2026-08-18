@@ -35,7 +35,9 @@ export default function StudioReadinessGate({
     );
   }
 
-  const missingCount = readiness.components.filter((item) => !item.ready).length;
+  const missingCount = readiness.components.filter(
+    (item) => !item.ready,
+  ).length;
 
   return (
     <section className="studio-gate">

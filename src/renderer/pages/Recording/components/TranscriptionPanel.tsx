@@ -54,7 +54,10 @@ export default function TranscriptionPanel(props: {
 
   let liveStatus = t('recording.panel.status.completed');
   if (fileMode && job?.status === 'processing') {
-    liveStatus = job.phase === 'preparing' ? t('recording.panel.status.preparing') : t('recording.panel.status.transcribing');
+    liveStatus =
+      job.phase === 'preparing'
+        ? t('recording.panel.status.preparing')
+        : t('recording.panel.status.transcribing');
   } else if (fileMode && job?.status === 'failed') {
     liveStatus = t('recording.panel.status.failed');
   } else if (fileMode && job?.status === 'cancelled') {
@@ -68,9 +71,14 @@ export default function TranscriptionPanel(props: {
   }
 
   let summaryStatus = t('recording.panel.summaryStatus.waiting');
-  if (liveSummaries.length > 0) summaryStatus = t('recording.panel.summaryStatus.updated');
-  if (summaryPendingCount > 0) summaryStatus = t('recording.panel.summaryStatus.analyzing');
-  const summaryModeLabel = summaryMode === 'llm' ? t('recording.panel.summaryMode.ai') : t('recording.panel.summaryMode.lightweight');
+  if (liveSummaries.length > 0)
+    summaryStatus = t('recording.panel.summaryStatus.updated');
+  if (summaryPendingCount > 0)
+    summaryStatus = t('recording.panel.summaryStatus.analyzing');
+  const summaryModeLabel =
+    summaryMode === 'llm'
+      ? t('recording.panel.summaryMode.ai')
+      : t('recording.panel.summaryMode.lightweight');
   let displayState: string = snapshot.state;
   let displayStatus = snapshot.statusMessage;
   if (fileMode && job) {
@@ -139,9 +147,7 @@ export default function TranscriptionPanel(props: {
         {snapshot.state === RecordingState.Idle && !fileMode && (
           <div className="recording-input-guide">
             <strong>{t('recording.panel.chooseInputTitle')}</strong>
-            <p>
-              {t('recording.panel.chooseInputDesc')}
-            </p>
+            <p>{t('recording.panel.chooseInputDesc')}</p>
             <div className="recording-input-guide__formats">
               {t('recording.panel.supportedFormats')}
             </div>
@@ -151,7 +157,8 @@ export default function TranscriptionPanel(props: {
           snapshot.state === RecordingState.Paused ||
           snapshot.state === RecordingState.Completed) && (
           <p>
-            {t('recording.panel.receivedPrefix')}{(snapshot.bufferedBytes / 1024).toFixed(1)} KB
+            {t('recording.panel.receivedPrefix')}
+            {(snapshot.bufferedBytes / 1024).toFixed(1)} KB
             {t('recording.panel.receivedSuffix')}
           </p>
         )}
@@ -198,9 +205,7 @@ export default function TranscriptionPanel(props: {
         {fileMode && languageConfirmationRequired && (
           <p className="recording-language-warning" role="status">
             {t('recording.panel.languageWarning.zh')}
-            <span>
-              {t('recording.panel.languageWarning.en')}
-            </span>
+            <span>{t('recording.panel.languageWarning.en')}</span>
           </p>
         )}
 
@@ -245,7 +250,10 @@ export default function TranscriptionPanel(props: {
                 <ol className="live-summary__segments">
                   {liveSummaries.map((summary) => (
                     <li key={summary.id}>
-                      <span>{t('recording.panel.segmentPrefix')}{summary.id + 1}</span>
+                      <span>
+                        {t('recording.panel.segmentPrefix')}
+                        {summary.id + 1}
+                      </span>
                       <span>{summary.text}</span>
                     </li>
                   ))}

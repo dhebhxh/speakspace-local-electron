@@ -346,12 +346,14 @@ export class WorkspaceService {
 
   public deleteNote(rawId: unknown): boolean {
     const id = WorkspaceService.normalizeId(rawId);
-    
+
     // Find associated conversations before deleting the note
     const stmtFindConversations = this.database.prepare(
-      'SELECT conversation_id FROM conversation_contexts WHERE note_id = ?'
+      'SELECT conversation_id FROM conversation_contexts WHERE note_id = ?',
     );
-    const conversationIds = stmtFindConversations.all(id) as { conversation_id: number }[];
+    const conversationIds = stmtFindConversations.all(id) as {
+      conversation_id: number;
+    }[];
 
     // ON DELETE CASCADE for todos table will remove associated todos and conversation_contexts
     const statement = this.database.prepare('DELETE FROM notes WHERE id = ?');
@@ -359,9 +361,13 @@ export class WorkspaceService {
 
     // Clean up empty conversations that were associated with this note
     if (conversationIds.length > 0) {
-      const stmtCheck = this.database.prepare('SELECT COUNT(*) as count FROM conversation_contexts WHERE conversation_id = ?');
-      const stmtDelete = this.database.prepare('DELETE FROM ai_conversations WHERE id = ?');
-      
+      const stmtCheck = this.database.prepare(
+        'SELECT COUNT(*) as count FROM conversation_contexts WHERE conversation_id = ?',
+      );
+      const stmtDelete = this.database.prepare(
+        'DELETE FROM ai_conversations WHERE id = ?',
+      );
+
       for (const row of conversationIds) {
         const check = stmtCheck.get(row.conversation_id) as { count: number };
         if (check.count === 0) {

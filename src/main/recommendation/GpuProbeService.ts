@@ -1,6 +1,7 @@
 import { app } from 'electron';
 import LocalProcessRunner from '../runtime/LocalProcessRunner';
 import { CudaInfo, GpuInfo } from './ModelRecommendationTypes';
+import mergeGpuCandidates from './GpuMerge';
 
 export type GpuProbeResult = {
   gpus: GpuInfo[];
@@ -38,10 +39,6 @@ const VENDOR_IDS: Record<number, string> = {
   0x106b: 'Apple',
 };
 
-function normalizeName(name: string): string {
-  return name.toLowerCase().replace(/\s+/g, ' ').trim();
-}
-
 function guessVendor(name: string): string | null {
   if (/nvidia|geforce|quadro|rtx|gtx/i.test(name)) return 'NVIDIA';
   if (/amd|radeon|ryzen/i.test(name)) return 'AMD';
@@ -68,7 +65,8 @@ export default class GpuProbeService {
       GpuProbeService.probeElectron(),
     ]);
 
-    const gpus = GpuProbeService.merge([
+    // 顺序即优先级：nvidia-smi 的信息最全，Electron 只作兜底。
+    const gpus = mergeGpuCandidates([
       ...nvidia.gpus,
       ...platformGpus,
       ...electronGpus,
@@ -258,31 +256,6 @@ export default class GpuProbeService {
     } catch {
       return [];
     }
-  }
-
-  /** 同名显卡按信息完整度择优保留，真实显卡排在虚拟显示适配器之前。 */
-  private static merge(candidates: GpuInfo[]): GpuInfo[] {
-    const byName = new Map<string, GpuInfo>();
-
-    candidates.forEach((candidate) => {
-      const key = normalizeName(candidate.name);
-      const current = byName.get(key);
-      if (!current) {
-        byName.set(key, candidate);
-        return;
-      }
-      byName.set(key, {
-        ...current,
-        vendor: current.vendor ?? candidate.vendor,
-        vramGb: current.vramGb ?? candidate.vramGb,
-        driverVersion: current.driverVersion ?? candidate.driverVersion,
-        virtual: current.virtual || candidate.virtual,
-      });
-    });
-
-    return [...byName.values()].sort(
-      (left, right) => Number(left.virtual) - Number(right.virtual),
-    );
   }
 
   private run(command: string, args: string[]) {

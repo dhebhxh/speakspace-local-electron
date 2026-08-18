@@ -12,19 +12,17 @@ export class DatabaseManager {
   ) {}
 
   public async initialize(database: SQLiteDatabase): Promise<void> {
-    if (this.database === database) {
-      return;
-    }
-
-    if (this.database !== null) {
-      throw new Error("DatabaseManager has already been initialized.");
-    }
-
+    console.info("[Database] Initializing and checking migrations", {
+      databaseName: this.config.databaseName,
+    });
     await database.execAsync(
       "PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;",
     );
     await this.migrationRunner.run(database);
     this.database = database;
+    console.info("[Database] Ready", {
+      databaseName: this.config.databaseName,
+    });
   }
 
   public getDatabase(): SQLiteDatabase {

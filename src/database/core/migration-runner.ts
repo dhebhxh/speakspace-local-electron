@@ -18,10 +18,21 @@ export class MigrationRunner {
       (migration) => migration.version > currentVersion,
     );
 
+    console.info("[Database] Migration check", {
+      currentVersion,
+      pendingVersions: pendingMigrations.map((migration) => migration.version),
+    });
+
     for (const migration of pendingMigrations) {
+      console.info("[Database] Applying migration", {
+        version: migration.version,
+      });
       await database.withExclusiveTransactionAsync(async (transaction) => {
         await migration.migrate(transaction);
         await this.setVersion(transaction, migration.version);
+      });
+      console.info("[Database] Migration applied", {
+        version: migration.version,
       });
     }
   }

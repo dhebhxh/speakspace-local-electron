@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  InputAccessoryView,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -36,6 +37,8 @@ type WorkspaceNotesState =
         ReturnType<typeof appContainer.noteService.getNotesByWorkspace>
       >;
     };
+
+const TRANSCRIPT_INPUT_ACCESSORY_ID = "new-note-transcript-accessory";
 
 export default function WorkspaceDetailScreen() {
   const { workspaceId } = useLocalSearchParams<{ workspaceId: string }>();
@@ -88,6 +91,7 @@ export default function WorkspaceDetailScreen() {
       await noteService.createNote(workspaceId, noteName, transcript);
       setNoteName("");
       setTranscript("");
+      Keyboard.dismiss();
       setIsModalVisible(false);
       await loadWorkspace();
     } catch (caughtError) {
@@ -192,6 +196,16 @@ export default function WorkspaceDetailScreen() {
         onRequestClose={() => setIsModalVisible(false)}
       >
         <KeyboardAvoidingView
+          behavior={process.env.EXPO_OS === "ios" ? "padding" : "height"}
+          style={styles.modalBackdrop}
+        >
+          <ScrollView
+            style={styles.modalScroll}
+            contentContainerStyle={[
+              styles.modal,
+              { backgroundColor: colors.surface },
+            ]}
+            keyboardDismissMode="interactive"
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.modalBackdrop}
         >
@@ -241,6 +255,7 @@ export default function WorkspaceDetailScreen() {
             </Text>
             <TextInput
               multiline
+              inputAccessoryViewID={TRANSCRIPT_INPUT_ACCESSORY_ID}
               placeholder="Write the note transcript..."
               placeholderTextColor={colors.textMuted}
               textAlignVertical="top"
@@ -263,6 +278,30 @@ export default function WorkspaceDetailScreen() {
               onPress={() => void createNote()}
             />
           </ScrollView>
+          {process.env.EXPO_OS === "ios" && (
+            <InputAccessoryView nativeID={TRANSCRIPT_INPUT_ACCESSORY_ID}>
+              <View
+                style={[
+                  styles.inputAccessory,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <Pressable
+                  onPress={Keyboard.dismiss}
+                  accessibilityRole="button"
+                >
+                  <Text
+                    style={[
+                      styles.inputAccessoryAction,
+                      { color: colors.accent },
+                    ]}
+                  >
+                    Done
+                  </Text>
+                </Pressable>
+              </View>
+            </InputAccessoryView>
+          )}
         </KeyboardAvoidingView>
       </Modal>
     </View>
@@ -294,6 +333,14 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     padding: Spacing.lg,
   },
+  modalScroll: { maxHeight: "92%" },
+  inputAccessory: {
+    alignItems: "flex-end",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+  },
+  inputAccessoryAction: { fontSize: 16, fontWeight: "700" },
   modalHeader: {
     alignItems: "center",
     flexDirection: "row",

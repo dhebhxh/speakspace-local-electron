@@ -21,39 +21,55 @@ export type LlmModelCatalogEntry = {
  */
 export const LLM_MODEL_CATALOG: readonly LlmModelCatalogEntry[] = [
   {
-    id: "smollm2-360m-instruct-q4-k-m",
-    engine: "llama.rn",
-    name: "SmolLM2 360M Instruct",
-    description: "Smallest and fastest option for lightweight English tasks.",
-    format: "GGUF",
-    quantization: "Q4_K_M",
-    sizeBytes: 271_000_000,
-    fileName: "SmolLM2-360M-Instruct-Q4_K_M.gguf",
-    downloadUrl:
-      "https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf?download=true",
-  },
-  {
-    id: "qwen2.5-0.5b-instruct-q4-k-m",
-    engine: "llama.rn",
-    name: "Qwen2.5 0.5B Instruct",
-    description: "Compact multilingual model with strong Chinese and English support.",
-    format: "GGUF",
-    quantization: "Q4_K_M",
-    sizeBytes: 398_000_000,
-    fileName: "Qwen2.5-0.5B-Instruct-Q4_K_M.gguf",
-    downloadUrl:
-      "https://huggingface.co/bartowski/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf?download=true",
-  },
-  {
     id: "llama-3.2-1b-instruct-q4-k-m",
     engine: "llama.rn",
     name: "Llama 3.2 1B Instruct",
-    description: "Larger mobile model with better general instruction-following quality.",
+    description:
+      "Small mobile model with solid general instruction-following quality.",
     format: "GGUF",
     quantization: "Q4_K_M",
     sizeBytes: 808_000_000,
     fileName: "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
     downloadUrl:
       "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf?download=true",
+  },
+  {
+    id: "qwen2.5-1.5b-instruct-q4-k-m",
+    engine: "llama.rn",
+    name: "Qwen2.5 1.5B Instruct",
+    description:
+      "Stronger multilingual model with better Chinese and English reasoning than the 1B options.",
+    format: "GGUF",
+    quantization: "Q4_K_M",
+    sizeBytes: 986_000_000,
+    fileName: "Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+    downloadUrl:
+      "https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf?download=true",
+  },
+  {
+    id: "gemma-2-2b-it-q4-k-m",
+    engine: "llama.rn",
+    name: "Gemma 2 2B Instruct",
+    description:
+      "Higher-quality general-purpose model with better writing and summarization than smaller options.",
+    format: "GGUF",
+    quantization: "Q4_K_M",
+    sizeBytes: 1_708_000_000,
+    fileName: "gemma-2-2b-it-Q4_K_M.gguf",
+    downloadUrl:
+      "https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf?download=true",
+  },
+  {
+    id: "llama-3.2-3b-instruct-q4-k-m",
+    engine: "llama.rn",
+    name: "Llama 3.2 3B Instruct",
+    description:
+      "Largest and most capable option here; best instruction-following at the cost of more storage and slower inference.",
+    format: "GGUF",
+    quantization: "Q4_K_M",
+    sizeBytes: 2_019_000_000,
+    fileName: "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+    downloadUrl:
+      "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf?download=true",
   },
 ];

@@ -8,6 +8,8 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--surface);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   box-shadow: var(--shadow);
 }
 
@@ -302,10 +304,10 @@
   flex: 0 0 auto;
   margin: 0.4rem 0 0;
   padding: 0.5rem 0.65rem;
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 38%, transparent);
   border-radius: 10px;
-  background: rgba(239, 68, 68, 0.08);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
   font-size: var(--fs-sm);
 }
 
@@ -320,6 +322,9 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--surface-soft);
+  transition:
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
 }
 
 /* 拖拽笔记 / 工作区的落点是整块对话面板，不必精确拖到输入框里 */
@@ -354,6 +359,7 @@
 
 .studio-composer:focus-within {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 /*
@@ -402,13 +408,13 @@
 }
 
 .studio-send-button {
-  color: #fff;
+  color: var(--accent-contrast);
   background: var(--accent);
 }
 
 .studio-send-button:hover:not(:disabled) {
-  color: #fff;
-  background: color-mix(in srgb, var(--accent) 85%, #000);
+  color: var(--accent-contrast);
+  background: var(--accent-strong);
 }
 
 .studio-record-time {
@@ -417,22 +423,49 @@
   font-weight: 600;
 }
 
+/* 录音中的按钮会变宽（多了声波和计时），宽度做过渡才不会突然跳一下 */
+.studio-record-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+
 .studio-record-button.is-recording {
-  color: #fff;
-  background: #ef4444;
-  animation: studio-pulse 1.4s ease-in-out infinite;
+  color: var(--danger-contrast);
+  background: var(--danger);
+  /* 整块闪烁换成外圈扩散的一层光：文字和计时不会跟着一起变淡 */
+  animation: studio-record-pulse 1.8s var(--ease-smooth) infinite;
+}
+
+@keyframes studio-record-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 45%, transparent);
+  }
+  60% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--danger) 0%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-record-button.is-recording {
+    animation: none;
+  }
 }
 
 .studio-record-button.is-recording:hover:not(:disabled) {
-  color: #fff;
-  background: #ef4444;
+  color: var(--danger-contrast);
+  background: var(--danger);
 }
 
 .studio-send-spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #fff;
+  border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-top-color: currentColor;
   border-radius: 50%;
   animation: studio-spin 0.7s linear infinite;
 }
@@ -527,7 +560,7 @@
   display: grid;
   place-items: center;
   padding: 1.25rem;
-  background: rgba(2, 6, 23, 0.62);
+  background: var(--bg-veil);
   backdrop-filter: blur(8px);
 }
 
@@ -541,7 +574,9 @@
   border: 1px solid var(--border);
   border-radius: 18px;
   background: var(--surface);
-  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.45);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--shadow-lg);
 }
 
 .studio-review-dialog header {
@@ -658,10 +693,10 @@
 .studio-review-dialog__error {
   margin: 0;
   padding: 0.65rem 0.8rem;
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 38%, transparent);
   border-radius: 10px;
-  background: rgba(239, 68, 68, 0.08);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 
 .studio-review-dialog footer {
@@ -746,7 +781,7 @@
 
 .studio-gate-error {
   margin: 0 0 1rem;
-  color: #f87171;
+  color: var(--danger);
   font-size: var(--fs-sm);
   word-break: break-word;
 }
@@ -800,17 +835,17 @@
 }
 
 .studio-gate-list li.is-ready .studio-gate-mark {
-  color: #34d399;
-  background: color-mix(in srgb, #34d399 18%, transparent);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 18%, transparent);
 }
 
 .studio-gate-list li.is-missing .studio-gate-mark {
-  color: #fbbf24;
-  background: color-mix(in srgb, #fbbf24 18%, transparent);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
 }
 
 .studio-gate-list li.is-missing {
-  border-color: color-mix(in srgb, #fbbf24 45%, var(--border));
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
 }
 
 .studio-gate-actions {
@@ -824,7 +859,7 @@
   border: 0;
   border-radius: 10px;
   background: var(--accent);
-  color: white;
+  color: var(--accent-contrast);
   font-size: var(--fs-md);
   font-weight: 700;
 }
@@ -833,4 +868,62 @@
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
+}
+
+/* =========================================================
+   工作台动效
+   ========================================================= */
+
+/* 三栏进场：左栏、主区、右栏依次推进，一眼看清页面的结构 */
+.studio-page > * {
+  animation: anim-rise var(--dur-slow) var(--ease-out) backwards;
+}
+
+.studio-page > *:nth-child(1) { animation-delay: 0ms; }
+.studio-page > *:nth-child(2) { animation-delay: 70ms; }
+.studio-page > *:nth-child(3) { animation-delay: 140ms; }
+
+/* 关联笔记标签：加进来的时候弹一下，删掉时不需要动画（元素直接没了） */
+.studio-chip {
+  animation: anim-pop var(--dur-base) var(--ease-spring) backwards;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+
+.studio-chip:hover {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+/* # 提及菜单从输入框上方展开 */
+.studio-mention {
+  animation: anim-unfold var(--dur-fast) var(--ease-out) backwards;
+  transform-origin: bottom center;
+}
+
+/* 智能体执行步骤逐条落下，像是在实时汇报进度 */
+.studio-agent-steps > * {
+  animation: anim-slide-left var(--dur-base) var(--ease-out) backwards;
+}
+
+/* 审阅弹层：遮罩淡入，对话框带一点缩放推上来 */
+.studio-review-modal {
+  animation: anim-fade var(--dur-fast) var(--ease-out) backwards;
+}
+
+.studio-review-dialog {
+  animation: anim-pop var(--dur-base) var(--ease-out) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-page > *,
+  .studio-chip,
+  .studio-mention,
+  .studio-agent-steps > *,
+  .studio-review-modal,
+  .studio-review-dialog {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
 }

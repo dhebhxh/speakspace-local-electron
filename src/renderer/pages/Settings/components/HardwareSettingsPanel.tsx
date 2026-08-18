@@ -19,22 +19,29 @@ export default function HardwareSettingsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const detect = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const next = (await window.electron.recommendation.getSystemProfile()) as
-        | SystemProfile
-        | undefined;
-      setProfile(next ?? null);
-    } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : t('settings.hardware.error'),
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  // forceRefresh 只在用户点「重新检测」时为 true：首次挂载走主进程缓存，
+  // 否则每次打开设置页都要重跑一遍好几秒的显卡探测。
+  const detect = useCallback(
+    async (forceRefresh = false) => {
+      setLoading(true);
+      setError('');
+      try {
+        const next = (await window.electron.recommendation.getSystemProfile(
+          forceRefresh,
+        )) as SystemProfile | undefined;
+        setProfile(next ?? null);
+      } catch (reason) {
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : t('settings.hardware.error'),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [t],
+  );
 
   useEffect(() => {
     detect();
@@ -135,7 +142,9 @@ export default function HardwareSettingsPanel() {
         <button
           className="settings-hardware-refresh"
           disabled={loading}
-          onClick={detect}
+          // 必须包一层：onClick={detect} 会把 click 事件当成第一个参数传进去，
+          // 那是个真值，等于每次都强制重新探测。
+          onClick={() => detect(true)}
           type="button"
         >
           {t('settings.hardware.refresh')}

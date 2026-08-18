@@ -113,6 +113,8 @@ export default function SettingsPage() {
               }`}
               aria-current={activeCategory === category.id}
               onClick={() => setActiveCategory(category.id)}
+              // 手把手引导按分类 id 定位到具体某一项（见 OnboardingSteps.ts）
+              data-tour={`settings-${category.id}`}
             >
               <span className="settings-nav-glyph" aria-hidden="true">
                 {category.glyph}

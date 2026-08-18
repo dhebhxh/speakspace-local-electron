@@ -62,7 +62,7 @@
 
 .ask-ai-scope button.active {
   background: var(--accent);
-  color: white;
+  color: var(--accent-contrast);
 }
 
 .ask-ai-sources {
@@ -167,5 +167,58 @@
 
   .ask-ai-scope button {
     flex: 1;
+  }
+}
+
+/* =========================================================
+   对话动效
+   ========================================================= */
+
+/* 新消息从各自那一侧滑入：用户的从右边来，AI 的从左边来。
+   方向对应气泡的对齐方式，读起来才像「谁在说话」。 */
+.ask-ai-messages article {
+  animation: anim-slide-left var(--dur-base) var(--ease-out) backwards;
+}
+
+.ask-ai-messages article.user {
+  animation-name: anim-slide-right;
+}
+
+/* 角色标签跟在气泡后面一点点进来，是一个很小但很显眼的层次 */
+.ask-ai-messages article > span {
+  animation: anim-fade var(--dur-base) var(--ease-out) 80ms backwards;
+}
+
+/* 消息底部的朗读/复制图标平时压暗，指到消息上才浮出来 */
+.ask-ai-messages article .message-actions {
+  opacity: 0;
+  transform: translateY(2px);
+  transition:
+    opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+
+.ask-ai-messages article:hover .message-actions,
+.ask-ai-messages article:focus-within .message-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 空状态：整块轻轻浮起，避免一进来是一片死板的灰字 */
+.ask-ai-empty {
+  animation: anim-rise var(--dur-slow) var(--ease-out) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-ai-messages article,
+  .ask-ai-messages article > span,
+  .ask-ai-empty {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
+
+  .ask-ai-messages article .message-actions {
+    opacity: 1;
+    transform: none;
   }
 }

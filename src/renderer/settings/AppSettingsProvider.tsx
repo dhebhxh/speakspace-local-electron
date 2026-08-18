@@ -5,6 +5,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import i18n from '../../i18n';
@@ -75,6 +76,26 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     root.dataset.theme = resolvedTheme;
     root.dataset.themePreference = settings.theme;
   }, [resolvedTheme, settings.fontSize, settings.theme]);
+
+  // 明暗切换时给全局挂一层短暂的颜色过渡（见 AppSettings.css）。
+  // 只在切换那一下开启：常驻的全局 transition 会拖慢所有交互，
+  // 也会和各组件自己的 hover 过渡互相打架。
+  const previousTheme = useRef(resolvedTheme);
+  useEffect(() => {
+    if (previousTheme.current === resolvedTheme) return undefined;
+    previousTheme.current = resolvedTheme;
+
+    const root = document.documentElement;
+    root.classList.add('theme-transition');
+    const timer = window.setTimeout(
+      () => root.classList.remove('theme-transition'),
+      450,
+    );
+    return () => {
+      window.clearTimeout(timer);
+      root.classList.remove('theme-transition');
+    };
+  }, [resolvedTheme]);
 
   // 语言设置变化时同步 i18next，并反映到 <html lang> 便于无障碍与样式。
   useEffect(() => {

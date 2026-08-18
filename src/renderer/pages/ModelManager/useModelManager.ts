@@ -37,9 +37,12 @@ export default function useModelManager() {
   const [recommendation, setRecommendation] =
     useState<ModelRecommendation | null>(null);
 
-  // 首屏加载：拉起 Ollama + 读四类模型列表可能要好几秒，
-  // 页面在这期间必须给出反馈，不能只留一片空白。
+  // 首屏加载：读四类模型列表和运行时状态期间，页面必须给出反馈，
+  // 不能只留一片空白。注意这个标志只等「必备数据」，
+  // 不等下面那个要探测显卡的硬件推荐。
   const [initialLoading, setInitialLoading] = useState(true);
+  // 推荐单独一个标志：内容已经渲染出来了，只是「推荐」标签还没算完。
+  const [recommendationLoading, setRecommendationLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<ModuleKey, string>>>({});
   const [progress, setProgress] = useState<
@@ -76,9 +79,23 @@ export default function useModelManager() {
     return { stt, tts, llm };
   }, []);
 
-  const refreshAll = useCallback(async () => {
+  /**
+   * 页面真正需要才能渲染的数据：四类模型列表 + 运行时 + 向量模型状态。
+   * 这些都是读本地文件和进程状态，很快。
+   */
+  const loadEssentials = useCallback(async () => {
     const { stt, llm } = await loadModels();
     await Promise.all([loadRuntime(), loadEmbedding()]);
+    return { stt, llm };
+  }, [loadModels, loadRuntime, loadEmbedding]);
+
+  /**
+   * 硬件推荐是「锦上添花」：它要在主进程里 spawn nvidia-smi / WMI 探测显卡，
+   * 单次可能好几秒。绝对不能让它挡住首屏 —— 它只是给下拉项加一个「推荐」标签，
+   * 没有它页面照样是完整可用的。所以单独拉，回来了再合并进去。
+   */
+  const loadRecommendation = useCallback(async (stt: Model[], llm: Model[]) => {
+    setRecommendationLoading(true);
     try {
       setRecommendation(
         await recommendationController.getRecommendation(stt, llm),
@@ -86,19 +103,45 @@ export default function useModelManager() {
     } catch {
       // 推荐只是下拉里的一个标签，检测失败时静默降级。
       setRecommendation(null);
+    } finally {
+      setRecommendationLoading(false);
     }
-  }, [loadModels, loadRuntime, loadEmbedding]);
+  }, []);
+
+  const refreshAll = useCallback(async () => {
+    const { stt, llm } = await loadEssentials();
+    await loadRecommendation(stt, llm);
+  }, [loadEssentials, loadRecommendation]);
 
   useEffect(() => {
-    refreshAll()
-      .catch((reason) => {
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      try {
+        const { stt, llm } = await loadEssentials();
+        if (cancelled) return;
+        // 必备数据到齐就立刻放行渲染，硬件探测留在后台继续跑。
+        setInitialLoading(false);
+        await loadRecommendation(stt, llm);
+      } catch (reason) {
+        if (cancelled) return;
         setError(
           'stt',
           reason instanceof Error ? reason.message : '读取状态失败',
         );
-      })
-      .finally(() => setInitialLoading(false));
-  }, [refreshAll, setError]);
+        // 出错也要收起两个加载态，否则页面永远停在骨架上，
+        // 而推荐这条路径压根没跑起来，也不会有人去把它置回 false。
+        setInitialLoading(false);
+        setRecommendationLoading(false);
+      }
+    };
+
+    bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadEssentials, loadRecommendation, setError]);
 
   useEffect(() => {
     const track =
@@ -193,6 +236,7 @@ export default function useModelManager() {
 
   return {
     initialLoading,
+    recommendationLoading,
     sttModels,
     ttsModels,
     llmModels,

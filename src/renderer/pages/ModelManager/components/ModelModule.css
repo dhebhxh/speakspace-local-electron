@@ -6,6 +6,8 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--surface);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
 .model-module-head {
@@ -45,9 +47,9 @@
 }
 
 .model-module-dot.is-ready {
-  background: #4ade80;
+  background: var(--success);
   opacity: 1;
-  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.16);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 16%, transparent);
 }
 
 .model-module-actions {
@@ -101,7 +103,7 @@
 }
 
 .runtime-chip-dot.is-ready {
-  background: #4ade80;
+  background: var(--success);
   opacity: 1;
 }
 
@@ -136,6 +138,56 @@
 
 .model-module-error {
   margin: 0;
-  color: #fb7185;
+  color: var(--danger);
   font-size: var(--fs-sm);
 }
+
+/* =========================================================
+   加载骨架
+   形状对齐真实模块：图标 2.1rem 方块、一行标题、一个下拉、一行运行时。
+   内容到位时是「填进去」，不是整页重排。
+   ========================================================= */
+.model-module--skeleton {
+  /* 骨架不响应指针，避免用户在还没数据时点到空壳 */
+  pointer-events: none;
+}
+
+.model-skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--surface-soft) 0%,
+    color-mix(in srgb, var(--accent) 12%, var(--surface-soft)) 50%,
+    var(--surface-soft) 100%
+  );
+  background-size: 200% 100%;
+  animation: anim-skeleton 1.5s linear infinite;
+}
+
+.model-skeleton--icon {
+  width: 2.1rem;
+  height: 2.1rem;
+  flex: none;
+  border-radius: 11px;
+}
+
+.model-skeleton--title {
+  width: 42%;
+  height: 0.95rem;
+}
+
+.model-skeleton--select {
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+}
+
+.model-skeleton--runtime {
+  width: 68%;
+  height: 0.8rem;
+}
+
+/* 四块骨架错开一点相位，不然四条高光会整齐地一起扫，很假 */
+.model-module--skeleton:nth-child(2) .model-skeleton { animation-delay: 120ms; }
+.model-module--skeleton:nth-child(3) .model-skeleton { animation-delay: 240ms; }
+.model-module--skeleton:nth-child(4) .model-skeleton { animation-delay: 360ms; }

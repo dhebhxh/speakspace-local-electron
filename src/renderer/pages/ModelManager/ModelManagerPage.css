@@ -41,17 +41,17 @@
 }
 
 .model-icon-button.is-warning {
-  color: #fbbf24;
+  color: var(--warning);
 }
 
 .model-icon-button.is-warning:hover:not(:disabled) {
-  color: #fcd34d;
-  border-color: color-mix(in srgb, #fbbf24 40%, transparent);
+  color: var(--warm-strong);
+  border-color: color-mix(in srgb, var(--warning) 40%, transparent);
 }
 
 .model-manager-note {
   margin: 0.7rem 0 0;
-  color: #fb7185;
+  color: var(--danger);
   font-size: var(--fs-sm);
 }
 

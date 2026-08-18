@@ -15,10 +15,10 @@
 .workspace-home-section-heading p { margin: 0; font-size: var(--fs-sm); }
 .workspace-home-section-heading a { flex: none; padding: 0.55rem 0.85rem; color: var(--accent); border: 1px solid var(--border); border-radius: 999px; font-size: var(--fs-sm); }
 .workspace-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.9rem; }
-.workspace-home-card { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 0.85rem; min-width: 0; padding: 1rem; color: var(--text); text-align: left; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); box-shadow: none; }
+.workspace-home-card { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 0.85rem; min-width: 0; padding: 1rem; color: var(--text); text-align: left; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)); backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)); box-shadow: none; }
 .workspace-home-card:hover { border-color: color-mix(in srgb, var(--accent) 65%, transparent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
 .workspace-home-card-index { align-self: start; color: var(--muted); font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.08em; }
-.workspace-home-card-icon { display: grid; width: 46px; height: 46px; place-items: center; color: white; border-radius: 14px; background: linear-gradient(135deg, var(--accent), #3b82f6); font-weight: 800; }
+.workspace-home-card-icon { display: grid; width: 46px; height: 46px; place-items: center; color: var(--accent-contrast); border-radius: 14px; background: linear-gradient(135deg, var(--accent), var(--accent-strong)); font-weight: 800; }
 .workspace-home-card-copy { min-width: 0; display: flex; flex-direction: column; gap: 0.18rem; }
 .workspace-home-card-copy strong { overflow: hidden; font-size: var(--fs-lg); text-overflow: ellipsis; white-space: nowrap; }
 .workspace-home-card-copy small, .workspace-home-card-copy time { color: var(--muted); font-size: var(--fs-xs); }
@@ -27,5 +27,52 @@
 .workspace-home-empty span { color: var(--accent); font-size: var(--fs-3xl); }
 .workspace-home-empty h2 { margin: 0.5rem 0 0.25rem; }
 .workspace-home-empty p { margin: auto; }
-.workspace-home-error { color: #ef4444; border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.08); }
+.workspace-home-error { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 38%, transparent); background: color-mix(in srgb, var(--danger) 12%, transparent); }
 @media (max-width: 760px) { .workspace-home-header { align-items: stretch; flex-direction: column; padding: 1.4rem; } .workspace-home-create { min-width: 0; } .workspace-home-create div { flex-direction: column; } .workspace-home-section-heading { align-items: flex-start; flex-direction: column; } }
+
+/* =========================================================
+   工作空间列表的进场与悬停
+   ========================================================= */
+
+/* 卡片按顺序落进来。前 10 张各错开一点，之后统一，
+   否则条目一多，最后几张要等一秒才出现。 */
+.workspace-home-card {
+  animation: anim-rise var(--dur-slow) var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+
+.workspace-home-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+  box-shadow: var(--shadow-md);
+}
+
+.workspace-home-card:active {
+  transform: translateY(0) scale(0.995);
+  transition-duration: var(--dur-instant);
+}
+
+/* 图标底盘跟着卡片一起动，比整卡平移多一层细节 */
+.workspace-home-card-icon {
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+
+.workspace-home-card:hover .workspace-home-card-icon {
+  transform: rotate(-4deg) scale(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-home-card {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
+
+  .workspace-home-card:hover,
+  .workspace-home-card:hover .workspace-home-card-icon {
+    transform: none;
+  }
+}

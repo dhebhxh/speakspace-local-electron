@@ -14,6 +14,7 @@ import {
 } from '../../AskAI/AskAIDragPayload';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../../../i18n';
+import SoundWave from '../../../components/SoundWave';
 import { StudioWorkspace } from '../StudioPage';
 import { StudioAgentState } from '../useStudioAgent';
 import { AgentStep } from '../../../../main/agent/AgentTypes';
@@ -700,6 +701,9 @@ export default function StudioChatPanel({
             title={t('studio.chat.stopRecording')}
           >
             <StopIcon />
+            {/* 起伏的声波是「确实在收音」最直观的反馈；
+                只有计时数字在跳的话，看不出麦克风到底通没通。 */}
+            <SoundWave active bars={5} size={14} />
             <span className="studio-record-time">
               {formatElapsed(recording.elapsedMs)}
             </span>

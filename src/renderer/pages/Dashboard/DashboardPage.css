@@ -1,5 +1,5 @@
 /* =========================================================
-   SpeakSpace Dashboard Modern & Premium Aesthetic Styling
+   SpeakSpace Dashboard Styling
    ========================================================= */
 
 /* -----------------------------------------------------------
@@ -7,117 +7,102 @@
    :root 里是浅色值，html[data-theme='dark'] 整组替换成深色值。
    页面里一律只引用这些令牌，不要再写死颜色，否则又会出现
    「深色能看清、浅色看不清」这种只在一种模式下成立的样式。
+
+   注意这里只定义仪表盘专属的名字。圆角（--radius-*）、阴影
+   （--shadow-sm/md/lg）、--border-strong 已经由 styles/tokens.css
+   全局提供，本文件不要再定义同名令牌 —— CSS 变量没有作用域隔离，
+   在 :root 上重复定义会把全局值改掉，影响到别的页面。
+
+   四个语义色槽刻意选成青 / 翡翠 / 黄铜 / 珊瑚，色相拉得足够开，
+   在色盲模拟下也能靠明度区分开。
    ----------------------------------------------------------- */
 :root {
-  --primary-color: #3b82f6;
-  --primary-hover: #2563eb;
-  --bg-main: #f8fafc;
-  --bg-card: #ffffff;
+  --primary-color: var(--accent);
+  --primary-hover: var(--accent-strong);
+  --bg-main: transparent;
+  --bg-card: var(--surface);
   /* 次级表面：悬停、弹层、斑马纹 */
-  --bg-subtle: #f8fafc;
-  --bg-hover: #f1f5f9;
+  --bg-subtle: var(--surface-soft);
+  --bg-hover: color-mix(in srgb, var(--accent) 7%, var(--surface-soft));
   /* 浮层必须是不透明的，否则底下的内容会透上来 */
-  --bg-elevated: #f8fafc;
-  --text-main: #1e293b;
-  --text-muted: #64748b;
-  --text-faint: #94a3b8;
-  --border-color: #dbe3ee;
-  --border-strong: #cbd5e1;
+  --bg-elevated: #ffffff;
+  --text-main: var(--text);
+  --text-muted: var(--muted);
+  --text-faint: var(--faint);
+  --border-color: var(--border);
   /* 行分隔线比卡片边框更淡 */
-  --border-faint: #f1f5f9;
+  --border-faint: var(--border-hairline);
 
   /* 语义色：徽章、图标底、日期状态统一走这三件套（底/边/字） */
-  --tint-blue-bg: #eff6ff;
-  --tint-blue-border: #bfdbfe;
-  --tint-blue-text: #1d4ed8;
-  --tint-green-bg: #ecfdf5;
-  --tint-green-border: #a7f3d0;
-  --tint-green-text: #047857;
-  --tint-purple-bg: #f5f3ff;
-  --tint-purple-border: #ddd6fe;
-  --tint-purple-text: #6d28d9;
-  --tint-orange-bg: #fff7ed;
-  --tint-orange-border: #fed7aa;
-  --tint-orange-text: #ea580c;
-  --tint-amber-bg: #fef3c7;
-  --tint-amber-border: #f59e0b;
-  --tint-amber-soft: #fffbeb;
-  --tint-red-bg: #fee2e2;
-  --tint-red-border: #fca5a5;
-  --tint-red-text: #b91c1c;
-  --tint-gray-bg: #f1f5f9;
-  --tint-gray-border: #cbd5e1;
-  --tint-gray-text: #475569;
+  --tint-blue-bg: #e6f4fa;
+  --tint-blue-border: #b3ddef;
+  --tint-blue-text: #1c6f92;
+  --tint-green-bg: #e4f6f0;
+  --tint-green-border: #a8e0cd;
+  --tint-green-text: #0a7059;
+  --tint-brass-bg: #fbf1de;
+  --tint-brass-border: #eed7ab;
+  --tint-brass-text: #8a5416;
+  --tint-orange-bg: #fdeeeb;
+  --tint-orange-border: #f6c8c0;
+  --tint-orange-text: #b8412f;
+  --tint-amber-bg: #fbeacd;
+  --tint-amber-border: #e09b3c;
+  --tint-amber-soft: #fdf6e9;
+  --tint-red-bg: #fce8e5;
+  --tint-red-border: #f3b8ae;
+  --tint-red-text: #a8382a;
+  --tint-gray-bg: var(--slate-100);
+  --tint-gray-border: var(--slate-300);
+  --tint-gray-text: var(--slate-600);
 
-  --accent-green: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-star: #eab308;
-  --accent-star-off: #cbd5e1;
+  --accent-green: #0a8d6e;
+  --accent-amber: #c87f24;
+  --accent-star: #d99b1f;
+  --accent-star-off: var(--slate-300);
 
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 10px -2px rgba(15, 23, 42, 0.1), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.12), 0 4px 6px -4px rgba(15, 23, 42, 0.08);
-  --shadow-popover: 0 4px 24px rgba(15, 23, 42, 0.16);
-  --radius-lg: 16px;
-  --radius-md: 10px;
-  --radius-sm: 6px;
-  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow-popover: 0 18px 44px -14px rgba(30, 46, 42, 0.28);
+  --transition: all var(--dur-fast) var(--ease-out);
 }
 
 html[data-theme='dark'] {
-  --primary-color: #60a5fa;
-  --primary-hover: #93c5fd;
-  --bg-main: transparent;
-  /* 与 App.css 的 --surface 对齐，卡片才不会在深色页面上糊成一片白 */
-  --bg-card: rgba(24, 30, 56, 0.88);
-  --bg-subtle: rgba(255, 255, 255, 0.04);
-  --bg-hover: rgba(255, 255, 255, 0.08);
-  --bg-elevated: #1a2039;
-  --text-main: #f7f8ff;
-  --text-muted: #9aa2c1;
-  --text-faint: #78829f;
-  --border-color: rgba(255, 255, 255, 0.12);
-  --border-strong: rgba(255, 255, 255, 0.26);
-  --border-faint: rgba(255, 255, 255, 0.08);
+  --bg-elevated: #1b2120;
+  --bg-hover: color-mix(in srgb, var(--accent) 12%, var(--surface-soft));
 
   /* 深色下用低透明度的同色底 + 提亮的字，保持同样的语义 */
-  --tint-blue-bg: rgba(59, 130, 246, 0.16);
-  --tint-blue-border: rgba(96, 165, 250, 0.38);
-  --tint-blue-text: #93c5fd;
-  --tint-green-bg: rgba(16, 185, 129, 0.16);
-  --tint-green-border: rgba(52, 211, 153, 0.38);
-  --tint-green-text: #6ee7b7;
-  --tint-purple-bg: rgba(139, 92, 246, 0.18);
-  --tint-purple-border: rgba(167, 139, 250, 0.38);
-  --tint-purple-text: #c4b5fd;
-  --tint-orange-bg: rgba(249, 115, 22, 0.16);
-  --tint-orange-border: rgba(251, 146, 60, 0.38);
-  --tint-orange-text: #fdba74;
-  --tint-amber-bg: rgba(245, 158, 11, 0.2);
-  --tint-amber-border: rgba(251, 191, 36, 0.55);
-  --tint-amber-soft: rgba(245, 158, 11, 0.1);
-  --tint-red-bg: rgba(239, 68, 68, 0.18);
-  --tint-red-border: rgba(248, 113, 113, 0.42);
-  --tint-red-text: #fca5a5;
+  --tint-blue-bg: rgba(69, 168, 209, 0.16);
+  --tint-blue-border: rgba(124, 199, 232, 0.36);
+  --tint-blue-text: #8fd3ee;
+  --tint-green-bg: rgba(31, 189, 155, 0.16);
+  --tint-green-border: rgba(74, 217, 182, 0.36);
+  --tint-green-text: #6fe0c4;
+  --tint-brass-bg: rgba(224, 155, 60, 0.16);
+  --tint-brass-border: rgba(237, 183, 101, 0.38);
+  --tint-brass-text: #f2cf90;
+  --tint-orange-bg: rgba(240, 122, 108, 0.16);
+  --tint-orange-border: rgba(248, 164, 154, 0.38);
+  --tint-orange-text: #f9b3aa;
+  --tint-amber-bg: rgba(224, 155, 60, 0.22);
+  --tint-amber-border: rgba(237, 183, 101, 0.55);
+  --tint-amber-soft: rgba(224, 155, 60, 0.1);
+  --tint-red-bg: rgba(221, 90, 75, 0.18);
+  --tint-red-border: rgba(240, 122, 108, 0.42);
+  --tint-red-text: #f8a49a;
   --tint-gray-bg: rgba(255, 255, 255, 0.08);
   --tint-gray-border: rgba(255, 255, 255, 0.2);
-  --tint-gray-text: #cbd5e1;
+  --tint-gray-text: #c3ccc9;
 
-  --accent-green: #34d399;
-  --accent-amber: #fbbf24;
-  --accent-star: #facc15;
-  --accent-star-off: rgba(255, 255, 255, 0.28);
+  --accent-green: #45cf9a;
+  --accent-amber: #edb765;
+  --accent-star: #f5d383;
+  --accent-star-off: rgba(255, 255, 255, 0.26);
 
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 6px 18px -4px rgba(0, 0, 0, 0.55);
-  --shadow-lg: 0 14px 32px -8px rgba(0, 0, 0, 0.6);
-  --shadow-popover: 0 10px 34px rgba(0, 0, 0, 0.6);
+  --shadow-popover: 0 18px 48px -12px rgba(0, 0, 0, 0.7);
 }
 
-body {
-  margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
+/* body 的 margin 和字体由 App.css 统一负责。这里曾经重复声明过一份，
+   但少了中文字体回退，且加载顺序在 App.css 之后，等于把全局字体
+   悄悄改掉了 —— 页面级样式表不要再碰 body。 */
 
 /* Container & Header */
 .dashboard-page-container {
@@ -195,21 +180,27 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 55%),
+    linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
   border: none;
-  color: #ffffff;
+  color: var(--accent-contrast);
   padding: 9px 20px;
   border-radius: var(--radius-sm);
   font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+  box-shadow:
+    0 4px 12px -3px color-mix(in srgb, var(--accent) 55%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45);
+  box-shadow:
+    0 8px 20px -5px color-mix(in srgb, var(--accent) 65%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
 /* Main Two-Column Content Layout */
@@ -249,22 +240,53 @@ body {
 
 .metric-card {
   background: var(--bg-card);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 18px;
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: var(--shadow-sm);
-  transition: var(--transition);
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 1px 0 var(--highlight);
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
   position: relative;
   overflow: hidden;
 }
 
+/* 卡片左上角一道极淡的斜向高光，让平面有个受光方向。
+   放在 ::before 上而不是直接叠进 background，是为了不影响
+   .active-filter 之类改背景色的状态。 */
+.metric-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    135deg,
+    var(--highlight) 0%,
+    transparent 42%
+  );
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 .metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--border-strong);
+  transform: translateY(-3px);
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 var(--highlight);
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border-color));
+}
+
+/* 悬停时数字轻微放大，卡片才不只是「整块在动」 */
+.metric-card:hover .card-value {
+  transform: scale(1.04);
 }
 
 .interactive-card {
@@ -272,19 +294,24 @@ body {
 }
 
 .interactive-card:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.99);
+  transition-duration: var(--dur-instant);
 }
 
 .active-filter {
-  border: 2px solid var(--accent-green);
+  border-color: var(--accent-green);
   background: var(--tint-green-bg);
-  box-shadow: 0 0 14px rgba(16, 185, 129, 0.2);
+  box-shadow:
+    0 0 0 1px var(--accent-green),
+    0 0 22px -4px color-mix(in srgb, var(--accent-green) 45%, transparent);
 }
 
 .active-filter-orange {
-  border: 2px solid var(--tint-orange-text);
+  border-color: var(--tint-orange-text);
   background: var(--tint-orange-bg);
-  box-shadow: 0 0 14px rgba(249, 115, 22, 0.2);
+  box-shadow:
+    0 0 0 1px var(--tint-orange-text),
+    0 0 22px -4px color-mix(in srgb, var(--tint-orange-text) 45%, transparent);
 }
 
 .card-icon-wrapper {
@@ -300,10 +327,13 @@ body {
 
 .icon-blue { background: var(--tint-blue-bg); border: 1px solid var(--tint-blue-border); color: var(--tint-blue-text); }
 .icon-green { background: var(--tint-green-bg); border: 1px solid var(--tint-green-border); color: var(--tint-green-text); }
-.icon-purple { background: var(--tint-purple-bg); border: 1px solid var(--tint-purple-border); color: var(--tint-purple-text); }
+.icon-brass { background: var(--tint-brass-bg); border: 1px solid var(--tint-brass-border); color: var(--tint-brass-text); }
 .icon-orange { background: var(--tint-orange-bg); border: 1px solid var(--tint-orange-border); color: var(--tint-orange-text); }
 
 .card-content {
+  /* 抬到卡片高光层之上，否则文字会被那层白色蒙版压到 */
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   flex-grow: 1;
@@ -805,7 +835,7 @@ body {
 
 .badge-blue { background: var(--tint-blue-bg); color: var(--tint-blue-text); border: 1px solid var(--tint-blue-border); }
 .badge-green { background: var(--tint-green-bg); color: var(--tint-green-text); border: 1px solid var(--tint-green-border); }
-.badge-purple { background: var(--tint-purple-bg); color: var(--tint-purple-text); border: 1px solid var(--tint-purple-border); }
+.badge-brass { background: var(--tint-brass-bg); color: var(--tint-brass-text); border: 1px solid var(--tint-brass-border); }
 .badge-gray { background: var(--tint-gray-bg); color: var(--tint-gray-text); border: 1px solid var(--tint-gray-border); }
 
 .duration-pill {
@@ -867,4 +897,65 @@ body {
 
 @media (max-width: 640px) {
   .th-type, .td-type { display: none; }
+}
+
+/* =========================================================
+   指标卡的细节动效
+   ========================================================= */
+
+/* 图标底盘：悬停时轻微抬起并回正，比整卡放大更有层次 */
+.card-icon-wrapper {
+  position: relative;
+  transition:
+    transform var(--dur-base) var(--ease-spring),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+
+.metric-card:hover .card-icon-wrapper {
+  transform: translateY(-2px) rotate(-3deg) scale(1.06);
+  box-shadow: 0 8px 18px -8px currentColor;
+}
+
+/* 图标外扩散的一圈光晕，只在卡片被选中为筛选条件时出现 */
+.card-icon-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid currentColor;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.active-filter .card-icon-wrapper::after,
+.active-filter-orange .card-icon-wrapper::after {
+  animation: anim-ripple 2.2s var(--ease-out) infinite;
+}
+
+.card-value {
+  transform-origin: left center;
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+
+/* 指标卡整组错位进场 */
+.metric-cards-grid > * {
+  animation: anim-rise var(--dur-slow) var(--ease-out) backwards;
+}
+
+.metric-cards-grid > *:nth-child(1) { animation-delay: 40ms; }
+.metric-cards-grid > *:nth-child(2) { animation-delay: 90ms; }
+.metric-cards-grid > *:nth-child(3) { animation-delay: 140ms; }
+.metric-cards-grid > *:nth-child(4) { animation-delay: 190ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .metric-cards-grid > * {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
+
+  .metric-card:hover,
+  .metric-card:hover .card-icon-wrapper,
+  .metric-card:hover .card-value {
+    transform: none;
+  }
 }

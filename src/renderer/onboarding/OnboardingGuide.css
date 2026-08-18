@@ -1,15 +1,391 @@
-.onboarding-backdrop { position: fixed; z-index: 1000; inset: 0; display: grid; padding: 1.2rem; place-items: center; background: rgba(2, 6, 23, 0.66); backdrop-filter: blur(10px); }
-.onboarding-dialog { width: min(500px, 100%); padding: 1.4rem; color: var(--text); border: 1px solid var(--border); border-radius: 24px; background: var(--surface-strong); box-shadow: 0 30px 120px rgba(0, 0, 0, 0.42); }
-.onboarding-progress-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; color: var(--muted); font-size: var(--fs-xs); }
-.onboarding-progress-header button { padding: 0.25rem 0.45rem; color: var(--muted); border: 0; background: transparent; box-shadow: none; font-size: var(--fs-xs); }
-.onboarding-visual { display: grid; width: 62px; height: 62px; margin: 1.25rem auto 0.9rem; place-items: center; color: white; border-radius: 20px; background: linear-gradient(135deg, var(--accent), #3b82f6); box-shadow: 0 16px 36px color-mix(in srgb, var(--accent) 28%, transparent); font-size: var(--fs-xl); font-weight: 900; }
-.onboarding-dialog h2 { margin: 0; text-align: center; font-size: var(--fs-xl); }
-.onboarding-dialog > p { max-width: 400px; margin: 0.55rem auto 0; text-align: center; font-size: var(--fs-md); }
-.onboarding-route-button { display: block; margin: 1rem auto 0; padding: 0.45rem 0.7rem; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 10px; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); box-shadow: none; font-size: var(--fs-xs); font-weight: 700; }
-.onboarding-dots { display: flex; justify-content: center; gap: 0.35rem; margin: 1.1rem 0; }
-.onboarding-dots button { width: 7px; min-width: 7px; height: 7px; padding: 0; border-radius: 999px; background: var(--muted); box-shadow: none; opacity: 0.35; }
-.onboarding-dots button.is-current { width: 22px; opacity: 1; background: var(--accent); }
-.onboarding-actions { display: flex; justify-content: space-between; gap: 0.6rem; padding-top: 0.9rem; border-top: 1px solid var(--border); }
-.onboarding-actions button { min-width: 88px; padding: 0.5rem 0.8rem; color: var(--text); border: 1px solid var(--border); border-radius: 10px; background: var(--surface-soft); box-shadow: none; font-size: var(--fs-xs); font-weight: 700; }
-.onboarding-actions button.is-primary { color: white; border-color: transparent; background: linear-gradient(135deg, var(--accent), #3b82f6); }
-.onboarding-actions button:disabled { cursor: default; opacity: 0.35; }
+/* =========================================================
+   手把手引导（Tour）
+   ---------------------------------------------------------
+   核心是「聚光灯」：一个定位到目标元素上的空盒子，靠一圈超大的
+   box-shadow 把周围全压暗，盒子内部天然就是透光的洞。
+   这样做的好处是位置和圆角都是普通 CSS 属性，可以直接过渡 ——
+   换步骤时那束光会自己「走」到下一个控件上，这正是手把手的关键：
+   用户的视线被带着走，而不是读一段文字自己去找。
+   ========================================================= */
+
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  pointer-events: none;
+}
+
+/* 引导期间吃掉所有点击，避免用户点到底下的界面走丢。
+   卡片自己会把 pointer-events 收回来。 */
+.tour__blocker {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}
+
+/* 没有具体目标时（开场 / 结束）整屏压暗 */
+.tour__dim {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-veil);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: anim-fade var(--dur-slow) var(--ease-out) backwards;
+}
+
+/* ---------------------------------------------------------
+   聚光灯
+   --------------------------------------------------------- */
+.tour__spotlight {
+  position: absolute;
+  /* 这一圈巨大的阴影就是遮罩本体 */
+  box-shadow:
+    0 0 0 100vmax var(--bg-veil),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 40px -6px color-mix(in srgb, var(--accent) 60%, transparent);
+  /* 位置、大小、圆角全部过渡：光束会从上一个控件滑到下一个 */
+  transition:
+    top var(--dur-slower) var(--ease-out),
+    left var(--dur-slower) var(--ease-out),
+    width var(--dur-slower) var(--ease-out),
+    height var(--dur-slower) var(--ease-out),
+    border-radius var(--dur-slower) var(--ease-out);
+}
+
+/* 目标外扩散的两圈涟漪，错开半个周期，像声呐在指位置 */
+.tour__ring {
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--accent-strong);
+  border-radius: inherit;
+  opacity: 0;
+  animation: tour-ring 2.4s var(--ease-out) infinite;
+}
+
+.tour__ring--delayed {
+  animation-delay: 1.2s;
+}
+
+@keyframes tour-ring {
+  0% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.14);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.14);
+  }
+}
+
+/* ---------------------------------------------------------
+   飞向下一个目标的光点
+   位置由组件写进 --from-* / --to-*。它只是「视线引导」，
+   动画播一次就停在终点并淡出。
+   --------------------------------------------------------- */
+.tour__comet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--accent-strong);
+  box-shadow:
+    0 0 12px 3px color-mix(in srgb, var(--accent) 70%, transparent),
+    0 0 30px 8px color-mix(in srgb, var(--accent) 35%, transparent);
+  animation: tour-comet var(--dur-slower) var(--ease-out) backwards;
+  pointer-events: none;
+}
+
+@keyframes tour-comet {
+  0% {
+    transform: translate3d(var(--from-x), var(--from-y), 0) scale(0.4);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--to-x), var(--to-y), 0) scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* ---------------------------------------------------------
+   说明卡片
+   --------------------------------------------------------- */
+.tour__card {
+  position: absolute;
+  pointer-events: auto;
+  padding: 1rem 1.1rem 0.85rem;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 1.4)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(calc(var(--glass-blur) * 1.4)) saturate(var(--glass-saturate));
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 var(--highlight);
+  /* 卡片跟着聚光灯一起滑过去，不要闪现 */
+  transition:
+    top var(--dur-slower) var(--ease-out),
+    left var(--dur-slower) var(--ease-out);
+  animation: anim-pop var(--dur-base) var(--ease-spring) backwards;
+}
+
+/* 指向目标的小三角 */
+.tour__arrow {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  transform: rotate(45deg);
+}
+
+.tour__card--up .tour__arrow {
+  top: -7px;
+  left: 50%;
+  margin-left: -6px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.tour__card--down .tour__arrow {
+  bottom: -7px;
+  left: 50%;
+  margin-left: -6px;
+  border-top: 0;
+  border-left: 0;
+}
+
+.tour__card--left .tour__arrow {
+  top: 50%;
+  left: -7px;
+  margin-top: -6px;
+  border-top: 0;
+  border-right: 0;
+}
+
+.tour__card--right .tour__arrow {
+  top: 50%;
+  right: -7px;
+  margin-top: -6px;
+  border-bottom: 0;
+  border-left: 0;
+}
+
+.tour__card--none .tour__arrow {
+  display: none;
+}
+
+.tour__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.tour__counter {
+  color: var(--accent-strong);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.tour__counter i {
+  margin: 0 0.15rem;
+  color: var(--faint);
+  font-style: normal;
+}
+
+.tour__skip {
+  padding: 0.2rem 0.4rem;
+  color: var(--faint);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--fs-xs);
+}
+
+.tour__skip:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-soft);
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
+/* 换步骤时整块重放进场 —— 「这是新的一条信息」要被看见 */
+.tour__body {
+  animation: tour-body-in var(--dur-base) var(--ease-out) backwards;
+}
+
+@keyframes tour-body-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.tour__title {
+  margin: 0.55rem 0 0;
+  font-size: var(--fs-lg);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.tour__desc {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.65;
+}
+
+/* 「去点点看」这类操作提示：左边一个反复推的箭头 */
+.tour__hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0;
+  padding: 0.45rem 0.6rem;
+  color: var(--accent-strong);
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+}
+
+.tour__hint-arrow {
+  flex: 0 0 auto;
+  animation: tour-nudge 1.5s var(--ease-smooth) infinite;
+}
+
+@keyframes tour-nudge {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(3px); }
+}
+
+.tour__settling {
+  margin: 0.5rem 0 0;
+  font-size: var(--fs-xs);
+}
+
+/* ---------------------------------------------------------
+   进度条
+   走过的点是实心主色，当前的点拉长，没到的点是空心。
+   --------------------------------------------------------- */
+.tour__rail {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0.9rem 0 0.7rem;
+}
+
+.tour__rail-dot {
+  width: 6px;
+  height: 6px;
+  min-width: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 99px;
+  background: var(--border-strong);
+  box-shadow: none;
+  transition:
+    width var(--dur-base) var(--ease-spring),
+    background-color var(--dur-base) var(--ease-out);
+}
+
+.tour__rail-dot:hover:not(:disabled) {
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
+.tour__rail-dot.is-done {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.tour__rail-dot.is-current {
+  width: 20px;
+  background: var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+/* ---------------------------------------------------------
+   底部按钮
+   --------------------------------------------------------- */
+.tour__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.tour__btn {
+  min-width: 84px;
+  padding: 0.45rem 0.8rem;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  box-shadow: none;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.tour__btn--primary {
+  color: var(--accent-contrast);
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.tour__btn:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+/* ---------------------------------------------------------
+   降级
+   关掉的是「一直在播」的循环动画（涟漪、光点、箭头推动），
+   位置过渡保留 —— 那不是装饰，是引导本身：光如果瞬移，
+   用户就不知道注意力该从哪儿挪到哪儿。
+   --------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .tour__ring,
+  .tour__comet,
+  .tour__hint-arrow {
+    animation: none;
+  }
+
+  .tour__ring {
+    opacity: 0.7;
+  }
+
+  .tour__comet {
+    display: none;
+  }
+
+  .tour__spotlight,
+  .tour__card {
+    transition-duration: var(--dur-fast);
+  }
+
+  .tour__body {
+    animation-duration: 1ms;
+  }
+}

@@ -111,9 +111,9 @@ export function buildModuleRuntimes(
       key: `tts:${dependency.id}`,
       name: dependency.name,
       present: dependency.installed,
-      hint: `TTS 推理依赖 · 随应用打包${
-        dependency.version ? ` · ${dependency.version}` : ''
-      }`,
+      hint: dependency.installed
+        ? `TTS 推理依赖 · 已就绪${dependency.version ? ` (${dependency.version})` : ''}`
+        : 'TTS 推理依赖缺失 · 请在终端执行 npm run postinstall 并重启应用',
       onInstall: null,
       onUninstall: null,
     })),

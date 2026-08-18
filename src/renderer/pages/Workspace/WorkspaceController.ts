@@ -11,6 +11,7 @@ export type WorkspaceItem = {
 
 export type SubnoteItem = {
   id: number;
+  template_name?: string;
   content_type: string;
   content: string;
   created_at: string;

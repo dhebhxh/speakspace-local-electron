@@ -68,7 +68,6 @@ function getSizeTag(
  * 标签一律控制在三个字以内，长说明仍走悬停提示。
  */
 // 保留命名导出，与同目录的 ModelDescription 保持一致。
-// eslint-disable-next-line import/prefer-default-export
 export function getModelTags(
   model: Model,
   modelType: 'stt' | 'tts' | 'llm',

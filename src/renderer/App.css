@@ -57,7 +57,9 @@ select {
   font: inherit;
 }
 
-button {
+/* 全局按钮外观整体跳过 .btn-plain。用 :where() 包住否定条件，
+   选择器权重不变（还是 0-0-1），页面里各处用 class 覆写按钮样式的写法照旧生效。 */
+button:where(:not(.btn-plain)) {
   position: relative;
   color: var(--accent-contrast);
   border: 1px solid transparent;
@@ -81,7 +83,7 @@ button {
 
 /* 悬停时一道高光扫过按钮。用伪元素而不是改背景，
    这样页面里各种改了 background 的按钮也照样有扫光。 */
-button::after {
+button:where(:not(.btn-plain))::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -97,11 +99,11 @@ button::after {
   pointer-events: none;
 }
 
-button:hover:not(:disabled)::after {
+button:where(:not(.btn-plain)):hover:not(:disabled)::after {
   animation: fx-sheen-sweep var(--dur-slower) var(--ease-out);
 }
 
-button:hover:not(:disabled) {
+button:where(:not(.btn-plain)):hover:not(:disabled) {
   transform: translateY(-1.5px);
   filter: brightness(1.06);
   box-shadow:
@@ -111,23 +113,40 @@ button:hover:not(:disabled) {
 }
 
 /* 按下去要「陷进去」：位移归零 + 轻微缩小 + 阴影收紧 */
-button:active:not(:disabled) {
+button:where(:not(.btn-plain)):active:not(:disabled) {
   transform: translateY(0) scale(0.975);
   filter: brightness(0.97);
   box-shadow: var(--shadow-xs);
   transition-duration: var(--dur-instant);
 }
 
-button:disabled {
+button:where(:not(.btn-plain)):disabled {
   cursor: not-allowed;
   opacity: 0.45;
   filter: saturate(0.5);
   box-shadow: none;
 }
 
+/* 焦点框对所有按钮都保留，包括 .btn-plain —— 这些元素改成 button 就是为了键盘可达。 */
 button:focus-visible {
   outline: 2px solid var(--accent-strong);
   outline-offset: 2px;
+}
+
+/* 语义上是按钮、外观上不是：日历格、指标卡、右键菜单这些本来是 div，
+   为了键盘和读屏可达才换成 button，不该被上面那套 accent 胶囊样式接管。
+   这里只清掉浏览器默认按钮样式，最终长相仍由元素自己的 class 决定
+   （本规则在 App.css 里靠前，页面 CSS 后加载，覆写不受影响）。 */
+.btn-plain {
+  appearance: none;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
 }
 
 input,

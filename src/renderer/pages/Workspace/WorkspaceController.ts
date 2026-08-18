@@ -134,7 +134,11 @@ export class WorkspaceController {
     });
   }
 
-  public static formatDate(value: string, format: 'long' | 'short', language: string = 'zh-CN'): string {
+  public static formatDate(
+    value: string,
+    format: 'long' | 'short',
+    language: string = 'zh-CN',
+  ): string {
     const options: Intl.DateTimeFormatOptions =
       format === 'long'
         ? { dateStyle: 'long' }

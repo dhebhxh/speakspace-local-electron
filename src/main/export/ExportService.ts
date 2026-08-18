@@ -9,9 +9,9 @@ export type ExportRequest = {
 };
 
 export class ExportService {
-  public async exportNote(request: ExportRequest): Promise<void> {
+  public static async exportNote(request: ExportRequest): Promise<void> {
     const { title, transcript, subnotes, format } = request;
-    
+
     // Build HTML representation
     const htmlContent = `
       <!DOCTYPE html>
@@ -30,12 +30,16 @@ export class ExportService {
       </head>
       <body>
         <h1>${title}</h1>
-        ${subnotes.map(sn => `
+        ${subnotes
+          .map(
+            (sn) => `
           <div class="subnote">
             <div class="subnote-title">${sn.type}</div>
             <p>${sn.content}</p>
           </div>
-        `).join('')}
+        `,
+          )
+          .join('')}
         <h2>Transcript</h2>
         <p>${transcript}</p>
       </body>
@@ -45,7 +49,7 @@ export class ExportService {
     if (format === 'word') {
       const { filePath } = await dialog.showSaveDialog({
         title: '匯出為 Word / Export as Word',
-        defaultPath: `${title.replace(/[\/\\]/g, '_')}.doc`,
+        defaultPath: `${title.replace(/[/\\]/g, '_')}.doc`,
         filters: [{ name: 'Word Document', extensions: ['doc'] }],
       });
 
@@ -56,7 +60,7 @@ export class ExportService {
     } else if (format === 'pdf') {
       const { filePath } = await dialog.showSaveDialog({
         title: '匯出為 PDF / Export as PDF',
-        defaultPath: `${title.replace(/[\/\\]/g, '_')}.pdf`,
+        defaultPath: `${title.replace(/[/\\]/g, '_')}.pdf`,
         filters: [{ name: 'PDF Document', extensions: ['pdf'] }],
       });
 
@@ -67,16 +71,18 @@ export class ExportService {
           webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-          }
+          },
         });
-        
-        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
-        
+
+        await win.loadURL(
+          `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`,
+        );
+
         const pdfData = await win.webContents.printToPDF({
           printBackground: true,
           pageSize: 'A4',
         });
-        
+
         await fs.writeFile(filePath, pdfData);
         win.destroy();
       }

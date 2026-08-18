@@ -31,7 +31,9 @@ export default function useLibrarySplit() {
   const containerRef = useRef<HTMLElement | null>(null);
   const noteListRef = useRef<HTMLDivElement | null>(null);
   const recentsRef = useRef<HTMLElement | null>(null);
-  const dragState = useRef<{ startY: number; startHeight: number } | null>(null);
+  const dragState = useRef<{ startY: number; startHeight: number } | null>(
+    null,
+  );
   const [height, setHeight] = useState<number | null>(readStoredHeight);
   const [dragging, setDragging] = useState(false);
 
@@ -82,7 +84,8 @@ export default function useLibrarySplit() {
     (event: KeyboardEvent<HTMLDivElement>) => {
       if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
       const current =
-        recentsRef.current?.getBoundingClientRect().height ?? MIN_RECENTS_HEIGHT;
+        recentsRef.current?.getBoundingClientRect().height ??
+        MIN_RECENTS_HEIGHT;
       event.preventDefault();
       const delta = event.key === 'ArrowUp' ? KEYBOARD_STEP : -KEYBOARD_STEP;
       commit(clamp(current + delta));
@@ -98,9 +101,8 @@ export default function useLibrarySplit() {
   // 窗口变小后旧的高度可能已经超出可用空间，重新收进合法区间。
   useEffect(() => {
     if (height === null) return undefined;
-    const handleResize = () => setHeight((current) =>
-      current === null ? current : clamp(current),
-    );
+    const handleResize = () =>
+      setHeight((current) => (current === null ? current : clamp(current)));
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [clamp, height]);

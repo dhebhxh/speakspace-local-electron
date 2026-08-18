@@ -65,7 +65,9 @@ export default function CopyButton({ text }: { text: string }) {
         className={`copy-button${copied ? ' is-copied' : ''}`}
         disabled={!text.trim()}
         onClick={copy}
-        aria-label={copied ? t('components.copy.copied') : t('components.copy.copy')}
+        aria-label={
+          copied ? t('components.copy.copied') : t('components.copy.copy')
+        }
         title={copied ? t('components.copy.copied') : t('components.copy.copy')}
       >
         {copied ? <CheckIcon /> : <CopyIcon />}

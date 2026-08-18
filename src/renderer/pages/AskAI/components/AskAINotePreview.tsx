@@ -77,7 +77,9 @@ export default function AskAINotePreview({ note }: AskAINotePreviewProps) {
           ))
         ) : (
           <p className="ask-ai-note-empty">
-            {loadingSummary ? t('askAI.preview.loadingSummary') : t('askAI.preview.noSummary')}
+            {loadingSummary
+              ? t('askAI.preview.loadingSummary')
+              : t('askAI.preview.noSummary')}
           </p>
         )}
       </section>

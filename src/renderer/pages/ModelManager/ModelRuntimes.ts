@@ -1,4 +1,5 @@
 import { RuntimeStatusSummary } from '../../../main/runtime/RuntimeStatusService';
+import { RuntimeInstallSupport } from '../../../main/runtime/RuntimeInstallSupport';
 import { EmbeddingModelStatus } from '../../../main/semantic/SemanticTypes';
 import { RuntimeInfo } from './components/ModelModule';
 import { ModuleKey } from './useModelManager';
@@ -19,11 +20,23 @@ function describeSource(location: string): string {
 }
 
 /**
+ * 未安装、且当前平台不支持自动安装时，把「怎么手动装」直接写进提示里。
+ * 不这样做的话，macOS / Linux 用户看到的只是一个点了必然失败的安装按钮。
+ */
+function describeRuntime(
+  baseHint: string,
+  present: boolean,
+  support: RuntimeInstallSupport,
+): string {
+  if (present || support.supported) return baseHint;
+  return `${baseHint} · 本平台需手动安装：${support.manualHint}`;
+}
+
+/**
  * 按模块整理运行时依赖：每项给出是否就绪、来源说明，以及可用的安装 / 卸载操作。
  * 随应用打包的原生模块只读展示，不提供安装和卸载。
  */
 // 保留命名导出，与同目录其他辅助模块一致。
-// eslint-disable-next-line import/prefer-default-export
 export function buildModuleRuntimes(
   runtime: RuntimeStatusSummary | null,
   embedding: EmbeddingModelStatus | null,
@@ -32,6 +45,7 @@ export function buildModuleRuntimes(
   if (!runtime) return { stt: [], tts: [], embedding: [], llm: [] };
 
   const { storageRoot } = runtime;
+  const { installSupport } = runtime;
   const { transcription } = runtime;
   const parakeet = runtime.parakeetTranscription;
   const { languageModel } = runtime;
@@ -49,10 +63,15 @@ export function buildModuleRuntimes(
         key: 'whisper',
         name: 'whisper.cpp',
         present: transcription.whisperCliPresent,
-        hint: `Whisper 命令行 · ${describeSource(transcription.runtimeLocation)}`,
-        onInstall: transcription.whisperCliPresent
-          ? null
-          : actions.installWhisper,
+        hint: describeRuntime(
+          `Whisper 命令行 · ${describeSource(transcription.runtimeLocation)}`,
+          transcription.whisperCliPresent,
+          installSupport.whisper,
+        ),
+        onInstall:
+          transcription.whisperCliPresent || !installSupport.whisper.supported
+            ? null
+            : actions.installWhisper,
         onUninstall:
           transcription.runtimeLocation === 'portable'
             ? () => actions.uninstall('stt', 'whisper')
@@ -62,10 +81,17 @@ export function buildModuleRuntimes(
         key: 'ffmpeg',
         name: 'ffmpeg',
         present: transcription.ffmpegPresent,
-        hint: transcription.ffmpegPresent
-          ? `音频格式转换 · ${ffmpegManaged ? '本应用安装，可卸载' : '来自系统 PATH，需自行卸载'}`
-          : '音频格式转换 · 未安装，MP3 / WebM 录音需要它',
-        onInstall: transcription.ffmpegPresent ? null : actions.installFfmpeg,
+        hint: describeRuntime(
+          transcription.ffmpegPresent
+            ? `音频格式转换 · ${ffmpegManaged ? '本应用安装，可卸载' : '来自系统 PATH，需自行卸载'}`
+            : '音频格式转换 · 未安装，MP3 / WebM 录音需要它',
+          transcription.ffmpegPresent,
+          installSupport.ffmpeg,
+        ),
+        onInstall:
+          transcription.ffmpegPresent || !installSupport.ffmpeg.supported
+            ? null
+            : actions.installFfmpeg,
         onUninstall: ffmpegManaged
           ? () => actions.uninstall('stt', 'ffmpeg')
           : null,
@@ -96,8 +122,15 @@ export function buildModuleRuntimes(
         key: 'ollama-embedding',
         name: 'Ollama',
         present: embedding?.serverAvailable ?? languageModel.serverRunning,
-        hint: '向量模型与 LLM 共用同一个 Ollama 服务',
-        onInstall: languageModel.binaryPresent ? null : actions.installOllama,
+        hint: describeRuntime(
+          '向量模型与 LLM 共用同一个 Ollama 服务',
+          languageModel.binaryPresent,
+          installSupport.ollama,
+        ),
+        onInstall:
+          languageModel.binaryPresent || !installSupport.ollama.supported
+            ? null
+            : actions.installOllama,
         onUninstall: null,
       },
     ],
@@ -106,8 +139,15 @@ export function buildModuleRuntimes(
         key: 'ollama',
         name: 'Ollama',
         present: languageModel.binaryPresent,
-        hint: `本地推理服务 · ${describeSource(languageModel.runtimeLocation)}`,
-        onInstall: languageModel.binaryPresent ? null : actions.installOllama,
+        hint: describeRuntime(
+          `本地推理服务 · ${describeSource(languageModel.runtimeLocation)}`,
+          languageModel.binaryPresent,
+          installSupport.ollama,
+        ),
+        onInstall:
+          languageModel.binaryPresent || !installSupport.ollama.supported
+            ? null
+            : actions.installOllama,
         onUninstall:
           languageModel.runtimeLocation === 'portable'
             ? () => actions.uninstall('llm', 'ollama')

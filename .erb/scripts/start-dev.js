@@ -18,7 +18,7 @@ import { execSync, spawn } from 'child_process';
 
 const DEFAULT_PORT = Number(process.env.PORT) || 1212;
 // 本程序开发服务器返回的 HTML / HMR 特征，用于识别「是不是自己」。
-const APP_MARKER = /Hello Electron React!|webpack-dev-server|__webpack_hmr/i;
+const APP_MARKER = /SpeakSpace|webpack-dev-server|__webpack_hmr/i;
 
 function probeIsOurServer(port) {
   return new Promise((resolve) => {

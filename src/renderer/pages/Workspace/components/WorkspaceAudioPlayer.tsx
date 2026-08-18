@@ -23,7 +23,11 @@ export default function WorkspaceAudioPlayer({
   );
 
   if (!note.audio_relative_path) {
-    return <span className="workspace-content-empty">{t('workspace.audio.empty')}</span>;
+    return (
+      <span className="workspace-content-empty">
+        {t('workspace.audio.empty')}
+      </span>
+    );
   }
 
   const loadAudio = async () => {
@@ -44,7 +48,12 @@ export default function WorkspaceAudioPlayer({
         URL.createObjectURL(new Blob([data], { type: audio.mime_type })),
       );
     } catch (reason) {
-      setError(WorkspaceController.getErrorMessage(reason, t('workspace.audio.errorRead')));
+      setError(
+        WorkspaceController.getErrorMessage(
+          reason,
+          t('workspace.audio.errorRead'),
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -72,7 +81,9 @@ export default function WorkspaceAudioPlayer({
         onClick={loadAudio}
         type="button"
       >
-        {loading ? t('workspace.audio.loading') : t('workspace.note.audioLabel')}
+        {loading
+          ? t('workspace.audio.loading')
+          : t('workspace.note.audioLabel')}
       </button>
       {error && <small className="workspace-audio-error">{error}</small>}
     </div>

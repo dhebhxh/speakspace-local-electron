@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AskAIMessage, AskAIResult, AskAINote } from '../../AskAI/AskAITypes';
+import { AskAIMessage, AskAIResult } from '../../AskAI/AskAITypes';
 import '../../AskAI/AskAIChat.css';
 
 type Props = {
@@ -9,7 +9,11 @@ type Props = {
   onClose: () => void;
 };
 
-export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, onClose }: Props) {
+export default function WorkspaceMultiNoteModal({
+  selectedNoteIds,
+  workspaceId,
+  onClose,
+}: Props) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<AskAIMessage[]>([]);
@@ -26,7 +30,7 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
           conversationId: 0,
           role: 'user',
           content: t('workspace.multi.prompt'),
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         };
         setMessages([userMsg]);
 
@@ -34,7 +38,7 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
           workspaceId,
           noteIds: selectedNoteIds,
           question: t('workspace.multi.prompt'),
-          scope: 'multi-note'
+          scope: 'multi-note',
         })) as AskAIResult;
 
         if (!active) return;
@@ -42,13 +46,16 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
       } catch (err) {
         console.error('Multi-note analysis failed:', err);
         const errorMessage = err instanceof Error ? err.message : String(err);
-        setMessages(prev => [...prev, {
-          id: Date.now(),
-          conversationId: 0,
-          role: 'assistant',
-          content: t('workspace.multi.error').replace('${errorMessage}', errorMessage),
-          createdAt: new Date().toISOString()
-        }]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            conversationId: 0,
+            role: 'assistant',
+            content: t('workspace.multi.error', { errorMessage }),
+            createdAt: new Date().toISOString(),
+          },
+        ]);
       } finally {
         if (active) setLoading(false);
       }
@@ -58,7 +65,7 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
     return () => {
       active = false;
     };
-  }, [selectedNoteIds, workspaceId]);
+  }, [selectedNoteIds, t, workspaceId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -76,11 +83,19 @@ export default function WorkspaceMultiNoteModal({ selectedNoteIds, workspaceId, 
           </button>
         </header>
 
-        <div className="ask-ai-chat-messages workspace-modal-body" ref={scrollRef}>
-          {messages.map(msg => (
-            <div key={msg.id} className={`ask-ai-chat-bubble ask-ai-chat-bubble-${msg.role}`}>
+        <div
+          className="ask-ai-chat-messages workspace-modal-body"
+          ref={scrollRef}
+        >
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`ask-ai-chat-bubble ask-ai-chat-bubble-${msg.role}`}
+            >
               <div className="ask-ai-chat-bubble-content">
-                <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.content}</p>
+                <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                  {msg.content}
+                </p>
               </div>
             </div>
           ))}

@@ -23,7 +23,11 @@ export default function AgentConversation({ history, error }: Props) {
         <div className="agent-message-list">
           {history.map((message) => (
             <article className={message.role} key={message.id}>
-              <span>{message.role === 'user' ? t('agent.conversation.roleUser') : t('agent.conversation.roleAssistant')}</span>
+              <span>
+                {message.role === 'user'
+                  ? t('agent.conversation.roleUser')
+                  : t('agent.conversation.roleAssistant')}
+              </span>
               <p>{message.content}</p>
             </article>
           ))}

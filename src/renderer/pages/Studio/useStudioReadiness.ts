@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type ReadinessComponentId = 'stt' | 'tts' | 'llm' | 'embedding' | 'runtime';
+export type ReadinessComponentId =
+  | 'stt'
+  | 'tts'
+  | 'llm'
+  | 'embedding'
+  | 'runtime';
 
 export type ReadinessComponent = {
   id: ReadinessComponentId;
@@ -45,16 +50,32 @@ type EmbeddingSummary = { serverAvailable: boolean; installed: boolean };
 function checkRuntime(summary: RuntimeSummary): ReadinessComponent {
   const { transcription, languageModel, speechSynthesis } = summary;
   if (!transcription.whisperCliPresent) {
-    return { id: 'runtime', ready: false, reasonKey: 'studio.readiness.reason.whisperRuntime' };
+    return {
+      id: 'runtime',
+      ready: false,
+      reasonKey: 'studio.readiness.reason.whisperRuntime',
+    };
   }
   if (!transcription.ffmpegPresent) {
-    return { id: 'runtime', ready: false, reasonKey: 'studio.readiness.reason.ffmpeg' };
+    return {
+      id: 'runtime',
+      ready: false,
+      reasonKey: 'studio.readiness.reason.ffmpeg',
+    };
   }
   if (!languageModel.binaryPresent) {
-    return { id: 'runtime', ready: false, reasonKey: 'studio.readiness.reason.ollamaRuntime' };
+    return {
+      id: 'runtime',
+      ready: false,
+      reasonKey: 'studio.readiness.reason.ollamaRuntime',
+    };
   }
   if (!speechSynthesis.packageInstalled || !speechSynthesis.runtimeReady) {
-    return { id: 'runtime', ready: false, reasonKey: 'studio.readiness.reason.ttsRuntime' };
+    return {
+      id: 'runtime',
+      ready: false,
+      reasonKey: 'studio.readiness.reason.ttsRuntime',
+    };
   }
   return { id: 'runtime', ready: true, reasonKey: '' };
 }
@@ -62,7 +83,8 @@ function checkRuntime(summary: RuntimeSummary): ReadinessComponent {
 function checkStt(summary: RuntimeSummary): ReadinessComponent {
   // 两套转录引擎装好任意一套都算就绪。
   const ready =
-    summary.transcription.ready || summary.parakeetTranscription?.ready === true;
+    summary.transcription.ready ||
+    summary.parakeetTranscription?.ready === true;
   return {
     id: 'stt',
     ready,
@@ -85,7 +107,8 @@ function checkTts(summary: RuntimeSummary): ReadinessComponent {
 
 function checkLlm(summary: RuntimeSummary): ReadinessComponent {
   const { languageModel } = summary;
-  const ready = languageModel.runtimeReady && Boolean(languageModel.activeModelId);
+  const ready =
+    languageModel.runtimeReady && Boolean(languageModel.activeModelId);
   return {
     id: 'llm',
     ready,
@@ -95,7 +118,11 @@ function checkLlm(summary: RuntimeSummary): ReadinessComponent {
 
 function checkEmbedding(embedding: EmbeddingSummary): ReadinessComponent {
   if (!embedding.serverAvailable) {
-    return { id: 'embedding', ready: false, reasonKey: 'studio.readiness.reason.embeddingServer' };
+    return {
+      id: 'embedding',
+      ready: false,
+      reasonKey: 'studio.readiness.reason.embeddingServer',
+    };
   }
   return {
     id: 'embedding',
@@ -124,10 +151,11 @@ export default function useStudioReadiness(): StudioReadiness {
       try {
         // 走 getReadiness 而不是两个纯读取接口：它会先把 Ollama 拉起来，
         // 否则服务器还没启动时 LLM / Embedding 会被误判成未安装。
-        const { runtime, embedding } = (await window.electron.runtime.getReadiness()) as {
-          runtime: RuntimeSummary;
-          embedding: EmbeddingSummary;
-        };
+        const { runtime, embedding } =
+          (await window.electron.runtime.getReadiness()) as {
+            runtime: RuntimeSummary;
+            embedding: EmbeddingSummary;
+          };
         if (cancelled) return;
         setComponents([
           checkStt(runtime),

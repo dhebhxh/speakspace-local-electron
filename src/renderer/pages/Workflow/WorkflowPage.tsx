@@ -21,7 +21,9 @@ export default function WorkflowPage() {
 
   useEffect(() => {
     loadTemplates().catch((error) => {
-      setStatus(error instanceof Error ? error.message : t('workflow.page.loadError'));
+      setStatus(
+        error instanceof Error ? error.message : t('workflow.page.loadError'),
+      );
     });
   }, [loadTemplates, t]);
 

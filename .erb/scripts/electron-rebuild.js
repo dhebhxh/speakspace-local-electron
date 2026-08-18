@@ -1,7 +1,9 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
-import { dependencies } from '../../release/app/package.json';
 import webpackPaths from '../configs/webpack.paths';
+// 同上：release/app 只能按相对路径读。
+// eslint-disable-next-line import/no-relative-packages
+import { dependencies } from '../../release/app/package.json';
 
 if (
   Object.keys(dependencies || {}).length > 0 &&

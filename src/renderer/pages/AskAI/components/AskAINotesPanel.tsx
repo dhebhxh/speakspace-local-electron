@@ -54,18 +54,21 @@ export default function AskAINotesPanel({
     });
 
     const nameById = new Map(workspaces?.map((item) => [item.id, item.name]));
-    return [...buckets.entries()]
-      .map(([workspaceId, items]) => ({
-        workspaceId,
-        name:
-          workspaceId === null
-            ? t('askAI.notesPanel.unclassified')
-            : nameById.get(workspaceId) ?? `${t('askAI.notesPanel.workspacePrefix')}${workspaceId}`,
-        items,
-      }))
-      // 未分类且为空时不必占一行。
-      .filter((group) => group.workspaceId !== null || group.items.length > 0);
-  }, [notes, workspaces]);
+    return (
+      [...buckets.entries()]
+        .map(([workspaceId, items]) => ({
+          workspaceId,
+          name:
+            workspaceId === null
+              ? t('askAI.notesPanel.unclassified')
+              : (nameById.get(workspaceId) ??
+                `${t('askAI.notesPanel.workspacePrefix')}${workspaceId}`),
+          items,
+        }))
+        // 未分类且为空时不必占一行。
+        .filter((group) => group.workspaceId !== null || group.items.length > 0)
+    );
+  }, [notes, t, workspaces]);
 
   const renderNote = (note: AskAINote) => (
     <button
@@ -86,7 +89,9 @@ export default function AskAINotesPanel({
       onContextMenu={(e) => onContextMenu && onContextMenu(note.id, e)}
     >
       <strong>{note.name}</strong>
-      <span>{note.transcriptPreview || t('askAI.notesPanel.noSummaryShort')}</span>
+      <span>
+        {note.transcriptPreview || t('askAI.notesPanel.noSummaryShort')}
+      </span>
       <time>{formatAskAIDate(note.updatedAt)}</time>
     </button>
   );
@@ -100,7 +105,11 @@ export default function AskAINotesPanel({
         </div>
         {/* 有工作区分组时，新增按钮移到每个工作区那一行（悬停显示） */}
         {!workspaces && (
-          <button type="button" onClick={() => onAddNote()} aria-label="新增笔记">
+          <button
+            type="button"
+            onClick={() => onAddNote()}
+            aria-label="新增笔记"
+          >
             ＋
           </button>
         )}
@@ -131,7 +140,10 @@ export default function AskAINotesPanel({
                       onDragStart={(event) =>
                         setNoteDragPayload(
                           event.dataTransfer,
-                          { kind: 'workspace', id: group.workspaceId as number },
+                          {
+                            kind: 'workspace',
+                            id: group.workspaceId as number,
+                          },
                           group.name,
                         )
                       }
@@ -199,16 +211,18 @@ export default function AskAINotesPanel({
               )}
             </h3>
             <div className="ask-ai-recents-list">
-              {conversations.slice(0, RECENT_CONVERSATION_LIMIT).map((conversation) => (
-                <button
-                  type="button"
-                  key={conversation.id}
-                  onClick={() => onOpenConversation(conversation.id)}
-                >
-                  <strong>{conversation.name}</strong>
-                  <time>{formatAskAIDate(conversation.updatedAt)}</time>
-                </button>
-              ))}
+              {conversations
+                .slice(0, RECENT_CONVERSATION_LIMIT)
+                .map((conversation) => (
+                  <button
+                    type="button"
+                    key={conversation.id}
+                    onClick={() => onOpenConversation(conversation.id)}
+                  >
+                    <strong>{conversation.name}</strong>
+                    <time>{formatAskAIDate(conversation.updatedAt)}</time>
+                  </button>
+                ))}
             </div>
           </section>
         </>

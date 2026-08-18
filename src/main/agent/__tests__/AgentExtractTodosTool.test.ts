@@ -6,10 +6,23 @@ const GLOBAL_CONTEXT: AgentContext = { workspaceId: null };
 
 function makeNote(id: number, workspaceId: number | null): Note {
   const now = new Date();
-  return new Note(id, workspaceId, `note-${id}`, null, 'body', false, null, now, now);
+  return new Note(
+    id,
+    workspaceId,
+    `note-${id}`,
+    null,
+    'body',
+    false,
+    null,
+    now,
+    now,
+  );
 }
 
-function buildTool(extracted = true, saved = [{ title: '交周报', dateString: '2026-08-20' }]) {
+function buildTool(
+  extracted = true,
+  saved = [{ title: '交周报', dateString: '2026-08-20' }],
+) {
   const notes = [makeNote(7, 42)];
   const source = {
     findAll: () => notes,
@@ -30,7 +43,11 @@ function buildTool(extracted = true, saved = [{ title: '交周报', dateString: 
       })),
     ),
   };
-  return { tool: createAgentExtractTodosTool(source, extractor, todos), extractor, todos };
+  return {
+    tool: createAgentExtractTodosTool(source, extractor, todos),
+    extractor,
+    todos,
+  };
 }
 
 describe('createAgentExtractTodosTool', () => {
@@ -66,7 +83,9 @@ describe('createAgentExtractTodosTool', () => {
   it('限定了工作区时拒绝跨区提取', async () => {
     const { tool, extractor } = buildTool();
 
-    await expect(tool.run({ note_id: 7 }, { workspaceId: 1 })).rejects.toThrow();
+    await expect(
+      tool.run({ note_id: 7 }, { workspaceId: 1 }),
+    ).rejects.toThrow();
     expect(extractor.extractTodosForNote).not.toHaveBeenCalled();
   });
 });

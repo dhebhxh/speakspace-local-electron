@@ -1,7 +1,6 @@
 import { Model } from '../../../main/AI-module/Model';
 
 /** 为目录中的每个模型生成简短用途说明，避免把文案写进下载配置。 */
-// eslint-disable-next-line import/prefer-default-export
 export function getModelDescription(model: Model, modelType: string): string {
   const identity = `${model.id} ${model.name}`.toLowerCase();
 

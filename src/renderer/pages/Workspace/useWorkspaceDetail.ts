@@ -29,8 +29,10 @@ export default function useWorkspaceDetail() {
   const [selectedNoteIds, setSelectedNoteIds] = useState<number[]>([]);
 
   const toggleNoteSelection = useCallback((noteId: number) => {
-    setSelectedNoteIds(prev =>
-      prev.includes(noteId) ? prev.filter(id => id !== noteId) : [...prev, noteId]
+    setSelectedNoteIds((prev) =>
+      prev.includes(noteId)
+        ? prev.filter((id) => id !== noteId)
+        : [...prev, noteId],
     );
   }, []);
 
@@ -84,17 +86,20 @@ export default function useWorkspaceDetail() {
     [workspaceId],
   );
 
-  const renameWorkspace = useCallback(async (nextName: string) => {
-    if (!workspace) return;
-    if (!nextName?.trim() || nextName.trim() === workspace.name) return;
-    try {
-      setError('');
-      await workspaceController.renameWorkspace(workspace.id, nextName);
-      setWorkspace(await workspaceController.openWorkspace(workspace.id));
-    } catch (reason) {
-      setError(WorkspaceController.getErrorMessage(reason, '重命名失败'));
-    }
-  }, [workspace]);
+  const renameWorkspace = useCallback(
+    async (nextName: string) => {
+      if (!workspace) return;
+      if (!nextName?.trim() || nextName.trim() === workspace.name) return;
+      try {
+        setError('');
+        await workspaceController.renameWorkspace(workspace.id, nextName);
+        setWorkspace(await workspaceController.openWorkspace(workspace.id));
+      } catch (reason) {
+        setError(WorkspaceController.getErrorMessage(reason, '重命名失败'));
+      }
+    },
+    [workspace],
+  );
 
   const deleteWorkspace = useCallback(async () => {
     if (!workspace) return;

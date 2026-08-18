@@ -10,22 +10,21 @@ import WorkflowPage from './pages/Workflow/WorkflowPage';
 import AgentPage from './pages/Agent/AgentPage';
 import { RoutePath } from './router/RouteManager';
 
-
 export default function AppRoute() {
   return (
     <Routes>
       <Route element={<MainLayout />}>
-        {/* 首�??�為實�?轉�? (StudioPage) */}
+        {/* 首�??�為實�?轉�? (StudioPage) */}
         <Route path="/" element={<StudioPage />} />
-        
-        {/* ?�容?�本??/Transcription，若?�人跳�??��?就正常顯�?*/}
+
+        {/* ?�容?�本??/Transcription，若?�人跳�??��?就正常顯�? */}
         <Route path="/Transcription" element={<StudioPage />} />
 
-        {/* ?�容?��? /AIChat 路由 */}
+        {/* ?�容?��? /AIChat 路由 */}
         <Route path="/AIChat" element={<Navigate to="/" replace />} />
-        
+
         <Route path="/Agent" element={<AgentPage />} />
-        
+
         <Route
           path="/Workspace"
           element={<WorkspaceHomePage directory limit={100} />}

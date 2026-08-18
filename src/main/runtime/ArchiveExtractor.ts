@@ -36,7 +36,7 @@ export default class ArchiveExtractor {
             options,
           );
           return;
-        } catch (error) {
+        } catch {
           // bsdtar 失败：zip 交给 PowerShell 兜底，其余向下继续尝试 GNU tar。
           if (!isZip) {
             await ArchiveExtractor.extractWithGnuTar(

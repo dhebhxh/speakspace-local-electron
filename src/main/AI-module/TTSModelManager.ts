@@ -49,9 +49,13 @@ export default class TTSModelManager implements ModelManager {
   }
 
   public getModelList(): TTSModel[] {
-    const activeModelId = this.stateStore.getActiveModelId();
+    const downloadedIds = TTS_MODEL_CATALOG.filter((item) =>
+      this.storage.isInstalled(item),
+    ).map((item) => item.id);
+    // 已下载但没人选中的情况下自动选一个，别让用户卡在「未选择模型」。
+    const activeModelId = this.stateStore.resolveActiveModelId(downloadedIds);
     return TTS_MODEL_CATALOG.map((item) => {
-      const downloaded = this.storage.isInstalled(item);
+      const downloaded = downloadedIds.includes(item.id);
       return TTSModelManager.createModel(
         item,
         downloaded,

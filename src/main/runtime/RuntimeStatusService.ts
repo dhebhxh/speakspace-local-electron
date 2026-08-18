@@ -12,6 +12,10 @@ import { TTSRuntimeStatus } from '../tts/TTSRuntimeTypes';
 import ParakeetRuntimeService, {
   ParakeetRuntimeStatus,
 } from '../transcription/ParakeetRuntimeService';
+import {
+  RuntimeInstallSupportSummary,
+  getRuntimeInstallSupportSummary,
+} from './RuntimeInstallSupport';
 
 export type ManagedRuntimeState = 'missing' | 'partial' | 'ready';
 
@@ -30,6 +34,8 @@ export type RuntimeStatusSummary = {
   parakeetTranscription: ParakeetRuntimeStatus;
   languageModel: OllamaRuntimeStatus;
   speechSynthesis: TTSRuntimeStatus;
+  /** 当前平台哪些运行时能自动安装；界面据此决定给按钮还是给手动说明。 */
+  installSupport: RuntimeInstallSupportSummary;
 };
 
 /**
@@ -76,6 +82,7 @@ export class RuntimeStatusService {
       parakeetTranscription: this.parakeetRuntime.getStatus(),
       languageModel: await this.ollamaRuntime.getStatus(),
       speechSynthesis,
+      installSupport: getRuntimeInstallSupportSummary(),
     };
   }
 

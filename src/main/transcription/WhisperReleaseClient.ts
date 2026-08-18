@@ -1,3 +1,5 @@
+import { assertAutoInstallSupported } from '../runtime/RuntimeInstallSupport';
+
 const LATEST_RELEASE_API =
   'https://api.github.com/repos/ggml-org/whisper.cpp/releases/latest';
 
@@ -59,11 +61,7 @@ export default class WhisperReleaseClient {
   }
 
   private static getAssetName(): string {
-    if (process.platform !== 'win32') {
-      throw new Error(
-        '当前自动安装仅支持 Windows；请通过系统包管理器安装 whisper-cli',
-      );
-    }
+    assertAutoInstallSupported('whisper');
     if (process.arch === 'x64') return 'whisper-bin-x64.zip';
     if (process.arch === 'ia32') return 'whisper-bin-Win32.zip';
     throw new Error(

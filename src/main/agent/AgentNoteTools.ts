@@ -24,7 +24,8 @@ export default function createAgentNoteTools(
 ): AgentTool[] {
   const notes = dependencies.notes ?? new NoteRepository();
   const semantic = dependencies.semantic ?? new SemanticNoteService();
-  const todoExtractor = dependencies.todoExtractor ?? new TodoExtractionService();
+  const todoExtractor =
+    dependencies.todoExtractor ?? new TodoExtractionService();
   const todos = dependencies.todos ?? new TodoRepository();
   return [
     createAgentSearchNotesTool(notes, semantic),

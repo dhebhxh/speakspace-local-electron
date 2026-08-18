@@ -87,7 +87,10 @@ export default function useStudioAgent() {
   useEffect(() => controller.onEvent(handleEvent), [handleEvent]);
 
   const run = useCallback(
-    async (question: string, linkedNoteIds: number[] = []): Promise<boolean> => {
+    async (
+      question: string,
+      linkedNoteIds: number[] = [],
+    ): Promise<boolean> => {
       const instruction = question.trim();
       if (!instruction) return false;
 
@@ -138,5 +141,10 @@ export default function useStudioAgent() {
     setState(EMPTY);
   }, []);
 
-  return { agent: state, runAgent: run, cancelAgent: cancel, resetAgent: reset };
+  return {
+    agent: state,
+    runAgent: run,
+    cancelAgent: cancel,
+    resetAgent: reset,
+  };
 }

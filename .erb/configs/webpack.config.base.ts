@@ -5,6 +5,8 @@
 import webpack from 'webpack';
 import TsconfigPathsPlugins from 'tsconfig-paths-webpack-plugin';
 import webpackPaths from './webpack.paths';
+// release/app 不是已安装的依赖，只能按相对路径读；改成包名会导致解析失败。
+// eslint-disable-next-line import/no-relative-packages
 import { dependencies as externals } from '../../release/app/package.json';
 
 const configuration: webpack.Configuration = {

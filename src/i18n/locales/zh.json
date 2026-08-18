@@ -239,7 +239,7 @@
   "workspace.multi.title": "多笔记关联对话",
   "workspace.multi.close": "关闭",
   "workspace.multi.prompt": "请针对选中的笔记进行交叉对话或提问",
-  "workspace.multi.error": "对话生成失败：\n${errorMessage}\n\n（提示：您可能需要在设置中下载并启用 LLM 模型）",
+  "workspace.multi.error": "对话生成失败：\n{{errorMessage}}\n\n（提示：您可能需要在设置中下载并启用 LLM 模型）",
   "workspace.search.error": "语义搜索失败",
   "workspace.search.title": "按含义查找相似笔记（不要求出现完全相同的关键词）",
   "workspace.search.indexing": "构建索引中…",

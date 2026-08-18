@@ -6,7 +6,17 @@ import { AgentContext } from '../AgentTypes';
 
 function makeNote(id: number, workspaceId: number | null): Note {
   const now = new Date();
-  return new Note(id, workspaceId, `note-${id}`, null, 'body', false, null, now, now);
+  return new Note(
+    id,
+    workspaceId,
+    `note-${id}`,
+    null,
+    'body',
+    false,
+    null,
+    now,
+    now,
+  );
 }
 
 describe('不限定工作区（workspaceId 为 null）时的行为', () => {

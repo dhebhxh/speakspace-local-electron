@@ -30,35 +30,44 @@ export default function WorkspaceNoteCard({
 }: Props) {
   const { t, i18n } = useTranslation();
   const handleExport = (format: 'word' | 'pdf') => {
-    window.electron.export.note({
-      title: note.name || t('workspace.note.unnamed'),
-      transcript: note.transcript,
-      subnotes: note.subnotes.map(s => ({ type: s.content_type, content: s.content })),
-      format
-    }).catch(console.error);
+    window.electron.export
+      .note({
+        title: note.name || t('workspace.note.unnamed'),
+        transcript: note.transcript,
+        subnotes: note.subnotes.map((s) => ({
+          type: s.content_type,
+          content: s.content,
+        })),
+        format,
+      })
+      .catch(console.error);
   };
 
   return (
-    <article 
-      className={`workspace-detail-note ${isSelected ? 'selected' : ''}`} 
+    <article
+      className={`workspace-detail-note ${isSelected ? 'selected' : ''}`}
       id={`workspace-note-${note.id}`}
       onContextMenu={(e) => onContextMenu && onContextMenu(note.id, e)}
     >
       <header className="workspace-note-head">
         {onToggleSelection && (
-          <label className="workspace-note-pick">
+          <span className="workspace-note-pick">
             <input
               aria-label={t('workspace.note.select')}
               checked={isSelected}
               onChange={() => onToggleSelection(note.id)}
               type="checkbox"
             />
-          </label>
+          </span>
         )}
         <div className="workspace-note-identity">
           {note.is_pinned ? (
-            <span className="workspace-note-kind" title={t('workspace.note.pin')}>
-              <Pin size={14} style={{ marginRight: 4 }} /> {t('workspace.detail.pinnedLabel')}
+            <span
+              className="workspace-note-kind"
+              title={t('workspace.note.pin')}
+            >
+              <Pin size={14} style={{ marginRight: 4 }} />{' '}
+              {t('workspace.detail.pinnedLabel')}
             </span>
           ) : null}
           <h2>{note.name || t('workspace.note.unnamed')}</h2>
@@ -80,14 +89,25 @@ export default function WorkspaceNoteCard({
           >
             {t('workspace.note.exportPdf')}
           </button>
-          <time dateTime={note.updated_at} title={t('workspace.detail.updated')}>
-            {WorkspaceController.formatDate(note.updated_at, 'short', i18n.language)}
+          <time
+            dateTime={note.updated_at}
+            title={t('workspace.detail.updated')}
+          >
+            {WorkspaceController.formatDate(
+              note.updated_at,
+              'short',
+              i18n.language,
+            )}
           </time>
         </div>
       </header>
 
       <div className="workspace-note-audio">
-        <span aria-hidden="true" className="ws-label" title={t('workspace.note.audioLabel')}>
+        <span
+          aria-hidden="true"
+          className="ws-label"
+          title={t('workspace.note.audioLabel')}
+        >
           <Mic size={16} />
         </span>
         <WorkspaceAudioPlayer workspaceId={workspaceId} note={note} />
@@ -105,32 +125,38 @@ export default function WorkspaceNoteCard({
         </section>
 
         <section className="workspace-knowledge-section">
-          {note.subnotes.filter(s => s.content_type === 'note').length > 0 && (
+          {note.subnotes.filter((s) => s.content_type === 'note').length >
+            0 && (
             <div className="workspace-subnotes-list">
               <h3>
                 <Sparkles size={16} style={{ marginRight: 6 }} />
                 {t('workspace.note.subNotes')}
               </h3>
-              {note.subnotes.filter(s => s.content_type === 'note').map(s => (
-                <div key={s.id} className="workspace-subnote-item">
-                  <span className="workspace-subnote-badge">{s.template_name || 'Sub-note'}</span>
-                  <div className="workspace-subnote-content">{s.content}</div>
-                </div>
-              ))}
+              {note.subnotes
+                .filter((s) => s.content_type === 'note')
+                .map((s) => (
+                  <div key={s.id} className="workspace-subnote-item">
+                    <span className="workspace-subnote-badge">Sub-note</span>
+                    <div className="workspace-subnote-content">{s.content}</div>
+                  </div>
+                ))}
             </div>
           )}
 
-          {note.subnotes.filter(s => s.content_type === 'chat').length > 0 && (
+          {note.subnotes.filter((s) => s.content_type === 'chat').length >
+            0 && (
             <div className="workspace-subnotes-list">
               <h3>
                 <MessageSquare size={16} style={{ marginRight: 6 }} />
                 {t('workspace.note.aiChat')}
               </h3>
-              {note.subnotes.filter(s => s.content_type === 'chat').map(s => (
-                <div key={s.id} className="workspace-subnote-item is-chat">
-                  <div className="workspace-subnote-content">{s.content}</div>
-                </div>
-              ))}
+              {note.subnotes
+                .filter((s) => s.content_type === 'chat')
+                .map((s) => (
+                  <div key={s.id} className="workspace-subnote-item is-chat">
+                    <div className="workspace-subnote-content">{s.content}</div>
+                  </div>
+                ))}
             </div>
           )}
         </section>
@@ -145,7 +171,9 @@ export default function WorkspaceNoteCard({
         <section className="workspace-conversation-section">
           <h3>💬 {t('workspace.note.aiChat', 'AI 对话')}</h3>
           {note.conversations.length === 0 ? (
-            <span className="workspace-content-empty">{t('workspace.knowledge.empty', '暂无')}</span>
+            <span className="workspace-content-empty">
+              {t('workspace.knowledge.empty', '暂无')}
+            </span>
           ) : (
             <div className="workspace-content-stack">
               {note.conversations.map((conversation) => (

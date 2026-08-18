@@ -27,7 +27,9 @@ export default function KnowledgeTemplateFormPage({
     try {
       await onSubmit(name, prompt);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : t('workflow.form.saveError'));
+      setErrorMessage(
+        error instanceof Error ? error.message : t('workflow.form.saveError'),
+      );
     } finally {
       setSaving(false);
     }

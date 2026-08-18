@@ -150,6 +150,14 @@ export default function OnboardingGuide() {
     return () => window.removeEventListener(ONBOARDING_OPEN_EVENT, reopen);
   }, [reset]);
 
+  // 广播「引导进行中」：对话工作台据此放行，
+  // 否则新用户还没装模型，工作台被开工前检查挡着，
+  // 中间那几步要指的输入框、录音按钮根本不在页面上。
+  useEffect(() => {
+    OnboardingController.setTourActive(open);
+    return () => OnboardingController.setTourActive(false);
+  }, [open]);
+
   // Esc 随时退出。引导是帮忙的，不能变成关不掉的牢笼。
   useEffect(() => {
     if (!open) return undefined;

@@ -8,6 +8,18 @@
   background: var(--surface);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  /* backdrop-filter 会让每张卡片自成层叠上下文，卡片内部再大的 z-index
+     也只在这张卡片里排序。所以卡片之间必须自己有个可比的层级基准。 */
+  position: relative;
+  z-index: 0;
+}
+
+/* 下拉展开时把整张卡片抬到后面的卡片之上。
+   不这么做的话，STT 的下拉会被下一行的 Embedding 卡片整块盖住 ——
+   列表本身的 z-index 在跨卡片比较时根本不参与。
+   :has 让层级只在真正展开的那一刻提升，收起后立刻回到基准值。 */
+.model-module:has(.model-select-list) {
+  z-index: 10;
 }
 
 .model-module-head {

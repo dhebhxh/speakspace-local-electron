@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Model } from '../../../main/AI-module/Model';
 import { RuntimeStatusSummary } from '../../../main/runtime/RuntimeStatusService';
 import { EmbeddingModelStatus } from '../../../main/semantic/SemanticTypes';
@@ -16,8 +16,6 @@ type ByteProgress = {
   receivedBytes?: number;
   totalBytes?: number;
 };
-
-const recommendationController = new ModelRecommendationController();
 
 function toPercent(received?: number, total?: number): number | null {
   if (!received || !total) return null;
@@ -48,6 +46,13 @@ export default function useModelManager() {
   const [progress, setProgress] = useState<
     Partial<Record<ModuleKey, ModuleProgress | null>>
   >({});
+
+  // 控制器读 window.electron，必须在组件内部创建：
+  // 模块顶层 new 会让 preload 尚未注入的环境（例如 jest jsdom）在 import 阶段就崩溃。
+  const recommendationController = useMemo(
+    () => new ModelRecommendationController(),
+    [],
+  );
 
   const setError = useCallback((module: ModuleKey, message: string) => {
     setErrors((current) => ({ ...current, [module]: message }));
@@ -94,19 +99,22 @@ export default function useModelManager() {
    * 单次可能好几秒。绝对不能让它挡住首屏 —— 它只是给下拉项加一个「推荐」标签，
    * 没有它页面照样是完整可用的。所以单独拉，回来了再合并进去。
    */
-  const loadRecommendation = useCallback(async (stt: Model[], llm: Model[]) => {
-    setRecommendationLoading(true);
-    try {
-      setRecommendation(
-        await recommendationController.getRecommendation(stt, llm),
-      );
-    } catch {
-      // 推荐只是下拉里的一个标签，检测失败时静默降级。
-      setRecommendation(null);
-    } finally {
-      setRecommendationLoading(false);
-    }
-  }, []);
+  const loadRecommendation = useCallback(
+    async (stt: Model[], llm: Model[]) => {
+      setRecommendationLoading(true);
+      try {
+        setRecommendation(
+          await recommendationController.getRecommendation(stt, llm),
+        );
+      } catch {
+        // 推荐只是下拉里的一个标签，检测失败时静默降级。
+        setRecommendation(null);
+      } finally {
+        setRecommendationLoading(false);
+      }
+    },
+    [recommendationController],
+  );
 
   const refreshAll = useCallback(async () => {
     const { stt, llm } = await loadEssentials();

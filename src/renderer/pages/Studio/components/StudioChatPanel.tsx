@@ -7,15 +7,15 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AskAIMessage, AskAINote } from '../../AskAI/AskAITypes';
 import {
   hasNoteDragPayload,
   readNoteDragPayload,
 } from '../../AskAI/AskAIDragPayload';
-import { useTranslation } from 'react-i18next';
 import i18n from '../../../../i18n';
 import SoundWave from '../../../components/SoundWave';
-import { StudioWorkspace } from '../StudioPage';
+import { StudioWorkspace } from '../StudioTypes';
 import { StudioAgentState } from '../useStudioAgent';
 import { AgentStep } from '../../../../main/agent/AgentTypes';
 import TTSPlayButton from '../../../tts/TTSPlayButton';
@@ -174,7 +174,7 @@ function describeSearchResult(raw: string): string[] {
 
   const lines = hits.map((hit) => {
     const viaKey = MATCH_LABELS[hit.match ?? ''];
-    const via = viaKey ? i18n.t(viaKey) : hit.match ?? '';
+    const via = viaKey ? i18n.t(viaKey) : (hit.match ?? '');
     const score =
       typeof hit.similarity === 'number' ? ` ${hit.similarity.toFixed(2)}` : '';
     return `${hit.name ?? i18n.t('studio.agent.untitledNote')}${via ? `（${via}${score}）` : ''}`;
@@ -190,7 +190,9 @@ function describeSearchResult(raw: string): string[] {
 function describeAgentStep(step: AgentStep): AgentStepView {
   if (step.type === 'final') {
     return {
-      title: step.truncated ? i18n.t('studio.agent.step.finalLimit') : i18n.t('studio.agent.step.final'),
+      title: step.truncated
+        ? i18n.t('studio.agent.step.finalLimit')
+        : i18n.t('studio.agent.step.final'),
       details: [],
     };
   }
@@ -202,25 +204,42 @@ function describeAgentStep(step: AgentStep): AgentStepView {
     const query = String(step.args?.query ?? '').trim();
     const noteId = step.args?.note_id ?? step.args?.noteId;
     if (step.tool === 'search_notes') {
-      return { title: query ? `${i18n.t('studio.agent.step.searchPrefix')}${query}${i18n.t('studio.agent.step.searchSuffix')}` : i18n.t('studio.agent.step.listRecent'), details: [] };
+      return {
+        title: query
+          ? `${i18n.t('studio.agent.step.searchPrefix')}${query}${i18n.t('studio.agent.step.searchSuffix')}`
+          : i18n.t('studio.agent.step.listRecent'),
+        details: [],
+      };
     }
     if (step.tool === 'read_note' && noteId !== undefined) {
-      return { title: `${i18n.t('studio.agent.step.readPrefix')}${noteId}`, details: [] };
+      return {
+        title: `${i18n.t('studio.agent.step.readPrefix')}${noteId}`,
+        details: [],
+      };
     }
     if (step.tool === 'extract_todos' && noteId !== undefined) {
-      return { title: `${i18n.t('studio.agent.step.todosPrefix')}${noteId}`, details: [] };
+      return {
+        title: `${i18n.t('studio.agent.step.todosPrefix')}${noteId}`,
+        details: [],
+      };
     }
     return { title: tool, details: [] };
   }
 
   if (!step.ok) {
-    return { title: `${tool}${i18n.t('studio.agent.step.failedSuffix')}`, details: [step.result.slice(0, 200)] };
+    return {
+      title: `${tool}${i18n.t('studio.agent.step.failedSuffix')}`,
+      details: [step.result.slice(0, 200)],
+    };
   }
 
   try {
     if (step.tool === 'search_notes') {
       const details = describeSearchResult(step.result);
-      return { title: `${i18n.t('studio.agent.step.foundPrefix')}${details.length}${i18n.t('studio.agent.step.foundSuffix')}`, details };
+      return {
+        title: `${i18n.t('studio.agent.step.foundPrefix')}${details.length}${i18n.t('studio.agent.step.foundSuffix')}`,
+        details,
+      };
     }
     if (step.tool === 'read_note') {
       const parsed = JSON.parse(step.result) as {
@@ -247,14 +266,18 @@ function describeAgentStep(step: AgentStep): AgentStepView {
       if (parsed.hint) details.push(i18n.t('studio.agent.todosFailed'));
       return {
         title: `${i18n.t('studio.agent.step.todosDonePrefix')}${items.length}${i18n.t('studio.agent.step.todosDoneSuffix')}`,
-        details: details.length > 0 ? details : [i18n.t('studio.agent.noTodos')],
+        details:
+          details.length > 0 ? details : [i18n.t('studio.agent.noTodos')],
       };
     }
   } catch {
     // 结果不是预期的 JSON 时退回到概要描述。
   }
 
-  return { title: `${i18n.t('studio.agent.step.donePrefix')}${tool}`, details: [] };
+  return {
+    title: `${i18n.t('studio.agent.step.donePrefix')}${tool}`,
+    details: [],
+  };
 }
 
 /** # 菜单里的一项：整个工作区，或某一条笔记。 */
@@ -309,7 +332,7 @@ export default function StudioChatPanel({
   const { t } = useTranslation();
   // 自动朗读开关来自设置页的「智能助理」分类
   const { settings } = useAppSettings();
-  const agentAutoSpeak = settings.agentAutoSpeak;
+  const { agentAutoSpeak } = settings;
   const [question, setQuestion] = useState('');
   const [mention, setMention] = useState<{
     start: number;
@@ -369,7 +392,7 @@ export default function StudioChatPanel({
       .map((note) => ({ kind: 'note', id: note.id, name: note.name, note }));
 
     return [...workspaceItems, ...noteItems].slice(0, MENTION_LIMIT);
-  }, [allNotes, linkedNotes, linkedWorkspaceIds, mention, workspaces]);
+  }, [allNotes, linkedNotes, linkedWorkspaceIds, mention, t, workspaces]);
 
   const mentionOpen = mention !== null && mentionCandidates.length > 0;
 
@@ -412,7 +435,8 @@ export default function StudioChatPanel({
 
   function handleDragLeave(event: DragEvent<HTMLElement>) {
     // 移动到面板内部的子元素上时不算离开。
-    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    if (event.currentTarget.contains(event.relatedTarget as Node | null))
+      return;
     setDragOver(false);
   }
 
@@ -522,7 +546,11 @@ export default function StudioChatPanel({
         ) : (
           messages.map((message) => (
             <article key={message.id} className={message.role}>
-              <span>{message.role === 'assistant' ? t('studio.chat.roleAI') : t('studio.chat.roleUser')}</span>
+              <span>
+                {message.role === 'assistant'
+                  ? t('studio.chat.roleAI')
+                  : t('studio.chat.roleUser')}
+              </span>
               <p>{message.content}</p>
               {message.role === 'assistant' && (
                 <div className="message-actions">
@@ -545,7 +573,10 @@ export default function StudioChatPanel({
               <span>{t('studio.chat.roleAssistant')}</span>
               {turn.steps.length > 0 && (
                 <details className="studio-agent-steps">
-                  <summary>{turn.steps.length}{t('studio.chat.stepsSuffix')}</summary>
+                  <summary>
+                    {turn.steps.length}
+                    {t('studio.chat.stepsSuffix')}
+                  </summary>
                   <ol>
                     {turn.steps.map((step, index) => {
                       const view = describeAgentStep(step);
@@ -626,7 +657,11 @@ export default function StudioChatPanel({
 
       <form className="studio-composer" onSubmit={handleSubmit}>
         {mentionOpen && (
-          <div className="studio-mention" role="listbox" aria-label={t('studio.chat.mentionAria')}>
+          <div
+            className="studio-mention"
+            role="listbox"
+            aria-label={t('studio.chat.mentionAria')}
+          >
             {mentionCandidates.map((item, index) => (
               <button
                 type="button"
@@ -691,101 +726,98 @@ export default function StudioChatPanel({
         )}
 
         <div className="studio-composer-row">
-        {recording.active ? (
-          <button
-            type="button"
-            className="studio-composer-btn studio-record-button is-recording"
-            onClick={onStopRecording}
-            disabled={recordingBusy}
-            aria-label={t('studio.chat.stopRecording')}
-            title={t('studio.chat.stopRecording')}
-          >
-            <StopIcon />
-            {/* 起伏的声波是「确实在收音」最直观的反馈；
+          {recording.active ? (
+            <button
+              type="button"
+              className="studio-composer-btn studio-record-button is-recording"
+              onClick={onStopRecording}
+              disabled={recordingBusy}
+              aria-label={t('studio.chat.stopRecording')}
+              title={t('studio.chat.stopRecording')}
+            >
+              <StopIcon />
+              {/* 起伏的声波是「确实在收音」最直观的反馈；
                 只有计时数字在跳的话，看不出麦克风到底通没通。 */}
-            <SoundWave active bars={5} size={14} />
-            <span className="studio-record-time">
-              {formatElapsed(recording.elapsedMs)}
-            </span>
-          </button>
-        ) : (
+              <SoundWave active bars={5} size={14} />
+              <span className="studio-record-time">
+                {formatElapsed(recording.elapsedMs)}
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="studio-composer-btn studio-record-button"
+              onClick={onStartRecording}
+              disabled={recordingBusy}
+              aria-label={t('studio.chat.startRecording')}
+              title={t('studio.chat.startRecording')}
+            >
+              <MicIcon />
+            </button>
+          )}
           <button
             type="button"
-            className="studio-composer-btn studio-record-button"
-            onClick={onStartRecording}
-            disabled={recordingBusy}
-            aria-label={t('studio.chat.startRecording')}
-            title={t('studio.chat.startRecording')}
+            className="studio-composer-btn studio-upload-button"
+            onClick={onUploadAudio}
+            disabled={recording.active || recordingBusy}
+            aria-label={t('studio.chat.uploadAudio')}
+            title={t('studio.chat.uploadAudio')}
           >
-            <MicIcon />
+            <UploadIcon />
           </button>
-        )}
-        <button
-          type="button"
-          className="studio-composer-btn studio-upload-button"
-          onClick={onUploadAudio}
-          disabled={recording.active || recordingBusy}
-          aria-label={t('studio.chat.uploadAudio')}
-          title={t('studio.chat.uploadAudio')}
-        >
-          <UploadIcon />
-        </button>
-        <button
-          type="button"
-          className={`studio-composer-btn studio-agent-toggle${
-            agentMode ? ' is-active' : ''
-          }`}
-          onClick={onToggleAgentMode}
-          aria-pressed={agentMode}
-          aria-label={t('studio.chat.agentToggle')}
-          title={
-            agentMode
-              ? t('studio.chat.agentActive')
-              : t('studio.chat.agentInactive')
-          }
-        >
-          <AgentIcon />
-        </button>
+          <button
+            type="button"
+            className={`studio-composer-btn studio-agent-toggle${
+              agentMode ? ' is-active' : ''
+            }`}
+            onClick={onToggleAgentMode}
+            aria-pressed={agentMode}
+            aria-label={t('studio.chat.agentToggle')}
+            title={
+              agentMode
+                ? t('studio.chat.agentActive')
+                : t('studio.chat.agentInactive')
+            }
+          >
+            <AgentIcon />
+          </button>
 
-        <textarea
-          ref={textareaRef}
-          rows={1}
-          className="studio-composer-input"
-          value={question}
-          placeholder={
-            // eslint-disable-next-line no-nested-ternary
-            recording.active
-              ? t('studio.chat.placeholder.recording')
-              : agentMode
-                ? t('studio.chat.placeholder.agent')
-                : t('studio.chat.placeholder.normal')
-          }
-          onChange={(event) => {
-            setQuestion(event.target.value);
-            syncMention(event.target.value, event.target.selectionStart ?? 0);
-          }}
-          onKeyDown={handleKeyDown}
-          onBlur={closeMention}
-          disabled={!hasContext || isSending || recording.active}
-        />
-        <button
-          type="submit"
-          className="studio-composer-btn studio-send-button"
-          aria-label={t('studio.chat.send')}
-          title={t('studio.chat.send')}
-          disabled={
-            !hasContext ||
-            !question.trim() ||
-            isSending ||
-            recording.active
-          }
-        >
-          {isSending ? (
-            <span className="studio-send-spinner" aria-hidden="true" />
-          ) : (
-            <SendIcon />
-          )}
-        </button>
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            className="studio-composer-input"
+            value={question}
+            placeholder={
+              // eslint-disable-next-line no-nested-ternary
+              recording.active
+                ? t('studio.chat.placeholder.recording')
+                : agentMode
+                  ? t('studio.chat.placeholder.agent')
+                  : t('studio.chat.placeholder.normal')
+            }
+            onChange={(event) => {
+              setQuestion(event.target.value);
+              syncMention(event.target.value, event.target.selectionStart ?? 0);
+            }}
+            onKeyDown={handleKeyDown}
+            onBlur={closeMention}
+            disabled={!hasContext || isSending || recording.active}
+          />
+          <button
+            type="submit"
+            className="studio-composer-btn studio-send-button"
+            aria-label={t('studio.chat.send')}
+            title={t('studio.chat.send')}
+            disabled={
+              !hasContext || !question.trim() || isSending || recording.active
+            }
+          >
+            {isSending ? (
+              <span className="studio-send-spinner" aria-hidden="true" />
+            ) : (
+              <SendIcon />
+            )}
+          </button>
         </div>
       </form>
       <div className="ask-ai-status" role="status">

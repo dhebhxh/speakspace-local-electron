@@ -3,7 +3,6 @@ import path from 'path';
 import { ManagedPaths } from '../runtime/ManagedPaths';
 
 // 保留命名导出，与现有 WorkspaceService 的导入方式一致。
-// eslint-disable-next-line import/prefer-default-export
 export class BlobStorage {
   // 类内部的单例类型属于正常自引用，不是运行时的提前访问。
   // eslint-disable-next-line no-use-before-define

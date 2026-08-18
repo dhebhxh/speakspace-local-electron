@@ -1,3 +1,5 @@
+import { assertAutoInstallSupported } from '../runtime/RuntimeInstallSupport';
+
 const LATEST_RELEASE_API =
   'https://api.github.com/repos/ollama/ollama/releases/latest';
 
@@ -57,9 +59,7 @@ export default class OllamaReleaseClient {
   }
 
   private static getAssetName(): string {
-    if (process.platform !== 'win32') {
-      throw new Error('自动安装 Ollama 当前仅支持 Windows');
-    }
+    assertAutoInstallSupported('ollama');
     if (process.arch === 'x64') return 'ollama-windows-amd64.zip';
     if (process.arch === 'arm64') return 'ollama-windows-arm64.zip';
     throw new Error(`暂不支持的 Windows 架构: ${process.arch}`);

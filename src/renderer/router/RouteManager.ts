@@ -1,12 +1,12 @@
-import { NavigateFunction, NavigateOptions } from "react-router-dom";
+import { NavigateFunction, NavigateOptions } from 'react-router-dom';
 
 export enum RoutePath {
-    Transcription = "/Transcription",
-    AIChat = "/AIChat",
-    Workspace = "/Workspace",
-    ModelManagement = "/ModelManagement",
-    Dashboard = "/DashBoard",
-    Settings = "/Settings"
+  Transcription = '/Transcription',
+  AIChat = '/AIChat',
+  Workspace = '/Workspace',
+  ModelManagement = '/ModelManagement',
+  Dashboard = '/DashBoard',
+  Settings = '/Settings',
 }
 
 /**
@@ -14,29 +14,32 @@ export enum RoutePath {
  * eliminating repeated route string literals and centralizing page transition behavior (DRY principle).
  */
 export class RouteManager {
-    private navigator: NavigateFunction;
+  private navigator: NavigateFunction;
 
-    public constructor(navigator: NavigateFunction) {
-        this.navigator = navigator;
-    }
+  public constructor(navigator: NavigateFunction) {
+    this.navigator = navigator;
+  }
 
-    public navigateTo(path: RoutePath, options?: NavigateOptions): void {
-        this.navigator(path, options);
-    }
+  public navigateTo(path: RoutePath, options?: NavigateOptions): void {
+    this.navigator(path, options);
+  }
 
-    public navigateToSettings(options?: NavigateOptions): void {
-        this.navigator(RoutePath.Settings, options);
-    }
+  public navigateToSettings(options?: NavigateOptions): void {
+    this.navigator(RoutePath.Settings, options);
+  }
 
-    public navigateToDashboard(options?: NavigateOptions): void {
-        this.navigator(RoutePath.Dashboard, options);
-    }
+  public navigateToDashboard(options?: NavigateOptions): void {
+    this.navigator(RoutePath.Dashboard, options);
+  }
 
-    public navigateToWorkspace(workspaceId: number, options?: NavigateOptions): void {
-        this.navigator(`${RoutePath.Workspace}/${workspaceId}`, options);
-    }
+  public navigateToWorkspace(
+    workspaceId: number,
+    options?: NavigateOptions,
+  ): void {
+    this.navigator(`${RoutePath.Workspace}/${workspaceId}`, options);
+  }
 
-    public navigateToTranscription(options?: NavigateOptions): void {
-        this.navigator(RoutePath.Transcription, options);
-    }
+  public navigateToTranscription(options?: NavigateOptions): void {
+    this.navigator(RoutePath.Transcription, options);
+  }
 }

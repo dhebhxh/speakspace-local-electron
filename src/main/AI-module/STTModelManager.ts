@@ -29,7 +29,6 @@ type STTModelManagerDependencies = {
  * STT 模型目录服务。目录中的真实文件决定下载状态，userData 状态文件决定当前模型。
  */
 // 保留命名导出，与现有 IPC 和推荐模块的导入方式一致。
-// eslint-disable-next-line import/prefer-default-export
 export class STTModelManager implements ModelManager {
   private readonly catalog: STTCatalogItem[];
 
@@ -61,10 +60,14 @@ export class STTModelManager implements ModelManager {
   }
 
   public getModelList(): STTModel[] {
-    const activeModelId = this.stateStore.getActiveModelId();
+    const downloadedIds = this.catalog
+      .filter((item) => this.storage.isInstalled(item))
+      .map((item) => item.id);
+    // 已下载但没人选中的情况下自动选一个，别让用户卡在「未选择模型」。
+    const activeModelId = this.stateStore.resolveActiveModelId(downloadedIds);
 
     return this.catalog.map((item) => {
-      const downloaded = this.storage.isInstalled(item);
+      const downloaded = downloadedIds.includes(item.id);
       return STTModelManager.createModel(
         item,
         downloaded,

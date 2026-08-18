@@ -4,7 +4,6 @@ import { app } from 'electron';
 import path from 'path';
 
 // 保留命名导出，避免修改现有 repositories 与 WorkspaceService 的导入方式。
-// eslint-disable-next-line import/prefer-default-export
 export class DatabaseManager {
   // 类内部的单例类型属于正常自引用，不是运行时的提前访问。
   // eslint-disable-next-line no-use-before-define

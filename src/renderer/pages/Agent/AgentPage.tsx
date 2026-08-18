@@ -1,6 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import AgentConversation from './components/AgentConversation';
 import AgentTaskPanel from './components/AgentTaskPanel';
-import { useTranslation } from 'react-i18next';
 import AgentTimeline from './components/AgentTimeline';
 import useAgentPage from './useAgentPage';
 import './AgentPage.css';

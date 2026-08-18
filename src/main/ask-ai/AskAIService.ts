@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import { app } from 'electron';
 import { AIConversationRepository } from '../database/repositories/AIConversationRepository';
 import { AIMessageRepository } from '../database/repositories/AIMessageRepository';
 import { ConversationContextRepository } from '../database/repositories/ConversationContextRepository';
@@ -18,10 +21,6 @@ import {
   serializeMessage,
   serializeNote,
 } from './AskAISerializer';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-import { app } from 'electron';
 import {
   AskAIConversationDTO,
   AskAINoteDetailDTO,
@@ -73,8 +72,10 @@ export default class AskAIService {
     this.noteService = dependencies.noteService ?? new AskAINoteService();
     this.chatService = dependencies.chatService ?? new LocalChatService();
     this.noteRepository = dependencies.noteRepository ?? new NoteRepository();
-    this.subnoteRepository = dependencies.subnoteRepository ?? new SubnoteRepository();
-    this.todoExtractionService = dependencies.todoExtractionService ?? new TodoExtractionService();
+    this.subnoteRepository =
+      dependencies.subnoteRepository ?? new SubnoteRepository();
+    this.todoExtractionService =
+      dependencies.todoExtractionService ?? new TodoExtractionService();
   }
 
   public listNotes(workspaceId: number | null = null): AskAINoteDTO[] {
@@ -120,25 +121,34 @@ export default class AskAIService {
 
   public async autoSegmentNote(noteId: number): Promise<void> {
     const logFile = path.join(app.getPath('userData'), 'speakspace_askai.log');
-    fs.appendFileSync(logFile, `\n[${new Date().toISOString()}] autoSegmentNote called for noteId ${noteId}\n`);
+    fs.appendFileSync(
+      logFile,
+      `\n[${new Date().toISOString()}] autoSegmentNote called for noteId ${noteId}\n`,
+    );
     try {
       const note = this.noteRepository.findById(noteId);
       fs.appendFileSync(logFile, `Note found: ${!!note}\n`);
       if (!note || !note.getTranscript().trim()) {
-        fs.appendFileSync(logFile, `Aborting: note missing or empty transcript.\n`);
+        fs.appendFileSync(
+          logFile,
+          `Aborting: note missing or empty transcript.\n`,
+        );
         return;
       }
-      
-      fs.appendFileSync(logFile, `todoExtractionService exists: ${!!this.todoExtractionService}\n`);
+
+      fs.appendFileSync(
+        logFile,
+        `todoExtractionService exists: ${!!this.todoExtractionService}\n`,
+      );
 
       // Launch Todo Extraction independently so it doesn't block or depend on the summary generation
       if (this.todoExtractionService) {
-          this.todoExtractionService.extractTodosForNote(noteId).catch(err => {
-            console.error('Failed to extract todos automatically:', err);
-            fs.appendFileSync(logFile, `extractTodosForNote threw: ${err}\n`);
-          });
+        this.todoExtractionService.extractTodosForNote(noteId).catch((err) => {
+          console.error('Failed to extract todos automatically:', err);
+          fs.appendFileSync(logFile, `extractTodosForNote threw: ${err}\n`);
+        });
       } else {
-          fs.appendFileSync(logFile, `todoExtractionService is UNDEFINED!\n`);
+        fs.appendFileSync(logFile, `todoExtractionService is UNDEFINED!\n`);
       }
 
       const prompt = `Please analyze the following transcript and provide a structured summary.
@@ -148,15 +158,17 @@ For each segment, provide a brief title and a concise bullet-point summary of wh
 Transcript:
 ${note.getTranscript()}`;
 
-      const reply = await this.chatService.chat([{ role: 'user', content: prompt }]);
-      
+      const reply = await this.chatService.chat([
+        { role: 'user', content: prompt },
+      ]);
+
       if (reply && reply.content) {
         const subnote = new Subnote(
           0,
           noteId,
           'AI Auto Segmentation',
           reply.content,
-          new Date()
+          new Date(),
         );
         this.subnoteRepository.create(subnote);
       }
@@ -167,7 +179,7 @@ ${note.getTranscript()}`;
 
   public async ask(request: AskAIRequest): Promise<AskAIResultDTO> {
     const question = AskAIService.normalizeQuestion(request.question);
-    const scope = request.scope;
+    const { scope } = request;
     const existingConversation = request.conversationId
       ? this.requireConversation(request.conversationId)
       : null;

@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import useAskAIPage from '../AskAI/useAskAIPage';
@@ -16,7 +22,9 @@ import StudioChatPanel from './components/StudioChatPanel';
 import useStudioAgent from './useStudioAgent';
 import RecordingReviewDialog from './components/RecordingReviewDialog';
 import StudioReadinessGate from './components/StudioReadinessGate';
+import { StudioWorkspace } from './StudioTypes';
 import useStudioReadiness from './useStudioReadiness';
+import useOnboardingActive from '../../onboarding/useOnboardingActive';
 import '../AskAI/AskAIPage.css';
 import '../AskAI/AskAIChat.css';
 import '../AskAI/AskAIDialog.css';
@@ -26,8 +34,6 @@ type Engine = {
   session: RecordingSession;
   transcription: TranscriptionController;
 };
-
-export type StudioWorkspace = { id: number; name: string };
 
 /** 单次提问最多带多少条笔记，与后端整工作区检索的上限保持一致。 */
 const MAX_CONTEXT_NOTES = 24;
@@ -64,19 +70,6 @@ function sanitizeTitle(raw: string): string {
     .slice(0, 80);
 }
 
-function defaultNoteName(uploadedFileName: string | null): string {
-  if (uploadedFileName) {
-    return uploadedFileName.replace(/\.[^.]+$/u, '').slice(0, 80);
-  }
-  return `Recording ${new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date())}`;
-}
-
 /**
  * 对话工作台：以 AI 对话为主，把录音 / 上传 / 转录 / 保存深度整合进输入框。
  * 录音结束弹出复核窗口，保存为笔记后自动把该笔记挂到当前对话上。
@@ -87,20 +80,28 @@ export default function StudioPage() {
   const page = useAskAIPage();
   const [engine, setEngine] = useState<Engine>(createEngine);
   const snapshot = useRecordingSession(engine.session);
-  const transcriptionSnapshot = useTranscriptionController(engine.transcription);
+  const transcriptionSnapshot = useTranscriptionController(
+    engine.transcription,
+  );
 
-  const defaultNoteNameMemo = useCallback((uploadedFileName: string | null) => {
-    if (uploadedFileName) {
-      return uploadedFileName.replace(/\.[^.]+$/u, '').slice(0, 80);
-    }
-    return `${t('studio.recording.defaultPrefix')}${new Intl.DateTimeFormat('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date())}`;
-  }, [t]);
+  const defaultNoteNameMemo = useCallback(
+    (uploadedFileName: string | null) => {
+      if (uploadedFileName) {
+        return uploadedFileName.replace(/\.[^.]+$/u, '').slice(0, 80);
+      }
+      return `${t('studio.recording.defaultPrefix')}${new Intl.DateTimeFormat(
+        'zh-CN',
+        {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        },
+      ).format(new Date())}`;
+    },
+    [t],
+  );
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   // 新增笔记的目标工作区（从左栏某个工作区那一行点 + 时带过来）。
@@ -117,18 +118,17 @@ export default function StudioPage() {
   const [linkedWorkspaceIds, setLinkedWorkspaceIds] = useState<number[]>([]);
   const [workspaces, setWorkspaces] = useState<StudioWorkspace[]>([]);
 
+  const { selectNote } = page;
   useEffect(() => {
-    if (location.state && (location.state as any).noteId) {
-      page.selectNote((location.state as any).noteId);
-    }
-  }, [location.state, page.selectNote]);
-
-  const loadData = useCallback(async () => {
-    await page.reloadNotes();
-  }, [page.reloadNotes]);
+    const routedNoteId = (location.state as { noteId?: number } | null)?.noteId;
+    if (routedNoteId) selectNote(routedNoteId);
+  }, [location.state, selectNote]);
 
   // 开工前检查：STT / TTS / LLM / Embedding / 运行时缺一不可
   const readiness = useStudioReadiness();
+  // 新手引导要在工作台里挨个指输入框、录音按钮、笔记库，
+  // 这些控件只有工作台渲染出来才存在。
+  const onboardingActive = useOnboardingActive();
 
   // 智能体模式：开启后由本地 Agent 调用工具自行查找，而不是直接问挂上的笔记。
   const [agentMode, setAgentMode] = useState(false);
@@ -144,7 +144,11 @@ export default function StudioPage() {
   const [elapsedMs, setElapsedMs] = useState(0);
   const startedAtRef = useRef<number | null>(null);
 
-  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, noteId: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    noteId: number;
+  } | null>(null);
 
   const handleContextMenu = (noteId: number, e: React.MouseEvent) => {
     e.preventDefault();
@@ -164,7 +168,7 @@ export default function StudioPage() {
       }
       await page.reloadNotes();
     } catch (e) {
-      console.error("Failed to delete note", e);
+      console.error('Failed to delete note', e);
     }
     closeContextMenu();
   };
@@ -187,7 +191,7 @@ export default function StudioPage() {
       detach();
       engine.transcription.dispose();
     };
-  }, [engine]);
+  }, [engine, t]);
 
   // 录音计时器。
   useEffect(() => {
@@ -337,7 +341,7 @@ export default function StudioPage() {
     () =>
       previewNoteId === null
         ? null
-        : page.notes.find((note) => note.id === previewNoteId) ?? null,
+        : (page.notes.find((note) => note.id === previewNoteId) ?? null),
     [page.notes, previewNoteId],
   );
 
@@ -364,7 +368,7 @@ export default function StudioPage() {
 
     let cancelled = false;
     setTitlePending(true);
-      window.electron.llm
+    window.electron.llm
       .chat(
         [
           { role: 'system', content: t(TITLE_SYSTEM_PROMPT) },
@@ -373,11 +377,12 @@ export default function StudioPage() {
         { temperature: 0.2 },
       )
       .then((result) => {
-        if (cancelled) return;
+        if (cancelled) return undefined;
         const title = sanitizeTitle(
           (result as { content?: string })?.content ?? '',
         );
         if (title) setAiTitle(title);
+        return undefined;
       })
       .catch(() => undefined)
       .finally(() => {
@@ -387,7 +392,7 @@ export default function StudioPage() {
     return () => {
       cancelled = true;
     };
-  }, [reviewOpen, reviewProcessing, aiTitle, reviewRaw, reviewSummaries]);
+  }, [reviewOpen, reviewProcessing, aiTitle, reviewRaw, reviewSummaries, t]);
 
   const startRecording = useCallback(() => {
     setRecordError(null);
@@ -405,17 +410,23 @@ export default function StudioPage() {
       engine.transcription.finalizeLiveSummary().catch(() => undefined);
     } catch (reason) {
       setRecordError(
-        reason instanceof Error ? reason.message : t('studio.recording.stopError'),
+        reason instanceof Error
+          ? reason.message
+          : t('studio.recording.stopError'),
       );
     }
-  }, [engine, openReview]);
+  }, [engine, openReview, t]);
 
   const uploadAudio = useCallback(() => {
     setRecordError(null);
     engine.transcription.pickFileAndStart().catch((reason: unknown) => {
-      setRecordError(reason instanceof Error ? reason.message : t('studio.recording.uploadError'));
+      setRecordError(
+        reason instanceof Error
+          ? reason.message
+          : t('studio.recording.uploadError'),
+      );
     });
-  }, [engine]);
+  }, [engine, t]);
 
   // 上传文件转录完成后自动弹出复核窗口。
   useEffect(() => {
@@ -501,10 +512,12 @@ export default function StudioPage() {
         // 刷新笔记库并把新笔记挂到对话上。
         await page.reloadNotes(result.noteId);
         page.selectNote(result.noteId);
-        
+
         // Trigger Todo Extraction in the background
-        window.electron.dashboard.extractTodosForNote(result.noteId).catch(console.error);
-        
+        window.electron.dashboard
+          .extractTodosForNote(result.noteId)
+          .catch(console.error);
+
         setReviewOpen(false);
         resetEngine();
       } catch (reason) {
@@ -522,7 +535,15 @@ export default function StudioPage() {
         setSaving(false);
       }
     },
-    [engine, page, reviewFileMode, snapshot.savedRecording, snapshot.state, resetEngine],
+    [
+      engine,
+      page,
+      reviewFileMode,
+      snapshot.savedRecording,
+      snapshot.state,
+      resetEngine,
+      t,
+    ],
   );
 
   const recording = useMemo(
@@ -550,7 +571,12 @@ export default function StudioPage() {
 
   // 组件没配齐就不进工作台：缺哪一项在门禁页里列清楚，
   // 而不是让用户用到某个功能时才撞见静默失败。
-  if (!readiness.ready) {
+  //
+  // 引导进行中是唯一的例外：新用户此时必然一个模型都没装，
+  // 挡在门禁页会让引导中段那几步找不到要指的控件，
+  // 聚光灯只能降级成居中卡片，讲解也就无从谈起。
+  // 放进来只是为了「看得见」，功能本身该失败还是会失败。
+  if (!readiness.ready && !onboardingActive) {
     return <StudioReadinessGate readiness={readiness} />;
   }
 
@@ -656,7 +682,9 @@ export default function StudioPage() {
       )}
 
       {contextMenu && (
-        <div
+        <button
+          type="button"
+          className="btn-plain"
           style={{
             position: 'fixed',
             top: contextMenu.y,
@@ -667,14 +695,22 @@ export default function StudioPage() {
             padding: '8px 0',
             zIndex: 9999,
             cursor: 'pointer',
-            minWidth: '120px'
+            minWidth: '120px',
+            border: 'none',
           }}
           onClick={() => handleDeleteNote(contextMenu.noteId)}
         >
-          <div style={{ padding: '8px 16px', color: '#ff4d4f', fontSize: '14px', fontWeight: 500 }}>
+          <div
+            style={{
+              padding: '8px 16px',
+              color: '#ff4d4f',
+              fontSize: '14px',
+              fontWeight: 500,
+            }}
+          >
             {t('studio.action.deleteNote')}
           </div>
-        </div>
+        </button>
       )}
     </section>
   );

@@ -1,12 +1,12 @@
 {
-  "name": "electron-react-boilerplate",
+  "name": "speakspace-app",
+  "productName": "SpeakSpace",
   "version": "4.6.0",
-  "description": "A foundation for scalable desktop apps",
+  "description": "SpeakSpace desktop application package",
   "license": "MIT",
   "author": {
-    "name": "Electron React Boilerplate Maintainers",
-    "email": "electronreactboilerplate@gmail.com",
-    "url": "https://github.com/electron-react-boilerplate"
+    "name": "SpeakSpace",
+    "url": "https://github.com/dhebhxh/speakspace-local-electron"
   },
   "main": "./dist/main/main.js",
   "scripts": {

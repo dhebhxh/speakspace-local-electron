@@ -79,7 +79,7 @@ export default function SaveToWorkspaceDialog({
     return () => {
       cancelled = true;
     };
-  }, [defaultNoteName, open]);
+  }, [defaultNoteName, open, t]);
 
   const selectedWorkspaceId = useMemo(() => {
     if (workspaceValue === NEW_WORKSPACE_VALUE) return null;
@@ -197,7 +197,9 @@ export default function SaveToWorkspaceDialog({
                 !newWorkspaceName.trim())
             }
           >
-            {saving ? t('recording.saveDialog.saving') : t('recording.saveDialog.saveNote')}
+            {saving
+              ? t('recording.saveDialog.saving')
+              : t('recording.saveDialog.saveNote')}
           </button>
         </footer>
       </form>

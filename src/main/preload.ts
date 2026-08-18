@@ -198,7 +198,10 @@ const electronHandler = {
      * 普通页面加载一律走缓存。
      */
     getSystemProfile(forceRefresh = false) {
-      return ipcRenderer.invoke('Recommendation:getSystemProfile', forceRefresh);
+      return ipcRenderer.invoke(
+        'Recommendation:getSystemProfile',
+        forceRefresh,
+      );
     },
   },
 

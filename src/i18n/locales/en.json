@@ -239,7 +239,7 @@
   "workspace.multi.title": "Multi-Note AI Chat",
   "workspace.multi.close": "Close",
   "workspace.multi.prompt": "Ask questions or cross-reference the selected notes.",
-  "workspace.multi.error": "Generation failed:\n${errorMessage}\n\n(Tip: You may need to download and enable an LLM model in Settings)",
+  "workspace.multi.error": "Generation failed:\n{{errorMessage}}\n\n(Tip: You may need to download and enable an LLM model in Settings)",
   "workspace.search.error": "Semantic search failed",
   "workspace.search.title": "Find similar notes by meaning (exact match not required)",
   "workspace.search.indexing": "Building index...",

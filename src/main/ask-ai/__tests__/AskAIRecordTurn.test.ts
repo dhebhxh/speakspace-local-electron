@@ -1,7 +1,9 @@
 import { AIConversation } from '../../entities/AIConversation';
 
 // AskAIService 顶层会用到 electron 的 app（写日志路径），测试里不需要真实实现。
-jest.mock('electron', () => ({ app: { getPath: () => '.' } }), { virtual: true });
+jest.mock('electron', () => ({ app: { getPath: () => '.' } }), {
+  virtual: true,
+});
 
 // eslint-disable-next-line import/first, @typescript-eslint/no-var-requires
 import AskAIService from '../AskAIService';
@@ -39,7 +41,8 @@ function buildService() {
   const contextRepository = {
     exists: jest.fn((conversationId: number, noteId: number) =>
       contexts.some(
-        (item) => item.conversationId === conversationId && item.noteId === noteId,
+        (item) =>
+          item.conversationId === conversationId && item.noteId === noteId,
       ),
     ),
     addContext: jest.fn((conversationId: number, noteId: number) => {
@@ -52,14 +55,24 @@ function buildService() {
     conversationRepository: conversationRepository as never,
     messageRepository: messageRepository as never,
     contextRepository: contextRepository as never,
-    noteService: { list: () => [], create: () => null, getSources: () => [] } as never,
+    noteService: {
+      list: () => [],
+      create: () => null,
+      getSources: () => [],
+    } as never,
     chatService: { chat: jest.fn() } as never,
     noteRepository: { findById: () => null } as never,
     subnoteRepository: { findAllByNote: () => [] } as never,
     todoExtractionService: { extractTodosForNote: jest.fn() } as never,
   });
 
-  return { service, conversationRepository, messageRepository, messages, contexts };
+  return {
+    service,
+    conversationRepository,
+    messageRepository,
+    messages,
+    contexts,
+  };
 }
 
 describe('AskAIService.recordTurn（智能体问答落库）', () => {

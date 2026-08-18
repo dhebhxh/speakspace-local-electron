@@ -1,12 +1,20 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Edit3, Trash2, FileText, Pin, Clock, Activity } from 'lucide-react';
+import {
+  ArrowLeft,
+  Edit3,
+  Trash2,
+  FileText,
+  Pin,
+  Clock,
+  Activity,
+} from 'lucide-react';
 import { WorkspaceController, WorkspaceItem } from '../WorkspaceController';
 
 type Props = {
   workspace: WorkspaceItem;
-  onRename(): Promise<void>;
-  onDelete(): Promise<void>;
+  onRename(): void;
+  onDelete(): void;
 };
 
 /**
@@ -30,16 +38,28 @@ export default function WorkspaceDetailHeader({
           <h1>{workspace.name}</h1>
           <p className="workspace-detail-meta">
             <span title={t('workspace.detail.notesLabel')}>
-              <FileText size={14} style={{ marginRight: 4 }} /> {workspace.note_count}
+              <FileText size={14} style={{ marginRight: 4 }} />{' '}
+              {workspace.note_count}
             </span>
             <span title={t('workspace.detail.pinnedLabel')}>
-              <Pin size={14} style={{ marginRight: 4 }} /> {workspace.pinned_count}
+              <Pin size={14} style={{ marginRight: 4 }} />{' '}
+              {workspace.pinned_count}
             </span>
             <span title={t('workspace.detail.lastOpened')}>
-              <Clock size={14} style={{ marginRight: 4 }} /> {WorkspaceController.formatDate(workspace.recent_at, 'short', i18n.language)}
+              <Clock size={14} style={{ marginRight: 4 }} />{' '}
+              {WorkspaceController.formatDate(
+                workspace.recent_at,
+                'short',
+                i18n.language,
+              )}
             </span>
             <span title={t('workspace.detail.updated')}>
-              <Activity size={14} style={{ marginRight: 4 }} /> {WorkspaceController.formatDate(workspace.updated_at, 'short', i18n.language)}
+              <Activity size={14} style={{ marginRight: 4 }} />{' '}
+              {WorkspaceController.formatDate(
+                workspace.updated_at,
+                'short',
+                i18n.language,
+              )}
             </span>
           </p>
         </div>

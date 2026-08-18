@@ -88,8 +88,16 @@ export default function TTSPlayButton({
           disabled={playback.loading || !text.trim()}
           onClick={play}
           type="button"
-          aria-label={playback.loading ? t('components.tts.generatingLabel') : t('components.tts.play')}
-          title={playback.loading ? t('components.tts.generatingTitle') : t('components.tts.play')}
+          aria-label={
+            playback.loading
+              ? t('components.tts.generatingLabel')
+              : t('components.tts.play')
+          }
+          title={
+            playback.loading
+              ? t('components.tts.generatingTitle')
+              : t('components.tts.play')
+          }
         >
           {playback.loading ? (
             <span className="tts-play-spinner" aria-hidden="true" />

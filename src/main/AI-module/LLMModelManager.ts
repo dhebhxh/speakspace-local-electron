@@ -54,12 +54,17 @@ export class LLMModelManager implements ModelManager {
 
   public async getModelList(): Promise<LLMModel[]> {
     const installedModels = await this.getInstalledModelNames();
-    const activeModelId = this.stateStore.getActiveModelId();
+    const downloadedIds = this.catalog
+      .filter((item) =>
+        installedModels.has(LLMModelManager.normalizeModelName(item.modelName)),
+      )
+      .map((item) => item.id);
+    // 已下载但没人选中的情况下自动选一个，别让用户卡在「未选择模型」。
+    // Ollama 没起来时 installedModels 为空，resolveActiveModelId 会保持原选择不变。
+    const activeModelId = this.stateStore.resolveActiveModelId(downloadedIds);
 
     return this.catalog.map((item) => {
-      const downloaded = installedModels.has(
-        LLMModelManager.normalizeModelName(item.modelName),
-      );
+      const downloaded = downloadedIds.includes(item.id);
       return LLMModelManager.createModel(
         item,
         downloaded,

@@ -5,7 +5,6 @@ import { Workspace } from '../../entities/Workspace';
 import { DatabaseManager } from '../DatabaseManager';
 
 // 保留命名导出，与其余 Repository 的导入方式一致。
-// eslint-disable-next-line import/prefer-default-export
 export class WorkspaceRepository implements Repository<Workspace> {
   private database: Database.Database;
 

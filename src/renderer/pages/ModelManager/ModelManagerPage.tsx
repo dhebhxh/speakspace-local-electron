@@ -36,8 +36,14 @@ function toOptions(
   }));
 }
 
-// 保持默认导出，用于路由导入
-// eslint-disable-next-line import/prefer-default-export
+/** 试听按钮的三种状态：生成中、播放中、可播放。 */
+function renderPreviewIcon(loading: boolean, playing: boolean) {
+  if (loading) return <RefreshCw className="icon spin" size={16} />;
+  if (playing) return <Square className="icon" size={16} />;
+  return <Play className="icon" size={16} />;
+}
+
+// 保持命名导出，与同目录其他模块一致。
 export function ModelManagerPage() {
   const { t } = useTranslation();
   const manager = useModelManager();
@@ -200,13 +206,7 @@ export function ModelManagerPage() {
                   }
                   type="button"
                 >
-                  {playback.loading ? (
-                    <RefreshCw className="icon spin" size={16} />
-                  ) : playback.playing ? (
-                    <Square className="icon" size={16} />
-                  ) : (
-                    <Play className="icon" size={16} />
-                  )}
+                  {renderPreviewIcon(playback.loading, playback.playing)}
                 </button>
               ) : null
             }

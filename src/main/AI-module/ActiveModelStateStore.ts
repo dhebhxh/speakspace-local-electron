@@ -26,6 +26,26 @@ export default class ActiveModelStateStore {
     }
   }
 
+  /**
+   * 给出当前真正该激活的模型 ID：已保存的那个仍在已下载列表里就沿用，
+   * 否则挑第一个已下载的模型并落盘。
+   *
+   * 下载完却没人手动点一下「选中」时，功能就应该直接可用——
+   * 否则模型明明躺在硬盘上，开工前检查还在报「未选择模型」。
+   *
+   * downloadedIds 为空时不动已保存的值：Ollama 没起来时拿到的就是空列表，
+   * 这种「查不到」不能被当成「用户把模型删了」而清掉他的选择。
+   */
+  public resolveActiveModelId(downloadedIds: readonly string[]): string | null {
+    const stored = this.getActiveModelId();
+    if (stored !== null && downloadedIds.includes(stored)) return stored;
+    if (downloadedIds.length === 0) return stored;
+
+    const [firstDownloaded] = downloadedIds;
+    this.setActiveModelId(firstDownloaded);
+    return firstDownloaded;
+  }
+
   public setActiveModelId(activeModelId: string | null): void {
     fs.mkdirSync(path.dirname(this.statePath), { recursive: true });
     fs.writeFileSync(

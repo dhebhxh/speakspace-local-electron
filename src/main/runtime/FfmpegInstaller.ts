@@ -6,6 +6,7 @@ import FileDownloadService, { DownloadProgress } from './FileDownloadService';
 import LocalProcessRunner from './LocalProcessRunner';
 import { ManagedPaths } from './ManagedPaths';
 import { getManagedFfmpegDir, getManagedFfmpegPath } from './FfmpegLocator';
+import { assertAutoInstallSupported } from './RuntimeInstallSupport';
 
 export type FfmpegInstallProgress = {
   phase: 'checking' | 'downloading' | 'extracting' | 'installing' | 'completed';
@@ -48,17 +49,19 @@ export default class FfmpegInstaller {
     const binDir = getManagedFfmpegDir(this.managedPaths);
     const targetPath = getManagedFfmpegPath(this.managedPaths);
 
-    onProgress?.({ phase: 'checking', message: '正在检查 ffmpeg / Checking ffmpeg' });
+    onProgress?.({
+      phase: 'checking',
+      message: '正在检查 ffmpeg / Checking ffmpeg',
+    });
     if (fsSync.existsSync(targetPath)) {
-      onProgress?.({ phase: 'completed', message: 'ffmpeg 已就绪 / ffmpeg ready' });
+      onProgress?.({
+        phase: 'completed',
+        message: 'ffmpeg 已就绪 / ffmpeg ready',
+      });
       return { ffmpegPath: targetPath, ffmpegPresent: true };
     }
 
-    if (process.platform !== 'win32') {
-      throw new Error(
-        '自动安装 ffmpeg 目前仅支持 Windows / auto-install supports Windows only',
-      );
-    }
+    assertAutoInstallSupported('ffmpeg');
 
     const cacheDir = path.join(
       this.managedPaths.getDataRoot(),
@@ -92,9 +95,14 @@ export default class FfmpegInstaller {
         phase: 'extracting',
         message: '正在解压 ffmpeg / Extracting ffmpeg',
       });
-      await ArchiveExtractor.extract(archivePath, extractRoot, this.processRunner, {
-        signal,
-      });
+      await ArchiveExtractor.extract(
+        archivePath,
+        extractRoot,
+        this.processRunner,
+        {
+          signal,
+        },
+      );
 
       onProgress?.({
         phase: 'installing',
@@ -105,7 +113,9 @@ export default class FfmpegInstaller {
         'ffmpeg.exe',
       );
       if (!ffmpegSource) {
-        throw new Error('压缩包缺少 ffmpeg.exe / ffmpeg.exe not found in archive');
+        throw new Error(
+          '压缩包缺少 ffmpeg.exe / ffmpeg.exe not found in archive',
+        );
       }
 
       await fs.mkdir(binDir, { recursive: true });
@@ -122,11 +132,16 @@ export default class FfmpegInstaller {
           .catch(() => undefined);
       }
 
-      onProgress?.({ phase: 'completed', message: 'ffmpeg 安装完成 / ffmpeg ready' });
+      onProgress?.({
+        phase: 'completed',
+        message: 'ffmpeg 安装完成 / ffmpeg ready',
+      });
       return { ffmpegPath: targetPath, ffmpegPresent: true };
     } finally {
       await Promise.all([
-        fs.rm(extractRoot, { recursive: true, force: true }).catch(() => undefined),
+        fs
+          .rm(extractRoot, { recursive: true, force: true })
+          .catch(() => undefined),
         fs.rm(archivePath, { force: true }).catch(() => undefined),
       ]);
     }
@@ -138,6 +153,8 @@ export default class FfmpegInstaller {
     fileName: string,
   ): Promise<string | null> {
     const entries = await fs.readdir(root, { withFileTypes: true });
+    // 递归查找需要顺序 await，改成数组方法反而要额外并发控制。
+    // eslint-disable-next-line no-restricted-syntax
     for (const entry of entries) {
       const entryPath = path.join(root, entry.name);
       if (entry.isDirectory()) {

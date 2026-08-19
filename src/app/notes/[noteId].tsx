@@ -638,24 +638,20 @@ function KnowledgeResult({
   mutedColor: string;
   borderColor: string;
 }) {
+  const coreInsightSectionKeys = new Set(["keyPoints", "tasks", "reminders", "actionItems", "followUps", "nextSteps"]);
+  const visibleSections = document.getSections().filter((section) => section.items.length > 0 && !coreInsightSectionKeys.has(section.key));
   return (
     <View style={styles.document}>
-      <View style={styles.knowledgeSection}>
-        <Text style={[styles.resultTitle, { color: textColor }]}>Summary</Text>
-        <Text selectable style={[styles.body, { color: textColor }]}>
-          {document.getSummary()}
-        </Text>
-      </View>
-      {document
-        .getSections()
-        .filter((section) => section.items.length > 0)
-        .map((section) => (
+      {visibleSections.length === 0 && (
+        <Text selectable style={[styles.emptyInsight, { color: mutedColor }]}>No supported scenario-specific information was found in this note.</Text>
+      )}
+      {visibleSections.map((section, sectionIndex) => (
           <View
             key={section.key}
             style={[
               styles.knowledgeSection,
-              styles.dividedSection,
-              { borderColor },
+              sectionIndex > 0 && styles.dividedSection,
+              sectionIndex > 0 && { borderColor },
             ]}
           >
             <Text style={[styles.resultTitle, { color: textColor }]}>

@@ -1,5 +1,5 @@
-import { Stack, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -61,9 +61,11 @@ export default function WorkspacesScreen() {
     }
   };
 
-  useEffect(() => {
-    void loadWorkspaces();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void loadWorkspaces();
+    }, []),
+  );
 
   const createWorkspace = async () => {
     setFormError(null);
@@ -104,7 +106,10 @@ export default function WorkspacesScreen() {
               Workspaces
             </Text>
           </View>
-          <AppButton label="New" onPress={() => setIsModalVisible(true)} />
+          <View style={styles.headingActions}>
+            <AppButton label="Search" variant="secondary" onPress={() => router.push("/notes/search")} />
+            <AppButton label="New" onPress={() => setIsModalVisible(true)} />
+          </View>
         </View>
 
         {state.status === "loading" && <LoadingState />}
@@ -221,6 +226,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   heading: { gap: Spacing.xs },
+  headingActions: { flexDirection: "row", gap: Spacing.sm },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 34, fontWeight: "800" },
   list: { gap: Spacing.md },

@@ -1,6 +1,6 @@
 export class Note {
   private readonly id: string;
-  private readonly workspaceId: string;
+  private workspaceId: string;
   private name: string | null;
   private readonly audioRelativePath: string | null;
   private transcript: string;
@@ -69,6 +69,11 @@ export class Note {
 
   public rename(name: string | null): void {
     this.name = name;
+    this.updatedAt = new Date().toISOString();
+  }
+
+  public moveToWorkspace(workspaceId: string): void {
+    this.workspaceId = workspaceId;
     this.updatedAt = new Date().toISOString();
   }
 

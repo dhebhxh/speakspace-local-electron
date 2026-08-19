@@ -1,12 +1,16 @@
+import { File, Paths } from "expo-file-system";
+
 import { Workspace } from "@/domain/workspace/workspace";
 import { ValidationError } from "@/errors/validation-error";
 import { WorkspaceNotFoundError } from "@/errors/workspace-not-found-error";
 import { WorkspaceRepository } from "@/repositories/workspace-repository";
+import { NoteRepository } from "@/repositories/note-repository";
 
 export class WorkspaceService {
   private static readonly defaultWorkspaceId = "workspace-default";
   public constructor(
     private readonly workspaceRepository: WorkspaceRepository,
+    private readonly noteRepository: NoteRepository,
   ) {}
 
   public async getWorkspaces(): Promise<Workspace[]> {
@@ -53,7 +57,18 @@ export class WorkspaceService {
 
   public async deleteWorkspace(id: string): Promise<void> {
     await this.getWorkspaceOrThrow(id);
+    const notes = await this.noteRepository.findByWorkspaceId(id);
     await this.workspaceRepository.delete(id);
+    for (const note of notes) {
+      const audioRelativePath = note.getAudioRelativePath();
+      if (audioRelativePath !== null) {
+        const audioFile = new File(
+          Paths.document,
+          ...audioRelativePath.split("/"),
+        );
+        if (audioFile.exists) audioFile.delete();
+      }
+    }
   }
 
   private async getWorkspaceOrThrow(id: string): Promise<Workspace> {

@@ -74,9 +74,28 @@ export class WorkspaceRepository {
 
   public async delete(id: string): Promise<void> {
     try {
-      await this.databaseManager
-        .getDatabase()
-        .runAsync("DELETE FROM workspaces WHERE id = ?", id);
+      await this.databaseManager.getDatabase().withExclusiveTransactionAsync(
+        async (transaction) => {
+          await transaction.runAsync(
+            "DELETE FROM conversation_contexts WHERE note_id IN (SELECT id FROM notes WHERE workspace_id = ?)",
+            id,
+          );
+          await transaction.runAsync(
+            "DELETE FROM knowledge_documents WHERE note_id IN (SELECT id FROM notes WHERE workspace_id = ?)",
+            id,
+          );
+          await transaction.runAsync(
+            "DELETE FROM knowledge_outputs WHERE note_id IN (SELECT id FROM notes WHERE workspace_id = ?)",
+            id,
+          );
+          await transaction.runAsync(
+            "DELETE FROM subnotes WHERE note_id IN (SELECT id FROM notes WHERE workspace_id = ?)",
+            id,
+          );
+          await transaction.runAsync("DELETE FROM notes WHERE workspace_id = ?", id);
+          await transaction.runAsync("DELETE FROM workspaces WHERE id = ?", id);
+        },
+      );
     } catch (error) {
       throw this.toDatabaseError("Unable to delete the workspace.", error);
     }

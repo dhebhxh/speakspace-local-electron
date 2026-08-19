@@ -76,6 +76,29 @@ export class NoteRepository {
     }
   }
 
+  public async search(query: string): Promise<Note[]> {
+    try {
+      const pattern = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
+      const rows = await this.databaseManager.getDatabase().getAllAsync<NoteRow>(
+        `SELECT id, workspace_id, name, audio_relative_path, transcript,
+          is_pinned, pinned_at, created_at, updated_at
+         FROM notes
+         WHERE workspace_id IS NOT NULL
+           AND (name LIKE ? ESCAPE '\\' COLLATE NOCASE
+             OR transcript LIKE ? ESCAPE '\\' COLLATE NOCASE)
+         ORDER BY updated_at DESC`,
+        pattern,
+        pattern,
+      );
+
+      return rows
+        .filter((row) => row.workspace_id !== null)
+        .map((row) => this.mapRowToEntity(row));
+    } catch (error) {
+      throw this.toDatabaseError("Unable to search notes.", error);
+    }
+  }
+
   public async create(note: Note): Promise<void> {
     try {
       await this.databaseManager.getDatabase().runAsync(
@@ -102,8 +125,9 @@ export class NoteRepository {
     try {
       await this.databaseManager.getDatabase().runAsync(
         `UPDATE notes SET
-          name = ?, transcript = ?, is_pinned = ?, pinned_at = ?, updated_at = ?
+          workspace_id = ?, name = ?, transcript = ?, is_pinned = ?, pinned_at = ?, updated_at = ?
          WHERE id = ?`,
+        note.getWorkspaceId(),
         note.getName(),
         note.getTranscript(),
         note.getIsPinned() ? 1 : 0,
@@ -118,9 +142,15 @@ export class NoteRepository {
 
   public async delete(id: string): Promise<void> {
     try {
-      await this.databaseManager
-        .getDatabase()
-        .runAsync("DELETE FROM notes WHERE id = ?", id);
+      await this.databaseManager.getDatabase().withExclusiveTransactionAsync(
+        async (transaction) => {
+          await transaction.runAsync("DELETE FROM conversation_contexts WHERE note_id = ?", id);
+          await transaction.runAsync("DELETE FROM knowledge_documents WHERE note_id = ?", id);
+          await transaction.runAsync("DELETE FROM knowledge_outputs WHERE note_id = ?", id);
+          await transaction.runAsync("DELETE FROM subnotes WHERE note_id = ?", id);
+          await transaction.runAsync("DELETE FROM notes WHERE id = ?", id);
+        },
+      );
     } catch (error) {
       throw this.toDatabaseError("Unable to delete the note.", error);
     }

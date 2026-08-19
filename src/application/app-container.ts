@@ -38,8 +38,8 @@ export class AppContainer {
       databaseManager,
     );
 
-    this.workspaceService = new WorkspaceService(workspaceRepository);
-    this.noteService = new NoteService(noteRepository);
+    this.workspaceService = new WorkspaceService(workspaceRepository, noteRepository);
+    this.noteService = new NoteService(noteRepository, workspaceRepository);
     this.llmModelService = new LlmModelService(llmModelRepository);
     this.knowledgeService = new KnowledgeService(knowledgeDocumentRepository, this.llmModelService);
     this.sttModelService = new SttModelService(sttModelRepository);

@@ -1,10 +1,16 @@
+import { File, Paths } from "expo-file-system";
+
 import { Note } from "@/domain/note/note";
 import { NoteNotFoundError } from "@/errors/note-not-found-error";
 import { ValidationError } from "@/errors/validation-error";
 import { NoteRepository } from "@/repositories/note-repository";
+import { WorkspaceRepository } from "@/repositories/workspace-repository";
 
 export class NoteService {
-  public constructor(private readonly noteRepository: NoteRepository) {}
+  public constructor(
+    private readonly noteRepository: NoteRepository,
+    private readonly workspaceRepository: WorkspaceRepository,
+  ) {}
 
   public async getNotesByWorkspace(workspaceId: string): Promise<Note[]> {
     if (workspaceId.trim().length === 0) {
@@ -20,6 +26,38 @@ export class NoteService {
 
   public async getTranscriptNotes(): Promise<Note[]> {
     return this.noteRepository.findAllWithTranscript();
+  }
+
+  public async searchNotes(query: string): Promise<Note[]> {
+    const normalizedQuery = query.trim();
+    if (normalizedQuery.length === 0) return [];
+    return this.noteRepository.search(normalizedQuery);
+  }
+
+  public async renameNote(id: string, name: string): Promise<void> {
+    const note = await this.getNoteOrThrow(id);
+    const normalizedName = name.trim();
+    if (normalizedName.length === 0) {
+      throw new ValidationError("Note title cannot be empty.");
+    }
+    note.rename(normalizedName);
+    await this.noteRepository.update(note);
+  }
+
+  public async moveNote(id: string, workspaceId: string): Promise<void> {
+    const note = await this.getNoteOrThrow(id);
+    const normalizedWorkspaceId = workspaceId.trim();
+    if (normalizedWorkspaceId.length === 0) {
+      throw new ValidationError("Target workspace cannot be empty.");
+    }
+    if (note.getWorkspaceId() === normalizedWorkspaceId) {
+      throw new ValidationError("Note is already in this workspace.");
+    }
+    if ((await this.workspaceRepository.findById(normalizedWorkspaceId)) === null) {
+      throw new ValidationError("Target workspace does not exist.");
+    }
+    note.moveToWorkspace(normalizedWorkspaceId);
+    await this.noteRepository.update(note);
   }
 
   public async createNote(
@@ -66,11 +104,7 @@ export class NoteService {
   }
 
   public async deleteNote(id: string): Promise<void> {
-    const note = await this.noteRepository.findById(id);
-
-    if (note === null) {
-      throw new NoteNotFoundError(id);
-    }
+    const note = await this.getNoteOrThrow(id);
 
     await this.noteRepository.delete(id);
     const audioRelativePath = note.getAudioRelativePath();
@@ -85,8 +119,13 @@ export class NoteService {
     }
   }
 
+  private async getNoteOrThrow(id: string): Promise<Note> {
+    const note = await this.noteRepository.findById(id);
+    if (note === null) throw new NoteNotFoundError(id);
+    return note;
+  }
+
   private createId(): string {
     return `note-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 }
-import { File, Paths } from "expo-file-system";

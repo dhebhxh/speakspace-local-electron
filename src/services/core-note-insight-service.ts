@@ -5,6 +5,7 @@ import { CoreNoteInsightGenerationError } from "@/errors/core-note-insight-gener
 import { CoreNoteInsightRepository } from "@/repositories/core-note-insight-repository";
 import { getLocalReferenceTime, resolveCoreNoteTime, type ResolvedCoreNoteTime } from "@/services/core-note-time";
 import { LlmModelService } from "@/services/llm-model-service";
+import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 
 type OutputItem = { title?: unknown; description?: unknown; startsAtExpression?: unknown; dueAtExpression?: unknown };
 type OutputCalendar = OutputItem & { endsAtExpression?: unknown; remindAtExpression?: unknown; allDay?: unknown; timezone?: unknown };
@@ -30,6 +31,8 @@ SUMMARY
 KEY POINTS
 - Each item states one specific supported fact, explanation, cause/effect, condition, limitation, conclusion, decision, method, caution, or consequential detail.
 - Say what the note says about a subject, not merely that it discusses the subject.
+- Keep each item concise: use one short, self-contained sentence and include only one main point.
+- Prefer direct wording. Remove setup, repetition, filler, and details already clear from another key point.
 - Select enough items to cover the important information; there is no fixed count.
 - Avoid semantic duplicates and do not turn examples into general facts.
 
@@ -73,11 +76,63 @@ const intentSchema = {
 } as const;
 
 export class CoreNoteInsightService {
-  public constructor(private readonly repository: CoreNoteInsightRepository, private readonly llmModelService: LlmModelService) {}
+  private readonly generationStates = new Map<string, CoreInsightGenerationState>();
+  private readonly activeGenerations = new Map<string, Promise<CoreNoteInsight>>();
+  private readonly listeners = new Map<string, Set<(state: CoreInsightGenerationState) => void>>();
+
+  public constructor(
+    private readonly repository: CoreNoteInsightRepository,
+    private readonly llmModelService: LlmModelService,
+    private readonly coordinator: LocalLlmCoordinator,
+  ) {}
   public getForNote(noteId: string): Promise<CoreNoteInsight | null> { return this.repository.findByNoteId(noteId); }
 
-  public async generate(noteId: string, transcript: string): Promise<CoreNoteInsight> {
+  public getGenerationState(noteId: string): CoreInsightGenerationState {
+    return this.generationStates.get(noteId) ?? { status: "idle" };
+  }
+
+  public subscribeToGeneration(noteId: string, listener: (state: CoreInsightGenerationState) => void): () => void {
+    const listeners = this.listeners.get(noteId) ?? new Set();
+    listeners.add(listener);
+    this.listeners.set(noteId, listeners);
+    console.info("[CoreInsights] Generation observer subscribed", { noteId, observerCount: listeners.size, currentStatus: this.getGenerationState(noteId).status });
+    listener(this.getGenerationState(noteId));
+    return () => {
+      listeners.delete(listener);
+      console.info("[CoreInsights] Generation observer unsubscribed", { noteId, observerCount: listeners.size, currentStatus: this.getGenerationState(noteId).status });
+      if (listeners.size === 0) this.listeners.delete(noteId);
+    };
+  }
+
+  public generate(noteId: string, transcript: string): Promise<CoreNoteInsight> {
+    const state = this.getGenerationState(noteId);
+    const existing = this.activeGenerations.get(noteId);
+    if (existing && (state.status === "queued" || state.status === "generating")) {
+      console.info("[CoreInsights] Reusing in-flight generation", { noteId, requestId: state.requestId });
+      return existing;
+    }
+
     const requestId = `core-insights-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    this.publish(noteId, { status: "queued", requestId, startedAt: Date.now() });
+    const promise = this.coordinator.runExclusive("core-insights", async () => {
+      this.publish(noteId, { status: "generating", requestId, startedAt: Date.now() });
+      return this.runGeneration(noteId, transcript, requestId);
+    });
+    this.activeGenerations.set(noteId, promise);
+    void promise.then(
+      () => {
+        this.activeGenerations.delete(noteId);
+        this.publish(noteId, { status: "completed", requestId, finishedAt: Date.now() });
+      },
+      (error: unknown) => {
+        this.activeGenerations.delete(noteId);
+        this.publish(noteId, { status: "failed", requestId, finishedAt: Date.now(), message: error instanceof Error ? error.message : "Core note insights did not finish. Please try again." });
+      },
+    );
+    return promise;
+  }
+
+  private async runGeneration(noteId: string, transcript: string, requestId: string): Promise<CoreNoteInsight> {
     const startedAt = Date.now();
     const input = transcript.trim();
     console.info("[CoreInsights] Input received", { requestId, noteId, inputLength: input.length });
@@ -109,8 +164,20 @@ export class CoreNoteInsightService {
       if (error instanceof CoreNoteInsightGenerationError) throw error;
       throw new CoreNoteInsightGenerationError("generation-failed", "Core note insights did not finish. Please try again.", { cause: error instanceof Error ? error : undefined });
     } finally {
-      if (context) try { await context.release(); } catch (error) { console.warn("[CoreInsights] Could not release model context", { requestId, error }); }
+      if (context) try {
+        const releaseStartedAt = Date.now();
+        console.info("[CoreInsights] Releasing model context", { requestId, noteId });
+        await context.release();
+        console.info("[CoreInsights] Model context released", { requestId, noteId, durationMs: Date.now() - releaseStartedAt });
+      } catch (error) { console.warn("[CoreInsights] Could not release model context", { requestId, error }); }
     }
+  }
+
+  private publish(noteId: string, state: CoreInsightGenerationState): void {
+    const previousStatus = this.getGenerationState(noteId).status;
+    this.generationStates.set(noteId, state);
+    console.info("[CoreInsights] Generation state changed", { noteId, requestId: "requestId" in state ? state.requestId : null, previousStatus, status: state.status, observerCount: this.listeners.get(noteId)?.size ?? 0 });
+    this.listeners.get(noteId)?.forEach((listener) => listener(state));
   }
 
   private async runStage(context: LlamaContext, instruction: string, input: string, schema: object, outputTokens: number, requestId: string, stage: string): Promise<string> {
@@ -222,3 +289,9 @@ export class CoreNoteInsightService {
     return value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).map((item) => item.trim()).filter((item) => { const key = this.normalized(item); if (!key || seen.has(key)) return false; seen.add(key); return true; });
   }
 }
+
+export type CoreInsightGenerationState =
+  | { status: "idle" }
+  | { status: "queued" | "generating"; requestId: string; startedAt: number }
+  | { status: "completed"; requestId: string; finishedAt: number }
+  | { status: "failed"; requestId: string; finishedAt: number; message: string };

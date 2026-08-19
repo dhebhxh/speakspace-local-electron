@@ -16,6 +16,7 @@ import {
 } from "@/constants/ask-ai-inference-config";
 import { InferenceError } from "@/errors/inference-error";
 import { LlmModelService } from "@/services/llm-model-service";
+import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 
 import { notesToTranscriptBlocks } from "./ask-ai-grounded-messages";
 import {
@@ -50,7 +51,10 @@ export class LlmInferenceService {
   public constructor(
     private readonly llmModelService: LlmModelService,
     private readonly aiConversationService: AiConversationService,
-  ) {}
+    private readonly coordinator: LocalLlmCoordinator,
+  ) {
+    this.coordinator.registerIdleCleanup("ask-ai", () => this.releaseNativeContext());
+  }
 
   public getIsGenerating(): boolean {
     return this.isGenerating;
@@ -80,6 +84,13 @@ export class LlmInferenceService {
     this.generationAborted = false;
 
     try {
+      return await this.coordinator.runExclusive("ask-ai", () => this.runGeneration(conversationId, callbacks));
+    } finally {
+      this.isGenerating = false;
+    }
+  }
+
+  private async runGeneration(conversationId: string, callbacks: GenerateCallbacks): Promise<GenerateResult> {
       await this.aiConversationService.getConversationOrThrow(conversationId);
       await this.ensureContextForActiveModel();
       await this.prepareConversationSwitch(conversationId);
@@ -190,9 +201,6 @@ export class LlmInferenceService {
         historyTrimmed:
           extractionPrompt.historyTrimmed || finalResult.historyTrimmed,
       };
-    } finally {
-      this.isGenerating = false;
-    }
   }
 
   private async classifyDecisionPrompts(
@@ -658,11 +666,13 @@ export class LlmInferenceService {
     const activeModelId = activeModel.getId();
 
     if (this.context !== null && this.loadedModelId !== activeModelId) {
+      console.info("[AskAI] Active model changed; releasing cached context", { loadedModelId: this.loadedModelId, activeModelId });
       await this.releaseNativeContext();
       this.activeConversationId = null;
     }
 
     if (this.context !== null) {
+      console.info("[AskAI] Reusing loaded model context", { modelId: activeModelId, activeConversationId: this.activeConversationId });
       return;
     }
 
@@ -673,6 +683,8 @@ export class LlmInferenceService {
       );
     }
 
+    const modelLoadStartedAt = Date.now();
+    console.info("[AskAI] Loading local model context", { modelId: activeModelId, contextSize: ASK_AI_CONFIGURED_N_CTX });
     this.context = await initLlama({
       model: modelFile.uri,
       n_ctx: ASK_AI_CONFIGURED_N_CTX,
@@ -680,6 +692,7 @@ export class LlmInferenceService {
       use_mmap: true,
     });
     this.loadedModelId = activeModelId;
+    console.info("[AskAI] Local model context loaded", { modelId: activeModelId, durationMs: Date.now() - modelLoadStartedAt, contextSize: ASK_AI_CONFIGURED_N_CTX });
   }
 
   /**
@@ -719,7 +732,11 @@ export class LlmInferenceService {
 
   private async releaseNativeContext(): Promise<void> {
     if (this.context !== null) {
+      const modelId = this.loadedModelId;
+      const startedAt = Date.now();
+      console.info("[AskAI] Releasing local model context", { modelId, activeConversationId: this.activeConversationId });
       await this.context.release().catch(() => undefined);
+      console.info("[AskAI] Local model context released", { modelId, durationMs: Date.now() - startedAt });
     }
     this.context = null;
     this.loadedModelId = null;

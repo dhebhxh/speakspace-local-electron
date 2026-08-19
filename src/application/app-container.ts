@@ -17,6 +17,7 @@ import { KnowledgeDocumentRepository } from "@/repositories/knowledge-document-r
 import { KnowledgeService } from "@/services/knowledge-service";
 import { CoreNoteInsightRepository } from "@/repositories/core-note-insight-repository";
 import { CoreNoteInsightService } from "@/services/core-note-insight-service";
+import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 
 export class AppContainer {
   public readonly workspaceService: WorkspaceService;
@@ -41,12 +42,13 @@ export class AppContainer {
     const conversationContextRepository = new ConversationContextRepository(
       databaseManager,
     );
+    const localLlmCoordinator = new LocalLlmCoordinator();
 
     this.workspaceService = new WorkspaceService(workspaceRepository);
     this.noteService = new NoteService(noteRepository);
-    this.llmModelService = new LlmModelService(llmModelRepository);
-    this.knowledgeService = new KnowledgeService(knowledgeDocumentRepository, this.llmModelService);
-    this.coreNoteInsightService = new CoreNoteInsightService(coreNoteInsightRepository, this.llmModelService);
+    this.llmModelService = new LlmModelService(llmModelRepository, localLlmCoordinator);
+    this.knowledgeService = new KnowledgeService(knowledgeDocumentRepository, this.llmModelService, localLlmCoordinator);
+    this.coreNoteInsightService = new CoreNoteInsightService(coreNoteInsightRepository, this.llmModelService, localLlmCoordinator);
     this.sttModelService = new SttModelService(sttModelRepository);
     this.transcriptionService = new TranscriptionService(this.sttModelService);
     this.aiConversationService = new AiConversationService(
@@ -58,6 +60,7 @@ export class AppContainer {
     this.llmInferenceService = new LlmInferenceService(
       this.llmModelService,
       this.aiConversationService,
+      localLlmCoordinator,
     );
   }
 }

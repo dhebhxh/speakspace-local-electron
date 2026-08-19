@@ -48,12 +48,12 @@ type NoteDetailState =
 type GenerationState =
   | { status: "idle" }
   | { status: "selecting"; scenario: KnowledgeScenario }
-  | { status: "generating"; scenario: KnowledgeScenario }
+  | { status: "queued" | "generating"; scenario: KnowledgeScenario }
   | { status: "error"; scenario: KnowledgeScenario; message: string };
 
 type CoreInsightGenerationState =
   | { status: "idle" }
-  | { status: "generating" }
+  | { status: "queued" | "generating" }
   | { status: "error"; message: string };
 
 export default function NoteDetailScreen() {
@@ -131,6 +131,40 @@ export default function NoteDetailScreen() {
     void loadNote();
   }, [noteId]);
 
+  useEffect(() => coreNoteInsightService.subscribeToGeneration(noteId, (generationState) => {
+    if (generationState.status === "queued" || generationState.status === "generating") {
+      setCoreGeneration({ status: generationState.status });
+      return;
+    }
+    if (generationState.status === "failed") {
+      setCoreGeneration({ status: "error", message: generationState.message });
+      return;
+    }
+    setCoreGeneration({ status: "idle" });
+    if (generationState.status === "completed") {
+      void coreNoteInsightService.getForNote(noteId).then((coreInsights) => {
+        if (coreInsights) setState((current) => current.status === "success" ? { ...current, coreInsights } : current);
+      });
+    }
+  }), [coreNoteInsightService, noteId]);
+
+  useEffect(() => knowledgeService.subscribeToGeneration(noteId, (generationState) => {
+    if (generationState.status === "queued" || generationState.status === "generating") {
+      setGeneration({ status: generationState.status, scenario: generationState.scenario });
+      return;
+    }
+    if (generationState.status === "failed") {
+      setGeneration({ status: "error", scenario: generationState.scenario, message: generationState.message });
+      return;
+    }
+    setGeneration({ status: "idle" });
+    if (generationState.status === "completed") {
+      void knowledgeService.getForNote(noteId).then((knowledge) => {
+        if (knowledge) setState((current) => current.status === "success" ? { ...current, knowledge } : current);
+      });
+    }
+  }), [knowledgeService, noteId]);
+
   const generateKnowledge = async (scenario: KnowledgeScenario) => {
     if (state.status !== "success") return;
     const startedAt = Date.now();
@@ -145,7 +179,7 @@ export default function NoteDetailScreen() {
         state.note.getTranscript(),
         scenario,
       );
-      setState({ ...state, knowledge });
+      setState((current) => current.status === "success" && current.note.getId() === state.note.getId() ? { ...current, knowledge } : current);
       setGeneration({ status: "idle" });
       console.info("[NoteDetail] Knowledge generation displayed", {
         noteId: state.note.getId(),
@@ -176,7 +210,7 @@ export default function NoteDetailScreen() {
     setCoreGeneration({ status: "generating" });
     try {
       const coreInsights = await coreNoteInsightService.generate(state.note.getId(), state.note.getTranscript());
-      setState({ ...state, coreInsights });
+      setState((current) => current.status === "success" && current.note.getId() === state.note.getId() ? { ...current, coreInsights } : current);
       setCoreGeneration({ status: "idle" });
       console.info("[NoteDetail] Core insights displayed", { noteId: state.note.getId(), durationMs: Date.now() - startedAt });
     } catch (error) {
@@ -280,11 +314,11 @@ export default function NoteDetailScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Core Note Insights</Text>
                 <Text style={[styles.supportingText, { color: colors.textMuted }]}>Universal summary, key points, actions, and time-based intents extracted locally.</Text>
               </View>
-              {coreGeneration.status === "generating" ? (
+              {coreGeneration.status === "generating" || coreGeneration.status === "queued" ? (
                 <View style={[styles.generationStatus, { backgroundColor: colors.surfaceMuted }]}>
                   <ActivityIndicator color={colors.accent} />
                   <View style={styles.headingCopy}>
-                    <Text style={[styles.statusTitle, { color: colors.text }]}>Extracting core insights…</Text>
+                    <Text style={[styles.statusTitle, { color: colors.text }]}>{coreGeneration.status === "queued" ? "Waiting for local AI…" : "Extracting core insights…"}</Text>
                     <Text style={[styles.supportingText, { color: colors.textMuted }]}>Running privately on this device.</Text>
                   </View>
                 </View>
@@ -337,7 +371,7 @@ export default function NoteDetailScreen() {
                 )}
               </View>
 
-              {generation.status === "generating" ? (
+              {generation.status === "generating" || generation.status === "queued" ? (
                 <View
                   style={[
                     styles.generationStatus,
@@ -347,7 +381,7 @@ export default function NoteDetailScreen() {
                   <ActivityIndicator color={colors.accent} />
                   <View style={styles.headingCopy}>
                     <Text style={[styles.statusTitle, { color: colors.text }]}>
-                      Organizing your knowledge…
+                      {generation.status === "queued" ? "Waiting for local AI…" : "Organizing your knowledge…"}
                     </Text>
                     <Text
                       style={[
@@ -488,7 +522,16 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor }: {
         <Text selectable style={[styles.body, { color: insight.getSummary() ? textColor : mutedColor }]}>{insight.getSummary() || empty}</Text>
       </InsightSection>
       <InsightSection title="Key Points" borderColor={borderColor} textColor={textColor}>
-        {insight.getKeyPoints().length ? insight.getKeyPoints().map((item, index) => <InsightRow key={`key-${index}`} title={item} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
+        {insight.getKeyPoints().length ? (
+          <View style={styles.bulletList}>
+            {insight.getKeyPoints().map((item, index) => (
+              <View key={`key-${index}`} style={styles.bulletRow}>
+                <Text selectable style={[styles.bulletMarker, { color: mutedColor }]}>•</Text>
+                <Text selectable style={[styles.resultItem, { color: textColor }]}>{item}</Text>
+              </View>
+            ))}
+          </View>
+        ) : <EmptyInsight text={empty} color={mutedColor} />}
       </InsightSection>
       <InsightSection title="Tasks & Action Plan" borderColor={borderColor} textColor={textColor}>
         {insight.getTasks().length ? insight.getTasks().map((task, taskIndex) => (
@@ -752,6 +795,9 @@ const styles = StyleSheet.create({
   dividedSection: { borderTopWidth: 1, paddingTop: Spacing.lg },
   resultTitle: { fontSize: 19, fontWeight: "800" },
   itemList: { gap: Spacing.sm },
+  bulletList: { gap: Spacing.sm },
+  bulletRow: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm },
+  bulletMarker: { fontSize: 18, lineHeight: 25 },
   itemRow: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm },
   bullet: { fontSize: 18, lineHeight: 25 },
   resultItem: { flex: 1, fontSize: 16, lineHeight: 25 },

@@ -16,6 +16,7 @@ const BATCH_SIZE = 128;
 const CONTENT_TOKENS = 1408;
 const INTENT_TOKENS = 1152;
 const SAFETY_TOKENS = 192;
+const EMPTY_VALUE_STRINGS = new Set(["null", "unknown", "undefined", "none", "n/a", "na", "not specified", "unspecified"]);
 const SYSTEM = `Perform grounded summarization and extraction from the user's NOTE.
 Use only information supported by NOTE. You may compress, reorder, merge repetition, and state relationships explicit in context. Never add outside knowledge or invent facts, people, commands, decisions, dates, times, places, tasks, reminders, or events. Preserve uncertainty and the note's primary language. Empty categories must stay empty. Return only JSON matching the schema.`;
 const CONTENT_PROMPT = `Produce an information summary and concrete key points.
@@ -50,6 +51,7 @@ CALENDAR INTENTS
 TIME FIELDS
 - Copy an ISO-8601 value only when NOTE itself supplies one unambiguously. Otherwise use null; never calculate or guess.
 - Keep missing people, place, timezone, date, and time unknown.
+- For an unknown optional field, output the JSON literal null. Never output the strings "null", "unknown", "undefined", "N/A", or "none".
 
 Silently test every candidate against these rules before answering. Do not output that analysis.`;
 
@@ -190,7 +192,11 @@ export class CoreNoteInsightService {
     return [{ id: `${insightId}-${kind}-${index}`, kind, title: item.title.trim(), description: this.optional(item.description), status: "pending", startsAt: this.optional(item.startsAt), endsAt: this.optional(item.endsAt), dueAt: this.optional(item.dueAt), remindAt: this.optional(item.remindAt), allDay: item.allDay === true, timezone: this.optional(item.timezone), sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: {} }];
   }
 
-  private optional(value: unknown): string | null { return typeof value === "string" && value.trim() ? value.trim() : null; }
+  private optional(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed && !EMPTY_VALUE_STRINGS.has(trimmed.toLocaleLowerCase()) ? trimmed : null;
+  }
   private normalized(value: string): string { return value.toLocaleLowerCase().replace(/[\s\p{P}\p{S}]+/gu, ""); }
   private uniqueStrings(value: unknown[]): string[] {
     const seen = new Set<string>();

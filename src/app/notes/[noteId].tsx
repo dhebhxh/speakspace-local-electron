@@ -494,15 +494,15 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor }: {
         {insight.getTasks().length ? insight.getTasks().map((task, taskIndex) => (
           <View key={task.id} style={styles.taskGroup}>
             <Text selectable style={[styles.taskTitle, { color: textColor }]}>{taskIndex + 1}. {task.title}</Text>
-            {task.description && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{task.description}</Text>}
-            {task.dueAt && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>Due: {task.dueAt}</Text>}
+            {displayValue(task.description) && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{task.description}</Text>}
+            {displayValue(task.dueAt) && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>截止时间：{task.dueAt}</Text>}
             <View style={styles.actionSteps}>
               {task.actionItems.length ? task.actionItems.map((item, index) => (
                 <View key={item.id} style={styles.actionStep}>
                   <Text selectable style={[styles.stepNumber, { color: mutedColor }]}>{index + 1}</Text>
                   <View style={styles.stepCopy}>
                     <Text selectable style={[styles.resultItem, { color: textColor }]}>{item.title}</Text>
-                    {item.description && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{item.description}</Text>}
+                    {displayValue(item.description) && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{item.description}</Text>}
                   </View>
                 </View>
               )) : <EmptyInsight text="未生成可执行步骤" color={mutedColor} />}
@@ -568,11 +568,11 @@ function formatCoreInsightsAsHtml(insight: CoreNoteInsight): string {
 }
 
 function optionalParagraph(value: string | null): string {
-  return value ? `<p>${escapeHtml(value)}</p>` : "";
+  return displayValue(value) ? `<p>${escapeHtml(value)}</p>` : "";
 }
 
 function optionalMeta(label: string, value: string | null): string {
-  return value ? `<p><small><strong>${label}:</strong> ${escapeHtml(value)}</small></p>` : "";
+  return displayValue(value) ? `<p><small><strong>${label}:</strong> ${escapeHtml(value)}</small></p>` : "";
 }
 
 function escapeHtml(value: string): string {
@@ -584,7 +584,12 @@ function InsightSection({ title, borderColor, textColor, first = false, children
 }
 
 function InsightRow({ title, detail, time, textColor, mutedColor }: { title: string; detail?: string | null; time?: string | null; textColor: string; mutedColor: string }) {
-  return <View style={styles.structuredItem}><Text selectable style={[styles.resultItem, { color: textColor }]}>{title}</Text>{detail && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{detail}</Text>}{time && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>{time}</Text>}</View>;
+  return <View style={styles.structuredItem}><Text selectable style={[styles.resultItem, { color: textColor }]}>{title}</Text>{displayValue(detail) && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{detail}</Text>}{displayValue(time) && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>时间：{time}</Text>}</View>;
+}
+
+function displayValue(value: string | null | undefined): value is string {
+  if (!value?.trim()) return false;
+  return !["null", "unknown", "undefined", "none", "n/a", "na", "not specified", "unspecified"].includes(value.trim().toLocaleLowerCase());
 }
 
 function EmptyInsight({ text, color }: { text: string; color: string }) {

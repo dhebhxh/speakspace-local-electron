@@ -44,6 +44,20 @@ export class NoteService {
     await this.noteRepository.update(note);
   }
 
+  public async setNotePinned(id: string, isPinned: boolean): Promise<void> {
+    const note = await this.getNoteOrThrow(id);
+
+    if (note.getIsPinned() === isPinned) return;
+
+    if (isPinned) {
+      note.pin();
+    } else {
+      note.unpin();
+    }
+
+    await this.noteRepository.update(note);
+  }
+
   public async moveNote(id: string, workspaceId: string): Promise<void> {
     const note = await this.getNoteOrThrow(id);
     const normalizedWorkspaceId = workspaceId.trim();

@@ -8,50 +8,84 @@ import { formatDate } from "@/utils/format-date";
 type NoteCardProps = {
   note: Note;
   onPress: () => void;
+  onPinPress?: () => void;
+  isPinning?: boolean;
 };
 
-export function NoteCard({ note, onPress }: NoteCardProps) {
+export function NoteCard({
+  note,
+  onPress,
+  onPinPress,
+  isPinning = false,
+}: NoteCardProps) {
   const theme = useTheme();
   const colors = Colors[theme.mode];
   const title = note.getName() || "Untitled note";
   const preview = note.getTranscript().replace(/\s+/g, " ").trim();
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      hitSlop={4}
-      onPress={onPress}
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.card,
         { backgroundColor: colors.surface, borderColor: colors.border },
-        pressed && styles.pressed,
       ]}
     >
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
-          {title}
-        </Text>
-        {note.getIsPinned() && (
-          <Text style={[styles.pin, { color: colors.accent }]}>Pinned</Text>
-        )}
-      </View>
-      <Text
-        style={[styles.preview, { color: colors.textMuted }]}
-        numberOfLines={3}
+      <Pressable
+        accessibilityRole="button"
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.content,
+          (onPinPress || note.getIsPinned()) && styles.contentWithPin,
+          pressed && styles.pressed,
+        ]}
       >
-        {preview}
-      </Text>
-      <View style={styles.footer}>
-        <Text style={[styles.meta, { color: colors.textMuted }]}>
-          {formatDate(note.getUpdatedAt())}
-        </Text>
-        {note.getAudioRelativePath() && (
-          <Text style={[styles.meta, { color: colors.accent }]}>
-            Audio available
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+            {title}
           </Text>
-        )}
-      </View>
-    </Pressable>
+        </View>
+        <Text
+          style={[styles.preview, { color: colors.textMuted }]}
+          numberOfLines={3}
+        >
+          {preview}
+        </Text>
+        <View style={styles.footer}>
+          <Text style={[styles.meta, { color: colors.textMuted }]}>
+            {formatDate(note.getUpdatedAt())}
+          </Text>
+          {note.getAudioRelativePath() && (
+            <Text style={[styles.meta, { color: colors.accent }]}>
+              Audio available
+            </Text>
+          )}
+        </View>
+      </Pressable>
+      {onPinPress ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={note.getIsPinned() ? "Unpin note" : "Pin note"}
+          accessibilityState={{ busy: isPinning, disabled: isPinning }}
+          disabled={isPinning}
+          hitSlop={8}
+          onPress={onPinPress}
+          style={({ pressed }) => [
+            styles.pinButton,
+            { borderColor: colors.border },
+            pressed && styles.pressed,
+            isPinning && styles.disabled,
+          ]}
+        >
+          <Text style={[styles.pin, { color: colors.accent }]}>
+            {isPinning ? "Saving..." : note.getIsPinned() ? "Unpin" : "Pin"}
+          </Text>
+        </Pressable>
+      ) : note.getIsPinned() ? (
+        <Text style={[styles.pinBadge, styles.pin, { color: colors.accent }]}>
+          Pinned
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -59,8 +93,15 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: Radius.md,
     borderWidth: 1,
+    overflow: "hidden",
+    position: "relative",
+  },
+  content: {
     gap: Spacing.sm,
     padding: Spacing.md,
+  },
+  contentWithPin: {
+    paddingRight: 84,
   },
   header: {
     alignItems: "center",
@@ -77,6 +118,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
+  pinButton: {
+    alignItems: "center",
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 36,
+    minWidth: 56,
+    paddingHorizontal: Spacing.sm,
+    position: "absolute",
+    right: Spacing.md,
+    top: Spacing.md,
+  },
+  pinBadge: {
+    position: "absolute",
+    right: Spacing.md,
+    top: Spacing.md,
+  },
   preview: {
     fontSize: 15,
     lineHeight: 22,
@@ -92,5 +150,8 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72,
+  },
+  disabled: {
+    opacity: 0.5,
   },
 });

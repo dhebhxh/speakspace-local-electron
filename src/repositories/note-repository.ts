@@ -44,7 +44,7 @@ export class NoteRepository {
             is_pinned, pinned_at, created_at, updated_at
            FROM notes
            WHERE workspace_id = ?
-           ORDER BY updated_at DESC`,
+           ORDER BY is_pinned DESC, pinned_at DESC, updated_at DESC`,
           workspaceId,
         );
 

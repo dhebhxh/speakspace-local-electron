@@ -57,6 +57,7 @@ export default function WorkspaceDetailScreen() {
   const [transcript, setTranscript] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [pinningNoteId, setPinningNoteId] = useState<string | null>(null);
 
   const loadWorkspace = async () => {
     setState({ status: "loading" });
@@ -121,6 +122,25 @@ export default function WorkspaceDetailScreen() {
       setFormError(error instanceof ValidationError ? error.message : "Unable to rename workspace.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const togglePinned = async (noteId: string, isPinned: boolean) => {
+    setPinningNoteId(noteId);
+
+    try {
+      await noteService.setNotePinned(noteId, !isPinned);
+      const notes = await noteService.getNotesByWorkspace(workspaceId);
+      setState((current) =>
+        current.status === "success" ? { ...current, notes } : current,
+      );
+    } catch {
+      Alert.alert(
+        isPinned ? "Unable to unpin note" : "Unable to pin note",
+        "Please try again.",
+      );
+    } finally {
+      setPinningNoteId(null);
     }
   };
 
@@ -228,6 +248,10 @@ export default function WorkspaceDetailScreen() {
                   <NoteCard
                     key={note.getId()}
                     note={note}
+                    isPinning={pinningNoteId === note.getId()}
+                    onPinPress={() =>
+                      void togglePinned(note.getId(), note.getIsPinned())
+                    }
                     onPress={() =>
                       router.push({
                         pathname: "/notes/[noteId]",

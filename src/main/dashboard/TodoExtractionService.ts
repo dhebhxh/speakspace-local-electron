@@ -52,18 +52,20 @@ export class TodoExtractionService {
         app.getPath('userData'),
         'speakspace_extraction.log',
       );
-      
+
       const isDebugMode = process.env.SPEAKSPACE_DEBUG_AI_LOGS === 'true';
       const log = (msg: string, debugOnly: boolean = false) => {
         if (debugOnly && !isDebugMode) return;
         try {
           fs.appendFileSync(logFile, msg);
-        } catch (e) {
+        } catch {
           // ignore log errors
         }
       };
 
-      log(`\n\n[${new Date().toISOString()}] Starting extraction for note ${noteId} (length: ${transcript.length})\n`);
+      log(
+        `\n\n[${new Date().toISOString()}] Starting extraction for note ${noteId} (length: ${transcript.length})\n`,
+      );
 
       // Apply RAG if transcript is long
       if (transcript.length > 1500) {
@@ -91,10 +93,14 @@ export class TodoExtractionService {
             const topChunks = rankBySimilarity(queryVector, items, 5, 0.1);
             if (topChunks.length > 0) {
               contextText = topChunks.map((c) => c.text).join('\n...\n');
-              log(`RAG selected ${topChunks.length} chunks. Reduced context to ${contextText.length} chars.\n`);
+              log(
+                `RAG selected ${topChunks.length} chunks. Reduced context to ${contextText.length} chars.\n`,
+              );
             }
           } else {
-            log(`Embedding model not installed. Falling back to full transcript.\n`);
+            log(
+              `Embedding model not installed. Falling back to full transcript.\n`,
+            );
           }
         } catch (err) {
           log(`RAG failed (${err}). Falling back to full transcript.\n`);
@@ -206,7 +212,7 @@ ${contextText}
       );
       try {
         fs.appendFileSync(logFile, `Fatal Error: ${error}\n`);
-      } catch (e) {
+      } catch {
         // ignore
       }
       return false;

@@ -397,7 +397,9 @@ export default class TranscriptionController {
     }
   }
 
-  public async pickFileAndStart(options?: { skipConfirmation?: boolean }): Promise<void> {
+  public async pickFileAndStart(options?: {
+    skipConfirmation?: boolean;
+  }): Promise<void> {
     const filePath = (await window.electron.audio.pickFile()) as string | null;
     if (!filePath) return;
 
@@ -415,7 +417,9 @@ export default class TranscriptionController {
     await this.startUploadedFile();
   }
 
-  private async startUploadedFile(skipConfirmation: boolean = false): Promise<void> {
+  private async startUploadedFile(
+    skipConfirmation: boolean = false,
+  ): Promise<void> {
     const filePath = this.uploadedFilePath;
     if (!filePath) return;
 
@@ -441,8 +445,11 @@ export default class TranscriptionController {
           result.language,
         );
         const modelFixedLanguage = result.source === 'model-fixed';
-        
-        if (!skipConfirmation && (lowConfidence || uncommonLanguage || modelFixedLanguage)) {
+
+        if (
+          !skipConfirmation &&
+          (lowConfidence || uncommonLanguage || modelFixedLanguage)
+        ) {
           this.uploadLanguage = result.language;
           this.languageConfirmationRequired = true;
           return;

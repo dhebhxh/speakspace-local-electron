@@ -125,7 +125,7 @@ SpeakSpace 修改日志
 ------------------------------------------------------------------------
 通过：
   - TypeScript：npx tsc --noEmit，0 个错误。
-  - ESLint：npm run lint，0 个错误；保留项目既有的 20 个 console 警告。
+  - ESLint：npm run lint，0 个错误；保留项目既有的 21 个 console 警告。
   - 全量 Jest：16 个套件、51 个测试通过；标准 Node 环境跳过 6 个原生
     SQLite 测试，随后由 Electron ABI 命令单独实跑，6 个全部通过。
   - 重点组件测试：垃圾桶按钮、回收站面板、工作空间确认框和中英文词条

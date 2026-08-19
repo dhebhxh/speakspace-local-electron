@@ -1,7 +1,7 @@
+import { Note } from '@shared/entities/Note';
+import { Workspace } from '@shared/entities/Workspace';
 import { NoteRepository } from '../database/repositories/NoteRepository';
 import { WorkspaceRepository } from '../database/repositories/WorkspaceRepository';
-import { Note } from '../entities/Note';
-import { Workspace } from '../entities/Workspace';
 import { AskAIScope, CreateAskAINoteRequest } from './AskAITypes';
 
 const MAX_WORKSPACE_NOTES = 24;

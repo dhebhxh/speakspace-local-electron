@@ -1,4 +1,4 @@
-import { AgentHistoryMessage, AgentStep } from '../../../main/agent/AgentTypes';
+import type { AgentHistoryMessage, AgentStep } from '@shared/types/AgentTypes';
 
 export type AgentPageMessage = AgentHistoryMessage & { id: string };
 export type AgentPageStep = { id: string; step: AgentStep };

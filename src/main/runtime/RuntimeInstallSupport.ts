@@ -1,17 +1,13 @@
-export type RuntimeInstallTarget = 'whisper' | 'ffmpeg' | 'ollama';
+import type {
+  RuntimeInstallSupport,
+  RuntimeInstallSupportSummary,
+  RuntimeInstallTarget,
+} from '@shared/types/RuntimeTypes';
 
-export type RuntimeInstallSupport = {
-  /** 当前平台能否由应用自动下载安装该运行时。 */
-  supported: boolean;
-  /** 不支持自动安装时，告诉用户该怎么自己装。 */
-  manualHint: string;
-};
-
-export type RuntimeInstallSupportSummary = {
-  platform: NodeJS.Platform;
-  whisper: RuntimeInstallSupport;
-  ffmpeg: RuntimeInstallSupport;
-  ollama: RuntimeInstallSupport;
+export type {
+  RuntimeInstallSupport,
+  RuntimeInstallSupportSummary,
+  RuntimeInstallTarget,
 };
 
 /**

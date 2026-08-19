@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 
+import { KnowledgeTemplate } from '@shared/entities/KnowledgeTemplate';
 import { Repository } from './Repository';
-import { KnowledgeTemplate } from '../../entities/KnowledgeTemplate';
 import { DatabaseManager } from '../DatabaseManager';
 
 // 保留命名导出，与其余 Repository 的导入方式一致。

@@ -1,6 +1,6 @@
 import { app } from 'electron';
+import type { CudaInfo, GpuInfo } from '@shared/types/ModelRecommendationTypes';
 import LocalProcessRunner from '../runtime/LocalProcessRunner';
-import { CudaInfo, GpuInfo } from './ModelRecommendationTypes';
 import mergeGpuCandidates from './GpuMerge';
 
 export type GpuProbeResult = {

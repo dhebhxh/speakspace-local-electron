@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AgentEvent, AgentStep } from '../../../main/agent/AgentTypes';
+import type { AgentEvent, AgentStep } from '@shared/types/AgentTypes';
 import AgentController from '../Agent/AgentController';
 
 const controller = new AgentController();

@@ -1,12 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import { performance } from 'perf_hooks';
-import TTSEngine from '../src/main/tts/TTSEngine';
+import TTSEngine from '../../src/main/tts/TTSEngine';
 import {
   KOKORO_TTS_MODEL_ID,
   MELO_TTS_MODEL_ID,
   MOSS_TTS_MODEL_ID,
-} from '../src/main/tts/TTSModelCatalog';
+} from '../../src/main/tts/TTSModelCatalog';
 
 const aliases: Record<string, { id: string; speaker: string }> = {
   kokoro: { id: KOKORO_TTS_MODEL_ID, speaker: '45' },

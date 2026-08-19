@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 
+import { AIMessage } from '@shared/entities/AIMessage';
 import { Repository } from './Repository';
-import { AIMessage } from '../../entities/AIMessage';
 import { DatabaseManager } from '../DatabaseManager';
 
 // 保留命名导出，与其余 Repository 的导入方式一致。

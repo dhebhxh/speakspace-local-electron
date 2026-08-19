@@ -1,4 +1,4 @@
-import { Note } from '../entities/Note';
+import { Note } from '@shared/entities/Note';
 
 const MAX_EMBED_CHARACTERS = 4_000;
 

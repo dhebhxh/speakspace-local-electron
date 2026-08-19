@@ -31,3 +31,18 @@ export type TTSRuntimeStatus = {
   installedModelCount: number;
   runtimes: TTSRuntimeDependencyStatus[];
 };
+
+export type TTSBackend = 'sherpa-kokoro' | 'sherpa-vits' | 'moss-onnx';
+
+/** 一次本地合成的结果，直接经 IPC 交给渲染层播放，不落盘。 */
+export type TTSAudioResult = {
+  source: 'local';
+  backend: TTSBackend;
+  modelId: string;
+  modelName: string;
+  speakerId: string;
+  speakerName: string;
+  sampleRate: number;
+  channelCount: number;
+  channelData: Float32Array[];
+};

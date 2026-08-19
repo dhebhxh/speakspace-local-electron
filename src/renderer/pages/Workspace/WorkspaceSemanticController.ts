@@ -1,7 +1,7 @@
-import {
+import type {
   EmbeddingModelStatus,
   SemanticNoteResult,
-} from '../../../main/semantic/SemanticTypes';
+} from '@shared/types/SemanticTypes';
 
 type SemanticApi = {
   getStatus(): Promise<EmbeddingModelStatus>;

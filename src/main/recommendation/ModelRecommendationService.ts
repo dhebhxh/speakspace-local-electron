@@ -1,10 +1,10 @@
 import { app } from 'electron';
-import ModelRecommendationScorer from './ModelRecommendationScorer';
-import SystemProfileService from './SystemProfileService';
-import {
+import type {
   ModelCandidate,
   ModelRecommendationResult,
-} from './ModelRecommendationTypes';
+} from '@shared/types/ModelRecommendationTypes';
+import ModelRecommendationScorer from './ModelRecommendationScorer';
+import SystemProfileService from './SystemProfileService';
 
 /** 组织硬件检测和模型评分，IPC 只需调用这一入口。 */
 export default class ModelRecommendationService {

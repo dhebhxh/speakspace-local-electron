@@ -1,4 +1,4 @@
-import { TTSSpeaker } from './TTSRuntimeTypes';
+import type { TTSSpeaker } from '@shared/types/TTSRuntimeTypes';
 
 const MAX_TTS_CHARACTERS = 4_000;
 

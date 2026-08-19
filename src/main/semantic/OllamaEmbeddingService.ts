@@ -1,8 +1,8 @@
 import ollama from 'ollama';
-import {
+import type {
   EmbeddingInstallProgress,
   EmbeddingModelStatus,
-} from './SemanticTypes';
+} from '@shared/types/SemanticTypes';
 
 export const DEFAULT_EMBEDDING_MODEL = 'bge-m3';
 type Client = Pick<typeof ollama, 'list' | 'pull' | 'embed'>;

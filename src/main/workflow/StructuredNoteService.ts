@@ -1,7 +1,7 @@
+import { KnowledgeOutput } from '@shared/entities/KnowledgeOutput';
 import { KnowledgeOutputRepository } from '../database/repositories/KnowledgeOutputRepository';
 import { KnowledgeTemplateRepository } from '../database/repositories/KnowledgeTemplateRepository';
 import { NoteRepository } from '../database/repositories/NoteRepository';
-import { KnowledgeOutput } from '../entities/KnowledgeOutput';
 import LocalChatService, { LocalChatResult } from '../llm/LocalChatService';
 import {
   buildStructuredNoteMessages,

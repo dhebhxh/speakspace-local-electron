@@ -1,11 +1,11 @@
-import {
+import type {
   LanguageDetectionResult,
   TranscriptSegment,
   TranscriptionJob,
   TranscriptionLanguage,
   TranscriptionResult,
   TranscriptionSource,
-} from '../../../main/transcription/TranscriptionTypes';
+} from '@shared/types/TranscriptionTypes';
 
 export type LiveTranscriptSegment = {
   id: number;

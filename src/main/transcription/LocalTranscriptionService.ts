@@ -1,12 +1,12 @@
-import { STTModelManager } from '../AI-module/STTModelManager';
-import { PARAKEET_ENGINE } from './STTModelCatalog';
-import ParakeetTranscriptionService from './ParakeetTranscriptionService';
-import TranscriptionSourceResolver from './TranscriptionSourceResolver';
 import {
   isWhisperLanguage,
   LanguageDetectionResult,
   TranscriptionResult,
-} from './TranscriptionTypes';
+} from '@shared/types/TranscriptionTypes';
+import { STTModelManager } from '../AI-module/STTModelManager';
+import { PARAKEET_ENGINE } from './STTModelCatalog';
+import ParakeetTranscriptionService from './ParakeetTranscriptionService';
+import TranscriptionSourceResolver from './TranscriptionSourceResolver';
 import WhisperTranscriptionService, {
   TranscriptionOptions,
 } from './WhisperTranscriptionService';

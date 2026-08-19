@@ -1,4 +1,4 @@
-import { TranscriptSegment } from './TranscriptionTypes';
+import type { TranscriptSegment } from '@shared/types/TranscriptionTypes';
 
 export type SherpaRecognitionResult = {
   text?: string;

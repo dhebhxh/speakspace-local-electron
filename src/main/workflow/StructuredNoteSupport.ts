@@ -1,6 +1,6 @@
-import { KnowledgeOutput } from '../entities/KnowledgeOutput';
-import { KnowledgeTemplate } from '../entities/KnowledgeTemplate';
-import { Note } from '../entities/Note';
+import { KnowledgeOutput } from '@shared/entities/KnowledgeOutput';
+import { KnowledgeTemplate } from '@shared/entities/KnowledgeTemplate';
+import { Note } from '@shared/entities/Note';
 import { KnowledgeOutputDTO } from './StructuredNoteTypes';
 
 const MAX_TRANSCRIPT_CHARACTERS = 15_000;

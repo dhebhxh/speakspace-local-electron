@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
+import type {
   EmbeddingModelStatus,
   SemanticNoteResult,
-} from '../../../../main/semantic/SemanticTypes';
+} from '@shared/types/SemanticTypes';
 import WorkspaceSemanticController from '../WorkspaceSemanticController';
 
 const controller = new WorkspaceSemanticController();

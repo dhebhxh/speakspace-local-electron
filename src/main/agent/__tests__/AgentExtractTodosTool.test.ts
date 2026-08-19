@@ -1,4 +1,4 @@
-import { Note } from '../../entities/Note';
+import { Note } from '@shared/entities/Note';
 import createAgentExtractTodosTool from '../AgentExtractTodosTool';
 import { AgentContext } from '../AgentTypes';
 

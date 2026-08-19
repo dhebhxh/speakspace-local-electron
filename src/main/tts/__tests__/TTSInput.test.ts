@@ -1,5 +1,5 @@
+import type { TTSSpeaker } from '@shared/types/TTSRuntimeTypes';
 import { normalizeTTSInput } from '../TTSInput';
-import { TTSSpeaker } from '../TTSRuntimeTypes';
 
 const speakers: TTSSpeaker[] = [
   {

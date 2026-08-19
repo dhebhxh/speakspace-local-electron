@@ -1,4 +1,4 @@
-import { Model } from '../../../main/AI-module/Model';
+import type { Model } from '@shared/models/Model';
 
 /** 目录里的尺寸写法不统一（MiB / GiB / GB / ~631 MiB），统一换算成 MB 便于比较。 */
 function parseSizeMb(size: string): number | null {

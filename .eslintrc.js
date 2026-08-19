@@ -42,6 +42,31 @@ module.exports = {
         'no-undef': 'off',
       },
     },
+    {
+      // 进程边界：渲染层曾经直接 import 主进程实现文件拿类型（一度多达 32 处），
+      // 其中 RuntimeStatusService 顶层就 import 了 fs，只是靠 TS 类型擦除侥幸没炸。
+      // 跨进程共享的东西一律放 src/shared，唯一例外是 preload 暴露的 IPC 契约。
+      files: [
+        'src/renderer/**/*.ts',
+        'src/renderer/**/*.tsx',
+        'src/renderer/**/*.jsx',
+      ],
+      excludedFiles: ['src/renderer/preload.d.ts'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                group: ['**/main/**', '@main/**'],
+                message:
+                  '渲染进程不要直接 import 主进程文件。跨进程共享的类型放 src/shared（用 @shared/*），运行时能力走 preload 暴露的 IPC。',
+              },
+            ],
+          },
+        ],
+      },
+    },
   ],
   env: {
     browser: true,

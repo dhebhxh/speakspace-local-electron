@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshCw, Play, Square } from 'lucide-react';
-import { Model } from '../../../main/AI-module/Model';
+import type { Model } from '@shared/models/Model';
 import ModelModule from './components/ModelModule';
 import ModelSelect, { ModelOption } from './components/ModelSelect';
 import { ModelIcons } from './components/ModelIcons';

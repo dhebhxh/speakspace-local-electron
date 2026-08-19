@@ -155,7 +155,7 @@ MOSS 现已通过 `onnxruntime-node 1.27.0` 在 Electron 主进程内运行，�
 
 > Evidence:
 >
-> - Source: `scripts/tts-model-smoke.ts`、`src/main/tts/__tests__/`、本轮命令输出和 macOS arm64 打包产物
+> - Source: `scripts/smoke/tts-model-smoke.ts`、`src/main/tts/__tests__/`、本轮命令输出和 macOS arm64 打包产物
 > - Method: 三模型逐个激活，通过应用内部 TypeScript 引擎合成一次混合文本；检查运行时、音色、采样率、声道数、样本长度和非有限值
 > - Confidence: macOS arm64 High；Windows x64 和 macOS x64 仍需在目标机器验收
 
@@ -181,14 +181,14 @@ MOSS 现已通过 `onnxruntime-node 1.27.0` 在 Electron 主进程内运行，�
 
 基准脚本：
 
-- [`tts-benchmark-sherpa.js`](../reports/scripts/tts-benchmark-sherpa.js)
-- [`tts-benchmark-moss.py`](../reports/scripts/tts-benchmark-moss.py)
-- [`tts-benchmark-asr.py`](../reports/scripts/tts-benchmark-asr.py)
-- [`tts-benchmark-inputs.json`](../reports/scripts/tts-benchmark-inputs.json)
+- [`tts-benchmark-sherpa.js`](../scripts/benchmark/tts-benchmark-sherpa.js)
+- [`tts-benchmark-moss.py`](../scripts/benchmark/tts-benchmark-moss.py)
+- [`tts-benchmark-asr.py`](../scripts/benchmark/tts-benchmark-asr.py)
+- [`tts-benchmark-inputs.json`](../scripts/benchmark/tts-benchmark-inputs.json)
 
 集成烟雾脚本与平台验收说明：
 
-- [`scripts/tts-model-smoke.ts`](../scripts/tts-model-smoke.ts)
+- [`scripts/smoke/tts-model-smoke.ts`](../scripts/smoke/tts-model-smoke.ts)
 - [`docs/testing/tts-platform-builds.md`](testing/tts-platform-builds.md)
 - [`docs/testing/tts-windows-manual.md`](testing/tts-windows-manual.md)
 
@@ -201,12 +201,12 @@ MOSS 现已通过 `onnxruntime-node 1.27.0` 在 Electron 主进程内运行，�
 macOS 复现命令：
 
 ```bash
-/usr/bin/time -l node reports/scripts/tts-benchmark-sherpa.js kokoro
-/usr/bin/time -l node reports/scripts/tts-benchmark-sherpa.js melo
+/usr/bin/time -l node scripts/benchmark/tts-benchmark-sherpa.js kokoro
+/usr/bin/time -l node scripts/benchmark/tts-benchmark-sherpa.js melo
 /usr/bin/time -l "$HOME/Library/Caches/SpeakSpace-TTS-Benchmark/venv/bin/python" \
-  reports/scripts/tts-benchmark-moss.py
+  scripts/benchmark/tts-benchmark-moss.py
 "$HOME/Library/Caches/SpeakSpace-TTS-Benchmark/venv/bin/python" \
-  reports/scripts/tts-benchmark-asr.py
+  scripts/benchmark/tts-benchmark-asr.py
 ```
 
 模型/源码指纹：

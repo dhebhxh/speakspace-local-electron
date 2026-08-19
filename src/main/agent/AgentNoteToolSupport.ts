@@ -1,5 +1,5 @@
+import { Note } from '@shared/entities/Note';
 import { NoteRepository } from '../database/repositories/NoteRepository';
-import { Note } from '../entities/Note';
 import { AgentContext } from './AgentTypes';
 
 export const MAX_NOTE_PREVIEW_CHARACTERS = 240;

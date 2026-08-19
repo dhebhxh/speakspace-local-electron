@@ -1,41 +1,22 @@
 import fs from 'fs';
 import path from 'path';
+import type { TTSRuntimeStatus } from '@shared/types/TTSRuntimeTypes';
+import type {
+  ManagedRuntimeState,
+  RuntimeComponentStatus,
+  RuntimeStatusSummary,
+} from '@shared/types/RuntimeTypes';
 import { ManagedPaths, RuntimeKind, RuntimeStoragePaths } from './ManagedPaths';
-import WhisperRuntimeService, {
-  WhisperRuntimeStatus,
-} from '../transcription/WhisperRuntimeService';
-import OllamaRuntimeService, {
-  OllamaRuntimeStatus,
-} from '../llm/OllamaRuntimeService';
+import WhisperRuntimeService from '../transcription/WhisperRuntimeService';
+import OllamaRuntimeService from '../llm/OllamaRuntimeService';
 import TTSRuntimeService from '../tts/TTSRuntimeService';
-import { TTSRuntimeStatus } from '../tts/TTSRuntimeTypes';
-import ParakeetRuntimeService, {
-  ParakeetRuntimeStatus,
-} from '../transcription/ParakeetRuntimeService';
-import {
-  RuntimeInstallSupportSummary,
-  getRuntimeInstallSupportSummary,
-} from './RuntimeInstallSupport';
+import ParakeetRuntimeService from '../transcription/ParakeetRuntimeService';
+import { getRuntimeInstallSupportSummary } from './RuntimeInstallSupport';
 
-export type ManagedRuntimeState = 'missing' | 'partial' | 'ready';
-
-export type RuntimeComponentStatus = {
-  kind: RuntimeKind;
-  managedState: ManagedRuntimeState;
-  runtimePresent: boolean;
-  manifestPresent: boolean;
-  installedModelCount: number;
-};
-
-export type RuntimeStatusSummary = {
-  storageRoot: string;
-  components: RuntimeComponentStatus[];
-  transcription: WhisperRuntimeStatus;
-  parakeetTranscription: ParakeetRuntimeStatus;
-  languageModel: OllamaRuntimeStatus;
-  speechSynthesis: TTSRuntimeStatus;
-  /** 当前平台哪些运行时能自动安装；界面据此决定给按钮还是给手动说明。 */
-  installSupport: RuntimeInstallSupportSummary;
+export type {
+  ManagedRuntimeState,
+  RuntimeComponentStatus,
+  RuntimeStatusSummary,
 };
 
 /**

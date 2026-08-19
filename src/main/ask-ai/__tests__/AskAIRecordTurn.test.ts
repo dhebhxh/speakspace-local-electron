@@ -1,4 +1,4 @@
-import { AIConversation } from '../../entities/AIConversation';
+import { AIConversation } from '@shared/entities/AIConversation';
 
 // AskAIService 顶层会用到 electron 的 app（写日志路径），测试里不需要真实实现。
 jest.mock('electron', () => ({ app: { getPath: () => '.' } }), {

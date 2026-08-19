@@ -1,23 +1,15 @@
 import fs from 'fs';
 import path from 'path';
+import type {
+  WhisperRuntimeLocation,
+  WhisperRuntimeStatus,
+} from '@shared/types/RuntimeTypes';
 import { STTModelManager } from '../AI-module/STTModelManager';
 import CommandLocator from '../runtime/CommandLocator';
 import { resolveFfmpegPath } from '../runtime/FfmpegLocator';
 import { ManagedPaths } from '../runtime/ManagedPaths';
 
-export type WhisperRuntimeLocation = 'portable' | 'system-path' | 'missing';
-
-export type WhisperRuntimeStatus = {
-  ready: boolean;
-  runtimeLocation: WhisperRuntimeLocation;
-  whisperCliPath: string;
-  whisperCliPresent: boolean;
-  ffmpegPath: string | null;
-  ffmpegPresent: boolean;
-  activeModelId: string | null;
-  activeModelName: string | null;
-  activeModelPath: string | null;
-};
+export type { WhisperRuntimeLocation, WhisperRuntimeStatus };
 
 /** 查找本机 Whisper CLI、音频转换工具和当前已激活模型。 */
 export default class WhisperRuntimeService {

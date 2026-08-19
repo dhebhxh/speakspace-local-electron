@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Model } from '../../../main/AI-module/Model';
-import { RuntimeStatusSummary } from '../../../main/runtime/RuntimeStatusService';
-import { EmbeddingModelStatus } from '../../../main/semantic/SemanticTypes';
+import type { Model } from '@shared/models/Model';
+import type { RuntimeStatusSummary } from '@shared/types/RuntimeTypes';
+import type { EmbeddingModelStatus } from '@shared/types/SemanticTypes';
 import {
   ModelRecommendation,
   ModelRecommendationController,

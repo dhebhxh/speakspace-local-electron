@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KnowledgeTemplateDTO } from '../../../main/workflow/WorkflowTypes';
+import type { KnowledgeTemplateDTO } from '@shared/types/WorkflowTypes';
 import KnowledgeTemplateCard from './components/KnowledgeTemplateCard';
 import KnowledgeTemplateFormPage from './components/KnowledgeTemplateFormPage';
 import './WorkflowPage.css';

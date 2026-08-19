@@ -1,19 +1,19 @@
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import LocalProcessRunner from '../runtime/LocalProcessRunner';
-import { ManagedPaths } from '../runtime/ManagedPaths';
-import AudioConversionService, {
-  PreparedAudio,
-} from './AudioConversionService';
-import TranscriptionSourceResolver from './TranscriptionSourceResolver';
 import {
   isWhisperLanguage,
   LanguageDetectionResult,
   TranscriptSegment,
   TranscriptionProgress,
   TranscriptionResult,
-} from './TranscriptionTypes';
+} from '@shared/types/TranscriptionTypes';
+import LocalProcessRunner from '../runtime/LocalProcessRunner';
+import { ManagedPaths } from '../runtime/ManagedPaths';
+import AudioConversionService, {
+  PreparedAudio,
+} from './AudioConversionService';
+import TranscriptionSourceResolver from './TranscriptionSourceResolver';
 import WhisperOutputParser from './WhisperOutputParser';
 import WhisperRuntimeService from './WhisperRuntimeService';
 

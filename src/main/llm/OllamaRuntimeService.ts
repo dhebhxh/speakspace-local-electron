@@ -1,7 +1,6 @@
+import type { OllamaRuntimeStatus } from '@shared/types/RuntimeTypes';
 import { LLMModelManager } from '../AI-module/LLMModelManager';
-import OllamaRuntimeLocator, {
-  OllamaRuntimeLocation,
-} from './OllamaRuntimeLocator';
+import OllamaRuntimeLocator from './OllamaRuntimeLocator';
 import { OLLAMA_SERVER_URL, readOllamaModelNames } from './OllamaEndpoint';
 
 type RuntimeServiceDependencies = {
@@ -11,18 +10,7 @@ type RuntimeServiceDependencies = {
   serverUrl?: string;
 };
 
-export type OllamaRuntimeStatus = {
-  runtimeName: 'Ollama';
-  serverUrl: string;
-  binaryPath: string | null;
-  runtimeLocation: OllamaRuntimeLocation;
-  binaryPresent: boolean;
-  serverRunning: boolean;
-  installedModels: string[];
-  activeModelId: string | null;
-  activeModelName: string | null;
-  runtimeReady: boolean;
-};
+export type { OllamaRuntimeStatus };
 
 /**
  * 读取 Ollama 的本机状态。

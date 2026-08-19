@@ -1,12 +1,12 @@
 import { randomUUID } from 'crypto';
-import ProcessCancelledError from '../runtime/ProcessCancelledError';
-import TranscriptionSourceResolver from './TranscriptionSourceResolver';
-import {
+import type {
   TranscriptSegment,
   TranscriptionJob,
   TranscriptionProgress,
   TranscriptionSource,
-} from './TranscriptionTypes';
+} from '@shared/types/TranscriptionTypes';
+import ProcessCancelledError from '../runtime/ProcessCancelledError';
+import TranscriptionSourceResolver from './TranscriptionSourceResolver';
 import LocalTranscriptionService, {
   TranscriptionBackend,
 } from './LocalTranscriptionService';

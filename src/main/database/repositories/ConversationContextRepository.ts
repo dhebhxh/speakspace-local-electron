@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 
-import { Note } from '../../entities/Note';
-import { AIConversation } from '../../entities/AIConversation';
+import { Note } from '@shared/entities/Note';
+import { AIConversation } from '@shared/entities/AIConversation';
 import { DatabaseManager } from '../DatabaseManager';
 
 // 保留命名导出，与其余 Repository 的导入方式一致。

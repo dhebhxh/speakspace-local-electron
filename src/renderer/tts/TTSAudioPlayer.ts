@@ -1,4 +1,4 @@
-import { TTSAudioResult } from '../../main/tts/TTSService';
+import type { TTSAudioResult } from '@shared/types/TTSRuntimeTypes';
 
 /** 把主进程返回的 1–2 声道 PCM 样本交给 Web Audio 完整播放。 */
 export default class TTSAudioPlayer {

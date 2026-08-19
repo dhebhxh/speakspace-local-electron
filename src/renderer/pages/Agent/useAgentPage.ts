@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AgentEvent } from '../../../main/agent/AgentTypes';
+import type { AgentEvent } from '@shared/types/AgentTypes';
 import { WorkspaceItem } from '../Workspace/WorkspaceController';
 import AgentController from './AgentController';
 import reduceAgentPageEvent from './AgentPageEventReducer';

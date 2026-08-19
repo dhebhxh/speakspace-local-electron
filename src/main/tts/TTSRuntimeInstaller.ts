@@ -1,9 +1,9 @@
+import type { TTSRuntimeStatus } from '@shared/types/TTSRuntimeTypes';
 import TTSModelManager from '../AI-module/TTSModelManager';
 import { ManagedPaths } from '../runtime/ManagedPaths';
 import { TTSInstallProgress } from './TTSInstallSupport';
 import { KOKORO_TTS_MODEL_ID } from './TTSModelCatalog';
 import TTSRuntimeService from './TTSRuntimeService';
-import { TTSRuntimeStatus } from './TTSRuntimeTypes';
 
 /** 兼容旧的 Runtime:installTTS IPC；新页面统一使用 TTSModelManager。 */
 export default class TTSRuntimeInstaller {

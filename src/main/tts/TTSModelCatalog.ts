@@ -1,8 +1,10 @@
+import type { TTSBackend } from '@shared/types/TTSRuntimeTypes';
+
 export const KOKORO_TTS_MODEL_ID = 'kokoro-multi-lang-v1_0';
 export const MELO_TTS_MODEL_ID = 'vits-melo-tts-zh_en';
 export const MOSS_TTS_MODEL_ID = 'moss-tts-nano-100m-onnx';
 
-export type TTSBackend = 'sherpa-kokoro' | 'sherpa-vits' | 'moss-onnx';
+export type { TTSBackend };
 
 export type TTSArchiveInstallation = {
   kind: 'archive';

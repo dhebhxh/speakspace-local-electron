@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { KnowledgeTemplateDTO } from '../../../../main/workflow/WorkflowTypes';
+import type { KnowledgeTemplateDTO } from '@shared/types/WorkflowTypes';
 
 type KnowledgeTemplateCardProps = {
   knowledgeTemplate: KnowledgeTemplateDTO;

@@ -1,13 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
+import { AIConversation } from '@shared/entities/AIConversation';
+import { Subnote } from '@shared/entities/Subnote';
 import { AIConversationRepository } from '../database/repositories/AIConversationRepository';
 import { AIMessageRepository } from '../database/repositories/AIMessageRepository';
 import { ConversationContextRepository } from '../database/repositories/ConversationContextRepository';
-import { AIConversation } from '../entities/AIConversation';
 import { NoteRepository } from '../database/repositories/NoteRepository';
 import { SubnoteRepository } from '../database/repositories/SubnoteRepository';
-import { Subnote } from '../entities/Subnote';
 import LocalChatService from '../llm/LocalChatService';
 import { TodoExtractionService } from '../dashboard/TodoExtractionService';
 import AskAINoteService from './AskAINoteService';

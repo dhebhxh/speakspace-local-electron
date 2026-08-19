@@ -1,4 +1,4 @@
-import { Model } from './Model';
+import { Model } from '@shared/models/Model';
 
 export class LLMModel extends Model {
   quantization: string | null;

@@ -1,6 +1,6 @@
 import { Message } from 'ollama';
-import { AIMessage } from '../entities/AIMessage';
-import { Note } from '../entities/Note';
+import { AIMessage } from '@shared/entities/AIMessage';
+import { Note } from '@shared/entities/Note';
 import { clipText } from './AskAISerializer';
 import { AskAIScope } from './AskAITypes';
 

@@ -1,4 +1,4 @@
-import { GpuInfo } from './ModelRecommendationTypes';
+import type { GpuInfo } from '@shared/types/ModelRecommendationTypes';
 
 /**
  * Electron 的 getGPUInfo 在 Windows 上经常拿不到设备名，只能靠 vendorId

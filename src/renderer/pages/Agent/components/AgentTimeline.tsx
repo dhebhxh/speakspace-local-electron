@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { AgentStep } from '../../../../main/agent/AgentTypes';
+import type { AgentStep } from '@shared/types/AgentTypes';
 import { AgentPageStep } from '../AgentPageTypes';
 
 type Props = { steps: AgentPageStep[]; status: string; running: boolean };

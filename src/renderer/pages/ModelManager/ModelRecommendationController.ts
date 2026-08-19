@@ -1,4 +1,4 @@
-import { Model } from '../../../main/AI-module/Model';
+import type { Model } from '@shared/models/Model';
 
 export type SystemProfile = {
   cpuModel: string;

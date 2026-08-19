@@ -1,8 +1,11 @@
 import fs from 'fs/promises';
 import os from 'os';
+import type {
+  StorageProfile,
+  SystemProfile,
+} from '@shared/types/ModelRecommendationTypes';
 import { ManagedPaths } from '../runtime/ManagedPaths';
 import GpuProbeService, { GpuProbeResult } from './GpuProbeService';
-import { StorageProfile, SystemProfile } from './ModelRecommendationTypes';
 
 /** 仅采集推荐需要的硬件摘要，不读取用户文件或网络信息。 */
 export default class SystemProfileService {

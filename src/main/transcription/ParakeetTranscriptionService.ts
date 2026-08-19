@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import type { TranscriptionResult } from '@shared/types/TranscriptionTypes';
 import { ManagedPaths } from '../runtime/ManagedPaths';
 import AudioConversionService, {
   PreparedAudio,
@@ -7,7 +8,6 @@ import AudioConversionService, {
 import ParakeetEngine from './ParakeetEngine';
 import ParakeetRuntimeService from './ParakeetRuntimeService';
 import TranscriptionSourceResolver from './TranscriptionSourceResolver';
-import { TranscriptionResult } from './TranscriptionTypes';
 import { TranscriptionOptions } from './WhisperTranscriptionService';
 
 /** 使用 sherpa-onnx Parakeet 处理单次转写，任务管理仍由上层负责。 */

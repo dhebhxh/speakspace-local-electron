@@ -1,5 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import type {
+  TTSRuntimeDependencyStatus,
+  TTSRuntimeStatus,
+} from '@shared/types/TTSRuntimeTypes';
 import TTSModelManager from '../AI-module/TTSModelManager';
 import { ManagedPaths } from '../runtime/ManagedPaths';
 import { requireAtRuntime } from '../runtime/RuntimeRequire';
@@ -11,10 +15,6 @@ import {
   TTSBackend,
 } from './TTSModelCatalog';
 import TTSModelStorage from './TTSModelStorage';
-import {
-  TTSRuntimeDependencyStatus,
-  TTSRuntimeStatus,
-} from './TTSRuntimeTypes';
 import { getTTSSpeakers } from './TTSVoices';
 
 export const TTS_SAMPLE_RATE = 24_000;

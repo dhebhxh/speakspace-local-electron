@@ -1,13 +1,10 @@
 import fs from 'fs';
 import path from 'path';
+import type { OllamaRuntimeLocation } from '@shared/types/RuntimeTypes';
 import CommandLocator from '../runtime/CommandLocator';
 import { ManagedPaths } from '../runtime/ManagedPaths';
 
-export type OllamaRuntimeLocation =
-  | 'portable'
-  | 'installed'
-  | 'system-path'
-  | 'missing';
+export type { OllamaRuntimeLocation };
 
 export type OllamaBinaryInfo = {
   binaryPath: string | null;

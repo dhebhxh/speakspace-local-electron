@@ -1,6 +1,6 @@
+import { KnowledgeTemplate } from '@shared/entities/KnowledgeTemplate';
+import type { KnowledgeTemplateDTO } from '@shared/types/WorkflowTypes';
 import { KnowledgeTemplateRepository } from '../database/repositories/KnowledgeTemplateRepository';
-import { KnowledgeTemplate } from '../entities/KnowledgeTemplate';
-import { KnowledgeTemplateDTO } from './WorkflowTypes';
 
 /** 模板 CRUD 的验证和 DTO 转换集中在主进程，Renderer 不接收类实例。 */
 export default class WorkflowService {

@@ -42,7 +42,7 @@
     "start:main": "concurrently -k -P \"cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack --watch --config ./.erb/configs/webpack.config.main.dev.ts\" \"electronmon . -- {@}\" --",
     "start:preload": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack --config ./.erb/configs/webpack.config.preload.dev.ts",
     "start:renderer": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack serve --config ./.erb/configs/webpack.config.renderer.dev.ts",
-    "smoke:tts": "cross-env NODE_PATH=release/app/node_modules node -r ts-node/register/transpile-only scripts/tts-model-smoke.ts",
+    "smoke:tts": "cross-env NODE_PATH=release/app/node_modules node -r ts-node/register/transpile-only scripts/smoke/tts-model-smoke.ts",
     "test": "jest",
     "check:electron": "node .erb/scripts/check-electron-binary.js",
     "package:release": "node .erb/scripts/check-release-signing.js && cross-env SPEAKSPACE_RELEASE=true ts-node ./.erb/scripts/clean.js dist && npm run build && cross-env SPEAKSPACE_RELEASE=true electron-builder build --publish never && cross-env SPEAKSPACE_RELEASE=true node .erb/scripts/verify-signing.js && npm run build:dll",
@@ -80,7 +80,8 @@
     ],
     "moduleNameMapper": {
       "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/.erb/mocks/fileMock.js",
-      "\\.(css|less|sass|scss)$": "identity-obj-proxy"
+      "\\.(css|less|sass|scss)$": "identity-obj-proxy",
+      "^@shared/(.*)$": "<rootDir>/src/shared/$1"
     },
     "setupFiles": [
       "./.erb/scripts/check-build-exists.ts",

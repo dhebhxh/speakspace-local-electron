@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { TTSAudioResult } from '../../main/tts/TTSService';
+import type { TTSAudioResult } from '@shared/types/TTSRuntimeTypes';
 import TTSAudioPlayer from './TTSAudioPlayer';
 import { getPreferredSpeakerId } from './TTSPreferences';
 

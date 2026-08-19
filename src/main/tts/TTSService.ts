@@ -1,19 +1,9 @@
+import type { TTSAudioResult, TTSBackend } from '@shared/types/TTSRuntimeTypes';
 import TTSRuntimeService from './TTSRuntimeService';
 import TTSEngine from './TTSEngine';
 import { normalizeTTSInput } from './TTSInput';
-import { TTSBackend } from './TTSModelCatalog';
 
-export type TTSAudioResult = {
-  source: 'local';
-  backend: TTSBackend;
-  modelId: string;
-  modelName: string;
-  speakerId: string;
-  speakerName: string;
-  sampleRate: number;
-  channelCount: number;
-  channelData: Float32Array[];
-};
+export type { TTSAudioResult };
 
 /** 验证当前激活模型、运行时和输入后执行本地合成，结果不写入磁盘。 */
 export default class TTSService {

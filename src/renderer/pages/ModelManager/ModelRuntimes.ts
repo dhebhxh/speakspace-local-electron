@@ -1,8 +1,10 @@
-import { RuntimeStatusSummary } from '../../../main/runtime/RuntimeStatusService';
-import { RuntimeInstallSupport } from '../../../main/runtime/RuntimeInstallSupport';
-import { EmbeddingModelStatus } from '../../../main/semantic/SemanticTypes';
-import { RuntimeInfo } from './components/ModelModule';
-import { ModuleKey } from './useModelManager';
+import type {
+  RuntimeInstallSupport,
+  RuntimeStatusSummary,
+} from '@shared/types/RuntimeTypes';
+import type { EmbeddingModelStatus } from '@shared/types/SemanticTypes';
+import type { RuntimeInfo } from './components/ModelModule';
+import type { ModuleKey } from './useModelManager';
 
 export type RuntimeActions = {
   installWhisper: () => void;

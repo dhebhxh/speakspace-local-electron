@@ -1,4 +1,4 @@
-import { AgentEvent } from '../../../main/agent/AgentTypes';
+import type { AgentEvent } from '@shared/types/AgentTypes';
 import { AgentPageState } from './AgentPageTypes';
 
 /** 把主进程公开事件转换成页面状态，不在这里执行任何 IPC。 */

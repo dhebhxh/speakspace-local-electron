@@ -1,62 +1,22 @@
-import { Message, Tool } from 'ollama';
+/*
+ * 只放依赖 ollama 的主进程侧类型。跨进程契约在 @shared/types/AgentTypes，
+ * 这里顺带 re-export 一份，主进程代码仍可只 import 本文件。
+ */
+import type { Message, Tool } from 'ollama';
+import type { AgentContext } from '@shared/types/AgentTypes';
 
-export type AgentHistoryMessage = {
-  role: 'user' | 'assistant';
-  content: string;
-};
-
-export type AgentRunRequest = {
-  instruction: string;
-  workspaceId?: number | null;
-  /** 用户手动挂上的笔记，只是额外线索，不收窄检索范围。 */
-  linkedNoteIds?: number[];
-  history?: AgentHistoryMessage[];
-};
-
-export type AgentToolCallStep = {
-  type: 'tool_call';
-  tool: string;
-  args: Record<string, unknown>;
-};
-
-export type AgentToolResultStep = {
-  type: 'tool_result';
-  tool: string;
-  ok: boolean;
-  result: string;
-};
-
-export type AgentFinalStep = {
-  type: 'final';
-  text: string;
-  truncated?: boolean;
-};
-
-export type AgentStep =
-  | AgentToolCallStep
-  | AgentToolResultStep
-  | AgentFinalStep;
-
-export type AgentRunResult = {
-  finalText: string;
-  modelName: string;
-  steps: AgentStep[];
-  completed: boolean;
-};
-
-export type AgentRunStarted = { runId: string };
-
-export type AgentEvent =
-  | { runId: string; type: 'step'; step: AgentStep }
-  | { runId: string; type: 'completed'; result: AgentRunResult }
-  | { runId: string; type: 'cancelled' }
-  | { runId: string; type: 'error'; message: string };
-
-export type AgentContext = {
-  workspaceId: number | null;
-  /** 用户挂上的笔记 ID：工具用它把这些笔记额外置顶，而不是据此过滤。 */
-  linkedNoteIds?: number[];
-};
+export type {
+  AgentHistoryMessage,
+  AgentRunRequest,
+  AgentToolCallStep,
+  AgentToolResultStep,
+  AgentFinalStep,
+  AgentStep,
+  AgentRunResult,
+  AgentRunStarted,
+  AgentEvent,
+  AgentContext,
+} from '@shared/types/AgentTypes';
 
 export type AgentTool = {
   schema: Tool;

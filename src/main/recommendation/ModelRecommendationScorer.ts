@@ -1,8 +1,8 @@
-import {
+import type {
   ModelCandidate,
   RecommendedModel,
   SystemProfile,
-} from './ModelRecommendationTypes';
+} from '@shared/types/ModelRecommendationTypes';
 
 /** 根据硬件预算给候选模型评分；不负责采集硬件或 IPC。 */
 export default class ModelRecommendationScorer {

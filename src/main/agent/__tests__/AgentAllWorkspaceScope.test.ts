@@ -1,4 +1,4 @@
-import { Note } from '../../entities/Note';
+import { Note } from '@shared/entities/Note';
 import createAgentReadNoteTool from '../AgentReadNoteTool';
 import createAgentSearchNotesTool from '../AgentSearchNotesTool';
 import normalizeAgentRequest from '../AgentInput';

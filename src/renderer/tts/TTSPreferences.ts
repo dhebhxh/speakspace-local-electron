@@ -1,4 +1,4 @@
-import { TTSSpeaker } from '../../main/tts/TTSRuntimeTypes';
+import type { TTSSpeaker } from '@shared/types/TTSRuntimeTypes';
 
 const SPEAKER_KEY = 'speakspace:tts:speaker-by-model';
 

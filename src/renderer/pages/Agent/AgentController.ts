@@ -1,8 +1,8 @@
-import {
+import type {
   AgentEvent,
   AgentRunRequest,
   AgentRunStarted,
-} from '../../../main/agent/AgentTypes';
+} from '@shared/types/AgentTypes';
 import { WorkspaceItem } from '../Workspace/WorkspaceController';
 
 type AgentApi = {

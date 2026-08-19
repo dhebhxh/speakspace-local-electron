@@ -1,4 +1,4 @@
-import { Note } from '../../../../main/entities/Note';
+import { Note } from '@shared/entities/Note';
 import { DashboardCategory, DashboardCategoryKey } from './DashboardCategory';
 import { DashboardTimeUtil, RelativeUpdatedTime } from './DashboardTimeUtil';
 

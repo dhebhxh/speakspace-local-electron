@@ -1,11 +1,11 @@
 import { randomUUID } from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
+import type { TranscriptionResult } from '@shared/types/TranscriptionTypes';
 import { ManagedPaths } from '../runtime/ManagedPaths';
 import LocalTranscriptionService, {
   TranscriptionBackend,
 } from './LocalTranscriptionService';
-import { TranscriptionResult } from './TranscriptionTypes';
 
 const MAX_LIVE_SEGMENT_BYTES = 64 * 1024 * 1024;
 

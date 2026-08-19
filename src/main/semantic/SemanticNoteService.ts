@@ -1,7 +1,8 @@
 import { createHash } from 'crypto';
+import { Note } from '@shared/entities/Note';
+import type { SemanticNoteResult } from '@shared/types/SemanticTypes';
 import NoteEmbeddingRepository from '../database/repositories/NoteEmbeddingRepository';
 import { NoteRepository } from '../database/repositories/NoteRepository';
-import { Note } from '../entities/Note';
 import { rankBySimilarity } from './EmbeddingMath';
 import OllamaEmbeddingService from './OllamaEmbeddingService';
 import {
@@ -10,7 +11,6 @@ import {
   normalizeSemanticTopK,
   normalizeSemanticWorkspaceId,
 } from './SemanticNoteInput';
-import { SemanticNoteResult } from './SemanticTypes';
 
 const MAX_INDEXED_NOTES = 200;
 const EMBED_BATCH_SIZE = 16;

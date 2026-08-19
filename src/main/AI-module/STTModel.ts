@@ -1,4 +1,4 @@
-import { Model } from './Model';
+import { Model } from '@shared/models/Model';
 
 export class STTModel extends Model {
   downloadUrl: string;

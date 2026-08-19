@@ -1,6 +1,6 @@
+import type { SemanticNoteResult } from '@shared/types/SemanticTypes';
+import { Note } from '@shared/entities/Note';
 import SemanticNoteService from '../semantic/SemanticNoteService';
-import { SemanticNoteResult } from '../semantic/SemanticTypes';
-import { Note } from '../entities/Note';
 import {
   AgentNoteSource,
   listScopedAgentNotes,

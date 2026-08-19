@@ -1,0 +1,86 @@
+# 项目结构
+
+## 顶层
+
+```
+assets/            应用图标、entitlements
+config/            模型目录（llm-catalog.json / stt-catalog.json）
+docs/              文档
+  changelog/       历次改动记录（原 log/）
+  design/          UI 设计稿
+  testing/         测试说明
+scripts/           开发/验证脚本，不参与打包
+  benchmark/       TTS 基准测试脚本
+  smoke/           冒烟脚本（npm run smoke:tts）
+  dev/             本地数据库种子脚本
+src/               应用源码
+.erb/              electron-react-boilerplate 的构建配置与脚本
+release/           打包输出与 app 侧 package.json
+```
+
+## src/ 的三段划分
+
+```
+src/main/          主进程：Node/Electron 侧，可以用 fs、child_process、electron
+src/renderer/      渲染进程：浏览器侧，只能通过 preload 暴露的 IPC 访问系统能力
+src/shared/        两边都能引用的东西，不得依赖任何 Node 或 DOM API
+```
+
+### src/shared
+
+```
+entities/          领域对象（Note、Workspace、Subnote…），纯数据类
+models/            Model 基类
+types/             跨进程契约类型
+```
+
+**规则：渲染进程不得 import `src/main` 下的任何文件。** 唯一例外是
+`src/renderer/preload.d.ts` 取 `ElectronHandler` —— 那是 IPC 桥本身的类型。
+
+这条规则由 ESLint 的 `no-restricted-imports` 强制（见 `.eslintrc.js` 的
+overrides）。之前渲染层有 32 处直接 import 主进程实现文件，其中
+`RuntimeStatusService` 顶层就 `import fs from 'fs'`，只是靠 TypeScript 的
+类型擦除才没在打包时炸掉。
+
+需要在两侧共用一个类型时：把它放进 `src/shared/types/`，主进程侧文件
+按需 re-export，这样主进程原有的 import 路径不用动。
+
+## 路径别名
+
+`tsconfig.json` 的 `paths` 定义，webpack 经 `tsconfig-paths-webpack-plugin`
+自动镜像，jest 经 `package.json` 的 `moduleNameMapper` 对齐：
+
+```
+@shared/*     src/shared/*
+```
+
+跨进程共享代码用 `@shared/*`；main 和 renderer 各自内部仍用相对路径。
+
+## src/main 的分组
+
+按能力域平铺，每个目录一个职责：
+
+```
+ipc/               各功能的 IPC 注册入口
+database/          DatabaseManager、BlobStorage 与 repositories/
+AI-module/         模型管理（LLM / STT / TTS 的 Model 与 Manager）
+llm/               Ollama 运行时与本地对话
+transcription/     Whisper / Parakeet 转写
+tts/               语音合成运行时与引擎
+semantic/          嵌入与语义检索
+recommendation/    硬件探测与模型推荐
+runtime/           下载、解压、进程调用等运行时基础设施
+agent/ ask-ai/     Agent 与问答
+workflow/ workspace/ dashboard/ export/ audio/ settings/ startup/
+```
+
+## src/renderer 的分组
+
+```
+pages/<Page>/      页面：Page.tsx + Page.css + 本页 hooks/controller + components/
+layout/            应用外壳（MainLayout、Sidebar）
+components/        跨页面复用的小部件
+styles/            tokens / effects / motion / components 四层，由 App.css 汇总
+router/            路由表
+settings/ onboarding/ tts/   跨页面的功能模块
+```

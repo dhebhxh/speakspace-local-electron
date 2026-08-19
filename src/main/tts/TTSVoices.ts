@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { TTSSpeaker } from './TTSRuntimeTypes';
+import type { TTSSpeaker } from '@shared/types/TTSRuntimeTypes';
 import {
   KOKORO_TTS_MODEL_ID,
   MELO_TTS_MODEL_ID,

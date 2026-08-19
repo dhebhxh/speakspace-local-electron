@@ -1,11 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { BlobStorage } from '../database/BlobStorage';
 import {
   isWhisperLanguage,
   TranscriptionLanguage,
   TranscriptionSource,
-} from './TranscriptionTypes';
+} from '@shared/types/TranscriptionTypes';
+import { BlobStorage } from '../database/BlobStorage';
 
 /** 在主进程验证外部文件或受管录音来源，并返回实际文件路径。 */
 export default class TranscriptionSourceResolver {

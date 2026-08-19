@@ -2,7 +2,7 @@ import {
   TranscriptionLanguage,
   WHISPER_LANGUAGE_NAMES,
   WhisperLanguage,
-} from '../../../main/transcription/TranscriptionTypes';
+} from '@shared/types/TranscriptionTypes';
 
 export type LanguageOption = {
   value: WhisperLanguage;

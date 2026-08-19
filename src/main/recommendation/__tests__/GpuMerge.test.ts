@@ -1,5 +1,5 @@
+import type { GpuInfo } from '@shared/types/ModelRecommendationTypes';
 import mergeGpuCandidates from '../GpuMerge';
-import { GpuInfo } from '../ModelRecommendationTypes';
 
 function gpu(overrides: Partial<GpuInfo> & { name: string }): GpuInfo {
   return {

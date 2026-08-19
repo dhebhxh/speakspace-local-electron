@@ -1,6 +1,6 @@
-import { AIConversation } from '../entities/AIConversation';
-import { AIMessage } from '../entities/AIMessage';
-import { Note } from '../entities/Note';
+import { AIConversation } from '@shared/entities/AIConversation';
+import { AIMessage } from '@shared/entities/AIMessage';
+import { Note } from '@shared/entities/Note';
 import {
   AskAIConversationDTO,
   AskAIMessageDTO,

@@ -2,7 +2,9 @@ import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
-export type RuntimeKind = 'stt' | 'llm' | 'tts';
+import type { RuntimeKind } from '@shared/types/RuntimeTypes';
+
+export type { RuntimeKind };
 
 export type RuntimeStoragePaths = {
   runtimeRoot: string;

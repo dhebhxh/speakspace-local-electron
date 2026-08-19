@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import type { ParakeetRuntimeStatus } from '@shared/types/RuntimeTypes';
 import { STTModelManager } from '../AI-module/STTModelManager';
 import { resolveFfmpegPath } from '../runtime/FfmpegLocator';
 import { requireAtRuntime } from '../runtime/RuntimeRequire';
@@ -8,18 +9,7 @@ import ParakeetModelArchive, {
 } from './ParakeetModelArchive';
 import { PARAKEET_ENGINE } from './STTModelCatalog';
 
-export type ParakeetRuntimeStatus = {
-  ready: boolean;
-  packageInstalled: boolean;
-  packageVersion: string | null;
-  activeModelId: string | null;
-  activeModelName: string | null;
-  modelDir: string | null;
-  modelType: 'nemo_transducer';
-  requiredFiles: Record<string, string>;
-  missingFiles: string[];
-  ffmpegPath: string | null;
-};
+export type { ParakeetRuntimeStatus };
 
 type PackageResolver = () => { installed: boolean; version: string | null };
 

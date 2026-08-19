@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { AgentStep } from '@shared/types/AgentTypes';
 import { AskAIMessage, AskAINote } from '../../AskAI/AskAITypes';
 import {
   hasNoteDragPayload,
@@ -17,7 +18,6 @@ import i18n from '../../../../i18n';
 import SoundWave from '../../../components/SoundWave';
 import { StudioWorkspace } from '../StudioTypes';
 import { StudioAgentState } from '../useStudioAgent';
-import { AgentStep } from '../../../../main/agent/AgentTypes';
 import TTSPlayButton from '../../../tts/TTSPlayButton';
 import CopyButton from '../../../components/CopyButton';
 import { useAppSettings } from '../../../settings/AppSettingsProvider';

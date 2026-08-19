@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { TranscriptionLanguage } from '../../../../main/transcription/TranscriptionTypes';
+import type { TranscriptionLanguage } from '@shared/types/TranscriptionTypes';
 import { RecordingSession } from '../RecordingSession';
 import { RecordingState, SavedRecording } from '../RecordingTypes';
 import TranscriptionController from '../TranscriptionController';

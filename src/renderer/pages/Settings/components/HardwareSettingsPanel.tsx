@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SystemProfile } from '../../../../main/recommendation/ModelRecommendationTypes';
+import type { SystemProfile } from '@shared/types/ModelRecommendationTypes';
 
 /** 主进程返回的档位是中文枚举，这里映射成翻译键和 CSS 用的英文类名。 */
 const LEVELS: Record<

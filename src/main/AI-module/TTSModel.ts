@@ -1,4 +1,4 @@
-import { Model } from './Model';
+import { Model } from '@shared/models/Model';
 import { TTSBackend } from '../tts/TTSModelCatalog';
 
 export default class TTSModel extends Model {

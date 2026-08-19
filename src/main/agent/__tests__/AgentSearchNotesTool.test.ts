@@ -1,5 +1,5 @@
-import { Note } from '../../entities/Note';
-import { SemanticNoteResult } from '../../semantic/SemanticTypes';
+import { Note } from '@shared/entities/Note';
+import type { SemanticNoteResult } from '@shared/types/SemanticTypes';
 import createAgentSearchNotesTool from '../AgentSearchNotesTool';
 import { AgentContext } from '../AgentTypes';
 

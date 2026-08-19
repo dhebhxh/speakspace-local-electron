@@ -6,8 +6,8 @@ import {
   IpcRendererEvent,
   webUtils,
 } from 'electron';
+import type { TranscriptionSource } from '@shared/types/TranscriptionTypes';
 import { AgentEvent, AgentRunRequest } from './agent/AgentTypes';
-import type { TranscriptionSource } from './transcription/TranscriptionTypes';
 
 export type Channels = 'ipc-example';
 

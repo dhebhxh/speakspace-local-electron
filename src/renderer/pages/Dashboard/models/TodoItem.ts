@@ -1,4 +1,4 @@
-import { Entity } from '../../../../main/entities/Entity';
+import { Entity } from '@shared/entities/Entity';
 
 export class TodoItem extends Entity {
   private title: string;

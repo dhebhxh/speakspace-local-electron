@@ -495,7 +495,7 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor }: {
           <View key={task.id} style={styles.taskGroup}>
             <Text selectable style={[styles.taskTitle, { color: textColor }]}>{taskIndex + 1}. {task.title}</Text>
             {displayValue(task.description) && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{task.description}</Text>}
-            {displayValue(task.dueAt) && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>截止时间：{task.dueAt}</Text>}
+            {coreTimeDisplay(task.metadata, "dueAt", task.dueAt) && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>截止时间：{coreTimeDisplay(task.metadata, "dueAt", task.dueAt)}</Text>}
             <View style={styles.actionSteps}>
               {task.actionItems.length ? task.actionItems.map((item, index) => (
                 <View key={item.id} style={styles.actionStep}>
@@ -509,13 +509,13 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor }: {
             </View>
           </View>
         )) : <EmptyInsight text={empty} color={mutedColor} />}
-        {insight.getUnassignedActionItems().map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={item.dueAt ?? item.startsAt} textColor={textColor} mutedColor={mutedColor} />)}
+        {insight.getUnassignedActionItems().map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={coreTimeDisplay(item.metadata, item.dueAt ? "dueAt" : "startsAt", item.dueAt ?? item.startsAt)} textColor={textColor} mutedColor={mutedColor} />)}
       </InsightSection>
       <InsightSection title="Reminders" borderColor={borderColor} textColor={textColor}>
-        {reminders.length ? reminders.map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={item.remindAt ?? item.dueAt ?? item.startsAt} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
+        {reminders.length ? reminders.map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={coreTimeDisplay(item.metadata, item.remindAt ? "remindAt" : item.dueAt ? "dueAt" : "startsAt", item.remindAt ?? item.dueAt ?? item.startsAt)} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
       </InsightSection>
       <InsightSection title="Calendar Intents" borderColor={borderColor} textColor={textColor}>
-        {calendarIntents.length ? calendarIntents.map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={item.startsAt} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
+        {calendarIntents.length ? calendarIntents.map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={coreTimeDisplay(item.metadata, "startsAt", item.startsAt)} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
       </InsightSection>
       <Text selectable style={[styles.generatedMeta, { color: mutedColor }]}>Generated locally · {formatDate(insight.getUpdatedAt())}</Text>
       <CopyInsightsButton html={formattedHtml} position="bottom" />
@@ -556,7 +556,7 @@ function formatCoreInsightsAsHtml(insight: CoreNoteInsight): string {
     ? `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
     : `<p><em>${empty}</em></p>`;
   const tasks = insight.getTasks().length
-    ? `<ol>${insight.getTasks().map((task) => `<li><strong>${escapeHtml(task.title)}</strong>${optionalParagraph(task.description)}${optionalMeta("Due", task.dueAt)}${task.actionItems.length ? `<ol>${task.actionItems.map((item) => `<li>${escapeHtml(item.title)}${optionalParagraph(item.description)}${optionalMeta("Due", item.dueAt)}</li>`).join("")}</ol>` : `<p><em>未生成可执行步骤</em></p>`}</li>`).join("")}</ol>`
+    ? `<ol>${insight.getTasks().map((task) => `<li><strong>${escapeHtml(task.title)}</strong>${optionalParagraph(task.description)}${optionalMeta("截止时间", coreTimeDisplay(task.metadata, "dueAt", task.dueAt))}${task.actionItems.length ? `<ol>${task.actionItems.map((item) => `<li>${escapeHtml(item.title)}${optionalParagraph(item.description)}${optionalMeta("截止时间", coreTimeDisplay(item.metadata, "dueAt", item.dueAt))}</li>`).join("")}</ol>` : `<p><em>未生成可执行步骤</em></p>`}</li>`).join("")}</ol>`
     : `<p><em>${empty}</em></p>`;
   const reminders = insight.getCalendarIntents().filter((item) => item.kind === "reminder");
   const calendarIntents = insight.getCalendarIntents().filter((item) => item.kind === "calendar");
@@ -564,7 +564,38 @@ function formatCoreInsightsAsHtml(insight: CoreNoteInsight): string {
     ? `<ul>${items.map((item) => `<li><strong>${escapeHtml(item.title)}</strong>${optionalParagraph(item.description)}${optionalMeta("Time", time(item))}</li>`).join("")}</ul>`
     : `<p><em>${empty}</em></p>`;
 
-  return `<article><h1>Core Note Insights</h1><h2>Summary</h2><p>${escapeHtml(insight.getSummary() || empty)}</p><h2>Key Points</h2>${list(insight.getKeyPoints())}<h2>Tasks &amp; Action Plan</h2>${tasks}<h2>Reminders</h2>${timedList(reminders, (item) => item.remindAt ?? item.dueAt ?? item.startsAt)}<h2>Calendar Intents</h2>${timedList(calendarIntents, (item) => item.startsAt)}<hr><p><small>Generated locally · ${escapeHtml(formatDate(insight.getUpdatedAt()))}</small></p></article>`;
+  return `<article><h1>Core Note Insights</h1><h2>Summary</h2><p>${escapeHtml(insight.getSummary() || empty)}</p><h2>Key Points</h2>${list(insight.getKeyPoints())}<h2>Tasks &amp; Action Plan</h2>${tasks}<h2>Reminders</h2>${timedList(reminders, (item) => coreTimeDisplay(item.metadata, item.remindAt ? "remindAt" : item.dueAt ? "dueAt" : "startsAt", item.remindAt ?? item.dueAt ?? item.startsAt))}<h2>Calendar Intents</h2>${timedList(calendarIntents, (item) => coreTimeDisplay(item.metadata, "startsAt", item.startsAt))}<hr><p><small>Generated locally · ${escapeHtml(formatDate(insight.getUpdatedAt()))}</small></p></article>`;
+}
+
+function coreTimeDisplay(metadata: Record<string, unknown>, field: string, normalized: string | null): string | null {
+  const expressions = metadata.timeExpressions;
+  if (expressions && typeof expressions === "object" && !Array.isArray(expressions)) {
+    const value = (expressions as Record<string, unknown>)[field];
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const raw = (value as Record<string, unknown>).raw;
+      const resolvedDate = (value as Record<string, unknown>).resolvedDate;
+      const resolved = (value as Record<string, unknown>).normalized;
+      const precision = (value as Record<string, unknown>).precision;
+      if (typeof raw === "string" && displayValue(raw)) {
+        const friendlyResolved = precision === "datetime" && typeof resolved === "string"
+          ? formatResolvedTime(resolved)
+          : typeof resolvedDate === "string" ? formatResolvedDate(resolvedDate) : null;
+        return friendlyResolved && !raw.includes(friendlyResolved) ? `${raw}（${friendlyResolved}）` : raw;
+      }
+    }
+  }
+  return displayValue(normalized) ? formatResolvedTime(normalized) : null;
+}
+
+function formatResolvedDate(value: string): string | null {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${Number(match[1])}年${Number(match[2])}月${Number(match[3])}日` : null;
+}
+
+function formatResolvedTime(value: string): string {
+  const dateTime = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (dateTime) return `${Number(dateTime[1])}年${Number(dateTime[2])}月${Number(dateTime[3])}日 ${dateTime[4]}:${dateTime[5]}`;
+  return formatResolvedDate(value) ?? value;
 }
 
 function optionalParagraph(value: string | null): string {

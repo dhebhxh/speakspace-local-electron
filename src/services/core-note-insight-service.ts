@@ -3,10 +3,11 @@ import { initLlama, type LlamaContext, type RNLlamaOAICompatibleMessage } from "
 import { CoreNoteInsight, type CoreActionItem, type CoreCalendarIntent, type CoreCalendarIntentKind, type CoreTask } from "@/domain/core-note-insight/core-note-insight";
 import { CoreNoteInsightGenerationError } from "@/errors/core-note-insight-generation-error";
 import { CoreNoteInsightRepository } from "@/repositories/core-note-insight-repository";
+import { getLocalReferenceTime, resolveCoreNoteTime, type ResolvedCoreNoteTime } from "@/services/core-note-time";
 import { LlmModelService } from "@/services/llm-model-service";
 
-type OutputItem = { title?: unknown; description?: unknown; startsAt?: unknown; dueAt?: unknown };
-type OutputCalendar = OutputItem & { endsAt?: unknown; remindAt?: unknown; allDay?: unknown; timezone?: unknown };
+type OutputItem = { title?: unknown; description?: unknown; startsAtExpression?: unknown; dueAtExpression?: unknown };
+type OutputCalendar = OutputItem & { endsAtExpression?: unknown; remindAtExpression?: unknown; allDay?: unknown; timezone?: unknown };
 type OutputTask = OutputItem & { actionItems?: unknown };
 type ContentOutput = { summary?: unknown; keyPoints?: unknown };
 type IntentOutput = { tasks?: unknown; reminders?: unknown; calendarIntents?: unknown };
@@ -49,22 +50,24 @@ CALENDAR INTENTS
 - Include only an explicit event, appointment, meeting, or scheduling intent. A time expression alone is not an event and does not imply a meeting.
 
 TIME FIELDS
-- Copy an ISO-8601 value only when NOTE itself supplies one unambiguously. Otherwise use null; never calculate or guess.
-- Keep missing people, place, timezone, date, and time unknown.
+- Copy the exact natural-language time phrase from NOTE into the matching *Expression field.
+- Do not calculate calendar dates or convert relative expressions to ISO; the application does that from REFERENCE TIME.
+- Use JSON null when NOTE provides no expression for a field. Never invent a year, month, day, clock time, end time, or timezone.
+- Keep words such as "around", "afternoon", and "evening" in the copied expression.
 - For an unknown optional field, output the JSON literal null. Never output the strings "null", "unknown", "undefined", "N/A", or "none".
 
 Silently test every candidate against these rules before answering. Do not output that analysis.`;
 
 const nullableString = { anyOf: [{ type: "string" }, { type: "null" }] } as const;
-const itemProperties = { title: { type: "string" }, description: nullableString, startsAt: nullableString, dueAt: nullableString } as const;
-const itemRequired = ["title", "description", "startsAt", "dueAt"];
+const itemProperties = { title: { type: "string" }, description: nullableString, startsAtExpression: nullableString, dueAtExpression: nullableString } as const;
+const itemRequired = ["title", "description", "startsAtExpression", "dueAtExpression"];
 const contentSchema = { type: "object", properties: { summary: { type: "string" }, keyPoints: { type: "array", items: { type: "string" } } }, required: ["summary", "keyPoints"], additionalProperties: false } as const;
 const intentSchema = {
   type: "object",
   properties: {
     tasks: { type: "array", items: { type: "object", properties: { ...itemProperties, actionItems: { type: "array", items: { type: "object", properties: itemProperties, required: itemRequired, additionalProperties: false } } }, required: [...itemRequired, "actionItems"], additionalProperties: false } },
-    reminders: { type: "array", items: { type: "object", properties: { ...itemProperties, remindAt: nullableString }, required: [...itemRequired, "remindAt"], additionalProperties: false } },
-    calendarIntents: { type: "array", items: { type: "object", properties: { ...itemProperties, endsAt: nullableString, remindAt: nullableString, allDay: { type: "boolean" }, timezone: nullableString }, required: [...itemRequired, "endsAt", "remindAt", "allDay", "timezone"], additionalProperties: false } },
+    reminders: { type: "array", items: { type: "object", properties: { ...itemProperties, remindAtExpression: nullableString }, required: [...itemRequired, "remindAtExpression"], additionalProperties: false } },
+    calendarIntents: { type: "array", items: { type: "object", properties: { ...itemProperties, endsAtExpression: nullableString, remindAtExpression: nullableString, allDay: { type: "boolean" }, timezone: nullableString }, required: [...itemRequired, "endsAtExpression", "remindAtExpression", "allDay", "timezone"], additionalProperties: false } },
   },
   required: ["tasks", "reminders", "calendarIntents"], additionalProperties: false,
 } as const;
@@ -88,11 +91,14 @@ export class CoreNoteInsightService {
     try {
       console.info("[CoreInsights] Local LLM starting", { requestId, noteId, modelId: model.getId(), contextSize: CONTEXT_SIZE, stages: 2 });
       context = await initLlama({ model: modelFile.uri, n_ctx: CONTEXT_SIZE, n_batch: BATCH_SIZE });
+      const reference = getLocalReferenceTime();
+      console.info("[CoreInsights] Local time reference captured", { requestId, referenceTime: reference.localIso, timezone: reference.timezone });
       const contentRaw = await this.runStage(context, CONTENT_PROMPT, input, contentSchema, CONTENT_TOKENS, requestId, "content");
       const content = this.parseJson<ContentOutput>(contentRaw);
-      const intentRaw = await this.runStage(context, INTENT_PROMPT, input, intentSchema, INTENT_TOKENS, requestId, "intent");
+      const timeContext = `${INTENT_PROMPT}\n\nREFERENCE TIME (device local clock; context only, do not copy it unless NOTE contains that time):\n${reference.localIso}\nDEVICE TIMEZONE:\n${reference.timezone}`;
+      const intentRaw = await this.runStage(context, timeContext, input, intentSchema, INTENT_TOKENS, requestId, "intent");
       const intents = this.parseJson<IntentOutput>(intentRaw);
-      const insight = this.parse(noteId, model.getId(), content, intents, requestId);
+      const insight = this.parse(noteId, model.getId(), content, intents, requestId, reference.instant, reference.localIso, reference.timezone);
       const calendars = insight.getCalendarIntents();
       console.info("[CoreInsights] Structured output parsed", { requestId, summaryLength: insight.getSummary().length, keyPointCount: insight.getKeyPoints().length, taskCount: insight.getTasks().length, actionItemCount: insight.getActionItems().length, reminderCount: calendars.filter((x) => x.kind === "reminder").length, calendarIntentCount: calendars.filter((x) => x.kind === "calendar").length });
       await this.repository.save(insight);
@@ -148,48 +154,61 @@ export class CoreNoteInsightService {
     catch (error) { throw new CoreNoteInsightGenerationError("invalid-output", "The local model returned an unreadable result. Try again or select a stronger model.", { cause: error instanceof Error ? error : undefined }); }
   }
 
-  private parse(noteId: string, modelId: string, content: ContentOutput, parsed: IntentOutput, requestId: string): CoreNoteInsight {
+  private parse(noteId: string, modelId: string, content: ContentOutput, parsed: IntentOutput, requestId: string, reference: Date, referenceIso: string, deviceTimezone: string): CoreNoteInsight {
     if (typeof content.summary !== "string" || !Array.isArray(content.keyPoints) || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.reminders) || !Array.isArray(parsed.calendarIntents)) {
       console.warn("[CoreInsights] Incomplete structured output", { requestId });
       throw new CoreNoteInsightGenerationError("invalid-output", "The local model returned an incomplete result. Please try again.");
     }
     const now = new Date().toISOString();
     const insightId = `core-insight-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const tasks = parsed.tasks.flatMap((value, index) => this.toTask(value, noteId, insightId, index));
-    const reminders = parsed.reminders.flatMap((value, index) => this.toCalendar(value, "reminder", noteId, insightId, index));
-    const calendars = parsed.calendarIntents.flatMap((value, index) => this.toCalendar(value, "calendar", noteId, insightId, reminders.length + index));
+    const tasks = parsed.tasks.flatMap((value, index) => this.toTask(value, noteId, insightId, index, reference, referenceIso, deviceTimezone));
+    const reminders = parsed.reminders.flatMap((value, index) => this.toCalendar(value, "reminder", noteId, insightId, index, reference, referenceIso, deviceTimezone));
+    const calendars = parsed.calendarIntents.flatMap((value, index) => this.toCalendar(value, "calendar", noteId, insightId, reminders.length + index, reference, referenceIso, deviceTimezone));
     return new CoreNoteInsight(insightId, noteId, content.summary.trim(), this.uniqueStrings(content.keyPoints), tasks, [], [...reminders, ...calendars], modelId, now, now);
   }
 
-  private toTask(value: unknown, noteId: string, insightId: string, index: number): CoreTask[] {
+  private toTask(value: unknown, noteId: string, insightId: string, index: number, reference: Date, referenceIso: string, deviceTimezone: string): CoreTask[] {
     if (!value || typeof value !== "object") return [];
     const item = value as OutputTask;
     if (typeof item.title !== "string" || !item.title.trim() || !Array.isArray(item.actionItems)) return [];
     const taskTitle = item.title.trim();
+    const startsAt = resolveCoreNoteTime(item.startsAtExpression, reference);
+    const dueAt = resolveCoreNoteTime(item.dueAtExpression, reference);
     const taskId = `${insightId}-task-${index}`;
     const seen = new Set<string>();
     const actionItems = item.actionItems.flatMap((action, position) => {
-      const result = this.toAction(action, noteId, taskId, position);
+      const result = this.toAction(action, noteId, taskId, position, reference, referenceIso, deviceTimezone);
       const key = result[0] ? this.normalized(result[0].title) : "";
       if (!key || key === this.normalized(taskTitle) || seen.has(key)) return [];
       seen.add(key);
       return result;
     }).map((action, position) => ({ ...action, position }));
-    return [{ id: taskId, title: taskTitle, description: this.optional(item.description), status: "pending", startsAt: this.optional(item.startsAt), dueAt: this.optional(item.dueAt), completedAt: null, sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: { generatedBy: "local-llm" }, actionItems }];
+    return [{ id: taskId, title: taskTitle, description: this.optional(item.description), status: "pending", startsAt: startsAt?.normalized ?? null, dueAt: dueAt?.normalized ?? null, completedAt: null, sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: this.timeMetadata({ startsAt, dueAt }, referenceIso, deviceTimezone, { generatedBy: "local-llm" }), actionItems }];
   }
 
-  private toAction(value: unknown, noteId: string, taskId: string, position: number): CoreActionItem[] {
+  private toAction(value: unknown, noteId: string, taskId: string, position: number, reference: Date, referenceIso: string, deviceTimezone: string): CoreActionItem[] {
     if (!value || typeof value !== "object") return [];
     const item = value as OutputItem;
     if (typeof item.title !== "string" || !item.title.trim()) return [];
-    return [{ id: `${taskId}-action-${position}`, taskId, position, title: item.title.trim(), description: this.optional(item.description), status: "pending", startsAt: this.optional(item.startsAt), dueAt: this.optional(item.dueAt), completedAt: null, sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: { generatedBy: "local-llm-explicit-step" } }];
+    const startsAt = resolveCoreNoteTime(item.startsAtExpression, reference);
+    const dueAt = resolveCoreNoteTime(item.dueAtExpression, reference);
+    return [{ id: `${taskId}-action-${position}`, taskId, position, title: item.title.trim(), description: this.optional(item.description), status: "pending", startsAt: startsAt?.normalized ?? null, dueAt: dueAt?.normalized ?? null, completedAt: null, sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: this.timeMetadata({ startsAt, dueAt }, referenceIso, deviceTimezone, { generatedBy: "local-llm-explicit-step" }) }];
   }
 
-  private toCalendar(value: unknown, kind: CoreCalendarIntentKind, noteId: string, insightId: string, index: number): CoreCalendarIntent[] {
+  private toCalendar(value: unknown, kind: CoreCalendarIntentKind, noteId: string, insightId: string, index: number, reference: Date, referenceIso: string, deviceTimezone: string): CoreCalendarIntent[] {
     if (!value || typeof value !== "object") return [];
     const item = value as OutputCalendar;
     if (typeof item.title !== "string" || !item.title.trim()) return [];
-    return [{ id: `${insightId}-${kind}-${index}`, kind, title: item.title.trim(), description: this.optional(item.description), status: "pending", startsAt: this.optional(item.startsAt), endsAt: this.optional(item.endsAt), dueAt: this.optional(item.dueAt), remindAt: this.optional(item.remindAt), allDay: item.allDay === true, timezone: this.optional(item.timezone), sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: {} }];
+    const startsAt = resolveCoreNoteTime(item.startsAtExpression, reference);
+    const endsAt = resolveCoreNoteTime(item.endsAtExpression, reference);
+    const dueAt = resolveCoreNoteTime(item.dueAtExpression, reference);
+    const remindAt = resolveCoreNoteTime(item.remindAtExpression, reference);
+    return [{ id: `${insightId}-${kind}-${index}`, kind, title: item.title.trim(), description: this.optional(item.description), status: "pending", startsAt: startsAt?.normalized ?? null, endsAt: endsAt?.normalized ?? null, dueAt: dueAt?.normalized ?? null, remindAt: remindAt?.normalized ?? null, allDay: item.allDay === true, timezone: this.optional(item.timezone) ?? deviceTimezone, sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: this.timeMetadata({ startsAt, endsAt, dueAt, remindAt }, referenceIso, deviceTimezone) }];
+  }
+
+  private timeMetadata(values: Record<string, ResolvedCoreNoteTime | null>, referenceTime: string, deviceTimezone: string, base: Record<string, unknown> = {}): Record<string, unknown> {
+    const expressions = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== null).map(([key, value]) => [key, value]));
+    return { ...base, timeReference: referenceTime, deviceTimezone, timeExpressions: expressions };
   }
 
   private optional(value: unknown): string | null {

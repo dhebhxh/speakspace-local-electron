@@ -1,0 +1,122 @@
+export type ResolvedCoreNoteTime = {
+  raw: string;
+  normalized: string | null;
+  resolvedDate: string | null;
+  display: string;
+  precision: "month" | "date" | "datetime" | "time-only" | "unresolved";
+  isApproximate: boolean;
+};
+
+const WEEKDAYS: Record<string, number> = {
+  monday: 1, mon: 1, "周一": 1, "星期一": 1,
+  tuesday: 2, tue: 2, tues: 2, "周二": 2, "星期二": 2,
+  wednesday: 3, wed: 3, "周三": 3, "星期三": 3,
+  thursday: 4, thu: 4, thur: 4, thurs: 4, "周四": 4, "星期四": 4,
+  friday: 5, fri: 5, "周五": 5, "星期五": 5,
+  saturday: 6, sat: 6, "周六": 6, "星期六": 6,
+  sunday: 0, sun: 0, "周日": 0, "周天": 0, "星期日": 0, "星期天": 0,
+};
+const CHINESE_NUMBERS: Record<string, number> = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10, 十一: 11, 十二: 12 };
+const ENGLISH_NUMBERS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+
+export function getLocalReferenceTime(now: Date = new Date()): { instant: Date; localIso: string; timezone: string } {
+  return { instant: new Date(now), localIso: formatLocalDateTime(now), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "local" };
+}
+
+export function resolveCoreNoteTime(expression: unknown, reference: Date): ResolvedCoreNoteTime | null {
+  if (typeof expression !== "string" || !expression.trim()) return null;
+  const raw = expression.trim();
+  const lower = raw.toLocaleLowerCase();
+  if (["null", "unknown", "undefined", "none", "n/a"].includes(lower)) return null;
+  const approximate = /\b(around|about|approximately)\b|大约|约|左右/.test(lower);
+  const relativeHours = lower.match(/(?:in\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*hours?\s*(?:later|from now)?|([一二两三四五六七八九十]+)\s*小时后/);
+  if (relativeHours) {
+    const hours = relativeHours[1] ? (/^\d+$/.test(relativeHours[1]) ? Number(relativeHours[1]) : ENGLISH_NUMBERS[relativeHours[1]] ?? null) : chineseNumber(relativeHours[2]);
+    if (hours !== null) {
+      const date = new Date(reference.getTime() + hours * 60 * 60 * 1000);
+      return result(raw, formatLocalDateTime(date), formatDate(date), "datetime", approximate);
+    }
+  }
+
+  let date: Date | null = parseExplicitDate(lower);
+  if (date) {
+    // An explicit year-month-day always wins over relative words elsewhere in the phrase.
+  } else if (/\bday after tomorrow\b|后天/.test(lower)) date = addDays(startOfDay(reference), 2);
+  else if (/\btomorrow\b|明天/.test(lower)) date = addDays(startOfDay(reference), 1);
+  else if (/\btoday\b|今天/.test(lower)) date = startOfDay(reference);
+  else {
+    const weekday = findWeekday(lower);
+    if (weekday !== null) {
+      const isNext = /\bnext\b|下周|下星期/.test(lower);
+      date = weekdayDate(reference, weekday, isNext);
+    }
+  }
+
+  if (/\bnext month\b|下个月/.test(lower)) {
+    const month = new Date(reference.getFullYear(), reference.getMonth() + 1, 1);
+    return result(raw, formatMonth(month), null, "month", approximate);
+  }
+
+  const time = parseClockTime(lower);
+  if (date && time) {
+    date.setHours(time.hour, time.minute, 0, 0);
+    return result(raw, formatLocalDateTime(date), formatDate(date), "datetime", approximate);
+  }
+  if (date) return result(raw, formatDate(date), formatDate(date), "date", approximate);
+  if (time) return result(raw, null, null, "time-only", approximate);
+  return result(raw, null, null, "unresolved", approximate);
+}
+
+function result(raw: string, normalized: string | null, resolvedDate: string | null, precision: ResolvedCoreNoteTime["precision"], isApproximate: boolean): ResolvedCoreNoteTime {
+  return { raw, normalized, resolvedDate, display: raw, precision, isApproximate };
+}
+function startOfDay(value: Date): Date { return new Date(value.getFullYear(), value.getMonth(), value.getDate()); }
+function addDays(value: Date, days: number): Date { const result = new Date(value); result.setDate(result.getDate() + days); return result; }
+function weekdayDate(reference: Date, target: number, nextWeek: boolean): Date {
+  const base = startOfDay(reference);
+  if (nextWeek) {
+    const daysToMonday = (8 - base.getDay()) % 7 || 7;
+    return addDays(base, daysToMonday + ((target + 6) % 7));
+  }
+  const delta = (target - base.getDay() + 7) % 7;
+  return addDays(base, delta);
+}
+function findWeekday(value: string): number | null {
+  for (const [name, day] of Object.entries(WEEKDAYS)) if (value.includes(name)) return day;
+  return null;
+}
+function parseExplicitDate(value: string): Date | null {
+  const match = value.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/) ?? value.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+}
+function parseClockTime(value: string): { hour: number; minute: number } | null {
+  const english = value.match(/\b(1[0-2]|0?\d)(?::([0-5]\d))?\s*(am|pm)\b/);
+  if (english) {
+    let hour = Number(english[1]) % 12;
+    if (english[3] === "pm") hour += 12;
+    return { hour, minute: Number(english[2] ?? 0) };
+  }
+  const chinese = value.match(/(上午|早上|中午|下午|晚上)?\s*(\d{1,2}|[一二三四五六七八九十]+)\s*[点时](?:\s*(\d{1,2})\s*分?)?/);
+  if (!chinese) return null;
+  const parsedHour = /^\d+$/.test(chinese[2]) ? Number(chinese[2]) : chineseNumber(chinese[2]);
+  if (parsedHour === null || parsedHour > 23) return null;
+  let hour = parsedHour;
+  if ((chinese[1] === "下午" || chinese[1] === "晚上") && hour < 12) hour += 12;
+  if (chinese[1] === "中午" && hour < 11) hour += 12;
+  return { hour, minute: Number(chinese[3] ?? 0) };
+}
+function chineseNumber(value: string | undefined): number | null { return value ? (CHINESE_NUMBERS[value] ?? null) : null; }
+function pad(value: number): string { return String(value).padStart(2, "0"); }
+function formatDate(value: Date): string { return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`; }
+function formatMonth(value: Date): string { return `${value.getFullYear()}-${pad(value.getMonth() + 1)}`; }
+function formatLocalDateTime(value: Date): string {
+  const offsetMinutes = -value.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const offset = `${sign}${pad(Math.floor(Math.abs(offsetMinutes) / 60))}:${pad(Math.abs(offsetMinutes) % 60)}`;
+  return `${formatDate(value)}T${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}${offset}`;
+}

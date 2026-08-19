@@ -1,4 +1,4 @@
-import { Link } from "expo-router";
+import { Link, type Href } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -38,6 +38,9 @@ export default function Index() {
       </Link>
       <Link href="/transcription" asChild>
         <AppButton label="Start transcription" />
+      </Link>
+      <Link href={"/audio-transcription" as Href} asChild>
+        <AppButton label="Transcribe audio file" variant="secondary" />
       </Link>
     </View>
   );

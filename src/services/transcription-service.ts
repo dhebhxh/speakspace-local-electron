@@ -4,6 +4,7 @@ import {
   initParakeet,
   type ParakeetContext,
 } from "whisper.rn/index";
+import AudioConverter from "../../modules/audio-converter";
 import {
   AudioPcmStreamAdapter,
 } from "whisper.rn/realtime-transcription/adapters/AudioPcmStreamAdapter";
@@ -23,6 +24,10 @@ export const RECORDINGS_DIRECTORY_NAME = "recordings";
 type SessionCallbacks = {
   onText: (text: string) => void;
   onError: (message: string) => void;
+};
+
+type ImportedAudioCallbacks = {
+  onPrepared: () => void;
 };
 
 class PausableAudioStream implements AudioStreamInterface {
@@ -221,6 +226,138 @@ export class TranscriptionService {
 
   public async discard(): Promise<void> {
     await this.release(true);
+  }
+
+  public async transcribeFile(
+    inputUri: string,
+    callbacks: ImportedAudioCallbacks,
+    requestId = `audio-import-${Date.now()}`,
+  ): Promise<string> {
+    const startedAt = Date.now();
+    console.info("[AudioImport] Local transcription service started", { requestId });
+    if (this.transcriber !== null || this.context !== null) {
+      throw new Error("A transcription session is already active.");
+    }
+
+    const model = await this.sttModelService.getActiveModel();
+    if (model === null) {
+      console.warn("[AudioImport] No active STT model", { requestId });
+      throw new Error("Choose an active speech recognition model first.");
+    }
+    if (model.getEngine() !== "parakeet") {
+      throw new Error("The active model is not supported by this transcriber.");
+    }
+    const modelFile = this.sttModelService.resolveModelFile(model);
+    if (!modelFile.exists) {
+      console.warn("[AudioImport] Active STT model file missing", {
+        requestId,
+        modelId: model.getId(),
+      });
+      throw new Error("The active model file is missing.");
+    }
+
+    console.info("[AudioImport] Active STT model resolved", {
+      requestId,
+      modelId: model.getId(),
+      modelName: model.getName(),
+      engine: model.getEngine(),
+    });
+
+    const preparedFile = new File(
+      Paths.cache,
+      `prepared-audio-${Date.now()}.wav`,
+    );
+    let prepared: { uri: string; temporary: boolean } | null = null;
+    try {
+      const preparationStartedAt = Date.now();
+      console.info("[AudioImport] Preparing audio locally", { requestId });
+      prepared = await AudioConverter.prepareAudioAsync(
+        inputUri,
+        preparedFile.uri,
+      );
+      console.info("[AudioImport] Audio preparation completed", {
+        requestId,
+        converted: prepared.temporary,
+        durationMs: Date.now() - preparationStartedAt,
+      });
+      callbacks.onPrepared();
+      const modelLoadStartedAt = Date.now();
+      console.info("[AudioImport] Loading local STT model", { requestId });
+      this.context = await initParakeet({
+        filePath: modelFile.uri,
+        useGpu: true,
+      });
+      console.info("[AudioImport] Local STT model loaded", {
+        requestId,
+        durationMs: Date.now() - modelLoadStartedAt,
+      });
+      const inferenceStartedAt = Date.now();
+      console.info("[AudioImport] Local file inference started", { requestId });
+      const request = this.context.transcribe(prepared.uri);
+      const result = await request.promise;
+      const transcript = result.result.trim();
+      console.info("[AudioImport] Local file inference completed", {
+        requestId,
+        durationMs: Date.now() - inferenceStartedAt,
+        transcriptLength: transcript.length,
+        segmentCount: result.segments?.length ?? null,
+        totalDurationMs: Date.now() - startedAt,
+      });
+      return transcript;
+    } catch (error) {
+      console.error("[AudioImport] Local transcription service failed", {
+        requestId,
+        durationMs: Date.now() - startedAt,
+        error,
+      });
+      throw error;
+    } finally {
+      const context = this.context;
+      this.context = null;
+      await context?.release().catch((error) => {
+        console.warn("[AudioImport] Could not release STT context", { requestId, error });
+      });
+      if (prepared?.temporary && preparedFile.exists) {
+        preparedFile.delete();
+        console.info("[AudioImport] Prepared temporary WAV deleted", { requestId });
+      }
+      console.info("[AudioImport] Local transcription service released", {
+        requestId,
+        totalDurationMs: Date.now() - startedAt,
+      });
+    }
+  }
+
+  public preserveImportedAudio(inputUri: string, originalName: string): string {
+    const recordings = new Directory(Paths.document, RECORDINGS_DIRECTORY_NAME);
+    recordings.create({ idempotent: true, intermediates: true });
+    const extension = originalName.match(/\.[a-z0-9]{1,8}$/i)?.[0].toLowerCase() ?? ".audio";
+    const fileName = `imported-${Date.now()}${extension}`;
+    const destination = new File(recordings, fileName);
+    console.info("[AudioImport] Preserving original audio for note", {
+      originalName,
+      destinationName: fileName,
+    });
+    try {
+      new File(inputUri).copy(destination);
+    } catch (error) {
+      if (destination.exists) destination.delete();
+      throw error;
+    }
+    console.info("[AudioImport] Original audio preserved", {
+      destinationName: fileName,
+      sizeBytes: destination.size,
+    });
+    return `${RECORDINGS_DIRECTORY_NAME}/${fileName}`;
+  }
+
+  public deleteTemporaryImport(inputUri: string): void {
+    const file = new File(inputUri);
+    if (file.exists) {
+      const sizeBytes = file.size;
+      file.delete();
+      console.info("[AudioImport] Picker cache file deleted", { sizeBytes });
+    }
   }
 
   public deleteRecording(audioRelativePath: string): void {

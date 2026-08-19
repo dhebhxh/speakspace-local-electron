@@ -487,8 +487,26 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor }: {
       <InsightSection title="Key Points" borderColor={borderColor} textColor={textColor}>
         {insight.getKeyPoints().length ? insight.getKeyPoints().map((item, index) => <InsightRow key={`key-${index}`} title={item} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
       </InsightSection>
-      <InsightSection title="Tasks / Action Items" borderColor={borderColor} textColor={textColor}>
-        {insight.getActionItems().length ? insight.getActionItems().map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={item.dueAt ?? item.startsAt} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
+      <InsightSection title="Tasks & Action Plan" borderColor={borderColor} textColor={textColor}>
+        {insight.getTasks().length ? insight.getTasks().map((task, taskIndex) => (
+          <View key={task.id} style={styles.taskGroup}>
+            <Text selectable style={[styles.taskTitle, { color: textColor }]}>{taskIndex + 1}. {task.title}</Text>
+            {task.description && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{task.description}</Text>}
+            {task.dueAt && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>Due: {task.dueAt}</Text>}
+            <View style={styles.actionSteps}>
+              {task.actionItems.length ? task.actionItems.map((item, index) => (
+                <View key={item.id} style={styles.actionStep}>
+                  <Text selectable style={[styles.stepNumber, { color: mutedColor }]}>{index + 1}</Text>
+                  <View style={styles.stepCopy}>
+                    <Text selectable style={[styles.resultItem, { color: textColor }]}>{item.title}</Text>
+                    {item.description && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{item.description}</Text>}
+                  </View>
+                </View>
+              )) : <EmptyInsight text="未生成可执行步骤" color={mutedColor} />}
+            </View>
+          </View>
+        )) : <EmptyInsight text={empty} color={mutedColor} />}
+        {insight.getUnassignedActionItems().map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={item.dueAt ?? item.startsAt} textColor={textColor} mutedColor={mutedColor} />)}
       </InsightSection>
       <InsightSection title="Reminders" borderColor={borderColor} textColor={textColor}>
         {reminders.length ? reminders.map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={item.remindAt ?? item.dueAt ?? item.startsAt} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
@@ -649,4 +667,10 @@ const styles = StyleSheet.create({
   structuredItem: { gap: Spacing.xs, paddingVertical: Spacing.xs },
   structuredMeta: { fontSize: 12, fontVariant: ["tabular-nums"] },
   emptyInsight: { fontSize: 14, fontStyle: "italic", lineHeight: 20 },
+  taskGroup: { gap: Spacing.xs, paddingVertical: Spacing.sm },
+  taskTitle: { fontSize: 17, fontWeight: "800", lineHeight: 24 },
+  actionSteps: { gap: Spacing.sm, paddingTop: Spacing.xs, paddingLeft: Spacing.sm },
+  actionStep: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm },
+  stepNumber: { minWidth: 22, fontSize: 13, fontWeight: "800", lineHeight: 25, fontVariant: ["tabular-nums"] },
+  stepCopy: { flex: 1, gap: 2 },
 });

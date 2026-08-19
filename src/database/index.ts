@@ -9,6 +9,7 @@ import { SttModelSchemaMigration } from "./migrations/stt-model-schema-migration
 import { KnowledgeDocumentSchemaMigration } from "./migrations/knowledge-document-schema-migration";
 import { KnowledgeDocumentSchemaRepairMigration } from "./migrations/knowledge-document-schema-repair-migration";
 import { CoreNoteInsightSchemaMigration } from "./migrations/core-note-insight-schema-migration";
+import { CoreNoteTaskHierarchyMigration } from "./migrations/core-note-task-hierarchy-migration";
 
 export { DatabaseConfig } from "./config/database-config";
 export { DatabaseManager } from "./core/database-manager";
@@ -19,10 +20,12 @@ export { LlmModelSchemaMigration } from "./migrations/llm-model-schema-migration
 export { SttModelSchemaMigration } from "./migrations/stt-model-schema-migration";
 export { KnowledgeDocumentSchemaMigration } from "./migrations/knowledge-document-schema-migration";
 export { KnowledgeDocumentSchemaRepairMigration } from "./migrations/knowledge-document-schema-repair-migration";
+export { CoreNoteInsightSchemaMigration } from "./migrations/core-note-insight-schema-migration";
+export { CoreNoteTaskHierarchyMigration } from "./migrations/core-note-task-hierarchy-migration";
 export { Repository } from "./repositories/repository";
 export type { DatabaseConnection } from "./types/database-types";
 
-export const databaseConfig = new DatabaseConfig("speakspace.db", 6);
+export const databaseConfig = new DatabaseConfig("speakspace.db", 7);
 
 export const migrationRunner = new MigrationRunner([
   new InitialSchemaMigration(),
@@ -31,6 +34,7 @@ export const migrationRunner = new MigrationRunner([
   new KnowledgeDocumentSchemaMigration(),
   new KnowledgeDocumentSchemaRepairMigration(),
   new CoreNoteInsightSchemaMigration(),
+  new CoreNoteTaskHierarchyMigration(),
 ]);
 
 export const databaseManager = new DatabaseManager(

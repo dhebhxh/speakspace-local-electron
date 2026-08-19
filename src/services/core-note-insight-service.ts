@@ -5,6 +5,7 @@ import {
   type CoreActionItem,
   type CoreCalendarIntent,
   type CoreCalendarIntentKind,
+  type CoreTask,
 } from "@/domain/core-note-insight/core-note-insight";
 import { CoreNoteInsightGenerationError } from "@/errors/core-note-insight-generation-error";
 import { CoreNoteInsightRepository } from "@/repositories/core-note-insight-repository";
@@ -12,7 +13,8 @@ import { LlmModelService } from "@/services/llm-model-service";
 
 type OutputItem = { title?: unknown; description?: unknown; startsAt?: unknown; dueAt?: unknown };
 type OutputCalendar = OutputItem & { endsAt?: unknown; remindAt?: unknown; allDay?: unknown; timezone?: unknown };
-type ModelOutput = { summary?: unknown; keyPoints?: unknown; actionItems?: unknown; reminders?: unknown; calendarIntents?: unknown };
+type OutputTask = OutputItem & { actionItems?: unknown };
+type ModelOutput = { summary?: unknown; keyPoints?: unknown; tasks?: unknown; reminders?: unknown; calendarIntents?: unknown };
 
 const MODEL_CONTEXT_SIZE = 3072;
 const MODEL_BATCH_SIZE = 128;
@@ -51,8 +53,8 @@ export class CoreNoteInsightService {
       if (inputForPrompt.length < input.length) console.warn("[CoreInsights] Input truncated for context window", { requestId, originalLength: input.length, usedLength: inputForPrompt.length });
       const result = await context.completion({
         messages: [
-          { role: "system", content: "Extract faithful core note insights using only the supplied note. Never invent tasks, commitments, people, dates, times, reminders, or events. Keep empty arrays when evidence is absent. Preserve the note's primary language. Return only valid JSON." },
-          { role: "user", content: `Extract a concise summary, key points, action items, reminders, and calendar intents. An action item requires an explicit or clearly requested action. A reminder requires an explicit request or intent to remember/be notified. A calendar intent requires an explicit event, appointment, meeting, or scheduling intent. Do not convert ordinary facts into actions or events. Use null for any unknown optional value. Only return an ISO-8601 time when the source makes it explicit and unambiguous; otherwise use null. Return exactly the requested JSON schema.\n\nNOTE:\n---\n${inputForPrompt}\n---` },
+          { role: "system", content: "Extract faithful core note insights using only the supplied note. Never invent goals, commitments, people, dates, times, reminders, or events. Keep empty arrays when evidence is absent. For each grounded task, provide a short ordered plan of concrete executable action items; these steps may decompose the task but must not introduce unsupported people, facts, requirements, or deadlines. Preserve the note's primary language. Return only valid JSON." },
+          { role: "user", content: `Extract a concise summary, key points, high-level tasks with ordered action items, reminders, and calendar intents. A task is a larger outcome or goal explicitly stated or clearly requested by the note. Its actionItems are small, directly executable steps that help complete that task. Do not turn ordinary facts into tasks. A reminder requires an explicit request or intent to remember/be notified. A calendar intent requires an explicit event, appointment, meeting, or scheduling intent. Use [] for tasks when no task exists. Use null for unknown optional values. Only return an ISO-8601 time when the source makes it explicit and unambiguous; otherwise use null. Return exactly the requested JSON schema.\n\nNOTE:\n---\n${inputForPrompt}\n---` },
         ],
         response_format: {
           type: "json_schema",
@@ -63,11 +65,11 @@ export class CoreNoteInsightService {
               properties: {
                 summary: { type: "string" },
                 keyPoints: { type: "array", items: { type: "string" } },
-                actionItems: { type: "array", items: { type: "object", properties: itemProperties, required: itemRequired, additionalProperties: false } },
+                tasks: { type: "array", items: { type: "object", properties: { ...itemProperties, actionItems: { type: "array", items: { type: "object", properties: itemProperties, required: itemRequired, additionalProperties: false } } }, required: [...itemRequired, "actionItems"], additionalProperties: false } },
                 reminders: { type: "array", items: { type: "object", properties: { ...itemProperties, remindAt: nullableString }, required: [...itemRequired, "remindAt"], additionalProperties: false } },
                 calendarIntents: { type: "array", items: { type: "object", properties: { ...itemProperties, endsAt: nullableString, remindAt: nullableString, allDay: { type: "boolean" }, timezone: nullableString }, required: [...itemRequired, "endsAt", "remindAt", "allDay", "timezone"], additionalProperties: false } },
               },
-              required: ["summary", "keyPoints", "actionItems", "reminders", "calendarIntents"],
+              required: ["summary", "keyPoints", "tasks", "reminders", "calendarIntents"],
               additionalProperties: false,
             },
           },
@@ -95,23 +97,32 @@ export class CoreNoteInsightService {
     let parsed: ModelOutput;
     try { const match = raw.match(/\{[\s\S]*\}/); parsed = JSON.parse(match?.[0] ?? raw) as ModelOutput; }
     catch (error) { throw new CoreNoteInsightGenerationError("invalid-output", "The local model returned an unreadable result. Try again or select a stronger model.", { cause: error instanceof Error ? error : undefined }); }
-    if (typeof parsed.summary !== "string" || !Array.isArray(parsed.keyPoints) || !Array.isArray(parsed.actionItems) || !Array.isArray(parsed.reminders) || !Array.isArray(parsed.calendarIntents)) {
+    if (typeof parsed.summary !== "string" || !Array.isArray(parsed.keyPoints) || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.reminders) || !Array.isArray(parsed.calendarIntents)) {
       console.warn("[CoreInsights] Incomplete structured output", { requestId });
       throw new CoreNoteInsightGenerationError("invalid-output", "The local model returned an incomplete result. Please try again.");
     }
     const now = new Date().toISOString();
     const insightId = `core-insight-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const actions = parsed.actionItems.flatMap((value, index) => this.toAction(value, noteId, insightId, index));
+    const tasks = parsed.tasks.flatMap((value, index) => this.toTask(value, noteId, insightId, index));
     const reminders = parsed.reminders.flatMap((value, index) => this.toCalendar(value, "reminder", noteId, insightId, index));
     const calendars = parsed.calendarIntents.flatMap((value, index) => this.toCalendar(value, "calendar", noteId, insightId, reminders.length + index));
-    return new CoreNoteInsight(insightId, noteId, parsed.summary.trim(), this.strings(parsed.keyPoints), actions, [...reminders, ...calendars], modelId, now, now);
+    return new CoreNoteInsight(insightId, noteId, parsed.summary.trim(), this.strings(parsed.keyPoints), tasks, [], [...reminders, ...calendars], modelId, now, now);
   }
 
-  private toAction(value: unknown, noteId: string, insightId: string, index: number): CoreActionItem[] {
+  private toTask(value: unknown, noteId: string, insightId: string, index: number): CoreTask[] {
+    if (!value || typeof value !== "object") return [];
+    const item = value as OutputTask;
+    if (typeof item.title !== "string" || !item.title.trim() || !Array.isArray(item.actionItems)) return [];
+    const taskId = `${insightId}-task-${index}`;
+    const actionItems = item.actionItems.flatMap((action, position) => this.toAction(action, noteId, taskId, position));
+    return [{ id: taskId, title: item.title.trim(), description: this.optional(item.description), status: "pending", startsAt: this.optional(item.startsAt), dueAt: this.optional(item.dueAt), completedAt: null, sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: { generatedBy: "local-llm" }, actionItems }];
+  }
+
+  private toAction(value: unknown, noteId: string, taskId: string, position: number): CoreActionItem[] {
     if (!value || typeof value !== "object") return [];
     const item = value as OutputItem;
     if (typeof item.title !== "string" || !item.title.trim()) return [];
-    return [{ id: `${insightId}-action-${index}`, title: item.title.trim(), description: this.optional(item.description), status: "pending", startsAt: this.optional(item.startsAt), dueAt: this.optional(item.dueAt), completedAt: null, sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: {} }];
+    return [{ id: `${taskId}-action-${position}`, taskId, position, title: item.title.trim(), description: this.optional(item.description), status: "pending", startsAt: this.optional(item.startsAt), dueAt: this.optional(item.dueAt), completedAt: null, sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: { generatedBy: "local-llm-decomposition" } }];
   }
 
   private toCalendar(value: unknown, kind: CoreCalendarIntentKind, noteId: string, insightId: string, index: number): CoreCalendarIntent[] {

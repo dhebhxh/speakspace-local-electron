@@ -5,12 +5,14 @@ import {
   type CoreCalendarIntent,
   type CoreCalendarIntentKind,
   type CoreInsightStatus,
+  type CoreTask,
 } from "@/domain/core-note-insight/core-note-insight";
 import { DatabaseError } from "@/errors/database-error";
 
 type InsightRow = { id: string; note_id: string; summary: string; model_id: string; created_at: string; updated_at: string };
 type KeyPointRow = { content: string };
-type ActionRow = { id: string; title: string; description: string | null; status: string; starts_at: string | null; due_at: string | null; completed_at: string | null; source_note_id: string; external_system: string | null; external_id: string | null; metadata_json: string };
+type ActionRow = { id: string; task_id: string | null; position: number; title: string; description: string | null; status: string; starts_at: string | null; due_at: string | null; completed_at: string | null; source_note_id: string; external_system: string | null; external_id: string | null; metadata_json: string };
+type TaskRow = { id: string; position: number; title: string; description: string | null; status: string; starts_at: string | null; due_at: string | null; completed_at: string | null; source_note_id: string; external_system: string | null; external_id: string | null; metadata_json: string };
 type CalendarRow = { id: string; kind: string; title: string; description: string | null; status: string; starts_at: string | null; ends_at: string | null; due_at: string | null; remind_at: string | null; all_day: number; timezone: string | null; source_note_id: string; external_system: string | null; external_id: string | null; metadata_json: string };
 
 export class CoreNoteInsightRepository {
@@ -21,14 +23,16 @@ export class CoreNoteInsightRepository {
       const database = this.databaseManager.getDatabase();
       const row = await database.getFirstAsync<InsightRow>("SELECT * FROM core_note_insights WHERE note_id = ?", noteId);
       if (!row) return null;
-      const [keyPoints, actionRows, calendarRows] = await Promise.all([
+      const [keyPoints, taskRows, actionRows, calendarRows] = await Promise.all([
         database.getAllAsync<KeyPointRow>("SELECT content FROM core_note_key_points WHERE insight_id = ? ORDER BY position", row.id),
-        database.getAllAsync<ActionRow>("SELECT * FROM core_note_action_items WHERE insight_id = ? ORDER BY rowid", row.id),
+        database.getAllAsync<TaskRow>("SELECT * FROM core_note_tasks WHERE insight_id = ? ORDER BY position", row.id),
+        database.getAllAsync<ActionRow>("SELECT * FROM core_note_action_items WHERE insight_id = ? ORDER BY position", row.id),
         database.getAllAsync<CalendarRow>("SELECT * FROM core_note_calendar_intents WHERE insight_id = ? ORDER BY rowid", row.id),
       ]);
       return new CoreNoteInsight(
         row.id, row.note_id, row.summary, keyPoints.map((item) => item.content),
-        actionRows.map((item) => this.mapAction(item)),
+        taskRows.map((item) => this.mapTask(item, actionRows.filter((action) => action.task_id === item.id))),
+        actionRows.filter((item) => item.task_id === null).map((item) => this.mapAction(item)),
         calendarRows.map((item) => this.mapCalendar(item)),
         row.model_id, row.created_at, row.updated_at,
       );
@@ -50,11 +54,18 @@ export class CoreNoteInsightRepository {
         for (const [position, keyPoint] of insight.getKeyPoints().entries()) {
           await database.runAsync("INSERT INTO core_note_key_points (id, insight_id, position, content) VALUES (?, ?, ?, ?)", `${insight.getId()}-key-${position}`, insight.getId(), position, keyPoint);
         }
+        for (const [position, task] of insight.getTasks().entries()) {
+          await database.runAsync(
+            `INSERT INTO core_note_tasks (id, insight_id, position, title, description, status, starts_at, due_at, completed_at, source_note_id, external_system, external_id, metadata_json)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            task.id, insight.getId(), position, task.title, task.description, task.status, task.startsAt, task.dueAt, task.completedAt, task.sourceNoteId, task.externalSystem, task.externalId, JSON.stringify(task.metadata),
+          );
+        }
         for (const item of insight.getActionItems()) {
           await database.runAsync(
-            `INSERT INTO core_note_action_items (id, insight_id, title, description, status, starts_at, due_at, completed_at, source_note_id, external_system, external_id, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            item.id, insight.getId(), item.title, item.description, item.status, item.startsAt, item.dueAt, item.completedAt, item.sourceNoteId, item.externalSystem, item.externalId, JSON.stringify(item.metadata),
+            `INSERT INTO core_note_action_items (id, insight_id, task_id, position, title, description, status, starts_at, due_at, completed_at, source_note_id, external_system, external_id, metadata_json)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            item.id, insight.getId(), item.taskId, item.position, item.title, item.description, item.status, item.startsAt, item.dueAt, item.completedAt, item.sourceNoteId, item.externalSystem, item.externalId, JSON.stringify(item.metadata),
           );
         }
         for (const item of insight.getCalendarIntents()) {
@@ -72,7 +83,11 @@ export class CoreNoteInsightRepository {
   }
 
   private mapAction(row: ActionRow): CoreActionItem {
-    return { id: row.id, title: row.title, description: row.description, status: row.status as CoreInsightStatus, startsAt: row.starts_at, dueAt: row.due_at, completedAt: row.completed_at, sourceNoteId: row.source_note_id, externalSystem: row.external_system, externalId: row.external_id, metadata: this.parseMetadata(row.metadata_json) };
+    return { id: row.id, taskId: row.task_id, position: row.position, title: row.title, description: row.description, status: row.status as CoreInsightStatus, startsAt: row.starts_at, dueAt: row.due_at, completedAt: row.completed_at, sourceNoteId: row.source_note_id, externalSystem: row.external_system, externalId: row.external_id, metadata: this.parseMetadata(row.metadata_json) };
+  }
+
+  private mapTask(row: TaskRow, actions: ActionRow[]): CoreTask {
+    return { id: row.id, title: row.title, description: row.description, status: row.status as CoreInsightStatus, startsAt: row.starts_at, dueAt: row.due_at, completedAt: row.completed_at, sourceNoteId: row.source_note_id, externalSystem: row.external_system, externalId: row.external_id, metadata: this.parseMetadata(row.metadata_json), actionItems: actions.map((item) => this.mapAction(item)) };
   }
 
   private mapCalendar(row: CalendarRow): CoreCalendarIntent {

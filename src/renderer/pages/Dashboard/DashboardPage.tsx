@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import type { TrashActionResult } from '@shared/types/TrashTypes';
 import { RouteManager } from '../../router/RouteManager';
+import TrashUndoToast from '../../components/TrashUndoToast';
 import {
   DashboardCategory,
   DashboardCategoryKey,
@@ -27,52 +29,54 @@ export const DashboardPage: React.FC = () => {
 
   const [notes, setNotes] = useState<DashboardNoteItem[]>(INITIAL_NOTES);
   const [todos, setTodos] = useState<TodoItem[]>(INITIAL_TODOS);
+  const [trashUndo, setTrashUndo] = useState<TrashActionResult | null>(null);
+  const [trashError, setTrashError] = useState('');
 
-  React.useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const overview = await window.electron.dashboard.getDashboardOverview();
-        const fetchedNotes = overview.notes.map(
-          (n: any) =>
-            new DashboardNoteItem(
-              n.id,
-              n.workspaceId,
-              n.name,
-              n.audioRelativePath,
-              n.transcript,
-              n.isPinned,
-              n.pinnedAt,
-              n.createdAt,
-              n.updatedAt,
-              n.typeCategory,
-              n.durationSeconds,
+  const fetchDashboardData = React.useCallback(async () => {
+    try {
+      const overview = await window.electron.dashboard.getDashboardOverview();
+      const fetchedNotes = overview.notes.map(
+        (n: any) =>
+          new DashboardNoteItem(
+            n.id,
+            n.workspaceId,
+            n.name,
+            n.audioRelativePath,
+            n.transcript,
+            n.isPinned,
+            n.pinnedAt,
+            n.createdAt,
+            n.updatedAt,
+            n.typeCategory,
+            n.durationSeconds,
+          ),
+      );
+      setNotes(fetchedNotes);
+
+      if (overview.todos) {
+        const fetchedTodos = overview.todos.map(
+          (todo: any) =>
+            new TodoItem(
+              todo.id,
+              todo.title,
+              todo.dateString,
+              todo.isCompleted,
+              todo.noteId,
+              fetchedNotes
+                .find((n: DashboardNoteItem) => n.getId() === todo.noteId)
+                ?.getName(),
             ),
         );
-        setNotes(fetchedNotes);
-
-        if (overview.todos) {
-          const fetchedTodos = overview.todos.map(
-            (todo: any) =>
-              new TodoItem(
-                todo.id,
-                todo.title,
-                todo.dateString,
-                todo.isCompleted,
-                todo.noteId,
-                fetchedNotes
-                  .find((n: DashboardNoteItem) => n.getId() === todo.noteId)
-                  ?.getName(),
-              ),
-          );
-          setTodos(fetchedTodos);
-        }
-      } catch (error) {
-        console.error('Failed to load dashboard data:', error);
+        setTodos(fetchedTodos);
       }
-    };
-
-    fetchDashboardData();
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+    }
   }, []);
+
+  React.useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   // Filters and Sorting State
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,36 +93,32 @@ export const DashboardPage: React.FC = () => {
   }, [notes, todos]);
 
   // Handle Pin Toggle using OOP entity cloning and state update
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    noteId: number;
-  } | null>(null);
-
-  const handleContextMenu = (noteId: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, noteId });
-  };
-
-  const closeContextMenu = () => setContextMenu(null);
-
   const handleDeleteNote = async (noteId: number) => {
     try {
-      await window.electron.workspace.deleteNote(noteId);
+      setTrashError('');
+      const moved = (await window.electron.trash.moveNote(
+        noteId,
+      )) as TrashActionResult;
       setNotes((prev) => prev.filter((n) => n.getId() !== noteId));
       setTodos((prev) =>
         prev.filter((todo) => todo.getAssociatedNoteId() !== noteId),
       );
-    } catch (e) {
-      console.error('Failed to delete note', e);
+      setTrashUndo(moved);
+    } catch (reason) {
+      setTrashError(
+        reason instanceof Error ? reason.message : t('trash.error.move'),
+      );
     }
-    closeContextMenu();
   };
 
-  React.useEffect(() => {
-    window.addEventListener('click', closeContextMenu);
-    return () => window.removeEventListener('click', closeContextMenu);
-  }, []);
+  const undoDeleteNote = async () => {
+    if (!trashUndo) return;
+    await window.electron.trash.restore({
+      itemType: 'note',
+      id: trashUndo.id,
+    });
+    await fetchDashboardData();
+  };
 
   const handleTogglePin = async (noteId: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -234,41 +234,26 @@ export const DashboardPage: React.FC = () => {
             onSortChange={setSortOrder}
             onTogglePin={handleTogglePin}
             onSelectNote={handleSelectNote}
-            onContextMenu={handleContextMenu}
+            onDelete={handleDeleteNote}
           />
         </section>
       </main>
-      {contextMenu && (
-        <button
-          type="button"
-          className="btn-plain"
-          style={{
-            position: 'fixed',
-            top: contextMenu.y,
-            left: contextMenu.x,
-            backgroundColor: '#fff',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            borderRadius: '6px',
-            padding: '8px 0',
-            zIndex: 9999,
-            cursor: 'pointer',
-            minWidth: '120px',
-            border: 'none',
-          }}
-          onClick={() => handleDeleteNote(contextMenu.noteId)}
-        >
-          <div
-            style={{
-              padding: '8px 16px',
-              color: '#ff4d4f',
-              fontSize: '14px',
-              fontWeight: 500,
-            }}
-            className="context-menu-item"
-          >
-            {t('dashboard.notes.contextMenu.delete', 'Delete note')}
-          </div>
-        </button>
+      {trashError && (
+        <p className="dashboard-trash-error" role="alert">
+          {trashError}
+        </p>
+      )}
+      {trashUndo && (
+        <TrashUndoToast
+          dismissLabel={t('trash.action.dismiss')}
+          message={t('trash.notice.noteMoved', {
+            name: trashUndo.name,
+          })}
+          onDismiss={() => setTrashUndo(null)}
+          onUndo={undoDeleteNote}
+          undoLabel={t('trash.action.undo')}
+          undoingLabel={t('trash.action.restoring')}
+        />
       )}
     </div>
   );

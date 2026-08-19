@@ -31,4 +31,5 @@ jobs:
           npm run package
           npm run lint
           npm exec tsc
+          npm run test:trash:electron
           npm test

@@ -1,3 +1,4 @@
+import Database from 'better-sqlite3';
 import { DatabaseManager } from '../DatabaseManager';
 
 export interface TodoData {
@@ -11,17 +12,16 @@ export interface TodoData {
 }
 
 export class TodoRepository {
-  private dbManager: DatabaseManager;
+  private database: Database.Database;
 
-  constructor() {
-    this.dbManager = DatabaseManager.getInstance();
+  constructor(database = DatabaseManager.getInstance().getDatabase()) {
+    this.database = database;
   }
 
   public createTodo(todo: TodoData): TodoData {
-    const db = this.dbManager.getDatabase();
     const now = new Date().toISOString();
 
-    const stmt = db.prepare(`
+    const stmt = this.database.prepare(`
             INSERT INTO todos (note_id, title, date_string, is_completed, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)
         `);
@@ -44,9 +44,14 @@ export class TodoRepository {
   }
 
   public getTodosByNoteId(noteId: number): TodoData[] {
-    const db = this.dbManager.getDatabase();
-    const stmt = db.prepare(`
-            SELECT * FROM todos WHERE note_id = ? ORDER BY created_at ASC
+    const stmt = this.database.prepare(`
+            SELECT todos.* FROM todos
+            JOIN notes ON notes.id = todos.note_id
+            JOIN workspaces ON workspaces.id = notes.workspace_id
+            WHERE todos.note_id = ?
+              AND notes.trashed_at IS NULL
+              AND workspaces.trashed_at IS NULL
+            ORDER BY todos.created_at ASC
         `);
 
     const rows = stmt.all(noteId) as any[];
@@ -54,9 +59,13 @@ export class TodoRepository {
   }
 
   public getAllTodos(): TodoData[] {
-    const db = this.dbManager.getDatabase();
-    const stmt = db.prepare(`
-            SELECT * FROM todos ORDER BY created_at DESC
+    const stmt = this.database.prepare(`
+            SELECT todos.* FROM todos
+            JOIN notes ON notes.id = todos.note_id
+            JOIN workspaces ON workspaces.id = notes.workspace_id
+            WHERE notes.trashed_at IS NULL
+              AND workspaces.trashed_at IS NULL
+            ORDER BY todos.created_at DESC
         `);
 
     const rows = stmt.all() as any[];
@@ -64,10 +73,9 @@ export class TodoRepository {
   }
 
   public updateTodoStatus(id: number, isCompleted: boolean): void {
-    const db = this.dbManager.getDatabase();
     const now = new Date().toISOString();
 
-    const stmt = db.prepare(`
+    const stmt = this.database.prepare(`
             UPDATE todos SET is_completed = ?, updated_at = ? WHERE id = ?
         `);
 
@@ -75,8 +83,7 @@ export class TodoRepository {
   }
 
   public deleteTodosByNoteId(noteId: number): void {
-    const db = this.dbManager.getDatabase();
-    const stmt = db.prepare(`
+    const stmt = this.database.prepare(`
             DELETE FROM todos WHERE note_id = ?
         `);
     stmt.run(noteId);

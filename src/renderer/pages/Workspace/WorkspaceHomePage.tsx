@@ -6,7 +6,8 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import type { TrashActionResult } from '@shared/types/TrashTypes';
 import { WorkspaceController, WorkspaceItem } from './WorkspaceController';
 import WorkspaceSuggestionCard from './WorkspaceSuggestionCard';
 import {
@@ -14,6 +15,7 @@ import {
   WorkspaceSuggestionController,
 } from './WorkspaceSuggestionController';
 import useSpotlight from '../../components/useSpotlight';
+import TrashUndoToast from '../../components/TrashUndoToast';
 import './WorkspaceHomePage.css';
 
 const workspaceController = new WorkspaceController();
@@ -34,6 +36,7 @@ export default function WorkspaceHomePage({
 }: WorkspaceHomePageProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   // 卡片跟随光标的柔光。写的是 CSS 变量，不进 React 状态，
   // 因此 pointermove 再密也不会触发重渲染。
   const spotlight = useSpotlight();
@@ -42,6 +45,11 @@ export default function WorkspaceHomePage({
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [trashUndo, setTrashUndo] = useState<TrashActionResult | null>(null);
+  const [restoredWorkspace, setRestoredWorkspace] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [suggestion, setSuggestion] = useState<WorkspaceSuggestion | null>(
     null,
   );
@@ -70,6 +78,26 @@ export default function WorkspaceHomePage({
   useEffect(() => {
     loadWorkspaces();
   }, [loadWorkspaces]);
+
+  useEffect(() => {
+    const routedUndo = (
+      location.state as { trashUndo?: TrashActionResult } | null
+    )?.trashUndo;
+    if (routedUndo?.itemType === 'workspace') {
+      setTrashUndo(routedUndo);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.pathname, location.state, navigate]);
+
+  const undoWorkspaceMove = async () => {
+    if (!trashUndo) return;
+    const restored = (await window.electron.trash.restore({
+      itemType: 'workspace',
+      id: trashUndo.id,
+    })) as TrashActionResult;
+    await loadWorkspaces();
+    setRestoredWorkspace({ id: restored.id, name: restored.name });
+  };
 
   const createWorkspace = async (event: FormEvent) => {
     event.preventDefault();
@@ -154,6 +182,22 @@ export default function WorkspaceHomePage({
         </p>
       )}
 
+      {restoredWorkspace && (
+        <div className="workspace-home-restored" role="status">
+          <span>
+            {t('trash.notice.workspaceRestored', {
+              name: restoredWorkspace.name,
+            })}
+          </span>
+          <button
+            onClick={() => navigate(`/Workspace/${restoredWorkspace.id}`)}
+            type="button"
+          >
+            {t('trash.action.view')}
+          </button>
+        </div>
+      )}
+
       <div className="workspace-home-section-heading">
         <div>
           <h2>
@@ -221,6 +265,19 @@ export default function WorkspaceHomePage({
             </button>
           ))}
         </div>
+      )}
+
+      {trashUndo && (
+        <TrashUndoToast
+          dismissLabel={t('trash.action.dismiss')}
+          message={t('trash.notice.workspaceMoved', {
+            name: trashUndo.name,
+          })}
+          onDismiss={() => setTrashUndo(null)}
+          onUndo={undoWorkspaceMove}
+          undoLabel={t('trash.action.undo')}
+          undoingLabel={t('trash.action.restoring')}
+        />
       )}
     </section>
   );

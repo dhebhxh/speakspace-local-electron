@@ -25,6 +25,7 @@ import StudioReadinessGate from './components/StudioReadinessGate';
 import { StudioWorkspace } from './StudioTypes';
 import useStudioReadiness from './useStudioReadiness';
 import useOnboardingActive from '../../onboarding/useOnboardingActive';
+import TrashUndoToast from '../../components/TrashUndoToast';
 import '../AskAI/AskAIPage.css';
 import '../AskAI/AskAIChat.css';
 import '../AskAI/AskAIDialog.css';
@@ -33,6 +34,14 @@ import './StudioPage.css';
 type Engine = {
   session: RecordingSession;
   transcription: TranscriptionController;
+};
+
+type NoteTrashUndo = {
+  note: AskAINote;
+  linkedNotes: AskAINote[];
+  sourceIndex: number;
+  wasPreviewed: boolean;
+  wasSelected: boolean;
 };
 
 /** 单次提问最多带多少条笔记，与后端整工作区检索的上限保持一致。 */
@@ -142,41 +151,52 @@ export default function StudioPage() {
   const [titlePending, setTitlePending] = useState(false);
   const [recordError, setRecordError] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [trashUndo, setTrashUndo] = useState<NoteTrashUndo | null>(null);
+  const [trashError, setTrashError] = useState('');
+  const preserveLinksOnSelectionChange = useRef(false);
   const startedAtRef = useRef<number | null>(null);
 
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    noteId: number;
-  } | null>(null);
-
-  const handleContextMenu = (noteId: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, noteId });
-  };
-
-  const closeContextMenu = () => setContextMenu(null);
-
   const handleDeleteNote = async (noteId: number) => {
+    const note = page.notes.find((item) => item.id === noteId);
+    if (!note) return;
+    const undo: NoteTrashUndo = {
+      note,
+      linkedNotes,
+      sourceIndex: page.sources.findIndex((item) => item.id === noteId),
+      wasPreviewed: previewNoteId === noteId,
+      wasSelected: page.selectedNote?.id === noteId,
+    };
+
     try {
-      await window.electron.workspace.deleteNote(noteId);
-      if (page.selectedNote?.id === noteId) {
-        page.selectNote(-1);
-      }
-      if (previewNoteId === noteId) {
-        setPreviewNoteId(null);
-      }
+      setTrashError('');
+      await window.electron.trash.moveNote(noteId);
+      setLinkedNotes((current) => current.filter((item) => item.id !== noteId));
+      page.removeSourceNote(noteId);
+      if (undo.wasPreviewed) setPreviewNoteId(null);
+      if (undo.wasSelected) preserveLinksOnSelectionChange.current = true;
       await page.reloadNotes();
-    } catch (e) {
-      console.error('Failed to delete note', e);
+      setTrashUndo(undo);
+    } catch (reason) {
+      setTrashError(
+        reason instanceof Error ? reason.message : t('trash.error.move'),
+      );
     }
-    closeContextMenu();
   };
 
-  useEffect(() => {
-    window.addEventListener('click', closeContextMenu);
-    return () => window.removeEventListener('click', closeContextMenu);
-  }, []);
+  const undoDeleteNote = async () => {
+    if (!trashUndo) return;
+    const undo = trashUndo;
+    await window.electron.trash.restore({
+      itemType: 'note',
+      id: undo.note.id,
+    });
+    if (undo.wasSelected) preserveLinksOnSelectionChange.current = true;
+    await page.reloadNotes(undo.wasSelected ? undo.note.id : undefined);
+    setLinkedNotes(undo.linkedNotes);
+    if (undo.wasPreviewed) setPreviewNoteId(undo.note.id);
+    if (undo.sourceIndex >= 0)
+      page.restoreSourceNote(undo.note, undo.sourceIndex);
+  };
 
   const recordingActive =
     snapshot.state === RecordingState.Recording ||
@@ -225,6 +245,10 @@ export default function StudioPage() {
   // 只依赖笔记 id：笔记列表刷新导致对象身份变化时，不应清掉用户手动挂上的关联。
   const selectedNoteId = page.selectedNote?.id ?? null;
   useEffect(() => {
+    if (preserveLinksOnSelectionChange.current) {
+      preserveLinksOnSelectionChange.current = false;
+      return;
+    }
     const note = page.notes.find((item) => item.id === selectedNoteId) ?? null;
     setLinkedNotes(note ? [note] : []);
     setLinkedWorkspaceIds([]);
@@ -419,13 +443,15 @@ export default function StudioPage() {
 
   const uploadAudio = useCallback(() => {
     setRecordError(null);
-    engine.transcription.pickFileAndStart({ skipConfirmation: true }).catch((reason: unknown) => {
-      setRecordError(
-        reason instanceof Error
-          ? reason.message
-          : t('studio.recording.uploadError'),
-      );
-    });
+    engine.transcription
+      .pickFileAndStart({ skipConfirmation: true })
+      .catch((reason: unknown) => {
+        setRecordError(
+          reason instanceof Error
+            ? reason.message
+            : t('studio.recording.uploadError'),
+        );
+      });
   }, [engine, t]);
 
   // 上传文件转录完成后自动弹出复核窗口。
@@ -597,7 +623,7 @@ export default function StudioPage() {
         onSelectNote={page.selectNote}
         onPreviewNote={openPreview}
         onOpenConversation={page.openConversation}
-        onContextMenu={handleContextMenu}
+        onDeleteNote={handleDeleteNote}
       />
 
       <StudioChatPanel
@@ -681,36 +707,23 @@ export default function StudioPage() {
         />
       )}
 
-      {contextMenu && (
-        <button
-          type="button"
-          className="btn-plain"
-          style={{
-            position: 'fixed',
-            top: contextMenu.y,
-            left: contextMenu.x,
-            backgroundColor: '#fff',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            borderRadius: '6px',
-            padding: '8px 0',
-            zIndex: 9999,
-            cursor: 'pointer',
-            minWidth: '120px',
-            border: 'none',
-          }}
-          onClick={() => handleDeleteNote(contextMenu.noteId)}
-        >
-          <div
-            style={{
-              padding: '8px 16px',
-              color: '#ff4d4f',
-              fontSize: '14px',
-              fontWeight: 500,
-            }}
-          >
-            {t('studio.action.deleteNote')}
-          </div>
-        </button>
+      {trashError && (
+        <p className="studio-trash-error" role="alert">
+          {trashError}
+        </p>
+      )}
+
+      {trashUndo && (
+        <TrashUndoToast
+          dismissLabel={t('trash.action.dismiss')}
+          message={t('trash.notice.noteMoved', {
+            name: trashUndo.note.name,
+          })}
+          onDismiss={() => setTrashUndo(null)}
+          onUndo={undoDeleteNote}
+          undoLabel={t('trash.action.undo')}
+          undoingLabel={t('trash.action.restoring')}
+        />
       )}
     </section>
   );

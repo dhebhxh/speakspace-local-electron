@@ -5,6 +5,7 @@ import { NoteItem, WorkspaceController } from '../WorkspaceController';
 import { WorkspaceTemplate } from '../WorkspaceWorkflowController';
 import KnowledgeOutputPanel from './KnowledgeOutputPanel';
 import WorkspaceAudioPlayer from './WorkspaceAudioPlayer';
+import TrashCanButton from '../../../components/TrashCanButton';
 
 type Props = {
   workspaceId: number;
@@ -13,7 +14,7 @@ type Props = {
   generating: boolean;
   isSelected?: boolean;
   onToggleSelection?: (noteId: number) => void;
-  onContextMenu?: (noteId: number, e: React.MouseEvent) => void;
+  onDelete: (noteId: number) => void;
   onGenerate(noteId: number, templateId: number): Promise<void>;
 };
 
@@ -25,7 +26,7 @@ export default function WorkspaceNoteCard({
   generating,
   isSelected = false,
   onToggleSelection,
-  onContextMenu,
+  onDelete,
   onGenerate,
 }: Props) {
   const { t, i18n } = useTranslation();
@@ -47,7 +48,6 @@ export default function WorkspaceNoteCard({
     <article
       className={`workspace-detail-note ${isSelected ? 'selected' : ''}`}
       id={`workspace-note-${note.id}`}
-      onContextMenu={(e) => onContextMenu && onContextMenu(note.id, e)}
     >
       <header className="workspace-note-head">
         {onToggleSelection && (
@@ -201,6 +201,16 @@ export default function WorkspaceNoteCard({
           )}
         </section>
       </div>
+
+      <footer className="workspace-note-footer">
+        <TrashCanButton
+          label={t('trash.action.moveNote')}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete(note.id);
+          }}
+        />
+      </footer>
     </article>
   );
 }

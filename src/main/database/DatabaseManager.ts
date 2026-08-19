@@ -28,6 +28,7 @@ export class DatabaseManager {
 
     this.createCoreTables();
     this.ensureWorkspaceLastOpenedColumn();
+    this.ensureTrashColumns();
     this.cleanupOrphanedConversations();
   }
 
@@ -78,7 +79,8 @@ export class DatabaseManager {
                 last_opened_at TEXT,
 
                 created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+                trashed_at TEXT
             );
 
 
@@ -100,6 +102,7 @@ export class DatabaseManager {
 
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
+                trashed_at TEXT,
 
                 FOREIGN KEY(workspace_id)
                     REFERENCES workspaces(id)
@@ -271,5 +274,29 @@ export class DatabaseManager {
         'ALTER TABLE workspaces ADD COLUMN last_opened_at TEXT',
       );
     }
+  }
+
+  /**
+   * Existing local databases gain nullable recovery timestamps in place. NULL
+   * means active; a timestamp means the row is recoverable through Trash.
+   */
+  private ensureTrashColumns(): void {
+    const ensureColumn = (table: 'workspaces' | 'notes') => {
+      const columns = this.database
+        .prepare(`PRAGMA table_info(${table})`)
+        .all() as Array<{ name: string }>;
+      if (!columns.some((column) => column.name === 'trashed_at')) {
+        this.database.exec(`ALTER TABLE ${table} ADD COLUMN trashed_at TEXT`);
+      }
+    };
+
+    ensureColumn('workspaces');
+    ensureColumn('notes');
+    this.database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_workspaces_trashed_at
+        ON workspaces(trashed_at);
+      CREATE INDEX IF NOT EXISTS idx_notes_trashed_at
+        ON notes(trashed_at);
+    `);
   }
 }

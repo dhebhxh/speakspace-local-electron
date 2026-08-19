@@ -46,7 +46,7 @@ export class NoteRepository implements Repository<Note> {
     const statement = this.database.prepare(`
             SELECT *
             FROM notes
-            WHERE id = ?
+            WHERE id = ? AND trashed_at IS NULL
         `);
 
     const row = statement.get(id) as any;
@@ -62,7 +62,7 @@ export class NoteRepository implements Repository<Note> {
     const statement = this.database.prepare(`
             SELECT *
             FROM notes
-            WHERE workspace_id = ?
+            WHERE workspace_id = ? AND trashed_at IS NULL
             ORDER BY updated_at DESC
         `);
 
@@ -73,9 +73,12 @@ export class NoteRepository implements Repository<Note> {
 
   public findAll(): Note[] {
     const statement = this.database.prepare(`
-            SELECT *
+            SELECT notes.*
             FROM notes
-            ORDER BY updated_at DESC
+            JOIN workspaces ON workspaces.id = notes.workspace_id
+            WHERE notes.trashed_at IS NULL
+              AND workspaces.trashed_at IS NULL
+            ORDER BY notes.updated_at DESC
         `);
     const rows = statement.all() as any[];
 
@@ -93,7 +96,7 @@ export class NoteRepository implements Repository<Note> {
                 is_pinned = ?,
                 pinned_at = ?,
                 updated_at = ?
-            WHERE id = ?
+            WHERE id = ? AND trashed_at IS NULL
         `);
 
     const result = statement.run(
@@ -126,7 +129,10 @@ export class NoteRepository implements Repository<Note> {
     const statement = this.database.prepare(`
             SELECT 1
             FROM notes
-            WHERE id = ?
+            JOIN workspaces ON workspaces.id = notes.workspace_id
+            WHERE notes.id = ?
+              AND notes.trashed_at IS NULL
+              AND workspaces.trashed_at IS NULL
             LIMIT 1
         `);
 

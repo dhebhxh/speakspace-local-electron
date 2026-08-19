@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppSettings } from '../../settings/SettingsController';
 import { useAppSettings } from '../../settings/AppSettingsProvider';
@@ -8,9 +8,16 @@ import HardwareSettingsPanel from './components/HardwareSettingsPanel';
 import LanguageSettingsPanel from './components/LanguageSettingsPanel';
 import OnboardingSettingsPanel from './components/OnboardingSettingsPanel';
 import ThemeSettingsPanel from './components/ThemeSettingsPanel';
+import TrashSettingsPanel from './components/TrashSettingsPanel';
 import './SettingsPage.css';
 
-type CategoryId = 'appearance' | 'language' | 'agent' | 'hardware' | 'guide';
+type CategoryId =
+  | 'appearance'
+  | 'language'
+  | 'agent'
+  | 'hardware'
+  | 'trash'
+  | 'guide';
 
 const CATEGORIES: Array<{
   id: CategoryId;
@@ -43,6 +50,12 @@ const CATEGORIES: Array<{
     glyph: '▣',
   },
   {
+    id: 'trash',
+    labelKey: 'settings.category.trash',
+    descKey: 'settings.category.trash.desc',
+    glyph: '♲',
+  },
+  {
     id: 'guide',
     labelKey: 'settings.category.guide',
     descKey: 'settings.category.guide.desc',
@@ -57,8 +70,25 @@ export default function SettingsPage() {
     useAppSettings();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [trashCount, setTrashCount] = useState(0);
   const [activeCategory, setActiveCategory] =
     useState<CategoryId>('appearance');
+
+  useEffect(() => {
+    let cancelled = false;
+    window.electron.trash
+      .count()
+      .then((count) => {
+        if (!cancelled) setTrashCount(Number(count));
+        return null;
+      })
+      .catch(() => {
+        if (!cancelled) setTrashCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   let statusText = t('settings.status.synced');
   if (loading) statusText = t('settings.status.loading');
@@ -119,8 +149,18 @@ export default function SettingsPage() {
               <span className="settings-nav-glyph" aria-hidden="true">
                 {category.glyph}
               </span>
-              <span>
-                <strong>{t(category.labelKey)}</strong>
+              <span className="settings-nav-copy">
+                <strong>
+                  <span>{t(category.labelKey)}</span>
+                  {category.id === 'trash' && trashCount > 0 && (
+                    <span
+                      aria-label={t('trash.badge.label', { count: trashCount })}
+                      className="settings-nav-badge"
+                    >
+                      {trashCount > 99 ? '99+' : trashCount}
+                    </span>
+                  )}
+                </strong>
                 <small>{t(category.descKey)}</small>
               </span>
             </button>
@@ -161,6 +201,10 @@ export default function SettingsPage() {
           )}
 
           {activeCategory === 'hardware' && <HardwareSettingsPanel />}
+
+          {activeCategory === 'trash' && (
+            <TrashSettingsPanel onCountChange={setTrashCount} />
+          )}
 
           {activeCategory === 'guide' && <OnboardingSettingsPanel />}
         </div>

@@ -21,6 +21,8 @@ export default class WorkspaceSuggestionService {
           GROUP_CONCAT(COALESCE(notes.name, '') || ' ' || SUBSTR(notes.transcript, 1, 400), ' ') AS content
         FROM workspaces
         LEFT JOIN notes ON notes.workspace_id = workspaces.id
+          AND notes.trashed_at IS NULL
+        WHERE workspaces.trashed_at IS NULL
         GROUP BY workspaces.id
         ORDER BY COALESCE(workspaces.last_opened_at, workspaces.created_at) DESC,
           workspaces.id DESC

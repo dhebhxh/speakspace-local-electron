@@ -6,6 +6,7 @@ import {
   DashboardCategory,
   DashboardCategoryKey,
 } from '../models/DashboardCategory';
+import TrashCanButton from '../../../components/TrashCanButton';
 
 interface NoteListTableProps {
   notes: DashboardNoteItem[];
@@ -17,7 +18,7 @@ interface NoteListTableProps {
   onSortChange: (order: 'updated' | 'created') => void;
   onTogglePin: (noteId: number, e: React.MouseEvent) => void;
   onSelectNote: (noteId: number) => void;
-  onContextMenu?: (noteId: number, e: React.MouseEvent) => void;
+  onDelete: (noteId: number) => void;
 }
 
 export const NoteListTable: React.FC<NoteListTableProps> = ({
@@ -30,7 +31,7 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
   onSortChange,
   onTogglePin,
   onSelectNote,
-  onContextMenu,
+  onDelete,
 }) => {
   const { t } = useTranslation();
 
@@ -129,12 +130,15 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
               <th className="th-updated">
                 {t('dashboard.notes.column.updated')}
               </th>
+              <th className="th-actions">
+                <span className="sr-only">{t('trash.column.actions')}</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {notes.length === 0 ? (
               <tr>
-                <td colSpan={6} className="no-data-cell">
+                <td colSpan={7} className="no-data-cell">
                   <div className="empty-table-state">
                     <div className="empty-icon">📂</div>
                     <p>{t('dashboard.notes.empty')}</p>
@@ -151,9 +155,6 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
                     key={note.getId()}
                     className={`note-row ${isPinned ? 'pinned-row' : ''}`}
                     onClick={() => onSelectNote(note.getId())}
-                    onContextMenu={(e) =>
-                      onContextMenu && onContextMenu(note.getId(), e)
-                    }
                   >
                     <td
                       className="td-star"
@@ -192,6 +193,15 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
                           ? t(updatedTime.labelKey, { time: updatedTime.time })
                           : updatedTime.absoluteText}
                       </span>
+                    </td>
+                    <td className="td-actions">
+                      <TrashCanButton
+                        label={t('trash.action.moveNote')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onDelete(note.getId());
+                        }}
+                      />
                     </td>
                   </tr>
                 );

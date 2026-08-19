@@ -283,6 +283,9 @@ ${note.getTranscript()}`;
 
   private attachSources(conversationId: number, noteIds: number[]): void {
     noteIds.forEach((noteId) => {
+      // A stale renderer may still submit an id after the Note was moved to
+      // Trash. Keep the conversation, but never reattach unavailable content.
+      if (!this.noteRepository.findById(noteId)) return;
       if (!this.contextRepository.exists(conversationId, noteId)) {
         this.contextRepository.addContext(conversationId, noteId);
       }

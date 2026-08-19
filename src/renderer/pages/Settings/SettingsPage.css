@@ -16,8 +16,9 @@
 .settings-nav-item:hover { background: var(--surface-soft); }
 .settings-nav-item.is-active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, var(--surface-strong)); }
 .settings-nav-item > span:last-child { min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
-.settings-nav-item strong { font-size: var(--fs-lg); }
+.settings-nav-item strong { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: var(--fs-lg); }
 .settings-nav-item small { color: var(--muted); font-size: var(--fs-sm); }
+.settings-nav-badge { display: inline-grid; min-width: 1.6rem; height: 1.6rem; padding: 0 0.4rem; place-items: center; flex: none; color: var(--danger-contrast); border-radius: var(--radius-pill); background: var(--danger); font-size: var(--fs-xs); font-weight: 800; }
 .settings-nav-glyph { display: grid; width: 40px; height: 40px; place-items: center; flex: none; color: var(--accent-contrast); border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--accent-strong)); font-size: 1rem; font-weight: 800; }
 .settings-content { display: grid; gap: 1rem; min-width: 0; }
 .settings-panel-icon.language-icon { background: linear-gradient(135deg, var(--info), var(--accent)); }

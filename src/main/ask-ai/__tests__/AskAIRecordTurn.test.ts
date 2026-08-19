@@ -61,7 +61,9 @@ function buildService() {
       getSources: () => [],
     } as never,
     chatService: { chat: jest.fn() } as never,
-    noteRepository: { findById: () => null } as never,
+    noteRepository: {
+      findById: (id: number) => (id === 7 ? { id } : null),
+    } as never,
     subnoteRepository: { findAllByNote: () => [] } as never,
     todoExtractionService: { extractTodosForNote: jest.fn() } as never,
   });
@@ -121,7 +123,7 @@ describe('AskAIService.recordTurn（智能体问答落库）', () => {
     const first = service.recordTurn({
       question: '问题',
       answer: '回答',
-      noteIds: [7, 7, 0, -1],
+      noteIds: [7, 7, 8, 0, -1],
     });
     service.recordTurn({
       conversationId: first.conversation.id,

@@ -89,6 +89,18 @@
   border-color: color-mix(in srgb, var(--danger) 38%, transparent);
 }
 
+.workspace-detail-page .ws-btn-danger-solid {
+  color: var(--danger-contrast);
+  border-color: transparent;
+  background: var(--danger);
+}
+
+.workspace-detail-page .ws-btn-danger-solid:hover:not(:disabled) {
+  color: var(--danger-contrast);
+  border-color: transparent;
+  background: color-mix(in srgb, var(--danger) 88%, var(--text));
+}
+
 .workspace-detail-page .ws-link {
   color: var(--accent);
   font-size: var(--fs-sm);
@@ -306,6 +318,14 @@
 
 .workspace-detail-note.selected {
   border-color: var(--accent);
+}
+
+.workspace-note-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.65rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border-hairline);
 }
 
 .workspace-note-head {
@@ -627,6 +647,17 @@
      变量继承链会断掉。 */
   border-radius: var(--ws-radius, 14px);
   box-shadow: var(--shadow);
+}
+
+/* 确认操作只有一段说明和两个按钮，不继承多笔记弹窗的固定高度。 */
+.workspace-modal.workspace-confirm-modal {
+  width: min(400px, 100%);
+  height: auto;
+  max-height: calc(100vh - 4rem);
+}
+
+.workspace-confirm-modal .workspace-modal-body {
+  flex: 0 1 auto;
 }
 
 .workspace-modal-head {

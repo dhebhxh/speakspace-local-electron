@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import WorkspacePage from './WorkspacePage';
 import useWorkspaceDetail from './useWorkspaceDetail';
@@ -16,7 +16,11 @@ jest.mock('./useWorkspaceDetail', () => ({
 
 jest.mock('./components/WorkspaceDetailHeader', () => ({
   __esModule: true,
-  default: () => <div data-testid="workspace-header" />,
+  default: ({ onDelete }: { onDelete: () => void }) => (
+    <button data-testid="workspace-header" onClick={onDelete} type="button">
+      Open delete confirmation
+    </button>
+  ),
 }));
 
 jest.mock('./components/WorkspaceSemanticSearch', () => ({
@@ -80,8 +84,9 @@ function createDetail(
     setSelectedNoteIds: jest.fn(),
     generateOutput: jest.fn(),
     renameWorkspace: jest.fn(),
-    deleteWorkspace: jest.fn(),
-    deleteNote: jest.fn(),
+    moveWorkspaceToTrash: jest.fn(),
+    moveNoteToTrash: jest.fn(),
+    reloadNotes: jest.fn(),
     revealNote: jest.fn(),
     visibleNotes,
   };
@@ -112,5 +117,14 @@ describe('WorkspacePage', () => {
     expect(screen.getByTestId('workspace-note')).toHaveTextContent(
       'Existing note',
     );
+  });
+
+  it('uses a content-sized dialog for workspace deletion confirmation', () => {
+    mockedUseWorkspaceDetail.mockReturnValue(createDetail([]));
+
+    renderPage();
+    fireEvent.click(screen.getByTestId('workspace-header'));
+
+    expect(screen.getByRole('dialog')).toHaveClass('workspace-confirm-modal');
   });
 });

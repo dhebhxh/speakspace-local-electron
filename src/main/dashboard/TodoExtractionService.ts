@@ -52,13 +52,22 @@ export class TodoExtractionService {
         app.getPath('userData'),
         'speakspace_extraction.log',
       );
+      
+      const isDebugMode = process.env.SPEAKSPACE_DEBUG_AI_LOGS === 'true';
+      const log = (msg: string, debugOnly: boolean = false) => {
+        if (debugOnly && !isDebugMode) return;
+        try {
+          fs.appendFileSync(logFile, msg);
+        } catch (e) {
+          // ignore log errors
+        }
+      };
+
+      log(`\n\n[${new Date().toISOString()}] Starting extraction for note ${noteId} (length: ${transcript.length})\n`);
 
       // Apply RAG if transcript is long
       if (transcript.length > 1500) {
-        fs.appendFileSync(
-          logFile,
-          `\n\n[${new Date().toISOString()}] Transcript is long (${transcript.length} chars). Applying RAG...\n`,
-        );
+        log(`Applying RAG for long transcript...\n`);
         try {
           const status = await this.embeddingService.getStatus();
           if (status.installed) {
@@ -82,22 +91,13 @@ export class TodoExtractionService {
             const topChunks = rankBySimilarity(queryVector, items, 5, 0.1);
             if (topChunks.length > 0) {
               contextText = topChunks.map((c) => c.text).join('\n...\n');
-              fs.appendFileSync(
-                logFile,
-                `RAG selected ${topChunks.length} chunks. Reduced context to ${contextText.length} chars.\n`,
-              );
+              log(`RAG selected ${topChunks.length} chunks. Reduced context to ${contextText.length} chars.\n`);
             }
           } else {
-            fs.appendFileSync(
-              logFile,
-              `Embedding model not installed. Falling back to full transcript.\n`,
-            );
+            log(`Embedding model not installed. Falling back to full transcript.\n`);
           }
         } catch (err) {
-          fs.appendFileSync(
-            logFile,
-            `RAG failed (${err}). Falling back to full transcript.\n`,
-          );
+          log(`RAG failed (${err}). Falling back to full transcript.\n`);
         }
       }
 
@@ -126,10 +126,7 @@ ${contextText}
 `;
 
       if (transcript.length <= 1500) {
-        fs.appendFileSync(
-          logFile,
-          `\n\n[${new Date().toISOString()}] Starting extraction for note ${noteId}\nContext: ${contextText}\n`,
-        );
+        log(`Context: ${contextText}\n`, true);
       }
 
       const response = await this.chatService.chat(
@@ -138,28 +135,25 @@ ${contextText}
       );
       let content = response.content.trim();
 
-      fs.appendFileSync(logFile, `LLM Response:\n${content}\n`);
+      log(`LLM Response:\n${content}\n`, true);
 
       // If the LLM returned a single object without array brackets, wrap it
       if (content.startsWith('{') && content.endsWith('}')) {
         content = `[${content}]`;
-        fs.appendFileSync(
-          logFile,
-          `Wrapped single object in array: ${content}\n`,
-        );
+        log(`Wrapped single object in array: ${content}\n`, true);
       }
 
       // Robustly extract JSON array using Regex in case LLM added conversational filler
       const match = content.match(/\[[\s\S]*\]/);
       if (match) {
         [content] = match;
-        fs.appendFileSync(logFile, `Regex matched JSON: ${content}\n`);
+        log(`Regex matched JSON: ${content}\n`, true);
       } else {
         console.warn(
           `No JSON array found in LLM output for note ${noteId}:`,
           content,
         );
-        fs.appendFileSync(logFile, `Failed to match JSON array. Aborting.\n`);
+        log(`Failed to match JSON array. Aborting.\n`);
         return false;
       }
 
@@ -169,17 +163,14 @@ ${contextText}
         if (!Array.isArray(extractedItems)) {
           throw new Error('Output is not a JSON array.');
         }
-        fs.appendFileSync(
-          logFile,
-          `Parsed ${extractedItems.length} items successfully.\n`,
-        );
+        log(`Parsed ${extractedItems.length} items successfully.\n`);
       } catch (e) {
         console.error(
           `Failed to parse LLM output as JSON for note ${noteId}:`,
           content,
           e,
         );
-        fs.appendFileSync(logFile, `JSON Parse Error: ${e}\n`);
+        log(`JSON Parse Error: ${e}\n`);
         return false;
       }
 
@@ -202,7 +193,7 @@ ${contextText}
             dateString: item.dueDate || today,
             isCompleted: false,
           });
-          fs.appendFileSync(logFile, `Saved todo: ${item.title.trim()}\n`);
+          log(`Saved todo: ${item.title.trim()}\n`, true);
         }
       }
 
@@ -213,7 +204,11 @@ ${contextText}
         app.getPath('userData'),
         'speakspace_extraction.log',
       );
-      fs.appendFileSync(logFile, `Fatal Error: ${error}\n`);
+      try {
+        fs.appendFileSync(logFile, `Fatal Error: ${error}\n`);
+      } catch (e) {
+        // ignore
+      }
       return false;
     }
   }

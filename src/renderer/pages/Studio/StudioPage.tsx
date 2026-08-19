@@ -419,7 +419,7 @@ export default function StudioPage() {
 
   const uploadAudio = useCallback(() => {
     setRecordError(null);
-    engine.transcription.pickFileAndStart().catch((reason: unknown) => {
+    engine.transcription.pickFileAndStart({ skipConfirmation: true }).catch((reason: unknown) => {
       setRecordError(
         reason instanceof Error
           ? reason.message

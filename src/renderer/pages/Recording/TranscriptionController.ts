@@ -397,13 +397,13 @@ export default class TranscriptionController {
     }
   }
 
-  public async pickFileAndStart(): Promise<void> {
+  public async pickFileAndStart(options?: { skipConfirmation?: boolean }): Promise<void> {
     const filePath = (await window.electron.audio.pickFile()) as string | null;
     if (!filePath) return;
 
     const fileName = filePath.split(/[\\/]/u).pop() || 'audio';
     this.resetLive('file', fileName, filePath);
-    await this.startUploadedFile();
+    await this.startUploadedFile(options?.skipConfirmation);
   }
 
   public async retranscribeUploadedFile(): Promise<void> {
@@ -415,7 +415,7 @@ export default class TranscriptionController {
     await this.startUploadedFile();
   }
 
-  private async startUploadedFile(): Promise<void> {
+  private async startUploadedFile(skipConfirmation: boolean = false): Promise<void> {
     const filePath = this.uploadedFilePath;
     if (!filePath) return;
 
@@ -441,7 +441,8 @@ export default class TranscriptionController {
           result.language,
         );
         const modelFixedLanguage = result.source === 'model-fixed';
-        if (lowConfidence || uncommonLanguage || modelFixedLanguage) {
+        
+        if (!skipConfirmation && (lowConfidence || uncommonLanguage || modelFixedLanguage)) {
           this.uploadLanguage = result.language;
           this.languageConfirmationRequired = true;
           return;
@@ -451,6 +452,9 @@ export default class TranscriptionController {
           error instanceof Error
             ? error.message
             : '语言检测失败 / Language detection failed';
+        if (skipConfirmation) {
+          this.requestError = this.languageDetectionError;
+        }
         return;
       } finally {
         this.languageDetectionPending = false;

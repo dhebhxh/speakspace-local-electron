@@ -40,6 +40,7 @@ export class DatabaseManager {
       this.database.exec(`
         DELETE FROM ai_conversations
         WHERE id NOT IN (SELECT conversation_id FROM conversation_contexts)
+          AND id NOT IN (SELECT conversation_id FROM ai_messages)
       `);
     } catch (err) {
       console.error('Failed to clean up orphaned conversations:', err);

@@ -334,18 +334,48 @@ export class WorkspaceService {
   // Delete a workspace and its notes
   public deleteWorkspace(rawId: unknown): boolean {
     const id = WorkspaceService.normalizeId(rawId);
-    // notes 表使用 ON DELETE CASCADE，删除工作空间会同步删除所属笔记。
-    // ON DELETE CASCADE removes all notes that belong to the workspace.
+    
+    // 1. Get all audio paths before deletion
+    const stmtFindBlobs = this.database.prepare(
+      'SELECT DISTINCT audio_relative_path FROM notes WHERE workspace_id = ? AND audio_relative_path IS NOT NULL'
+    );
+    const audioPaths = stmtFindBlobs.all(id) as { audio_relative_path: string }[];
+
+    // 2. Delete workspace (cascades notes)
     const statement = this.database.prepare(
       'DELETE FROM workspaces WHERE id = ?',
     );
     const result = statement.run(id);
+
+    // 3. Clean up unused blobs
+    if (result.changes > 0 && audioPaths.length > 0) {
+      const stmtCheckBlob = this.database.prepare(
+        'SELECT COUNT(*) as count FROM notes WHERE audio_relative_path = ?'
+      );
+      for (const row of audioPaths) {
+        const check = stmtCheckBlob.get(row.audio_relative_path) as { count: number };
+        if (check.count === 0) {
+          try {
+            BlobStorage.getInstance().delete(row.audio_relative_path);
+          } catch (e) {
+            console.warn(`Failed to delete unused recording blob ${row.audio_relative_path}:`, e);
+          }
+        }
+      }
+    }
 
     return result.changes > 0;
   }
 
   public deleteNote(rawId: unknown): boolean {
     const id = WorkspaceService.normalizeId(rawId);
+
+    // Get audio_relative_path before deletion
+    const stmtFindBlob = this.database.prepare(
+      'SELECT audio_relative_path FROM notes WHERE id = ?',
+    );
+    const audioPathRow = stmtFindBlob.get(id) as { audio_relative_path: string | null } | undefined;
+    const audioPath = audioPathRow?.audio_relative_path;
 
     // Find associated conversations before deleting the note
     const stmtFindConversations = this.database.prepare(
@@ -374,6 +404,21 @@ export class WorkspaceService {
         const check = stmtCheck.get(row.conversation_id) as { count: number };
         if (check.count === 0) {
           stmtDelete.run(row.conversation_id);
+        }
+      }
+    }
+
+    // Clean up unused blob
+    if (result.changes > 0 && audioPath) {
+      const stmtCheckBlob = this.database.prepare(
+        'SELECT COUNT(*) as count FROM notes WHERE audio_relative_path = ?'
+      );
+      const check = stmtCheckBlob.get(audioPath) as { count: number };
+      if (check.count === 0) {
+        try {
+          BlobStorage.getInstance().delete(audioPath);
+        } catch (e) {
+          console.warn(`Failed to delete unused recording blob ${audioPath}:`, e);
         }
       }
     }

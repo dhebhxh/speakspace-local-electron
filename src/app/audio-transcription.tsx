@@ -43,12 +43,18 @@ export default function AudioTranscriptionScreen() {
 
   useEffect(() => () => {
     if (selectedRef.current !== null) {
+      console.info("[AudioImport] Screen closed; cleaning selected cache file", {
+        fileName: selectedRef.current.name,
+      });
       transcriptionService.deleteTemporaryImport(selectedRef.current.uri);
     }
   }, [transcriptionService]);
 
   const replaceSelection = (audio: SelectedAudio | null) => {
     if (selectedRef.current !== null && selectedRef.current.uri !== audio?.uri) {
+      console.info("[AudioImport] Cleaning previous selected cache file", {
+        fileName: selectedRef.current.name,
+      });
       transcriptionService.deleteTemporaryImport(selectedRef.current.uri);
     }
     selectedRef.current = audio;
@@ -57,43 +63,73 @@ export default function AudioTranscriptionScreen() {
 
   const chooseAudio = async () => {
     setError(null);
+    console.info("[AudioImport] Opening system audio picker");
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: "audio/*",
         copyToCacheDirectory: true,
         multiple: false,
       });
-      if (result.canceled) return;
+      if (result.canceled) {
+        console.info("[AudioImport] Audio picker canceled");
+        return;
+      }
       const asset = result.assets[0];
+      console.info("[AudioImport] Audio selected", {
+        fileName: asset.name,
+        sizeBytes: asset.size ?? null,
+        mimeType: asset.mimeType ?? null,
+      });
       replaceSelection({ uri: asset.uri, name: asset.name, size: asset.size ?? 0 });
       setTranscript("");
       setStatus("selected");
     } catch (caught) {
-      console.error("Audio file selection failed", caught);
+      console.error("[AudioImport] Audio file selection failed", { error: caught });
       setError("That audio file could not be opened. Please choose another file.");
     }
   };
 
   const startTranscription = async () => {
     if (selected === null) return;
+    const requestId = `audio-import-${Date.now()}`;
+    const startedAt = Date.now();
     let phase: "preparing" | "transcribing" = "preparing";
     setError(null);
     setTranscript("");
     setStatus("preparing");
+    console.info("[AudioImport] Transcription requested", {
+      requestId,
+      fileName: selected.name,
+      sizeBytes: selected.size,
+    });
     try {
       const text = await transcriptionService.transcribeFile(selected.uri, {
         onPrepared: () => {
           phase = "transcribing";
           setStatus("transcribing");
+          console.info("[AudioImport] Audio prepared; transcription UI active", {
+            requestId,
+            durationMs: Date.now() - startedAt,
+          });
         },
-      });
+      }, requestId);
       if (text.length === 0) {
         throw new Error("The model did not detect any speech in this audio.");
       }
       setTranscript(text);
       setStatus("complete");
+      console.info("[AudioImport] Transcription displayed", {
+        requestId,
+        totalDurationMs: Date.now() - startedAt,
+        transcriptLength: text.length,
+      });
     } catch (caught) {
-      console.error("Imported audio transcription failed", caught);
+      console.error("[AudioImport] Imported audio transcription failed", {
+        requestId,
+        phase,
+        durationMs: Date.now() - startedAt,
+        error: caught,
+      });
       const detail = caught instanceof Error ? caught.message : "";
       if (detail.includes("active speech recognition model")) {
         setError("No speech recognition model is active. Activate a model in AI first.");
@@ -110,12 +146,18 @@ export default function AudioTranscriptionScreen() {
 
   const prepareSave = async () => {
     setError(null);
+    console.info("[AudioImport] Loading workspaces for save");
     try {
       const defaultWorkspace = await workspaceService.getOrCreateDefaultWorkspace();
-      setWorkspaces(await workspaceService.getWorkspaces());
+      const allWorkspaces = await workspaceService.getWorkspaces();
+      setWorkspaces(allWorkspaces);
       setSelectedWorkspaceId(defaultWorkspace.getId());
       setNoteName(selected?.name.replace(/\.[^.]+$/, "") ?? "");
       setShowSave(true);
+      console.info("[AudioImport] Save sheet ready", {
+        workspaceCount: allWorkspaces.length,
+        defaultWorkspaceId: defaultWorkspace.getId(),
+      });
     } catch (caught) {
       console.error("Loading workspaces for imported transcript failed", caught);
       setError("Your workspaces could not be loaded.");
@@ -127,6 +169,12 @@ export default function AudioTranscriptionScreen() {
     setIsSaving(true);
     setError(null);
     let audioRelativePath: string | null = null;
+    const saveStartedAt = Date.now();
+    console.info("[AudioImport] Saving transcript as note", {
+      fileName: selected.name,
+      workspaceId: selectedWorkspaceId,
+      transcriptLength: transcript.length,
+    });
     try {
       audioRelativePath = transcriptionService.preserveImportedAudio(selected.uri, selected.name);
       const note = await noteService.createNote(
@@ -137,6 +185,11 @@ export default function AudioTranscriptionScreen() {
       );
       replaceSelection(null);
       setShowSave(false);
+      console.info("[AudioImport] Note saved", {
+        noteId: note.getId(),
+        durationMs: Date.now() - saveStartedAt,
+        audioRelativePath,
+      });
       router.replace({ pathname: "/notes/[noteId]", params: { noteId: note.getId() } });
     } catch (caught) {
       if (audioRelativePath !== null) transcriptionService.deleteRecording(audioRelativePath);
@@ -148,6 +201,10 @@ export default function AudioTranscriptionScreen() {
   };
 
   const discard = () => {
+    console.info("[AudioImport] Imported transcript discarded", {
+      fileName: selected?.name ?? null,
+      transcriptLength: transcript.length,
+    });
     replaceSelection(null);
     setTranscript("");
     setError(null);

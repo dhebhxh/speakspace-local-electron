@@ -1,4 +1,5 @@
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import * as Clipboard from "expo-clipboard";
 import { File, Paths } from "expo-file-system";
 import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
@@ -479,8 +480,10 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor }: {
   const reminders = insight.getCalendarIntents().filter((item) => item.kind === "reminder");
   const calendarIntents = insight.getCalendarIntents().filter((item) => item.kind === "calendar");
   const empty = "未识别到相关信息";
+  const formattedHtml = formatCoreInsightsAsHtml(insight);
   return (
     <View style={styles.document}>
+      <CopyInsightsButton html={formattedHtml} position="top" />
       <InsightSection title="Summary" borderColor={borderColor} textColor={textColor} first>
         <Text selectable style={[styles.body, { color: insight.getSummary() ? textColor : mutedColor }]}>{insight.getSummary() || empty}</Text>
       </InsightSection>
@@ -515,8 +518,65 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor }: {
         {calendarIntents.length ? calendarIntents.map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={item.startsAt} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
       </InsightSection>
       <Text selectable style={[styles.generatedMeta, { color: mutedColor }]}>Generated locally · {formatDate(insight.getUpdatedAt())}</Text>
+      <CopyInsightsButton html={formattedHtml} position="bottom" />
     </View>
   );
+}
+
+function CopyInsightsButton({ html, position }: { html: string; position: "top" | "bottom" }) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+
+  const copy = async () => {
+    try {
+      const copied = await Clipboard.setStringAsync(html, { inputFormat: Clipboard.StringFormat.HTML });
+      setCopyState(copied ? "copied" : "error");
+      if (copied) setTimeout(() => setCopyState("idle"), 2000);
+      console.info("[CoreInsights] Formatted content copied", { position, copied });
+    } catch (error) {
+      setCopyState("error");
+      console.warn("[CoreInsights] Formatted copy failed", { position, error });
+    }
+  };
+
+  return (
+    <View style={styles.copyBlock}>
+      <AppButton
+        label={copyState === "copied" ? "Copied with formatting" : "Copy formatted insights"}
+        variant="secondary"
+        onPress={() => void copy()}
+      />
+      {copyState === "error" && <Text selectable style={styles.copyError}>Unable to copy. Please try again.</Text>}
+    </View>
+  );
+}
+
+function formatCoreInsightsAsHtml(insight: CoreNoteInsight): string {
+  const empty = "未识别到相关信息";
+  const list = (items: readonly string[]) => items.length
+    ? `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+    : `<p><em>${empty}</em></p>`;
+  const tasks = insight.getTasks().length
+    ? `<ol>${insight.getTasks().map((task) => `<li><strong>${escapeHtml(task.title)}</strong>${optionalParagraph(task.description)}${optionalMeta("Due", task.dueAt)}${task.actionItems.length ? `<ol>${task.actionItems.map((item) => `<li>${escapeHtml(item.title)}${optionalParagraph(item.description)}${optionalMeta("Due", item.dueAt)}</li>`).join("")}</ol>` : `<p><em>未生成可执行步骤</em></p>`}</li>`).join("")}</ol>`
+    : `<p><em>${empty}</em></p>`;
+  const reminders = insight.getCalendarIntents().filter((item) => item.kind === "reminder");
+  const calendarIntents = insight.getCalendarIntents().filter((item) => item.kind === "calendar");
+  const timedList = (items: typeof reminders, time: (item: typeof reminders[number]) => string | null) => items.length
+    ? `<ul>${items.map((item) => `<li><strong>${escapeHtml(item.title)}</strong>${optionalParagraph(item.description)}${optionalMeta("Time", time(item))}</li>`).join("")}</ul>`
+    : `<p><em>${empty}</em></p>`;
+
+  return `<article><h1>Core Note Insights</h1><h2>Summary</h2><p>${escapeHtml(insight.getSummary() || empty)}</p><h2>Key Points</h2>${list(insight.getKeyPoints())}<h2>Tasks &amp; Action Plan</h2>${tasks}<h2>Reminders</h2>${timedList(reminders, (item) => item.remindAt ?? item.dueAt ?? item.startsAt)}<h2>Calendar Intents</h2>${timedList(calendarIntents, (item) => item.startsAt)}<hr><p><small>Generated locally · ${escapeHtml(formatDate(insight.getUpdatedAt()))}</small></p></article>`;
+}
+
+function optionalParagraph(value: string | null): string {
+  return value ? `<p>${escapeHtml(value)}</p>` : "";
+}
+
+function optionalMeta(label: string, value: string | null): string {
+  return value ? `<p><small><strong>${label}:</strong> ${escapeHtml(value)}</small></p>` : "";
+}
+
+function escapeHtml(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
 function InsightSection({ title, borderColor, textColor, first = false, children }: { title: string; borderColor: string; textColor: string; first?: boolean; children: ReactNode }) {
@@ -673,4 +733,6 @@ const styles = StyleSheet.create({
   actionStep: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm },
   stepNumber: { minWidth: 22, fontSize: 13, fontWeight: "800", lineHeight: 25, fontVariant: ["tabular-nums"] },
   stepCopy: { flex: 1, gap: 2 },
+  copyBlock: { gap: Spacing.xs },
+  copyError: { color: Colors.light.danger, fontSize: 13, lineHeight: 18 },
 });

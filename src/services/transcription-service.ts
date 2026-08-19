@@ -4,6 +4,7 @@ import {
   initParakeet,
   type ParakeetContext,
 } from "whisper.rn/index";
+import AudioConverter from "../../modules/audio-converter";
 import {
   AudioPcmStreamAdapter,
 } from "whisper.rn/realtime-transcription/adapters/AudioPcmStreamAdapter";
@@ -23,6 +24,10 @@ export const RECORDINGS_DIRECTORY_NAME = "recordings";
 type SessionCallbacks = {
   onText: (text: string) => void;
   onError: (message: string) => void;
+};
+
+type ImportedAudioCallbacks = {
+  onPrepared: () => void;
 };
 
 class PausableAudioStream implements AudioStreamInterface {
@@ -221,6 +226,72 @@ export class TranscriptionService {
 
   public async discard(): Promise<void> {
     await this.release(true);
+  }
+
+  public async transcribeFile(
+    inputUri: string,
+    callbacks: ImportedAudioCallbacks,
+  ): Promise<string> {
+    if (this.transcriber !== null || this.context !== null) {
+      throw new Error("A transcription session is already active.");
+    }
+
+    const model = await this.sttModelService.getActiveModel();
+    if (model === null) {
+      throw new Error("Choose an active speech recognition model first.");
+    }
+    if (model.getEngine() !== "parakeet") {
+      throw new Error("The active model is not supported by this transcriber.");
+    }
+    const modelFile = this.sttModelService.resolveModelFile(model);
+    if (!modelFile.exists) {
+      throw new Error("The active model file is missing.");
+    }
+
+    const preparedFile = new File(
+      Paths.cache,
+      `prepared-audio-${Date.now()}.wav`,
+    );
+    let prepared: { uri: string; temporary: boolean } | null = null;
+    try {
+      prepared = await AudioConverter.prepareAudioAsync(
+        inputUri,
+        preparedFile.uri,
+      );
+      callbacks.onPrepared();
+      this.context = await initParakeet({
+        filePath: modelFile.uri,
+        useGpu: true,
+      });
+      const request = this.context.transcribe(prepared.uri);
+      const result = await request.promise;
+      return result.result.trim();
+    } finally {
+      const context = this.context;
+      this.context = null;
+      await context?.release().catch(() => undefined);
+      if (prepared?.temporary && preparedFile.exists) preparedFile.delete();
+    }
+  }
+
+  public preserveImportedAudio(inputUri: string, originalName: string): string {
+    const recordings = new Directory(Paths.document, RECORDINGS_DIRECTORY_NAME);
+    recordings.create({ idempotent: true, intermediates: true });
+    const extension = originalName.match(/\.[a-z0-9]{1,8}$/i)?.[0].toLowerCase() ?? ".audio";
+    const fileName = `imported-${Date.now()}${extension}`;
+    const destination = new File(recordings, fileName);
+    try {
+      new File(inputUri).copy(destination);
+    } catch (error) {
+      if (destination.exists) destination.delete();
+      throw error;
+    }
+    return `${RECORDINGS_DIRECTORY_NAME}/${fileName}`;
+  }
+
+  public deleteTemporaryImport(inputUri: string): void {
+    const file = new File(inputUri);
+    if (file.exists) file.delete();
   }
 
   public deleteRecording(audioRelativePath: string): void {

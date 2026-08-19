@@ -15,6 +15,8 @@ import { WorkspaceService } from "@/services/workspace-service";
 import { TranscriptionService } from "@/services/transcription-service";
 import { KnowledgeDocumentRepository } from "@/repositories/knowledge-document-repository";
 import { KnowledgeService } from "@/services/knowledge-service";
+import { CoreNoteInsightRepository } from "@/repositories/core-note-insight-repository";
+import { CoreNoteInsightService } from "@/services/core-note-insight-service";
 
 export class AppContainer {
   public readonly workspaceService: WorkspaceService;
@@ -23,6 +25,7 @@ export class AppContainer {
   public readonly sttModelService: SttModelService;
   public readonly transcriptionService: TranscriptionService;
   public readonly knowledgeService: KnowledgeService;
+  public readonly coreNoteInsightService: CoreNoteInsightService;
   public readonly aiConversationService: AiConversationService;
   public readonly llmInferenceService: LlmInferenceService;
 
@@ -32,6 +35,7 @@ export class AppContainer {
     const llmModelRepository = new LlmModelRepository(databaseManager);
     const sttModelRepository = new SttModelRepository(databaseManager);
     const knowledgeDocumentRepository = new KnowledgeDocumentRepository(databaseManager);
+    const coreNoteInsightRepository = new CoreNoteInsightRepository(databaseManager);
     const aiConversationRepository = new AiConversationRepository(databaseManager);
     const aiMessageRepository = new AiMessageRepository(databaseManager);
     const conversationContextRepository = new ConversationContextRepository(
@@ -42,6 +46,7 @@ export class AppContainer {
     this.noteService = new NoteService(noteRepository);
     this.llmModelService = new LlmModelService(llmModelRepository);
     this.knowledgeService = new KnowledgeService(knowledgeDocumentRepository, this.llmModelService);
+    this.coreNoteInsightService = new CoreNoteInsightService(coreNoteInsightRepository, this.llmModelService);
     this.sttModelService = new SttModelService(sttModelRepository);
     this.transcriptionService = new TranscriptionService(this.sttModelService);
     this.aiConversationService = new AiConversationService(

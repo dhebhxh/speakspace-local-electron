@@ -1,7 +1,7 @@
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { File, Paths } from "expo-file-system";
 import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -25,6 +25,8 @@ import type {
   KnowledgeDocument,
   KnowledgeScenario,
 } from "@/domain/knowledge/knowledge-document";
+import type { CoreNoteInsight } from "@/domain/core-note-insight/core-note-insight";
+import { CoreNoteInsightGenerationError } from "@/errors/core-note-insight-generation-error";
 import { KnowledgeGenerationError } from "@/errors/knowledge-generation-error";
 import { useTheme } from "@/hooks/use-theme";
 import { formatDate } from "@/utils/format-date";
@@ -39,6 +41,7 @@ type NoteDetailState =
       >;
       workspaceName: string | null;
       knowledge: KnowledgeDocument | null;
+      coreInsights: CoreNoteInsight | null;
     };
 
 type GenerationState =
@@ -47,11 +50,16 @@ type GenerationState =
   | { status: "generating"; scenario: KnowledgeScenario }
   | { status: "error"; scenario: KnowledgeScenario; message: string };
 
+type CoreInsightGenerationState =
+  | { status: "idle" }
+  | { status: "generating" }
+  | { status: "error"; message: string };
+
 export default function NoteDetailScreen() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
   const theme = useTheme();
   const colors = Colors[theme.mode];
-  const { noteService, workspaceService, knowledgeService } = appContainer;
+  const { noteService, workspaceService, knowledgeService, coreNoteInsightService } = appContainer;
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [state, setState] = useState<NoteDetailState>({
@@ -60,6 +68,7 @@ export default function NoteDetailScreen() {
   const [generation, setGeneration] = useState<GenerationState>({
     status: "idle",
   });
+  const [coreGeneration, setCoreGeneration] = useState<CoreInsightGenerationState>({ status: "idle" });
   const audioRelativePath =
     state.status === "success" ? state.note.getAudioRelativePath() : null;
   const audioUri = audioRelativePath
@@ -79,7 +88,7 @@ export default function NoteDetailScreen() {
         return;
       }
 
-      const [workspace, knowledge] = await Promise.all([
+      const [workspace, knowledge, coreInsights] = await Promise.all([
         workspaceService
           .getWorkspace(loadedNote.getWorkspaceId())
           .catch((error) => {
@@ -99,12 +108,17 @@ export default function NoteDetailScreen() {
           });
           return null;
         }),
+        coreNoteInsightService.getForNote(loadedNote.getId()).catch((error) => {
+          console.warn("[NoteDetail] Saved core insights could not be loaded", { noteId: loadedNote.getId(), error });
+          return null;
+        }),
       ]);
       setState({
         status: "success",
         note: loadedNote,
         workspaceName: workspace?.getName() ?? null,
         knowledge,
+        coreInsights,
       });
     } catch (error) {
       console.error("[NoteDetail] Unable to load note", { noteId, error });
@@ -151,6 +165,23 @@ export default function NoteDetailScreen() {
         error,
       });
       setGeneration({ status: "error", scenario, message });
+    }
+  };
+
+  const generateCoreInsights = async () => {
+    if (state.status !== "success") return;
+    const startedAt = Date.now();
+    console.info("[NoteDetail] Core insights generation started", { noteId: state.note.getId() });
+    setCoreGeneration({ status: "generating" });
+    try {
+      const coreInsights = await coreNoteInsightService.generate(state.note.getId(), state.note.getTranscript());
+      setState({ ...state, coreInsights });
+      setCoreGeneration({ status: "idle" });
+      console.info("[NoteDetail] Core insights displayed", { noteId: state.note.getId(), durationMs: Date.now() - startedAt });
+    } catch (error) {
+      const message = error instanceof CoreNoteInsightGenerationError ? error.message : "Core note insights did not finish. Please try again.";
+      console.error("[NoteDetail] Core insights generation failed", { noteId: state.note.getId(), durationMs: Date.now() - startedAt, error });
+      setCoreGeneration({ status: "error", message });
     }
   };
 
@@ -242,6 +273,27 @@ export default function NoteDetailScreen() {
               <Text style={[styles.body, { color: colors.text }]}>
                 {state.note.getTranscript()}
               </Text>
+            </View>
+            <View style={[styles.knowledgeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.headingCopy}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Core Note Insights</Text>
+                <Text style={[styles.supportingText, { color: colors.textMuted }]}>Universal summary, key points, actions, and time-based intents extracted locally.</Text>
+              </View>
+              {coreGeneration.status === "generating" ? (
+                <View style={[styles.generationStatus, { backgroundColor: colors.surfaceMuted }]}>
+                  <ActivityIndicator color={colors.accent} />
+                  <View style={styles.headingCopy}>
+                    <Text style={[styles.statusTitle, { color: colors.text }]}>Extracting core insights…</Text>
+                    <Text style={[styles.supportingText, { color: colors.textMuted }]}>Running privately on this device.</Text>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  {state.coreInsights && <CoreInsightResult insight={state.coreInsights} textColor={colors.text} mutedColor={colors.textMuted} borderColor={colors.border} />}
+                  {coreGeneration.status === "error" && <Text selectable style={[styles.errorText, { color: colors.danger }]}>{coreGeneration.message}</Text>}
+                  <AppButton label={state.coreInsights ? "Regenerate Core Insights" : "Generate Core Insights"} variant={state.coreInsights ? "secondary" : undefined} onPress={() => void generateCoreInsights()} />
+                </>
+              )}
             </View>
             <View
               style={[
@@ -418,6 +470,49 @@ export default function NoteDetailScreen() {
   );
 }
 
+function CoreInsightResult({ insight, textColor, mutedColor, borderColor }: {
+  insight: CoreNoteInsight;
+  textColor: string;
+  mutedColor: string;
+  borderColor: string;
+}) {
+  const reminders = insight.getCalendarIntents().filter((item) => item.kind === "reminder");
+  const calendarIntents = insight.getCalendarIntents().filter((item) => item.kind === "calendar");
+  const empty = "未识别到相关信息";
+  return (
+    <View style={styles.document}>
+      <InsightSection title="Summary" borderColor={borderColor} textColor={textColor} first>
+        <Text selectable style={[styles.body, { color: insight.getSummary() ? textColor : mutedColor }]}>{insight.getSummary() || empty}</Text>
+      </InsightSection>
+      <InsightSection title="Key Points" borderColor={borderColor} textColor={textColor}>
+        {insight.getKeyPoints().length ? insight.getKeyPoints().map((item, index) => <InsightRow key={`key-${index}`} title={item} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
+      </InsightSection>
+      <InsightSection title="Tasks / Action Items" borderColor={borderColor} textColor={textColor}>
+        {insight.getActionItems().length ? insight.getActionItems().map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={item.dueAt ?? item.startsAt} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
+      </InsightSection>
+      <InsightSection title="Reminders" borderColor={borderColor} textColor={textColor}>
+        {reminders.length ? reminders.map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={item.remindAt ?? item.dueAt ?? item.startsAt} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
+      </InsightSection>
+      <InsightSection title="Calendar Intents" borderColor={borderColor} textColor={textColor}>
+        {calendarIntents.length ? calendarIntents.map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={item.startsAt} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
+      </InsightSection>
+      <Text selectable style={[styles.generatedMeta, { color: mutedColor }]}>Generated locally · {formatDate(insight.getUpdatedAt())}</Text>
+    </View>
+  );
+}
+
+function InsightSection({ title, borderColor, textColor, first = false, children }: { title: string; borderColor: string; textColor: string; first?: boolean; children: ReactNode }) {
+  return <View style={[styles.knowledgeSection, !first && styles.dividedSection, !first && { borderColor }]}><Text style={[styles.resultTitle, { color: textColor }]}>{title}</Text>{children}</View>;
+}
+
+function InsightRow({ title, detail, time, textColor, mutedColor }: { title: string; detail?: string | null; time?: string | null; textColor: string; mutedColor: string }) {
+  return <View style={styles.structuredItem}><Text selectable style={[styles.resultItem, { color: textColor }]}>{title}</Text>{detail && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{detail}</Text>}{time && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>{time}</Text>}</View>;
+}
+
+function EmptyInsight({ text, color }: { text: string; color: string }) {
+  return <Text selectable style={[styles.emptyInsight, { color }]}>{text}</Text>;
+}
+
 function KnowledgeResult({
   document,
   textColor,
@@ -551,4 +646,7 @@ const styles = StyleSheet.create({
   bullet: { fontSize: 18, lineHeight: 25 },
   resultItem: { flex: 1, fontSize: 16, lineHeight: 25 },
   generatedMeta: { fontSize: 12 },
+  structuredItem: { gap: Spacing.xs, paddingVertical: Spacing.xs },
+  structuredMeta: { fontSize: 12, fontVariant: ["tabular-nums"] },
+  emptyInsight: { fontSize: 14, fontStyle: "italic", lineHeight: 20 },
 });

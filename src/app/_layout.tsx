@@ -14,6 +14,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="ask-ai" options={{ title: "Ask AI" }} />
         <Stack.Screen name="transcription" options={{ title: "Transcription" }} />
+        <Stack.Screen name="audio-transcription" options={{ title: "Transcribe audio file" }} />
       </Stack>
       <FloatingAskAiButton />
     </SQLiteProvider>

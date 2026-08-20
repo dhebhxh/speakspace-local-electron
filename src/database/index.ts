@@ -8,6 +8,9 @@ import { LlmModelSchemaMigration } from "./migrations/llm-model-schema-migration
 import { SttModelSchemaMigration } from "./migrations/stt-model-schema-migration";
 import { KnowledgeDocumentSchemaMigration } from "./migrations/knowledge-document-schema-migration";
 import { KnowledgeDocumentSchemaRepairMigration } from "./migrations/knowledge-document-schema-repair-migration";
+import { CoreNoteInsightSchemaMigration } from "./migrations/core-note-insight-schema-migration";
+import { CoreNoteTaskHierarchyMigration } from "./migrations/core-note-task-hierarchy-migration";
+import { TtsModelSchemaMigration } from "./migrations/tts-model-schema-migration";
 
 export { DatabaseConfig } from "./config/database-config";
 export { DatabaseManager } from "./core/database-manager";
@@ -18,10 +21,13 @@ export { LlmModelSchemaMigration } from "./migrations/llm-model-schema-migration
 export { SttModelSchemaMigration } from "./migrations/stt-model-schema-migration";
 export { KnowledgeDocumentSchemaMigration } from "./migrations/knowledge-document-schema-migration";
 export { KnowledgeDocumentSchemaRepairMigration } from "./migrations/knowledge-document-schema-repair-migration";
+export { CoreNoteInsightSchemaMigration } from "./migrations/core-note-insight-schema-migration";
+export { CoreNoteTaskHierarchyMigration } from "./migrations/core-note-task-hierarchy-migration";
+export { TtsModelSchemaMigration } from "./migrations/tts-model-schema-migration";
 export { Repository } from "./repositories/repository";
 export type { DatabaseConnection } from "./types/database-types";
 
-export const databaseConfig = new DatabaseConfig("speakspace.db", 5);
+export const databaseConfig = new DatabaseConfig("speakspace.db", 8);
 
 export const migrationRunner = new MigrationRunner([
   new InitialSchemaMigration(),
@@ -29,6 +35,9 @@ export const migrationRunner = new MigrationRunner([
   new LlmModelSchemaMigration(),
   new KnowledgeDocumentSchemaMigration(),
   new KnowledgeDocumentSchemaRepairMigration(),
+  new CoreNoteInsightSchemaMigration(),
+  new CoreNoteTaskHierarchyMigration(),
+  new TtsModelSchemaMigration(),
 ]);
 
 export const databaseManager = new DatabaseManager(

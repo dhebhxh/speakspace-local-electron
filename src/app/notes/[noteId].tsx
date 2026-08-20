@@ -1,7 +1,8 @@
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import * as Clipboard from "expo-clipboard";
 import { File, Paths } from "expo-file-system";
 import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -30,6 +31,8 @@ import type {
   KnowledgeDocument,
   KnowledgeScenario,
 } from "@/domain/knowledge/knowledge-document";
+import type { CoreNoteInsight } from "@/domain/core-note-insight/core-note-insight";
+import { CoreNoteInsightGenerationError } from "@/errors/core-note-insight-generation-error";
 import { KnowledgeGenerationError } from "@/errors/knowledge-generation-error";
 import { useTheme } from "@/hooks/use-theme";
 import { formatDate } from "@/utils/format-date";
@@ -44,19 +47,25 @@ type NoteDetailState =
       >;
       workspaceName: string | null;
       knowledge: KnowledgeDocument | null;
+      coreInsights: CoreNoteInsight | null;
     };
 
 type GenerationState =
   | { status: "idle" }
   | { status: "selecting"; scenario: KnowledgeScenario }
-  | { status: "generating"; scenario: KnowledgeScenario }
+  | { status: "queued" | "generating"; scenario: KnowledgeScenario }
   | { status: "error"; scenario: KnowledgeScenario; message: string };
+
+type CoreInsightGenerationState =
+  | { status: "idle" }
+  | { status: "queued" | "generating" }
+  | { status: "error"; message: string };
 
 export default function NoteDetailScreen() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
   const theme = useTheme();
   const colors = Colors[theme.mode];
-  const { noteService, workspaceService, knowledgeService } = appContainer;
+  const { noteService, workspaceService, knowledgeService, coreNoteInsightService } = appContainer;
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [state, setState] = useState<NoteDetailState>({
@@ -70,6 +79,7 @@ export default function NoteDetailScreen() {
   const [workspaces, setWorkspaces] = useState<Awaited<ReturnType<typeof workspaceService.getWorkspaces>>>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [coreGeneration, setCoreGeneration] = useState<CoreInsightGenerationState>({ status: "idle" });
   const audioRelativePath =
     state.status === "success" ? state.note.getAudioRelativePath() : null;
   const audioUri = audioRelativePath
@@ -89,7 +99,7 @@ export default function NoteDetailScreen() {
         return;
       }
 
-      const [workspace, knowledge] = await Promise.all([
+      const [workspace, knowledge, coreInsights] = await Promise.all([
         workspaceService
           .getWorkspace(loadedNote.getWorkspaceId())
           .catch((error) => {
@@ -109,12 +119,17 @@ export default function NoteDetailScreen() {
           });
           return null;
         }),
+        coreNoteInsightService.getForNote(loadedNote.getId()).catch((error) => {
+          console.warn("[NoteDetail] Saved core insights could not be loaded", { noteId: loadedNote.getId(), error });
+          return null;
+        }),
       ]);
       setState({
         status: "success",
         note: loadedNote,
         workspaceName: workspace?.getName() ?? null,
         knowledge,
+        coreInsights,
       });
     } catch (error) {
       console.error("[NoteDetail] Unable to load note", { noteId, error });
@@ -125,6 +140,40 @@ export default function NoteDetailScreen() {
   useEffect(() => {
     void loadNote();
   }, [noteId]);
+
+  useEffect(() => coreNoteInsightService.subscribeToGeneration(noteId, (generationState) => {
+    if (generationState.status === "queued" || generationState.status === "generating") {
+      setCoreGeneration({ status: generationState.status });
+      return;
+    }
+    if (generationState.status === "failed") {
+      setCoreGeneration({ status: "error", message: generationState.message });
+      return;
+    }
+    setCoreGeneration({ status: "idle" });
+    if (generationState.status === "completed") {
+      void coreNoteInsightService.getForNote(noteId).then((coreInsights) => {
+        if (coreInsights) setState((current) => current.status === "success" ? { ...current, coreInsights } : current);
+      });
+    }
+  }), [coreNoteInsightService, noteId]);
+
+  useEffect(() => knowledgeService.subscribeToGeneration(noteId, (generationState) => {
+    if (generationState.status === "queued" || generationState.status === "generating") {
+      setGeneration({ status: generationState.status, scenario: generationState.scenario });
+      return;
+    }
+    if (generationState.status === "failed") {
+      setGeneration({ status: "error", scenario: generationState.scenario, message: generationState.message });
+      return;
+    }
+    setGeneration({ status: "idle" });
+    if (generationState.status === "completed") {
+      void knowledgeService.getForNote(noteId).then((knowledge) => {
+        if (knowledge) setState((current) => current.status === "success" ? { ...current, knowledge } : current);
+      });
+    }
+  }), [knowledgeService, noteId]);
 
   const generateKnowledge = async (scenario: KnowledgeScenario) => {
     if (state.status !== "success") return;
@@ -140,7 +189,7 @@ export default function NoteDetailScreen() {
         state.note.getTranscript(),
         scenario,
       );
-      setState({ ...state, knowledge });
+      setState((current) => current.status === "success" && current.note.getId() === state.note.getId() ? { ...current, knowledge } : current);
       setGeneration({ status: "idle" });
       console.info("[NoteDetail] Knowledge generation displayed", {
         noteId: state.note.getId(),
@@ -214,6 +263,23 @@ export default function NoteDetailScreen() {
         );
       }},
     ]);
+  };
+
+  const generateCoreInsights = async () => {
+    if (state.status !== "success") return;
+    const startedAt = Date.now();
+    console.info("[NoteDetail] Core insights generation started", { noteId: state.note.getId() });
+    setCoreGeneration({ status: "generating" });
+    try {
+      const coreInsights = await coreNoteInsightService.generate(state.note.getId(), state.note.getTranscript());
+      setState((current) => current.status === "success" && current.note.getId() === state.note.getId() ? { ...current, coreInsights } : current);
+      setCoreGeneration({ status: "idle" });
+      console.info("[NoteDetail] Core insights displayed", { noteId: state.note.getId(), durationMs: Date.now() - startedAt });
+    } catch (error) {
+      const message = error instanceof CoreNoteInsightGenerationError ? error.message : "Core note insights did not finish. Please try again.";
+      console.error("[NoteDetail] Core insights generation failed", { noteId: state.note.getId(), durationMs: Date.now() - startedAt, error });
+      setCoreGeneration({ status: "error", message });
+    }
   };
 
   return (
@@ -314,6 +380,27 @@ export default function NoteDetailScreen() {
                 {state.note.getTranscript()}
               </Text>
             </View>
+            <View style={[styles.knowledgeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.headingCopy}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Core Note Insights</Text>
+                <Text style={[styles.supportingText, { color: colors.textMuted }]}>Universal summary, key points, actions, and time-based intents extracted locally.</Text>
+              </View>
+              {coreGeneration.status === "generating" || coreGeneration.status === "queued" ? (
+                <View style={[styles.generationStatus, { backgroundColor: colors.surfaceMuted }]}>
+                  <ActivityIndicator color={colors.accent} />
+                  <View style={styles.headingCopy}>
+                    <Text style={[styles.statusTitle, { color: colors.text }]}>{coreGeneration.status === "queued" ? "Waiting for local AI…" : "Extracting core insights…"}</Text>
+                    <Text style={[styles.supportingText, { color: colors.textMuted }]}>Running privately on this device.</Text>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  {state.coreInsights && <CoreInsightResult insight={state.coreInsights} textColor={colors.text} mutedColor={colors.textMuted} borderColor={colors.border} />}
+                  {coreGeneration.status === "error" && <Text selectable style={[styles.errorText, { color: colors.danger }]}>{coreGeneration.message}</Text>}
+                  <AppButton label={state.coreInsights ? "Regenerate Core Insights" : "Generate Core Insights"} variant={state.coreInsights ? "secondary" : undefined} onPress={() => void generateCoreInsights()} />
+                </>
+              )}
+            </View>
             <View
               style={[
                 styles.knowledgeCard,
@@ -355,7 +442,7 @@ export default function NoteDetailScreen() {
                 )}
               </View>
 
-              {generation.status === "generating" ? (
+              {generation.status === "generating" || generation.status === "queued" ? (
                 <View
                   style={[
                     styles.generationStatus,
@@ -365,7 +452,7 @@ export default function NoteDetailScreen() {
                   <ActivityIndicator color={colors.accent} />
                   <View style={styles.headingCopy}>
                     <Text style={[styles.statusTitle, { color: colors.text }]}>
-                      Organizing your knowledge…
+                      {generation.status === "queued" ? "Waiting for local AI…" : "Organizing your knowledge…"}
                     </Text>
                     <Text
                       style={[
@@ -509,6 +596,171 @@ export default function NoteDetailScreen() {
   );
 }
 
+function CoreInsightResult({ insight, textColor, mutedColor, borderColor }: {
+  insight: CoreNoteInsight;
+  textColor: string;
+  mutedColor: string;
+  borderColor: string;
+}) {
+  const reminders = insight.getCalendarIntents().filter((item) => item.kind === "reminder");
+  const calendarIntents = insight.getCalendarIntents().filter((item) => item.kind === "calendar");
+  const empty = "未识别到相关信息";
+  const formattedHtml = formatCoreInsightsAsHtml(insight);
+  return (
+    <View style={styles.document}>
+      <CopyInsightsButton html={formattedHtml} position="top" />
+      <InsightSection title="Summary" borderColor={borderColor} textColor={textColor} first>
+        <Text selectable style={[styles.body, { color: insight.getSummary() ? textColor : mutedColor }]}>{insight.getSummary() || empty}</Text>
+      </InsightSection>
+      <InsightSection title="Key Points" borderColor={borderColor} textColor={textColor}>
+        {insight.getKeyPoints().length ? (
+          <View style={styles.bulletList}>
+            {insight.getKeyPoints().map((item, index) => (
+              <View key={`key-${index}`} style={styles.bulletRow}>
+                <Text selectable style={[styles.bulletMarker, { color: mutedColor }]}>•</Text>
+                <Text selectable style={[styles.resultItem, { color: textColor }]}>{item}</Text>
+              </View>
+            ))}
+          </View>
+        ) : <EmptyInsight text={empty} color={mutedColor} />}
+      </InsightSection>
+      <InsightSection title="Tasks & Action Plan" borderColor={borderColor} textColor={textColor}>
+        {insight.getTasks().length ? insight.getTasks().map((task, taskIndex) => (
+          <View key={task.id} style={styles.taskGroup}>
+            <Text selectable style={[styles.taskTitle, { color: textColor }]}>{taskIndex + 1}. {task.title}</Text>
+            {displayValue(task.description) && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{task.description}</Text>}
+            {coreTimeDisplay(task.metadata, "dueAt", task.dueAt) && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>截止时间：{coreTimeDisplay(task.metadata, "dueAt", task.dueAt)}</Text>}
+            <View style={styles.actionSteps}>
+              {task.actionItems.length ? task.actionItems.map((item, index) => (
+                <View key={item.id} style={styles.actionStep}>
+                  <Text selectable style={[styles.stepNumber, { color: mutedColor }]}>{index + 1}</Text>
+                  <View style={styles.stepCopy}>
+                    <Text selectable style={[styles.resultItem, { color: textColor }]}>{item.title}</Text>
+                    {displayValue(item.description) && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{item.description}</Text>}
+                  </View>
+                </View>
+              )) : <EmptyInsight text="未生成可执行步骤" color={mutedColor} />}
+            </View>
+          </View>
+        )) : <EmptyInsight text={empty} color={mutedColor} />}
+        {insight.getUnassignedActionItems().map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={coreTimeDisplay(item.metadata, item.dueAt ? "dueAt" : "startsAt", item.dueAt ?? item.startsAt)} textColor={textColor} mutedColor={mutedColor} />)}
+      </InsightSection>
+      <InsightSection title="Reminders" borderColor={borderColor} textColor={textColor}>
+        {reminders.length ? reminders.map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={coreTimeDisplay(item.metadata, item.remindAt ? "remindAt" : item.dueAt ? "dueAt" : "startsAt", item.remindAt ?? item.dueAt ?? item.startsAt)} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
+      </InsightSection>
+      <InsightSection title="Calendar Intents" borderColor={borderColor} textColor={textColor}>
+        {calendarIntents.length ? calendarIntents.map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={coreTimeDisplay(item.metadata, "startsAt", item.startsAt)} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
+      </InsightSection>
+      <Text selectable style={[styles.generatedMeta, { color: mutedColor }]}>Generated locally · {formatDate(insight.getUpdatedAt())}</Text>
+      <CopyInsightsButton html={formattedHtml} position="bottom" />
+    </View>
+  );
+}
+
+function CopyInsightsButton({ html, position }: { html: string; position: "top" | "bottom" }) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+
+  const copy = async () => {
+    try {
+      const copied = await Clipboard.setStringAsync(html, { inputFormat: Clipboard.StringFormat.HTML });
+      setCopyState(copied ? "copied" : "error");
+      if (copied) setTimeout(() => setCopyState("idle"), 2000);
+      console.info("[CoreInsights] Formatted content copied", { position, copied });
+    } catch (error) {
+      setCopyState("error");
+      console.warn("[CoreInsights] Formatted copy failed", { position, error });
+    }
+  };
+
+  return (
+    <View style={styles.copyBlock}>
+      <AppButton
+        label={copyState === "copied" ? "Copied with formatting" : "Copy formatted insights"}
+        variant="secondary"
+        onPress={() => void copy()}
+      />
+      {copyState === "error" && <Text selectable style={styles.copyError}>Unable to copy. Please try again.</Text>}
+    </View>
+  );
+}
+
+function formatCoreInsightsAsHtml(insight: CoreNoteInsight): string {
+  const empty = "未识别到相关信息";
+  const list = (items: readonly string[]) => items.length
+    ? `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+    : `<p><em>${empty}</em></p>`;
+  const tasks = insight.getTasks().length
+    ? `<ol>${insight.getTasks().map((task) => `<li><strong>${escapeHtml(task.title)}</strong>${optionalParagraph(task.description)}${optionalMeta("截止时间", coreTimeDisplay(task.metadata, "dueAt", task.dueAt))}${task.actionItems.length ? `<ol>${task.actionItems.map((item) => `<li>${escapeHtml(item.title)}${optionalParagraph(item.description)}${optionalMeta("截止时间", coreTimeDisplay(item.metadata, "dueAt", item.dueAt))}</li>`).join("")}</ol>` : `<p><em>未生成可执行步骤</em></p>`}</li>`).join("")}</ol>`
+    : `<p><em>${empty}</em></p>`;
+  const reminders = insight.getCalendarIntents().filter((item) => item.kind === "reminder");
+  const calendarIntents = insight.getCalendarIntents().filter((item) => item.kind === "calendar");
+  const timedList = (items: typeof reminders, time: (item: typeof reminders[number]) => string | null) => items.length
+    ? `<ul>${items.map((item) => `<li><strong>${escapeHtml(item.title)}</strong>${optionalParagraph(item.description)}${optionalMeta("Time", time(item))}</li>`).join("")}</ul>`
+    : `<p><em>${empty}</em></p>`;
+
+  return `<article><h1>Core Note Insights</h1><h2>Summary</h2><p>${escapeHtml(insight.getSummary() || empty)}</p><h2>Key Points</h2>${list(insight.getKeyPoints())}<h2>Tasks &amp; Action Plan</h2>${tasks}<h2>Reminders</h2>${timedList(reminders, (item) => coreTimeDisplay(item.metadata, item.remindAt ? "remindAt" : item.dueAt ? "dueAt" : "startsAt", item.remindAt ?? item.dueAt ?? item.startsAt))}<h2>Calendar Intents</h2>${timedList(calendarIntents, (item) => coreTimeDisplay(item.metadata, "startsAt", item.startsAt))}<hr><p><small>Generated locally · ${escapeHtml(formatDate(insight.getUpdatedAt()))}</small></p></article>`;
+}
+
+function coreTimeDisplay(metadata: Record<string, unknown>, field: string, normalized: string | null): string | null {
+  const expressions = metadata.timeExpressions;
+  if (expressions && typeof expressions === "object" && !Array.isArray(expressions)) {
+    const value = (expressions as Record<string, unknown>)[field];
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const raw = (value as Record<string, unknown>).raw;
+      const resolvedDate = (value as Record<string, unknown>).resolvedDate;
+      const resolved = (value as Record<string, unknown>).normalized;
+      const precision = (value as Record<string, unknown>).precision;
+      if (typeof raw === "string" && displayValue(raw)) {
+        const friendlyResolved = precision === "datetime" && typeof resolved === "string"
+          ? formatResolvedTime(resolved)
+          : typeof resolvedDate === "string" ? formatResolvedDate(resolvedDate) : null;
+        return friendlyResolved && !raw.includes(friendlyResolved) ? `${raw}（${friendlyResolved}）` : raw;
+      }
+    }
+  }
+  return displayValue(normalized) ? formatResolvedTime(normalized) : null;
+}
+
+function formatResolvedDate(value: string): string | null {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${Number(match[1])}年${Number(match[2])}月${Number(match[3])}日` : null;
+}
+
+function formatResolvedTime(value: string): string {
+  const dateTime = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (dateTime) return `${Number(dateTime[1])}年${Number(dateTime[2])}月${Number(dateTime[3])}日 ${dateTime[4]}:${dateTime[5]}`;
+  return formatResolvedDate(value) ?? value;
+}
+
+function optionalParagraph(value: string | null): string {
+  return displayValue(value) ? `<p>${escapeHtml(value)}</p>` : "";
+}
+
+function optionalMeta(label: string, value: string | null): string {
+  return displayValue(value) ? `<p><small><strong>${label}:</strong> ${escapeHtml(value)}</small></p>` : "";
+}
+
+function escapeHtml(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+}
+
+function InsightSection({ title, borderColor, textColor, first = false, children }: { title: string; borderColor: string; textColor: string; first?: boolean; children: ReactNode }) {
+  return <View style={[styles.knowledgeSection, !first && styles.dividedSection, !first && { borderColor }]}><Text style={[styles.resultTitle, { color: textColor }]}>{title}</Text>{children}</View>;
+}
+
+function InsightRow({ title, detail, time, textColor, mutedColor }: { title: string; detail?: string | null; time?: string | null; textColor: string; mutedColor: string }) {
+  return <View style={styles.structuredItem}><Text selectable style={[styles.resultItem, { color: textColor }]}>{title}</Text>{displayValue(detail) && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{detail}</Text>}{displayValue(time) && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>时间：{time}</Text>}</View>;
+}
+
+function displayValue(value: string | null | undefined): value is string {
+  if (!value?.trim()) return false;
+  return !["null", "unknown", "undefined", "none", "n/a", "na", "not specified", "unspecified"].includes(value.trim().toLocaleLowerCase());
+}
+
+function EmptyInsight({ text, color }: { text: string; color: string }) {
+  return <Text selectable style={[styles.emptyInsight, { color }]}>{text}</Text>;
+}
+
 function KnowledgeResult({
   document,
   textColor,
@@ -520,24 +772,20 @@ function KnowledgeResult({
   mutedColor: string;
   borderColor: string;
 }) {
+  const coreInsightSectionKeys = new Set(["keyPoints", "tasks", "reminders", "actionItems", "followUps", "nextSteps"]);
+  const visibleSections = document.getSections().filter((section) => section.items.length > 0 && !coreInsightSectionKeys.has(section.key));
   return (
     <View style={styles.document}>
-      <View style={styles.knowledgeSection}>
-        <Text style={[styles.resultTitle, { color: textColor }]}>Summary</Text>
-        <Text selectable style={[styles.body, { color: textColor }]}>
-          {document.getSummary()}
-        </Text>
-      </View>
-      {document
-        .getSections()
-        .filter((section) => section.items.length > 0)
-        .map((section) => (
+      {visibleSections.length === 0 && (
+        <Text selectable style={[styles.emptyInsight, { color: mutedColor }]}>No supported scenario-specific information was found in this note.</Text>
+      )}
+      {visibleSections.map((section, sectionIndex) => (
           <View
             key={section.key}
             style={[
               styles.knowledgeSection,
-              styles.dividedSection,
-              { borderColor },
+              sectionIndex > 0 && styles.dividedSection,
+              sectionIndex > 0 && { borderColor },
             ]}
           >
             <Text style={[styles.resultTitle, { color: textColor }]}>
@@ -644,8 +892,22 @@ const styles = StyleSheet.create({
   dividedSection: { borderTopWidth: 1, paddingTop: Spacing.lg },
   resultTitle: { fontSize: 19, fontWeight: "800" },
   itemList: { gap: Spacing.sm },
+  bulletList: { gap: Spacing.sm },
+  bulletRow: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm },
+  bulletMarker: { fontSize: 18, lineHeight: 25 },
   itemRow: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm },
   bullet: { fontSize: 18, lineHeight: 25 },
   resultItem: { flex: 1, fontSize: 16, lineHeight: 25 },
   generatedMeta: { fontSize: 12 },
+  structuredItem: { gap: Spacing.xs, paddingVertical: Spacing.xs },
+  structuredMeta: { fontSize: 12, fontVariant: ["tabular-nums"] },
+  emptyInsight: { fontSize: 14, fontStyle: "italic", lineHeight: 20 },
+  taskGroup: { gap: Spacing.xs, paddingVertical: Spacing.sm },
+  taskTitle: { fontSize: 17, fontWeight: "800", lineHeight: 24 },
+  actionSteps: { gap: Spacing.sm, paddingTop: Spacing.xs, paddingLeft: Spacing.sm },
+  actionStep: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm },
+  stepNumber: { minWidth: 22, fontSize: 13, fontWeight: "800", lineHeight: 25, fontVariant: ["tabular-nums"] },
+  stepCopy: { flex: 1, gap: 2 },
+  copyBlock: { gap: Spacing.xs },
+  copyError: { color: Colors.light.danger, fontSize: 13, lineHeight: 18 },
 });

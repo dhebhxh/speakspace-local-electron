@@ -11,6 +11,7 @@ import { DatabaseError } from "@/errors/database-error";
 import { LlmModelNotFoundError } from "@/errors/llm-model-not-found-error";
 import { ValidationError } from "@/errors/validation-error";
 import { LlmModelRepository } from "@/repositories/llm-model-repository";
+import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 
 export type LlmModelDownloadProgress = {
   bytesWritten: number;
@@ -30,7 +31,7 @@ type ActiveDownload = {
 export class LlmModelService {
   private readonly activeDownloads = new Map<string, ActiveDownload>();
 
-  public constructor(private readonly llmModelRepository: LlmModelRepository) {}
+  public constructor(private readonly llmModelRepository: LlmModelRepository, private readonly coordinator: LocalLlmCoordinator) {}
 
   public getCatalog(): readonly LlmModelCatalogEntry[] { return LLM_MODEL_CATALOG; }
   public getInstalledModels(): Promise<LlmModel[]> { return this.llmModelRepository.findAll(); }
@@ -100,6 +101,10 @@ export class LlmModelService {
   }
 
   public async setActiveModel(id: string): Promise<void> {
+    return this.coordinator.runExclusive("model-management", () => this.setActiveModelExclusive(id));
+  }
+
+  private async setActiveModelExclusive(id: string): Promise<void> {
     const model = await this.getInstalledModelOrThrow(id);
     const file = this.resolveModelFile(model);
     if (!file.exists) {
@@ -119,6 +124,10 @@ export class LlmModelService {
   }
 
   public async uninstallModel(id: string): Promise<void> {
+    return this.coordinator.runExclusive("model-management", () => this.uninstallModelExclusive(id));
+  }
+
+  private async uninstallModelExclusive(id: string): Promise<void> {
     const model = await this.getInstalledModelOrThrow(id);
     if (model.getIsActive()) {
       throw new ValidationError(

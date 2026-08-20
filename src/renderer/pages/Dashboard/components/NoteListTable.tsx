@@ -7,6 +7,7 @@ import {
   DashboardCategory,
   DashboardCategoryKey,
 } from '../models/DashboardCategory';
+import TrashCanButton from '../../../components/TrashCanButton';
 
 /** 一条笔记在列表里显示的待办日期摘要。 */
 export type NoteTodoSummary = {
@@ -65,7 +66,8 @@ interface NoteListTableProps {
   onSortChange: (order: 'updated' | 'created') => void;
   onTogglePin: (noteId: number, e: React.MouseEvent) => void;
   onSelectNote: (noteId: number) => void;
-  onContextMenu?: (noteId: number, e: React.MouseEvent) => void;
+  /** 把笔记移入回收站。右键菜单已被显式的回收站按钮取代。 */
+  onDelete: (noteId: number) => void;
   /**
    * 悬停某条「待办日期」时把该笔记的全部日期报上去，供日历闪烁提示；
    * 移开时传 null。
@@ -84,7 +86,7 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
   onSortChange,
   onTogglePin,
   onSelectNote,
-  onContextMenu,
+  onDelete,
   onHoverTodoDates = () => {},
 }) => {
   const { t } = useTranslation();
@@ -181,13 +183,19 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
               <th className="th-star">{t('dashboard.notes.column.pinned')}</th>
               <th className="th-title">{t('dashboard.notes.column.title')}</th>
               <th className="th-type">{t('dashboard.notes.column.type')}</th>
+              {/* 时长 / 创建 / 更新三列已按需求移除，改为待办日期；
+                  回收站的操作列保留在最后。 */}
               <th className="th-todo">{t('dashboard.notes.column.todo')}</th>
+              <th className="th-actions">
+                <span className="sr-only">{t('trash.column.actions')}</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {notes.length === 0 ? (
               <tr>
-                <td colSpan={4} className="no-data-cell">
+                {/* 置顶 / 标题 / 类型 / 待办日期 / 操作 = 5 列 */}
+                <td colSpan={5} className="no-data-cell">
                   <div className="empty-table-state">
                     <div className="empty-icon">📂</div>
                     <p>{t('dashboard.notes.empty')}</p>
@@ -204,9 +212,6 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
                     key={note.getId()}
                     className={`note-row ${isPinned ? 'pinned-row' : ''}`}
                     onClick={() => onSelectNote(note.getId())}
-                    onContextMenu={(e) =>
-                      onContextMenu && onContextMenu(note.getId(), e)
-                    }
                   >
                     <td
                       className="td-star"
@@ -254,6 +259,15 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
                       ) : (
                         <span className="todo-date-none">—</span>
                       )}
+                    </td>
+                    <td className="td-actions">
+                      <TrashCanButton
+                        label={t('trash.action.moveNote')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onDelete(note.getId());
+                        }}
+                      />
                     </td>
                   </tr>
                 );

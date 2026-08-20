@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Search } from 'lucide-react';
+import type { TrashActionResult } from '@shared/types/TrashTypes';
+import TrashUndoToast from '../../components/TrashUndoToast';
 import WorkspaceDetailHeader from './components/WorkspaceDetailHeader';
 import WorkspaceNoteCard from './components/WorkspaceNoteCard';
 import WorkspaceSemanticSearch from './components/WorkspaceSemanticSearch';
@@ -15,6 +17,8 @@ import './WorkspacePage.css';
  */
 export default function WorkspacePage() {
   const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const detail = useWorkspaceDetail();
   const {
     workspace,
@@ -26,35 +30,37 @@ export default function WorkspacePage() {
     visibleNotes,
     selectedNoteIds,
     toggleNoteSelection,
+    revealNote,
   } = detail;
   const [showMultiModal, setShowMultiModal] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    noteId: number;
-  } | null>(null);
+  const [noteUndo, setNoteUndo] = useState<TrashActionResult | null>(null);
 
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameInput, setRenameInput] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  const handleContextMenu = (noteId: number, e: React.MouseEvent) => {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, noteId });
-  };
-
-  const closeContextMenu = () => setContextMenu(null);
-
   const handleDeleteNote = async (noteId: number) => {
-    await detail.deleteNote(noteId);
-    closeContextMenu();
+    const result = await detail.moveNoteToTrash(noteId);
+    if (result) setNoteUndo(result);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    window.addEventListener('click', closeContextMenu);
-    return () => window.removeEventListener('click', closeContextMenu);
-  }, []);
+    const routedNoteId = (location.state as { noteId?: number } | null)?.noteId;
+    if (!loading && routedNoteId) {
+      revealNote(routedNoteId);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [loading, location.pathname, location.state, navigate, revealNote]);
+
+  const undoDeleteNote = async () => {
+    if (!noteUndo) return;
+    await window.electron.trash.restore({
+      itemType: 'note',
+      id: noteUndo.id,
+    });
+    await detail.reloadNotes();
+    revealNote(noteUndo.id);
+  };
 
   if (loading) {
     return (
@@ -108,7 +114,7 @@ export default function WorkspacePage() {
         </div>
 
         <WorkspaceSemanticSearch
-          onSelect={detail.revealNote}
+          onSelect={revealNote}
           query={query}
           workspaceId={detail.workspaceId}
         />
@@ -156,7 +162,7 @@ export default function WorkspacePage() {
             note={note}
             isSelected={selectedNoteIds.includes(note.id)}
             onToggleSelection={toggleNoteSelection}
-            onContextMenu={handleContextMenu}
+            onDelete={handleDeleteNote}
             onGenerate={detail.generateOutput}
             templates={detail.templates}
             workspaceId={detail.workspaceId}
@@ -170,38 +176,6 @@ export default function WorkspacePage() {
           workspaceId={detail.workspaceId}
           onClose={() => setShowMultiModal(false)}
         />
-      )}
-
-      {contextMenu && (
-        <button
-          type="button"
-          className="btn-plain"
-          style={{
-            position: 'fixed',
-            top: contextMenu.y,
-            left: contextMenu.x,
-            backgroundColor: '#fff',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            borderRadius: '6px',
-            padding: '8px 0',
-            zIndex: 9999,
-            cursor: 'pointer',
-            minWidth: '120px',
-            border: 'none',
-          }}
-          onClick={() => handleDeleteNote(contextMenu.noteId)}
-        >
-          <div
-            style={{
-              padding: '8px 16px',
-              color: '#ff4d4f',
-              fontSize: '14px',
-              fontWeight: 500,
-            }}
-          >
-            {t('workspace.detail.deleteNote', 'Delete note')}
-          </div>
-        </button>
       )}
 
       {showRenameModal && (
@@ -268,11 +242,13 @@ export default function WorkspacePage() {
       {showDeleteModal && (
         <div className="workspace-modal-overlay">
           <div
-            className="workspace-modal"
-            style={{ width: '400px', margin: 'auto' }}
+            aria-labelledby="workspace-delete-confirm-title"
+            aria-modal="true"
+            className="workspace-modal workspace-confirm-modal"
+            role="dialog"
           >
             <header className="workspace-modal-head">
-              <h2>
+              <h2 id="workspace-delete-confirm-title">
                 {t('workspace.detail.deleteWorkspace', 'Delete Workspace')}
               </h2>
             </header>
@@ -298,15 +274,15 @@ export default function WorkspacePage() {
                   {t('common.cancel', 'Cancel')}
                 </button>
                 <button
-                  className="ws-btn ws-btn-primary"
-                  style={{
-                    backgroundColor: '#ff4d4f',
-                    color: 'white',
-                    border: 'none',
-                  }}
-                  onClick={() => {
-                    detail.deleteWorkspace();
+                  className="ws-btn ws-btn-danger-solid"
+                  onClick={async () => {
+                    const moved = await detail.moveWorkspaceToTrash();
                     setShowDeleteModal(false);
+                    if (moved) {
+                      navigate('/Workspace', {
+                        state: { trashUndo: moved },
+                      });
+                    }
                   }}
                   type="button"
                 >
@@ -316,6 +292,19 @@ export default function WorkspacePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {noteUndo && (
+        <TrashUndoToast
+          dismissLabel={t('trash.action.dismiss')}
+          message={t('trash.notice.noteMoved', {
+            name: noteUndo.name || t('workspace.note.unnamed'),
+          })}
+          onDismiss={() => setNoteUndo(null)}
+          onUndo={undoDeleteNote}
+          undoLabel={t('trash.action.undo')}
+          undoingLabel={t('trash.action.restoring')}
+        />
       )}
     </section>
   );

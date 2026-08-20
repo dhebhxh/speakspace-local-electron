@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { DatabaseManager } from '../database/DatabaseManager';
 import { BlobStorage } from '../database/BlobStorage';
+import TrashService from '../trash/TrashService';
 
 // what you need to know about a workspace(just summary to show)
 // data structure of a workspace
@@ -108,6 +109,8 @@ export class WorkspaceService {
         COALESCE(SUM(notes.is_pinned), 0) AS pinned_count
       FROM workspaces
       LEFT JOIN notes ON notes.workspace_id = workspaces.id
+        AND notes.trashed_at IS NULL
+      WHERE workspaces.trashed_at IS NULL
       GROUP BY workspaces.id
       ORDER BY COALESCE(workspaces.last_opened_at, workspaces.created_at) DESC,
         workspaces.id DESC
@@ -141,7 +144,8 @@ export class WorkspaceService {
   public openWorkspace(rawId: unknown): WorkspaceSummary {
     const id = WorkspaceService.normalizeId(rawId);
     const statement = this.database.prepare(
-      'UPDATE workspaces SET last_opened_at = ? WHERE id = ?',
+      `UPDATE workspaces SET last_opened_at = ?
+      WHERE id = ? AND trashed_at IS NULL`,
     );
     const result = statement.run(new Date().toISOString(), id);
 
@@ -162,7 +166,7 @@ export class WorkspaceService {
     const noteStatement = this.database.prepare(
       `SELECT id, name, audio_relative_path, transcript, is_pinned,
         created_at, updated_at
-      FROM notes WHERE workspace_id = ?
+      FROM notes WHERE workspace_id = ? AND trashed_at IS NULL
       ORDER BY is_pinned DESC, pinned_at DESC, updated_at DESC`,
     );
     const noteRows = noteStatement.all(workspaceId) as Array<
@@ -236,8 +240,10 @@ export class WorkspaceService {
     const workspaceId = WorkspaceService.normalizeId(rawWorkspaceId);
     const noteId = WorkspaceService.normalizeId(rawNoteId);
     const statement = this.database.prepare(
-      `SELECT audio_relative_path FROM notes
-      WHERE id = ? AND workspace_id = ?`,
+      `SELECT notes.audio_relative_path FROM notes
+      JOIN workspaces ON workspaces.id = notes.workspace_id
+      WHERE notes.id = ? AND notes.workspace_id = ?
+        AND notes.trashed_at IS NULL AND workspaces.trashed_at IS NULL`,
     );
     const row = statement.get(noteId, workspaceId) as
       | { audio_relative_path: string | null }
@@ -323,119 +329,24 @@ export class WorkspaceService {
     const id = WorkspaceService.normalizeId(rawId);
     const name = WorkspaceService.normalizeName(rawName);
     const statement = this.database.prepare(
-      'UPDATE workspaces SET name = ?, updated_at = ? WHERE id = ?',
+      `UPDATE workspaces SET name = ?, updated_at = ?
+      WHERE id = ? AND trashed_at IS NULL`,
     );
     const result = statement.run(name, new Date().toISOString(), id);
 
     return result.changes > 0;
   }
 
-  // 删除工作空间及其所属笔记
-  // Delete a workspace and its notes
+  /** @deprecated Use the explicit Trash IPC namespace for new callers. */
   public deleteWorkspace(rawId: unknown): boolean {
-    const id = WorkspaceService.normalizeId(rawId);
-
-    // 1. Get all audio paths before deletion
-    const stmtFindBlobs = this.database.prepare(
-      'SELECT DISTINCT audio_relative_path FROM notes WHERE workspace_id = ? AND audio_relative_path IS NOT NULL',
-    );
-    const audioPaths = stmtFindBlobs.all(id) as {
-      audio_relative_path: string;
-    }[];
-
-    // 2. Delete workspace (cascades notes)
-    const statement = this.database.prepare(
-      'DELETE FROM workspaces WHERE id = ?',
-    );
-    const result = statement.run(id);
-
-    // 3. Clean up unused blobs
-    if (result.changes > 0 && audioPaths.length > 0) {
-      const stmtCheckBlob = this.database.prepare(
-        'SELECT COUNT(*) as count FROM notes WHERE audio_relative_path = ?',
-      );
-      audioPaths.forEach((row) => {
-        const check = stmtCheckBlob.get(row.audio_relative_path) as {
-          count: number;
-        };
-        // 同一个录音可能被多条笔记引用，只有没人再引用时才真正删文件。
-        if (check.count > 0) return;
-        try {
-          BlobStorage.getInstance().delete(row.audio_relative_path);
-        } catch (e) {
-          console.warn(
-            `Failed to delete unused recording blob ${row.audio_relative_path}:`,
-            e,
-          );
-        }
-      });
-    }
-
-    return result.changes > 0;
+    new TrashService({ database: this.database }).moveWorkspace(rawId);
+    return true;
   }
 
+  /** @deprecated Use the explicit Trash IPC namespace for new callers. */
   public deleteNote(rawId: unknown): boolean {
-    const id = WorkspaceService.normalizeId(rawId);
-
-    // Get audio_relative_path before deletion
-    const stmtFindBlob = this.database.prepare(
-      'SELECT audio_relative_path FROM notes WHERE id = ?',
-    );
-    const audioPathRow = stmtFindBlob.get(id) as
-      | { audio_relative_path: string | null }
-      | undefined;
-    const audioPath = audioPathRow?.audio_relative_path;
-
-    // Find associated conversations before deleting the note
-    const stmtFindConversations = this.database.prepare(
-      'SELECT conversation_id FROM conversation_contexts WHERE note_id = ?',
-    );
-    const conversationIds = stmtFindConversations.all(id) as {
-      conversation_id: number;
-    }[];
-
-    // ON DELETE CASCADE for todos table will remove associated todos and conversation_contexts
-    const statement = this.database.prepare('DELETE FROM notes WHERE id = ?');
-    const result = statement.run(id);
-
-    // Clean up empty conversations that were associated with this note
-    if (conversationIds.length > 0) {
-      const stmtCheck = this.database.prepare(
-        'SELECT COUNT(*) as count FROM conversation_contexts WHERE conversation_id = ?',
-      );
-      const stmtDelete = this.database.prepare(
-        'DELETE FROM ai_conversations WHERE id = ?',
-      );
-
-      // 每行都要先查询再决定是否删除，普通循环最贴近这段逻辑。
-      // eslint-disable-next-line no-restricted-syntax
-      for (const row of conversationIds) {
-        const check = stmtCheck.get(row.conversation_id) as { count: number };
-        if (check.count === 0) {
-          stmtDelete.run(row.conversation_id);
-        }
-      }
-    }
-
-    // Clean up unused blob
-    if (result.changes > 0 && audioPath) {
-      const stmtCheckBlob = this.database.prepare(
-        'SELECT COUNT(*) as count FROM notes WHERE audio_relative_path = ?',
-      );
-      const check = stmtCheckBlob.get(audioPath) as { count: number };
-      if (check.count === 0) {
-        try {
-          BlobStorage.getInstance().delete(audioPath);
-        } catch (e) {
-          console.warn(
-            `Failed to delete unused recording blob ${audioPath}:`,
-            e,
-          );
-        }
-      }
-    }
-
-    return result.changes > 0;
+    new TrashService({ database: this.database }).moveNote(rawId);
+    return true;
   }
 
   private static normalizeOptionalNoteName(
@@ -518,7 +429,8 @@ export class WorkspaceService {
         COALESCE(SUM(notes.is_pinned), 0) AS pinned_count
       FROM workspaces
       LEFT JOIN notes ON notes.workspace_id = workspaces.id
-      WHERE workspaces.id = ?
+        AND notes.trashed_at IS NULL
+      WHERE workspaces.id = ? AND workspaces.trashed_at IS NULL
       GROUP BY workspaces.id`,
     );
     const workspace = statement.get(id) as WorkspaceSummary | undefined;

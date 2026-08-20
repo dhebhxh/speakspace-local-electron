@@ -31,7 +31,7 @@ export class WorkspaceRepository implements Repository<Workspace> {
     const statement = this.database.prepare(`
             SELECT *
             FROM workspaces
-            WHERE id = ?
+            WHERE id = ? AND trashed_at IS NULL
         `);
     const row = statement.get(id) as any;
 
@@ -42,6 +42,7 @@ export class WorkspaceRepository implements Repository<Workspace> {
     const statement = this.database.prepare(`
             SELECT *
             FROM workspaces
+            WHERE trashed_at IS NULL
             ORDER BY updated_at DESC
         `);
     const rows = statement.all() as any[];
@@ -53,7 +54,7 @@ export class WorkspaceRepository implements Repository<Workspace> {
     const statement = this.database.prepare(`
             UPDATE workspaces
             SET name = ?, updated_at = ?
-            WHERE id = ?
+            WHERE id = ? AND trashed_at IS NULL
         `);
     const result = statement.run(
       entity.getName(),
@@ -73,7 +74,8 @@ export class WorkspaceRepository implements Repository<Workspace> {
 
   public existsById(id: number): boolean {
     const statement = this.database.prepare(
-      'SELECT 1 FROM workspaces WHERE id = ? LIMIT 1',
+      `SELECT 1 FROM workspaces
+      WHERE id = ? AND trashed_at IS NULL LIMIT 1`,
     );
     return statement.get(id) !== undefined;
   }

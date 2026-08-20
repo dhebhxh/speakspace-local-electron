@@ -7,7 +7,8 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--surface);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur))
+    saturate(var(--glass-saturate));
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   box-shadow: var(--shadow);
 }
@@ -92,31 +93,77 @@
   overflow-y: auto;
 }
 
-/* ?��??��??�表?�目?�身：用子选择?��??��?误伤?��?行�???�??�钮 */
-  .ask-ai-note-list > button,
-  .ask-ai-note-group > button,
-  .ask-ai-recents-list > button {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
-    gap: 0.15rem;
-    width: 100%;
-    min-width: 0;
-    padding: 0.5rem 0.6rem;
-    background: transparent;
-    color: var(--text);
-    text-align: left;
-    line-height: 1.4;
-  }
+/* 笔记卡片与最近会话保持紧凑，但笔记卡片要为右下角删除按钮留位。 */
+.ask-ai-note-card,
+.ask-ai-recents-list > button {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.15rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  line-height: 1.4;
+}
 
-.ask-ai-note-list > button:hover,
-.ask-ai-note-list > button.active,
-.ask-ai-note-group > button:hover,
-.ask-ai-note-group > button.active,
+.ask-ai-note-card:hover,
+.ask-ai-note-card.active,
 .ask-ai-recents-list > button:hover {
   background: var(--surface-soft);
   transform: none;
+}
+
+.ask-ai-note-card {
+  position: relative;
+  min-height: 84px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+}
+
+.ask-ai-note-card.active {
+  border-color: color-mix(in srgb, var(--accent) 36%, transparent);
+}
+
+.ask-ai-note-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.15rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 82px;
+  padding: 0.5rem 2.6rem 0.5rem 0.6rem;
+  color: var(--text);
+  text-align: left;
+  line-height: 1.4;
+  border-radius: 8px;
+}
+
+.ask-ai-note-delete {
+  position: absolute;
+  right: 0.3rem;
+  /* 与左侧日期/时间的底部行对齐；悬浮动画只作用于桶盖。 */
+  bottom: 0;
+}
+
+.ask-ai-page .ask-ai-note-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
+  line-height: 0;
+  text-align: center;
 }
 
 /* 笔记库�?工�??��?组�?display:contents 让�??��?记�??�在外�??�格�?*/
@@ -227,7 +274,9 @@
   left: 0;
   height: 1px;
   background: var(--border);
-  transition: background 140ms ease, height 140ms ease;
+  transition:
+    background 140ms ease,
+    height 140ms ease;
 }
 
 .ask-ai-library-splitter:hover::before,
@@ -433,6 +482,7 @@
   flex-shrink: 0;
 }
 
-.ask-ai-note-list > button, .ask-ai-note-group > button {
+.ask-ai-note-list > button,
+.ask-ai-note-group > button {
   flex-shrink: 0;
 }

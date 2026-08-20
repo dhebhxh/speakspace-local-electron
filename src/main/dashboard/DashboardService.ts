@@ -32,14 +32,17 @@ export class DashboardService {
   public constructor() {
     const dbManager = DatabaseManager.getInstance();
     this.database = dbManager.getDatabase();
-    this.todoRepository = new TodoRepository();
+    this.todoRepository = new TodoRepository(this.database);
   }
 
   public getDashboardOverview(): DashboardOverviewDTO {
     const statement = this.database.prepare(`
-            SELECT *
+            SELECT notes.*
             FROM notes
-            ORDER BY updated_at DESC
+            JOIN workspaces ON workspaces.id = notes.workspace_id
+            WHERE notes.trashed_at IS NULL
+              AND workspaces.trashed_at IS NULL
+            ORDER BY notes.updated_at DESC
             LIMIT 50
         `);
 
@@ -75,7 +78,7 @@ export class DashboardService {
       const statement = this.database.prepare(`
                 UPDATE notes
                 SET is_pinned = ?, pinned_at = ?
-                WHERE id = ?
+                WHERE id = ? AND trashed_at IS NULL
             `);
       const pinnedAt = isPinned ? new Date().toISOString() : null;
       statement.run(isPinned ? 1 : 0, pinnedAt, noteId);

@@ -36,9 +36,15 @@ export default function useAskAIPage() {
   const loadNotes = useCallback(async (preferredId?: number) => {
     const list = (await window.electron.askAI.listNotes()) as AskAINote[];
     setNotes(list);
-    setSelectedNoteId(
-      (currentId) => preferredId ?? currentId ?? list[0]?.id ?? null,
-    );
+    setSelectedNoteId((currentId) => {
+      const candidateId = preferredId ?? currentId;
+      return candidateId !== null &&
+        candidateId !== undefined &&
+        list.some((note) => note.id === candidateId)
+        ? candidateId
+        : (list[0]?.id ?? null);
+    });
+    return list;
   }, []);
 
   const loadConversations = useCallback(async () => {
@@ -58,6 +64,19 @@ export default function useAskAIPage() {
     setMessages([]);
     setSources([]);
     setStatus('');
+  }, []);
+
+  const removeSourceNote = useCallback((noteId: number) => {
+    setSources((current) => current.filter((note) => note.id !== noteId));
+  }, []);
+
+  const restoreSourceNote = useCallback((note: AskAINote, index: number) => {
+    setSources((current) => {
+      if (current.some((item) => item.id === note.id)) return current;
+      const next = [...current];
+      next.splice(Math.min(Math.max(index, 0), next.length), 0, note);
+      return next;
+    });
   }, []);
 
   const selectNote = useCallback(
@@ -194,6 +213,8 @@ export default function useAskAIPage() {
     createNote,
     ask,
     resetChat,
+    removeSourceNote,
+    restoreSourceNote,
     // 录音保存新笔记后，用它刷新列表并选中该笔记，让对话立即挂到新内容上。
     reloadNotes: loadNotes,
     // 智能体模式自己落库，落完用它刷新「最近会话」。

@@ -18,10 +18,18 @@ export class ConversationContextRepository {
                 conversation_id,
                 note_id
             )
-            VALUES (?, ?)
+            SELECT ?, notes.id
+            FROM notes
+            INNER JOIN workspaces ON workspaces.id = notes.workspace_id
+            WHERE notes.id = ?
+              AND notes.trashed_at IS NULL
+              AND workspaces.trashed_at IS NULL
         `);
 
-    statement.run(conversationId, noteId);
+    const result = statement.run(conversationId, noteId);
+    if (result.changes !== 1) {
+      throw new Error('笔记不可用 / Note is unavailable');
+    }
   }
 
   public removeContext(conversationId: number, noteId: number): void {
@@ -41,7 +49,11 @@ export class ConversationContextRepository {
             FROM notes
             INNER JOIN conversation_contexts
             ON notes.id = conversation_contexts.note_id
+            INNER JOIN workspaces
+            ON workspaces.id = notes.workspace_id
             WHERE conversation_contexts.conversation_id = ?
+            AND notes.trashed_at IS NULL
+            AND workspaces.trashed_at IS NULL
         `);
 
     const rows = statement.all(conversationId) as any[];

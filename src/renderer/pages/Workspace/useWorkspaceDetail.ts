@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
+import type { TrashActionResult } from '@shared/types/TrashTypes';
 import {
   NoteItem,
   WorkspaceController,
@@ -15,7 +17,7 @@ const workflowController = new WorkspaceWorkflowController();
 
 /** 工作空间详情的数据读取与修改集中在 Hook，页面组件只负责排版。 */
 export default function useWorkspaceDetail() {
-  const navigate = useNavigate();
+  const { t } = useTranslation();
   const { workspaceId: rawWorkspaceId } = useParams();
   const workspaceId = Number(rawWorkspaceId);
   const [workspace, setWorkspace] = useState<WorkspaceItem | null>(null);
@@ -68,6 +70,16 @@ export default function useWorkspaceDetail() {
     loadWorkspace();
   }, [loadWorkspace]);
 
+  const reloadNotes = useCallback(async () => {
+    const workspaceNotes =
+      await workspaceController.getWorkspaceNotes(workspaceId);
+    setNotes(workspaceNotes);
+    setSelectedNoteIds((current) =>
+      current.filter((id) => workspaceNotes.some((note) => note.id === id)),
+    );
+    return workspaceNotes;
+  }, [workspaceId]);
+
   const generateOutput = useCallback(
     async (noteId: number, templateId: number) => {
       try {
@@ -101,24 +113,42 @@ export default function useWorkspaceDetail() {
     [workspace],
   );
 
-  const deleteWorkspace = useCallback(async () => {
-    if (!workspace) return;
+  const moveWorkspaceToTrash = useCallback(async (): Promise<
+    TrashActionResult | undefined
+  > => {
+    if (!workspace) return undefined;
     try {
-      await workspaceController.deleteWorkspace(workspace.id);
-      navigate('/');
+      setError('');
+      return (await window.electron.trash.moveWorkspace(
+        workspace.id,
+      )) as TrashActionResult;
     } catch (reason) {
-      setError(WorkspaceController.getErrorMessage(reason, '删除失败'));
+      setError(
+        WorkspaceController.getErrorMessage(reason, t('trash.error.move')),
+      );
+      return undefined;
     }
-  }, [navigate, workspace]);
+  }, [t, workspace]);
 
-  const deleteNote = useCallback(async (noteId: number) => {
-    try {
-      await window.electron.workspace.deleteNote(noteId);
-      setNotes((prev) => prev.filter((n) => n.id !== noteId));
-    } catch (reason) {
-      setError(WorkspaceController.getErrorMessage(reason, '刪除筆記失敗'));
-    }
-  }, []);
+  const moveNoteToTrash = useCallback(
+    async (noteId: number) => {
+      try {
+        setError('');
+        const result = (await window.electron.trash.moveNote(
+          noteId,
+        )) as TrashActionResult;
+        setNotes((prev) => prev.filter((n) => n.id !== noteId));
+        setSelectedNoteIds((current) => current.filter((id) => id !== noteId));
+        return result;
+      } catch (reason) {
+        setError(
+          WorkspaceController.getErrorMessage(reason, t('trash.error.move')),
+        );
+        return undefined;
+      }
+    },
+    [t],
+  );
 
   const revealNote = useCallback((noteId: number) => {
     setQuery('');
@@ -145,8 +175,9 @@ export default function useWorkspaceDetail() {
     setSelectedNoteIds,
     generateOutput,
     renameWorkspace,
-    deleteWorkspace,
-    deleteNote,
+    moveWorkspaceToTrash,
+    moveNoteToTrash,
+    reloadNotes,
     revealNote,
     visibleNotes: WorkspaceController.filterNotes(notes, query),
   };

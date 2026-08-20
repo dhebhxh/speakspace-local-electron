@@ -842,6 +842,37 @@ html[data-theme='dark'] {
 /* 12.5rem 是量出来的：最宽的一条是「🗓 2026-08-20 +90」，
    小号字体下 emoji 不随 rem 等比缩小，11.5rem 会差 4px 被截断。 */
 .th-todo, .td-todo { width: 12.5rem; }
+/* 回收站的操作列，同样用 rem 跟随字号缩放。 */
+.th-actions, .td-actions { width: 3rem; text-align: right; }
+
+.td-actions .trash-can-button { margin-left: auto; }
+
+.th-actions .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dashboard-trash-error {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 2200;
+  max-width: min(420px, calc(100vw - 2.5rem));
+  margin: 0;
+  padding: 0.75rem 1rem;
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 38%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--fs-sm);
+}
 
 .star-icon {
   font-size: 20px;

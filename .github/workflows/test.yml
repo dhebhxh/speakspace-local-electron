@@ -1,6 +1,6 @@
 name: Test
 
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   test:
@@ -31,6 +31,7 @@ jobs:
           npm run package
           npm run lint
           npm exec tsc
+          npm run test:trash:electron
           npm test
 
       # 生产依赖树里的 high/critical 直接拦下：自动更新和路由都是

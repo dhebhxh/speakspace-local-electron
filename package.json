@@ -44,6 +44,7 @@
     "start:renderer": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack serve --config ./.erb/configs/webpack.config.renderer.dev.ts",
     "smoke:tts": "cross-env NODE_PATH=release/app/node_modules node -r ts-node/register/transpile-only scripts/smoke/tts-model-smoke.ts",
     "test": "jest",
+    "test:trash:electron": "cross-env ELECTRON_RUN_AS_NODE=1 electron ./node_modules/jest/bin/jest.js --runInBand src/main/trash/__tests__/TrashService.test.ts",
     "check:electron": "node .erb/scripts/check-electron-binary.js",
     "check:audit": "npm audit --omit=dev --audit-level=high",
     "package:release": "node .erb/scripts/check-release-signing.js && cross-env SPEAKSPACE_RELEASE=true ts-node ./.erb/scripts/clean.js dist && npm run build && cross-env SPEAKSPACE_RELEASE=true electron-builder build --publish never && cross-env SPEAKSPACE_RELEASE=true node .erb/scripts/verify-signing.js && npm run build:dll",

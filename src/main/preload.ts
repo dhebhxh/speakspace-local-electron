@@ -7,6 +7,10 @@ import {
   webUtils,
 } from 'electron';
 import type { TranscriptionSource } from '@shared/types/TranscriptionTypes';
+import type {
+  TrashActionTarget,
+  TrashListQuery,
+} from '@shared/types/TrashTypes';
 import { AgentEvent, AgentRunRequest } from './agent/AgentTypes';
 
 export type Channels = 'ipc-example';
@@ -420,6 +424,27 @@ const electronHandler = {
     },
     deleteNote(id: number) {
       return ipcRenderer.invoke('Workspace:deleteNote', id);
+    },
+  },
+
+  trash: {
+    list(query: TrashListQuery = {}) {
+      return ipcRenderer.invoke('Trash:list', query);
+    },
+    count() {
+      return ipcRenderer.invoke('Trash:count');
+    },
+    moveNote(id: number) {
+      return ipcRenderer.invoke('Trash:moveNote', id);
+    },
+    moveWorkspace(id: number) {
+      return ipcRenderer.invoke('Trash:moveWorkspace', id);
+    },
+    restore(target: TrashActionTarget) {
+      return ipcRenderer.invoke('Trash:restore', target);
+    },
+    permanentlyDelete(target: TrashActionTarget) {
+      return ipcRenderer.invoke('Trash:permanentlyDelete', target);
     },
   },
 

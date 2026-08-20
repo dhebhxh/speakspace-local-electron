@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { AskAIConversation, AskAINote, formatAskAIDate } from '../AskAITypes';
 import { setNoteDragPayload } from '../AskAIDragPayload';
 import useLibrarySplit from '../useLibrarySplit';
+import TrashCanButton from '../../../components/TrashCanButton';
 
 /**
  * 分隔条可以把「最近会话」拉高，原来固定只渲染 6 条会让多出来的空间是空的；
@@ -24,7 +25,7 @@ type AskAINotesPanelProps = {
   /** 点击笔记打开右侧的预览；未提供则双击无效果 */
   onPreviewNote?: (noteId: number) => void;
   onOpenConversation: (conversationId: number) => void;
-  onContextMenu?: (noteId: number, e: React.MouseEvent) => void;
+  onDeleteNote: (noteId: number) => void;
 };
 
 export default function AskAINotesPanel({
@@ -37,7 +38,7 @@ export default function AskAINotesPanel({
   onSelectNote,
   onPreviewNote,
   onOpenConversation,
-  onContextMenu,
+  onDeleteNote,
 }: AskAINotesPanelProps) {
   const { t } = useTranslation();
   const split = useLibrarySplit();
@@ -71,10 +72,11 @@ export default function AskAINotesPanel({
   }, [notes, t, workspaces]);
 
   const renderNote = (note: AskAINote) => (
-    <button
-      type="button"
+    <div
       key={note.id}
-      className={selectedNoteId === note.id ? 'active' : ''}
+      className={`ask-ai-note-card${
+        selectedNoteId === note.id ? ' active' : ''
+      }`}
       title={t('askAI.notesPanel.noteHint')}
       draggable
       onDragStart={(event) =>
@@ -84,16 +86,28 @@ export default function AskAINotesPanel({
           note.name,
         )
       }
-      onClick={() => onSelectNote(note.id)}
-      onDoubleClick={() => onPreviewNote?.(note.id)}
-      onContextMenu={(e) => onContextMenu && onContextMenu(note.id, e)}
     >
-      <strong>{note.name}</strong>
-      <span>
-        {note.transcriptPreview || t('askAI.notesPanel.noSummaryShort')}
-      </span>
-      <time>{formatAskAIDate(note.updatedAt)}</time>
-    </button>
+      <button
+        className="btn-plain ask-ai-note-main"
+        onClick={() => onSelectNote(note.id)}
+        onDoubleClick={() => onPreviewNote?.(note.id)}
+        type="button"
+      >
+        <strong>{note.name}</strong>
+        <span>
+          {note.transcriptPreview || t('askAI.notesPanel.noSummaryShort')}
+        </span>
+        <time>{formatAskAIDate(note.updatedAt)}</time>
+      </button>
+      <TrashCanButton
+        className="ask-ai-note-delete"
+        label={t('trash.action.moveNote')}
+        onClick={(event) => {
+          event.stopPropagation();
+          onDeleteNote(note.id);
+        }}
+      />
+    </div>
   );
 
   return (

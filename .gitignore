@@ -30,3 +30,6 @@ npm-debug.log.*
 
 # Lint / analysis output
 lint-results.json
+
+# Local-only domain glossary generated during design sessions
+/CONTEXT.md

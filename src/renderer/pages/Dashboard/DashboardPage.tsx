@@ -27,6 +27,10 @@ export const DashboardPage: React.FC = () => {
 
   const [notes, setNotes] = useState<DashboardNoteItem[]>(INITIAL_NOTES);
   const [todos, setTodos] = useState<TodoItem[]>(INITIAL_TODOS);
+  // 悬停笔记列表的「待办日期」时，让日历把这几天闪出来。
+  const [highlightedDates, setHighlightedDates] = useState<string[] | null>(
+    null,
+  );
 
   React.useEffect(() => {
     const fetchDashboardData = async () => {
@@ -219,13 +223,19 @@ export const DashboardPage: React.FC = () => {
             }
           />
 
-          <CalendarWidget todos={todos} onSelectNote={handleSelectNote} />
+          <CalendarWidget
+            todos={todos}
+            onSelectNote={handleSelectNote}
+            highlightedDates={highlightedDates}
+          />
         </aside>
 
         {/* Right Column: Note Table with Search, Filter & Sort */}
         <section className="dashboard-right-column">
           <NoteListTable
             notes={filteredNotes}
+            todos={todos}
+            onHoverTodoDates={setHighlightedDates}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             selectedCategory={selectedCategory}

@@ -45,6 +45,29 @@ export type TranscriptionControllerSnapshot = {
   summaryMode: 'llm' | 'local' | null;
 };
 
+/**
+ * 上传 / 录音入口的忙碌判定，录音页和工作台共用同一份口径。
+ *
+ * 语言检测、请求提交、文件转写 job、实时分段转写，任何一项还在跑都不能
+ * 再触发一次：controller 是单实例，二次触发会 resetLive() 覆盖当前状态，
+ * 旧 job 的事件随后与新状态交错，用户会看到错文件名或被静默丢弃的结果。
+ *
+ * includeSummary 把语义整理也算作忙碌。录音页另有 summaryBusy 单独控制
+ * 相关按钮，工作台的入口没有对应开关，整理途中重置会丢掉已产出的摘要。
+ */
+export function isTranscriptionFileBusy(
+  snapshot: TranscriptionControllerSnapshot,
+  options: { includeSummary?: boolean } = {},
+): boolean {
+  return (
+    snapshot.requestPending ||
+    snapshot.job?.status === 'processing' ||
+    snapshot.livePendingCount > 0 ||
+    snapshot.languageDetectionPending ||
+    (options.includeSummary === true && snapshot.summaryPendingCount > 0)
+  );
+}
+
 type TranscriptionListener = () => void;
 
 type LLMChatResult = {
@@ -397,7 +420,9 @@ export default class TranscriptionController {
     }
   }
 
-  public async pickFileAndStart(options?: { skipConfirmation?: boolean }): Promise<void> {
+  public async pickFileAndStart(options?: {
+    skipConfirmation?: boolean;
+  }): Promise<void> {
     const filePath = (await window.electron.audio.pickFile()) as string | null;
     if (!filePath) return;
 
@@ -415,7 +440,9 @@ export default class TranscriptionController {
     await this.startUploadedFile();
   }
 
-  private async startUploadedFile(skipConfirmation: boolean = false): Promise<void> {
+  private async startUploadedFile(
+    skipConfirmation: boolean = false,
+  ): Promise<void> {
     const filePath = this.uploadedFilePath;
     if (!filePath) return;
 
@@ -441,8 +468,11 @@ export default class TranscriptionController {
           result.language,
         );
         const modelFixedLanguage = result.source === 'model-fixed';
-        
-        if (!skipConfirmation && (lowConfidence || uncommonLanguage || modelFixedLanguage)) {
+
+        if (
+          !skipConfirmation &&
+          (lowConfidence || uncommonLanguage || modelFixedLanguage)
+        ) {
           this.uploadLanguage = result.language;
           this.languageConfirmationRequired = true;
           return;

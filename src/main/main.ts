@@ -114,6 +114,9 @@ const createWindow = async () => {
     if (process.env.START_MINIMIZED) {
       mainWindow.minimize();
     } else {
+      // 先最大化再 show：窗口不会先以 1024x728 闪一下再撑开。
+      // 上面的 width/height 仍然有用，作为用户取消最大化后的还原尺寸。
+      mainWindow.maximize();
       mainWindow.show();
     }
   });

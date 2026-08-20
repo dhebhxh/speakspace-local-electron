@@ -5,6 +5,7 @@ import { NoteItem, WorkspaceController } from '../WorkspaceController';
 import { WorkspaceTemplate } from '../WorkspaceWorkflowController';
 import KnowledgeOutputPanel from './KnowledgeOutputPanel';
 import WorkspaceAudioPlayer from './WorkspaceAudioPlayer';
+import MarkdownText from '../../../components/Markdown/MarkdownText';
 
 type Props = {
   workspaceId: number;
@@ -137,7 +138,10 @@ export default function WorkspaceNoteCard({
                 .map((s) => (
                   <div key={s.id} className="workspace-subnote-item">
                     <span className="workspace-subnote-badge">Sub-note</span>
-                    <div className="workspace-subnote-content">{s.content}</div>
+                    <MarkdownText
+                      className="workspace-subnote-content"
+                      content={s.content}
+                    />
                   </div>
                 ))}
             </div>
@@ -154,7 +158,10 @@ export default function WorkspaceNoteCard({
                 .filter((s) => s.content_type === 'chat')
                 .map((s) => (
                   <div key={s.id} className="workspace-subnote-item is-chat">
-                    <div className="workspace-subnote-content">{s.content}</div>
+                    <MarkdownText
+                      className="workspace-subnote-content"
+                      content={s.content}
+                    />
                   </div>
                 ))}
             </div>
@@ -189,10 +196,18 @@ export default function WorkspaceNoteCard({
                   </summary>
                   <div>
                     {conversation.messages.map((message) => (
-                      <p key={message.id}>
+                      <div
+                        className="workspace-conversation-message"
+                        key={message.id}
+                      >
                         <strong>{message.role}</strong>
-                        {message.content}
-                      </p>
+                        {/* 存档对话里同样只有 assistant 那侧是模型产出。 */}
+                        {message.role === 'assistant' ? (
+                          <MarkdownText content={message.content} />
+                        ) : (
+                          <p>{message.content}</p>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </details>

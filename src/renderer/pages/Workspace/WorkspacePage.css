@@ -543,7 +543,9 @@
   padding: 0 0.7rem 0.7rem;
 }
 
-.workspace-conversation p {
+/* 角色标签一列、内容一列。回答改成富文本后内容不再是单个 <p>，
+   所以栅格挂在消息容器上，而不是挂在段落上。 */
+.workspace-conversation-message {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr);
   gap: 0.5rem;
@@ -553,8 +555,13 @@
   color: var(--text);
   border-top: 1px solid var(--border);
   font-size: var(--fs-sm);
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* 用户那一侧仍是纯文本，保留原来的换行行为。 */
+.workspace-conversation-message > p {
+  margin: 0;
+  white-space: pre-wrap;
 }
 
 .workspace-conversation strong {

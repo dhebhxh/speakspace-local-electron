@@ -95,6 +95,7 @@
   "dashboard.notes.column.pinned": "Pinned",
   "dashboard.notes.column.title": "Note title & overview",
   "dashboard.notes.column.type": "Type",
+  "dashboard.notes.column.todo": "Due date",
   "dashboard.notes.column.duration": "Duration",
   "dashboard.notes.column.created": "Created",
   "dashboard.notes.column.updated": "Updated",

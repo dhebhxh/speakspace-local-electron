@@ -492,6 +492,56 @@ html[data-theme='dark'] {
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.2);
 }
 
+/* =========================================================
+   悬停笔记列表的「待办日期」时，日历里对应的几天持续闪烁。
+   一条「每天」的待办会命中九十多格，所以动画只改颜色和阴影，
+   不碰布局属性，避免逐帧重排。
+   ========================================================= */
+@keyframes calendar-day-flash {
+  0%,
+  100% {
+    background: var(--tint-amber-bg);
+    border-color: var(--tint-amber-border);
+    box-shadow: 0 0 0 rgba(245, 158, 11, 0);
+  }
+  50% {
+    background: var(--tint-orange-text);
+    border-color: var(--tint-orange-text);
+    box-shadow: 0 0 10px 2px rgba(245, 158, 11, 0.65);
+  }
+}
+
+.calendar-day.is-flashing {
+  animation: calendar-day-flash 1s ease-in-out infinite;
+  /* 压过 .is-today / .selected 的底色，否则今天那格看不出在闪 */
+  border-color: var(--tint-amber-border) !important;
+  z-index: 1;
+}
+
+.calendar-day.is-flashing .day-number {
+  color: var(--text-strong);
+  font-weight: 700;
+}
+
+/* 高亮日期落在别的月份时，给月份箭头一个提示，
+   免得用户以为悬停没生效。 */
+.calendar-nav-btn.has-highlight-elsewhere {
+  color: var(--tint-orange-text);
+  animation: calendar-day-flash 1s ease-in-out infinite;
+  border-radius: var(--radius-xs);
+}
+
+/* 系统开了「减少动态效果」就不闪，改成静态强调。
+   持续闪烁对前庭敏感人群不友好，这里必须让路。 */
+@media (prefers-reduced-motion: reduce) {
+  .calendar-day.is-flashing,
+  .calendar-nav-btn.has-highlight-elsewhere {
+    animation: none;
+    background: var(--tint-orange-text);
+    box-shadow: 0 0 8px 2px rgba(245, 158, 11, 0.55);
+  }
+}
+
 .indicator-dots {
   display: flex;
   gap: 3px;
@@ -776,13 +826,22 @@ html[data-theme='dark'] {
   background-color: var(--tint-amber-bg) !important;
 }
 
-/* 列宽预算：固定列合计 ~400px，剩下的全给标题列。 */
-.th-checkbox, .td-checkbox { width: 34px; text-align: center; }
-.th-star, .td-star { width: 44px; text-align: center; cursor: pointer; }
-.th-type, .td-type { width: 96px; }
-.th-duration, .td-duration { width: 84px; }
-.th-created, .td-created { width: 122px; }
-.th-updated, .td-updated { width: 104px; }
+/* 列宽预算。
+ *
+ * 一律用 rem：字号设置会改根字号（14/16/18px），列宽跟着一起缩放，
+ * 否则「大号字体」下表头和待办日期又会被截断。
+ *
+ * 每列都按「表头文字」和「最宽的内容」两者取大：
+ *   置顶     表头两个汉字 > 星标图标
+ *   类型     徽章「未分类」+ 两侧 10px 内边距 > 表头
+ *   待办日期 🗓 + YYYY-MM-DD + 「+90」计数，是最宽的一列
+ * 三列合计约 21.5rem，其余宽度全部留给标题列。 */
+.th-checkbox, .td-checkbox { width: 2.5rem; text-align: center; }
+.th-star, .td-star { width: 4rem; text-align: center; cursor: pointer; }
+.th-type, .td-type { width: 6rem; }
+/* 12.5rem 是量出来的：最宽的一条是「🗓 2026-08-20 +90」，
+   小号字体下 emoji 不随 rem 等比缩小，11.5rem 会差 4px 被截断。 */
+.th-todo, .td-todo { width: 12.5rem; }
 
 .star-icon {
   font-size: 20px;
@@ -838,21 +897,40 @@ html[data-theme='dark'] {
 .badge-brass { background: var(--tint-brass-bg); color: var(--tint-brass-text); border: 1px solid var(--tint-brass-border); }
 .badge-gray { background: var(--tint-gray-bg); color: var(--tint-gray-text); border: 1px solid var(--tint-gray-border); }
 
-.duration-pill {
+/* 待办日期列：重复待办会展开成很多条，这里只显示代表日期 + 计数。 */
+.td-todo {
   font-size: var(--fs-sm);
-  font-weight: 500;
-  color: var(--text-main);
-}
-
-.td-created, .td-updated {
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
   white-space: nowrap;
 }
 
-.update-highlight {
-  color: var(--text-main);
+.todo-date-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border: 1px solid var(--tint-blue-border, var(--border));
+  border-radius: 999px;
+  background: var(--tint-blue-bg, var(--surface-soft));
+  color: var(--tint-blue-text, var(--text-main));
   font-weight: 500;
+}
+
+/* 已经过期的待办要一眼能看出来 */
+.todo-date-pill.is-overdue {
+  border-color: var(--tint-coral-border, var(--border-strong));
+  background: var(--tint-coral-bg, var(--surface-soft));
+  color: var(--tint-coral-text, var(--text-main));
+}
+
+.todo-date-more {
+  padding-left: 4px;
+  border-left: 1px solid currentColor;
+  opacity: 0.7;
+  font-size: var(--fs-xs);
+}
+
+.todo-date-none {
+  color: var(--text-muted);
 }
 
 .no-data-cell {
@@ -877,24 +955,8 @@ html[data-theme='dark'] {
    宁可少一列，也不要把整页顶出横向滚动条。
    ========================================================= */
 
-/* 两栏布局下（>1200px）右栏被左栏挤掉约 450px，先放弃创建时间，再放弃时长 */
-@media (min-width: 1201px) and (max-width: 1450px) {
-  .th-created, .td-created { display: none; }
-}
-
-@media (min-width: 1201px) and (max-width: 1320px) {
-  .th-duration, .td-duration { display: none; }
-}
-
-/* 单栏布局下表格拿回整页宽度，只有窗口真的很窄时才需要收列 */
-@media (max-width: 900px) {
-  .th-created, .td-created { display: none; }
-}
-
-@media (max-width: 760px) {
-  .th-duration, .td-duration { display: none; }
-}
-
+/* 现在固定列只剩星标 / 类型 / 待办日期，标题列宽裕得多。
+   窄屏先收类型列，待办日期比它更值得留着。 */
 @media (max-width: 640px) {
   .th-type, .td-type { display: none; }
 }

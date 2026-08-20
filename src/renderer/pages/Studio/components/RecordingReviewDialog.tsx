@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WorkspaceSaveSelection } from '../../Recording/components/SaveToWorkspaceDialog';
+import MarkdownText from '../../../components/Markdown/MarkdownText';
 
 type WorkspaceOption = { id: number; name: string };
 
@@ -140,13 +141,18 @@ export default function RecordingReviewDialog({
           <section>
             <h3>{t('recording.review.summaryTitle')}</h3>
             <div className="studio-review-text">
-              {cleanedText || (
-                <span className="studio-review-empty">
-                  {processing
-                    ? t('recording.review.summarizing')
-                    : t('recording.review.noSummary')}
-                </span>
-              )}
+              {/* 整理结果由模型产出，按富文本显示；
+                  下面的转录原文是语音识别结果，保持纯文本。 */}
+              <MarkdownText
+                content={cleanedText}
+                fallback={
+                  <span className="studio-review-empty">
+                    {processing
+                      ? t('recording.review.summarizing')
+                      : t('recording.review.noSummary')}
+                  </span>
+                }
+              />
             </div>
           </section>
           <section>

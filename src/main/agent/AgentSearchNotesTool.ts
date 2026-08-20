@@ -7,6 +7,7 @@ import {
   previewNoteText,
   serializeAgentNote,
 } from './AgentNoteToolSupport';
+import { throwIfAgentAborted } from './AgentRunSupport';
 import { AgentTool } from './AgentTypes';
 
 const MAX_KEYWORD_NOTES = 100;
@@ -122,7 +123,7 @@ export default function createAgentSearchNotesTool(
         },
       },
     },
-    run: async (args, context) => {
+    run: async (args, context, signal) => {
       const query = String(args.query || '')
         .trim()
         .slice(0, 200);
@@ -149,6 +150,8 @@ export default function createAgentSearchNotesTool(
           .includes(term),
       );
 
+      // 向量检索要走本地嵌入模型，是这里唯一的长耗时环节。
+      throwIfAgentAborted(signal);
       let semanticMatches: SemanticNoteResult[] = [];
       let semanticError: string | null = null;
       try {
@@ -160,6 +163,7 @@ export default function createAgentSearchNotesTool(
       } catch (error) {
         semanticError = error instanceof Error ? error.message : String(error);
       }
+      throwIfAgentAborted(signal);
 
       const table = new Map<number, FusedEntry>();
       const noteById = new Map(keywordMatches.map((n) => [n.getId(), n]));

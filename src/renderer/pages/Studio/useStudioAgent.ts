@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AgentEvent, AgentStep } from '@shared/types/AgentTypes';
 import AgentController from '../Agent/AgentController';
+import useActiveAgentRun from '../Agent/useActiveAgentRun';
 
 const controller = new AgentController();
 
@@ -34,55 +35,63 @@ const EMPTY: StudioAgentState = {
  */
 export default function useStudioAgent() {
   const [state, setState] = useState<StudioAgentState>(EMPTY);
-  const activeRunId = useRef<string | null>(null);
+  const { activeRunId, abandonRun } = useActiveAgentRun(controller);
   const pendingQuestion = useRef('');
 
-  const handleEvent = useCallback((event: AgentEvent) => {
-    if (event.runId !== activeRunId.current) return;
+  const handleEvent = useCallback(
+    (event: AgentEvent) => {
+      if (event.runId !== activeRunId.current) return;
 
-    setState((current) => {
-      if (event.type === 'step') {
+      setState((current) => {
+        if (event.type === 'step') {
+          return {
+            ...current,
+            liveSteps: [...current.liveSteps, event.step],
+            status:
+              event.step.type === 'final' ? '整理答案中…' : '正在使用本地工具…',
+          };
+        }
+
+        if (event.type === 'completed') {
+          return {
+            ...current,
+            turns: [
+              ...current.turns,
+              {
+                id: event.runId,
+                question: pendingQuestion.current,
+                answer: event.result.finalText,
+                steps: event.result.steps,
+              },
+            ],
+            liveSteps: [],
+            running: false,
+            status: event.result.completed ? '' : '已在安全上限处停止',
+          };
+        }
+
+        if (event.type === 'cancelled') {
+          return {
+            ...current,
+            liveSteps: [],
+            running: false,
+            status: '已取消',
+          };
+        }
+
         return {
           ...current,
-          liveSteps: [...current.liveSteps, event.step],
-          status:
-            event.step.type === 'final' ? '整理答案中…' : '正在使用本地工具…',
-        };
-      }
-
-      if (event.type === 'completed') {
-        return {
-          ...current,
-          turns: [
-            ...current.turns,
-            {
-              id: event.runId,
-              question: pendingQuestion.current,
-              answer: event.result.finalText,
-              steps: event.result.steps,
-            },
-          ],
           liveSteps: [],
           running: false,
-          status: event.result.completed ? '' : '已在安全上限处停止',
+          error: event.message,
+          status: '',
         };
-      }
+      });
 
-      if (event.type === 'cancelled') {
-        return { ...current, liveSteps: [], running: false, status: '已取消' };
-      }
-
-      return {
-        ...current,
-        liveSteps: [],
-        running: false,
-        error: event.message,
-        status: '',
-      };
-    });
-
-    if (event.type !== 'step') activeRunId.current = null;
-  }, []);
+      if (event.type !== 'step') activeRunId.current = null;
+    },
+    [activeRunId],
+  );
 
   useEffect(() => controller.onEvent(handleEvent), [handleEvent]);
 
@@ -128,18 +137,20 @@ export default function useStudioAgent() {
         return false;
       }
     },
-    [state.turns],
+    [state.turns, activeRunId],
   );
 
   const cancel = useCallback(async () => {
     if (activeRunId.current) await controller.cancel(activeRunId.current);
-  }, []);
+  }, [activeRunId]);
 
+  // 清空对话前先收回后台任务，否则这次 run 会在主进程里跑到底，
+  // 而它的事件已经没有任何 UI 接收了。
   const reset = useCallback(() => {
-    activeRunId.current = null;
+    abandonRun();
     pendingQuestion.current = '';
     setState(EMPTY);
-  }, []);
+  }, [abandonRun]);
 
   return {
     agent: state,

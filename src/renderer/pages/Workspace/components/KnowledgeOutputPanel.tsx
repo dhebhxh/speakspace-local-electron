@@ -5,6 +5,7 @@ import { Sparkles } from 'lucide-react';
 import { NoteItem } from '../WorkspaceController';
 import { WorkspaceTemplate } from '../WorkspaceWorkflowController';
 import TTSPlayButton from '../../../tts/TTSPlayButton';
+import MarkdownText from '../../../components/Markdown/MarkdownText';
 import CopyButton from '../../../components/CopyButton';
 
 type Props = {
@@ -85,7 +86,9 @@ export default function KnowledgeOutputPanel({
               <small>
                 {output.template_name} · {output.content_type}
               </small>
-              <p>{output.content}</p>
+              {/* 模板产出本身就是按 Markdown 提示生成的
+                  （见 main/workflow/StructuredNoteSupport.ts）。 */}
+              <MarkdownText content={output.content} />
               <div className="message-actions">
                 <TTSPlayButton text={output.content} />
                 <CopyButton text={output.content} />

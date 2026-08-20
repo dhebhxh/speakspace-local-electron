@@ -6,6 +6,7 @@ import {
   AskAISubnote,
   formatAskAIDate,
 } from '../AskAITypes';
+import MarkdownText from '../../../components/Markdown/MarkdownText';
 
 type AskAINotePreviewProps = {
   note: AskAINote | null;
@@ -72,7 +73,8 @@ export default function AskAINotePreview({ note }: AskAINotePreviewProps) {
           subnotes.map((subnote) => (
             <article className="ask-ai-note-summary" key={subnote.id}>
               <h3>{subnote.contentType}</h3>
-              <p>{subnote.content}</p>
+              {/* 摘要 / 结构化子笔记来自模型，按富文本渲染。 */}
+              <MarkdownText content={subnote.content} />
             </article>
           ))
         ) : (

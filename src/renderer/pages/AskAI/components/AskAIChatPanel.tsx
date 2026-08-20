@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { AskAIMessage, AskAINote, AskAIScope } from '../AskAITypes';
 import TTSPlayButton from '../../../tts/TTSPlayButton';
 import CopyButton from '../../../components/CopyButton';
+import MarkdownText from '../../../components/Markdown/MarkdownText';
 
 type AskAIChatPanelProps = {
   messages: AskAIMessage[];
@@ -117,7 +118,14 @@ export default function AskAIChatPanel({
                   ? t('askAI.chat.roleAI')
                   : t('askAI.chat.roleYou')}
               </span>
-              <p>{message.content}</p>
+              {/* 只有模型回答走富文本；用户自己敲的问题保持原样。
+                  朗读和复制仍拿原始文本：朗读有自己的去标记逻辑，
+                  复制则应该给出 Markdown 源码。 */}
+              {message.role === 'assistant' ? (
+                <MarkdownText content={message.content} />
+              ) : (
+                <p>{message.content}</p>
+              )}
               {message.role === 'assistant' && (
                 <div className="message-actions">
                   <TTSPlayButton text={message.content} />

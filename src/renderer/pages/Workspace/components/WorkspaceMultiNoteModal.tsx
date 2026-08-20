@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AskAIMessage, AskAIResult } from '../../AskAI/AskAITypes';
+import MarkdownText from '../../../components/Markdown/MarkdownText';
 import '../../AskAI/AskAIChat.css';
 
 type Props = {
@@ -93,9 +94,13 @@ export default function WorkspaceMultiNoteModal({
               className={`ask-ai-chat-bubble ask-ai-chat-bubble-${msg.role}`}
             >
               <div className="ask-ai-chat-bubble-content">
-                <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
-                  {msg.content}
-                </p>
+                {msg.role === 'assistant' ? (
+                  <MarkdownText content={msg.content} />
+                ) : (
+                  <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                    {msg.content}
+                  </p>
+                )}
               </div>
             </div>
           ))}

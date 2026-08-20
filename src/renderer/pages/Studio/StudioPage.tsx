@@ -14,7 +14,9 @@ import AskAINotePreview from '../AskAI/components/AskAINotePreview';
 import AskAICreateNoteDialog from '../AskAI/components/AskAICreateNoteDialog';
 import { RecordingSession } from '../Recording/RecordingSession';
 import { RecordingState, SavedRecording } from '../Recording/RecordingTypes';
-import TranscriptionController from '../Recording/TranscriptionController';
+import TranscriptionController, {
+  isTranscriptionFileBusy,
+} from '../Recording/TranscriptionController';
 import useRecordingSession from '../Recording/useRecordingSession';
 import useTranscriptionController from '../Recording/useTranscriptionController';
 import { WorkspaceSaveSelection } from '../Recording/components/SaveToWorkspaceDialog';
@@ -419,13 +421,15 @@ export default function StudioPage() {
 
   const uploadAudio = useCallback(() => {
     setRecordError(null);
-    engine.transcription.pickFileAndStart({ skipConfirmation: true }).catch((reason: unknown) => {
-      setRecordError(
-        reason instanceof Error
-          ? reason.message
-          : t('studio.recording.uploadError'),
-      );
-    });
+    engine.transcription
+      .pickFileAndStart({ skipConfirmation: true })
+      .catch((reason: unknown) => {
+        setRecordError(
+          reason instanceof Error
+            ? reason.message
+            : t('studio.recording.uploadError'),
+        );
+      });
   }, [engine, t]);
 
   // 上传文件转录完成后自动弹出复核窗口。
@@ -546,10 +550,21 @@ export default function StudioPage() {
     ],
   );
 
+  // 「能不能再开一次采集」与独立录音页共用 isTranscriptionFileBusy：
+  // 只看 requestPending 会漏掉语言检测和文件转写 job，用户能二次点上传，
+  // 把当前 controller 状态连同复核弹窗内容一起冲掉。
+  //
+  // 停止录音走单独的 stopBusy：录音期间实时分段一直在转写，
+  // livePendingCount 常驻大于 0，用同一个开关会让用户停不下来。
   const recording = useMemo(
     () => ({
       active: recordingActive,
-      busy: snapshot.busy || transcriptionSnapshot.requestPending,
+      busy:
+        snapshot.busy ||
+        isTranscriptionFileBusy(transcriptionSnapshot, {
+          includeSummary: true,
+        }),
+      stopBusy: snapshot.busy,
       elapsedMs,
       error:
         recordError ||
@@ -561,9 +576,7 @@ export default function StudioPage() {
       recordingActive,
       snapshot.busy,
       snapshot.errorMessage,
-      transcriptionSnapshot.requestPending,
-      transcriptionSnapshot.liveError,
-      transcriptionSnapshot.requestError,
+      transcriptionSnapshot,
       elapsedMs,
       recordError,
     ],

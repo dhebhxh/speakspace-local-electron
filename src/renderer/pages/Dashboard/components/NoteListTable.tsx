@@ -1,14 +1,62 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DashboardNoteItem } from '../models/DashboardNoteItem';
+import { TodoItem } from '../models/TodoItem';
 import {
   DASHBOARD_CATEGORY_FILTERS,
   DashboardCategory,
   DashboardCategoryKey,
 } from '../models/DashboardCategory';
 
+/** 一条笔记在列表里显示的待办日期摘要。 */
+export type NoteTodoSummary = {
+  /** 主显日期：最近一个还没到的，全过期则取最后一个。 */
+  primary: string;
+  /** 除主显之外还有几个不同日期。 */
+  extraCount: number;
+  /** 全部日期，挂在 title 上供悬浮查看。 */
+  allDates: string[];
+  overdue: boolean;
+};
+
+/**
+ * 按笔记归并待办日期。
+ *
+ * 重复待办会被展开成很多行（「每天」就是九十多条），
+ * 表格里只显示一个代表日期加计数，否则一行塞不下也没法看。
+ */
+export function summarizeTodosByNote(
+  todos: TodoItem[],
+  today: string,
+): Map<number, NoteTodoSummary> {
+  const byNote = new Map<number, Set<string>>();
+  todos.forEach((todo) => {
+    const noteId = todo.getAssociatedNoteId();
+    if (!noteId) return;
+    if (!byNote.has(noteId)) byNote.set(noteId, new Set());
+    byNote.get(noteId)!.add(todo.getDateString().slice(0, 10));
+  });
+
+  const summaries = new Map<number, NoteTodoSummary>();
+  byNote.forEach((dateSet, noteId) => {
+    const allDates = [...dateSet].sort();
+    if (allDates.length === 0) return;
+    const upcoming = allDates.find((date) => date >= today);
+    const primary = upcoming ?? allDates[allDates.length - 1];
+    summaries.set(noteId, {
+      primary,
+      extraCount: allDates.length - 1,
+      allDates,
+      overdue: primary < today,
+    });
+  });
+  return summaries;
+}
+
 interface NoteListTableProps {
   notes: DashboardNoteItem[];
+  /** 用来在列表里显示每条笔记的待办日期。 */
+  todos: TodoItem[];
   searchQuery: string;
   onSearchChange: (query: string) => void;
   selectedCategory: DashboardCategoryKey | 'all';
@@ -18,10 +66,16 @@ interface NoteListTableProps {
   onTogglePin: (noteId: number, e: React.MouseEvent) => void;
   onSelectNote: (noteId: number) => void;
   onContextMenu?: (noteId: number, e: React.MouseEvent) => void;
+  /**
+   * 悬停某条「待办日期」时把该笔记的全部日期报上去，供日历闪烁提示；
+   * 移开时传 null。
+   */
+  onHoverTodoDates?: (dates: string[] | null) => void;
 }
 
 export const NoteListTable: React.FC<NoteListTableProps> = ({
   notes,
+  todos,
   searchQuery,
   onSearchChange,
   selectedCategory,
@@ -31,8 +85,15 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
   onTogglePin,
   onSelectNote,
   onContextMenu,
+  onHoverTodoDates = () => {},
 }) => {
   const { t } = useTranslation();
+
+  const todoSummaries = useMemo(() => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, '0')}-${`${now.getDate()}`.padStart(2, '0')}`;
+    return summarizeTodosByNote(todos, today);
+  }, [todos]);
 
   const getCategoryBadgeClass = (categoryKey: DashboardCategoryKey) => {
     switch (categoryKey) {
@@ -120,21 +181,13 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
               <th className="th-star">{t('dashboard.notes.column.pinned')}</th>
               <th className="th-title">{t('dashboard.notes.column.title')}</th>
               <th className="th-type">{t('dashboard.notes.column.type')}</th>
-              <th className="th-duration">
-                {t('dashboard.notes.column.duration')}
-              </th>
-              <th className="th-created">
-                {t('dashboard.notes.column.created')}
-              </th>
-              <th className="th-updated">
-                {t('dashboard.notes.column.updated')}
-              </th>
+              <th className="th-todo">{t('dashboard.notes.column.todo')}</th>
             </tr>
           </thead>
           <tbody>
             {notes.length === 0 ? (
               <tr>
-                <td colSpan={6} className="no-data-cell">
+                <td colSpan={4} className="no-data-cell">
                   <div className="empty-table-state">
                     <div className="empty-icon">📂</div>
                     <p>{t('dashboard.notes.empty')}</p>
@@ -145,7 +198,7 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
               notes.map((note) => {
                 const isPinned = note.isPinned();
                 const categoryKey = note.getCategoryKey();
-                const updatedTime = note.getUpdatedTimeDescriptor();
+                const noteTodo = todoSummaries.get(note.getId());
                 return (
                   <tr
                     key={note.getId()}
@@ -178,20 +231,29 @@ export const NoteListTable: React.FC<NoteListTableProps> = ({
                         {t(DashboardCategory.translationKey(categoryKey))}
                       </span>
                     </td>
-                    <td className="td-duration">
-                      <span className="duration-pill">
-                        ⏱ {note.getFormattedDuration()}
-                      </span>
-                    </td>
-                    <td className="td-created">
-                      {note.getFormattedCreatedDate()}
-                    </td>
-                    <td className="td-updated">
-                      <span className="update-highlight">
-                        {updatedTime.labelKey
-                          ? t(updatedTime.labelKey, { time: updatedTime.time })
-                          : updatedTime.absoluteText}
-                      </span>
+                    <td
+                      className="td-todo"
+                      // 悬停整格就联动日历，不必精确压在那颗药丸上
+                      onMouseEnter={() =>
+                        onHoverTodoDates(noteTodo ? noteTodo.allDates : null)
+                      }
+                      onMouseLeave={() => onHoverTodoDates(null)}
+                    >
+                      {noteTodo ? (
+                        <span
+                          className={`todo-date-pill ${noteTodo.overdue ? 'is-overdue' : ''}`}
+                          title={noteTodo.allDates.join('  ')}
+                        >
+                          🗓 {noteTodo.primary}
+                          {noteTodo.extraCount > 0 && (
+                            <span className="todo-date-more">
+                              +{noteTodo.extraCount}
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="todo-date-none">—</span>
+                      )}
                     </td>
                   </tr>
                 );

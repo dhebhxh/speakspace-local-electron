@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next';
 import type { TranscriptionLanguage } from '@shared/types/TranscriptionTypes';
 import { RecordingSession } from '../RecordingSession';
 import { RecordingState, SavedRecording } from '../RecordingTypes';
-import TranscriptionController from '../TranscriptionController';
+import TranscriptionController, {
+  isTranscriptionFileBusy,
+} from '../TranscriptionController';
 import {
   COMMON_LANGUAGE_OPTIONS,
   MORE_LANGUAGE_OPTIONS,
@@ -107,13 +109,8 @@ export default function RecordControlBar(props: {
   >(null);
   const transcriptionRunning =
     transcriptionSnapshot.job?.status === 'processing';
-  const liveTranscriptionRunning = transcriptionSnapshot.livePendingCount > 0;
   const fileMode = transcriptionSnapshot.inputMode === 'file';
-  const fileBusy =
-    transcriptionSnapshot.requestPending ||
-    transcriptionRunning ||
-    liveTranscriptionRunning ||
-    transcriptionSnapshot.languageDetectionPending;
+  const fileBusy = isTranscriptionFileBusy(transcriptionSnapshot);
   const transcriptText = buildTranscriptText(transcriptionSnapshot);
   const summaryBusy = transcriptionSnapshot.summaryPendingCount > 0;
   const fileReadyToSave =

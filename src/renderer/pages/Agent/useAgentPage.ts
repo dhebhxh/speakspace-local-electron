@@ -4,6 +4,7 @@ import { WorkspaceItem } from '../Workspace/WorkspaceController';
 import AgentController from './AgentController';
 import reduceAgentPageEvent from './AgentPageEventReducer';
 import { AgentPageState, EMPTY_AGENT_PAGE_STATE } from './AgentPageTypes';
+import useActiveAgentRun from './useActiveAgentRun';
 
 const controller = new AgentController();
 
@@ -12,7 +13,7 @@ export default function useAgentPage() {
   const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
   const [workspaceId, setWorkspaceId] = useState<number | null>(null);
   const [page, setPage] = useState<AgentPageState>(EMPTY_AGENT_PAGE_STATE);
-  const activeRunId = useRef<string | null>(null);
+  const { activeRunId, abandonRun } = useActiveAgentRun(controller);
   const pendingInstruction = useRef('');
 
   useEffect(() => {
@@ -31,13 +32,16 @@ export default function useAgentPage() {
       );
   }, []);
 
-  const handleEvent = useCallback((event: AgentEvent) => {
-    if (event.runId !== activeRunId.current) return;
-    setPage((current) =>
-      reduceAgentPageEvent(current, event, pendingInstruction.current),
-    );
-    if (event.type !== 'step') activeRunId.current = null;
-  }, []);
+  const handleEvent = useCallback(
+    (event: AgentEvent) => {
+      if (event.runId !== activeRunId.current) return;
+      setPage((current) =>
+        reduceAgentPageEvent(current, event, pendingInstruction.current),
+      );
+      if (event.type !== 'step') activeRunId.current = null;
+    },
+    [activeRunId],
+  );
 
   useEffect(() => controller.onEvent(handleEvent), [handleEvent]);
 
@@ -72,10 +76,12 @@ export default function useAgentPage() {
     if (activeRunId.current) await controller.cancel(activeRunId.current);
   };
 
+  // 换工作区等于开新会话，旧 run 的检索范围已经作废；
+  // 只丢本地 runId 的话它会在主进程里继续跑完，结果无处可去。
   const selectWorkspace = (nextWorkspaceId: number) => {
+    abandonRun();
     setWorkspaceId(nextWorkspaceId);
     setPage(EMPTY_AGENT_PAGE_STATE);
-    activeRunId.current = null;
     pendingInstruction.current = '';
   };
 

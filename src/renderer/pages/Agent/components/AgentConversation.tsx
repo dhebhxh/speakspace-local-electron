@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { AgentPageMessage } from '../AgentPageTypes';
+import MarkdownText from '../../../components/Markdown/MarkdownText';
 
 type Props = { history: AgentPageMessage[]; error: string };
 
@@ -28,7 +29,12 @@ export default function AgentConversation({ history, error }: Props) {
                   ? t('agent.conversation.roleUser')
                   : t('agent.conversation.roleAssistant')}
               </span>
-              <p>{message.content}</p>
+              {/* 用户指令保持原样，模型答复走富文本。 */}
+              {message.role === 'user' ? (
+                <p>{message.content}</p>
+              ) : (
+                <MarkdownText content={message.content} />
+              )}
             </article>
           ))}
         </div>

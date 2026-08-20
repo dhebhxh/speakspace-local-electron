@@ -1,5 +1,6 @@
 import type { TodoData } from '../database/repositories/TodoRepository';
 import { AgentNoteSource } from './AgentNoteToolSupport';
+import { throwIfAgentAborted } from './AgentRunSupport';
 import { AgentTool } from './AgentTypes';
 
 const MAX_RETURNED_TODOS = 20;
@@ -38,7 +39,7 @@ export default function createAgentExtractTodosTool(
         },
       },
     },
-    run: async (args, context) => {
+    run: async (args, context, signal) => {
       const noteId = Number(args.note_id);
       if (!Number.isInteger(noteId) || noteId <= 0) {
         throw new Error('无效的笔记 ID / Invalid note id');
@@ -52,7 +53,11 @@ export default function createAgentExtractTodosTool(
         throw new Error('当前工作空间中找不到该笔记 / Note not found');
       }
 
+      // 提取会调用本地模型并覆盖写待办表，是本工具唯一的副作用。
+      // 用户已经取消（关页面 / 切路由）时不能再启动一次。
+      throwIfAgentAborted(signal);
       const extracted = await extractor.extractTodosForNote(noteId);
+      throwIfAgentAborted(signal);
       // 提取失败通常是本地模型没返回可解析的 JSON；此时库里仍是上一次的结果。
       const saved = todos.getTodosByNoteId(noteId).slice(0, MAX_RETURNED_TODOS);
 

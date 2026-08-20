@@ -6,6 +6,7 @@ import useRecordingSession from '../useRecordingSession';
 import { getLanguageLabel } from '../TranscriptionLanguageOptions';
 import useTranscriptionController from '../useTranscriptionController';
 import SoundWave from '../../../components/SoundWave';
+import MarkdownText from '../../../components/Markdown/MarkdownText';
 
 export default function TranscriptionPanel(props: {
   session: RecordingSession;
@@ -268,7 +269,9 @@ export default function TranscriptionPanel(props: {
                         {t('recording.panel.segmentPrefix')}
                         {summary.id + 1}
                       </span>
-                      <span>{summary.text}</span>
+                      {/* 语义整理由本地模型生成，可能带标记；
+                          转录原文在上方另有区块，保持纯文本。 */}
+                      <MarkdownText content={summary.text} />
                     </li>
                   ))}
                 </ol>

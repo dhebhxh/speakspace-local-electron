@@ -20,11 +20,20 @@ import { StudioWorkspace } from '../StudioTypes';
 import { StudioAgentState } from '../useStudioAgent';
 import TTSPlayButton from '../../../tts/TTSPlayButton';
 import CopyButton from '../../../components/CopyButton';
+import MarkdownText from '../../../components/Markdown/MarkdownText';
 import { useAppSettings } from '../../../settings/AppSettingsProvider';
 
 type RecordingUiState = {
   active: boolean;
+  /** 是否禁止再开一次采集（录音 / 上传）。转写、语言检测在跑时为 true。 */
   busy: boolean;
+  /**
+   * 是否禁止停止当前录音。
+   *
+   * 必须和 busy 分开：录音过程中实时分段一直在转写，livePendingCount 常驻
+   * 大于 0，用它挡停止键会让用户停不下来。停止只受会话层状态限制。
+   */
+  stopBusy: boolean;
   elapsedMs: number;
   error: string | null;
 };
@@ -499,6 +508,7 @@ export default function StudioChatPanel({
   }
 
   const recordingBusy = recording.busy;
+  const recordingStopBusy = recording.stopBusy;
   // 挂了笔记或整个工作区，才有可提问的上下文；
   // 智能体模式自己在全部笔记里检索，不需要先挂任何东西。
   const hasContext =
@@ -551,7 +561,12 @@ export default function StudioChatPanel({
                   ? t('studio.chat.roleAI')
                   : t('studio.chat.roleUser')}
               </span>
-              <p>{message.content}</p>
+              {/* 只有模型回答走富文本；用户自己敲的问题保持原样。 */}
+              {message.role === 'assistant' ? (
+                <MarkdownText content={message.content} />
+              ) : (
+                <p>{message.content}</p>
+              )}
               {message.role === 'assistant' && (
                 <div className="message-actions">
                   <TTSPlayButton text={message.content} />
@@ -597,7 +612,7 @@ export default function StudioChatPanel({
                   </ol>
                 </details>
               )}
-              <p>{turn.answer}</p>
+              <MarkdownText content={turn.answer} />
               <div className="message-actions">
                 {/* 只有刚答完的这一轮自动朗读，历史回答重渲染时不会再响 */}
                 <TTSPlayButton
@@ -731,7 +746,7 @@ export default function StudioChatPanel({
               type="button"
               className="studio-composer-btn studio-record-button is-recording"
               onClick={onStopRecording}
-              disabled={recordingBusy}
+              disabled={recordingStopBusy}
               aria-label={t('studio.chat.stopRecording')}
               title={t('studio.chat.stopRecording')}
             >

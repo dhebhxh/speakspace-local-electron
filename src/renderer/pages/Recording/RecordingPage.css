@@ -374,7 +374,9 @@
   background: var(--surface-soft);
 }
 
-.live-summary__segments li > span:last-child {
+/* 整理结果那一列现在是富文本容器，不再是 span。 */
+.live-summary__segments li > span:last-child,
+.live-summary__segments li > .markdown-body {
   color: var(--recording-text);
   line-height: 1.55;
   overflow-wrap: anywhere;

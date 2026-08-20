@@ -95,6 +95,7 @@
   "dashboard.notes.column.pinned": "置顶",
   "dashboard.notes.column.title": "笔记标题与概览",
   "dashboard.notes.column.type": "类型",
+  "dashboard.notes.column.todo": "待办日期",
   "dashboard.notes.column.duration": "录音时长",
   "dashboard.notes.column.created": "创建时间",
   "dashboard.notes.column.updated": "最新更新",

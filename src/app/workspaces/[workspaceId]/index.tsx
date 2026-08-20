@@ -1,6 +1,7 @@
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
+    Alert,
     InputAccessoryView,
     Keyboard,
     KeyboardAvoidingView,
@@ -51,10 +52,12 @@ export default function WorkspaceDetailScreen() {
     status: "loading",
   });
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [modalMode, setModalMode] = useState<"create-note" | "rename">("create-note");
   const [noteName, setNoteName] = useState("");
   const [transcript, setTranscript] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [pinningNoteId, setPinningNoteId] = useState<string | null>(null);
 
   const loadWorkspace = async () => {
     setState({ status: "loading" });
@@ -79,9 +82,11 @@ export default function WorkspaceDetailScreen() {
     }
   };
 
-  useEffect(() => {
-    void loadWorkspace();
-  }, [workspaceId]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadWorkspace();
+    }, [workspaceId]),
+  );
 
   const createNote = async () => {
     setFormError(null);
@@ -103,6 +108,57 @@ export default function WorkspaceDetailScreen() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const renameWorkspace = async () => {
+    setFormError(null);
+    setIsSaving(true);
+    try {
+      await workspaceService.renameWorkspace(workspaceId, noteName);
+      setNoteName("");
+      setIsModalVisible(false);
+      await loadWorkspace();
+    } catch (error) {
+      setFormError(error instanceof ValidationError ? error.message : "Unable to rename workspace.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const togglePinned = async (noteId: string, isPinned: boolean) => {
+    setPinningNoteId(noteId);
+
+    try {
+      await noteService.setNotePinned(noteId, !isPinned);
+      const notes = await noteService.getNotesByWorkspace(workspaceId);
+      setState((current) =>
+        current.status === "success" ? { ...current, notes } : current,
+      );
+    } catch {
+      Alert.alert(
+        isPinned ? "Unable to unpin note" : "Unable to pin note",
+        "Please try again.",
+      );
+    } finally {
+      setPinningNoteId(null);
+    }
+  };
+
+  const confirmDeleteWorkspace = () => {
+    if (state.status !== "success") return;
+    const count = state.notes.length;
+    Alert.alert(
+      "Delete workspace?",
+      count > 0
+        ? `This permanently deletes the workspace and its ${count} ${count === 1 ? "note" : "notes"}, including related insights and AI context.`
+        : "This permanently deletes the workspace.",
+      [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => {
+        void workspaceService.deleteWorkspace(workspaceId).then(
+          () => router.replace("/workspaces"),
+          () => Alert.alert("Unable to delete workspace", "Please try again."),
+        );
+      }}],
+    );
   };
 
   return (
@@ -142,6 +198,15 @@ export default function WorkspaceDetailScreen() {
                 Updated{" "}
                 {new Date(state.workspace.getUpdatedAt()).toLocaleDateString()}
               </Text>
+              <View style={styles.actionRow}>
+                <AppButton label="Rename" variant="secondary" onPress={() => {
+                  setModalMode("rename");
+                  setNoteName(state.workspace.getName());
+                  setFormError(null);
+                  setIsModalVisible(true);
+                }} />
+                <AppButton label="Delete" variant="destructive" onPress={confirmDeleteWorkspace} />
+              </View>
             </View>
             <View style={styles.sectionHeader}>
               <View>
@@ -155,7 +220,12 @@ export default function WorkspaceDetailScreen() {
               </View>
               <AppButton
                 label="New note"
-                onPress={() => setIsModalVisible(true)}
+                onPress={() => {
+                  setModalMode("create-note");
+                  setNoteName("");
+                  setFormError(null);
+                  setIsModalVisible(true);
+                }}
               />
             </View>
             {state.notes.length === 0 && (
@@ -164,7 +234,10 @@ export default function WorkspaceDetailScreen() {
                 action={
                   <AppButton
                     label="Create note"
-                    onPress={() => setIsModalVisible(true)}
+                    onPress={() => {
+                      setModalMode("create-note");
+                      setIsModalVisible(true);
+                    }}
                   />
                 }
               />
@@ -175,6 +248,10 @@ export default function WorkspaceDetailScreen() {
                   <NoteCard
                     key={note.getId()}
                     note={note}
+                    isPinning={pinningNoteId === note.getId()}
+                    onPinPress={() =>
+                      void togglePinned(note.getId(), note.getIsPinned())
+                    }
                     onPress={() =>
                       router.push({
                         pathname: "/notes/[noteId]",
@@ -215,7 +292,7 @@ export default function WorkspaceDetailScreen() {
           >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                New note
+                {modalMode === "rename" ? "Rename workspace" : "New note"}
               </Text>
               <Pressable
                 hitSlop={10}
@@ -231,10 +308,10 @@ export default function WorkspaceDetailScreen() {
               </Pressable>
             </View>
             <Text style={[styles.label, { color: colors.textMuted }]}>
-              Title (optional)
+              {modalMode === "rename" ? "Workspace name" : "Title (optional)"}
             </Text>
             <TextInput
-              placeholder="e.g. Team meeting"
+              placeholder={modalMode === "rename" ? "Workspace name" : "e.g. Team meeting"}
               placeholderTextColor={colors.textMuted}
               value={noteName}
               onChangeText={setNoteName}
@@ -243,7 +320,7 @@ export default function WorkspaceDetailScreen() {
                 { borderColor: colors.border, color: colors.text },
               ]}
             />
-            <Text style={[styles.label, { color: colors.textMuted }]}>
+            {modalMode === "create-note" && <><Text style={[styles.label, { color: colors.textMuted }]}>
               Transcript
             </Text>
             <TextInput
@@ -259,16 +336,16 @@ export default function WorkspaceDetailScreen() {
                 styles.transcriptInput,
                 { borderColor: colors.border, color: colors.text },
               ]}
-            />
+            /></>}
             {formError && (
               <Text style={[styles.formError, { color: colors.danger }]}>
                 {formError}
               </Text>
             )}
             <AppButton
-              label={isSaving ? "Creating..." : "Create note"}
+              label={isSaving ? "Saving..." : modalMode === "rename" ? "Save name" : "Create note"}
               disabled={isSaving}
-              onPress={() => void createNote()}
+              onPress={() => void (modalMode === "rename" ? renameWorkspace() : createNote())}
             />
           </ScrollView>
           {process.env.EXPO_OS === "ios" && (
@@ -308,6 +385,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { gap: Spacing.xl, padding: Spacing.lg },
   header: { gap: Spacing.xs },
+  actionRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 36, fontWeight: "800" },
   meta: { fontSize: 13 },

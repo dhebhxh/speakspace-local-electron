@@ -1,5 +1,5 @@
-import { Stack, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -61,9 +61,11 @@ export default function WorkspacesScreen() {
     }
   };
 
-  useEffect(() => {
-    void loadWorkspaces();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void loadWorkspaces();
+    }, []),
+  );
 
   const createWorkspace = async () => {
     setFormError(null);
@@ -95,7 +97,7 @@ export default function WorkspacesScreen() {
           { paddingBottom: Spacing.xxl + insets.bottom },
         ]}
       >
-        <View style={styles.headingRow}>
+        <View style={styles.headingSection}>
           <View style={styles.heading}>
             <Text style={[styles.kicker, { color: colors.accent }]}>
               YOUR LIBRARY
@@ -104,7 +106,21 @@ export default function WorkspacesScreen() {
               Workspaces
             </Text>
           </View>
-          <AppButton label="New" onPress={() => setIsModalVisible(true)} />
+          <View style={styles.headingActions}>
+            <View style={styles.headingAction}>
+              <AppButton
+                label="Search"
+                variant="secondary"
+                onPress={() => router.push("/notes/search")}
+              />
+            </View>
+            <View style={styles.headingAction}>
+              <AppButton
+                label="New workspace"
+                onPress={() => setIsModalVisible(true)}
+              />
+            </View>
+          </View>
         </View>
 
         {state.status === "loading" && <LoadingState />}
@@ -215,12 +231,10 @@ export default function WorkspacesScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { gap: Spacing.xl, padding: Spacing.lg },
-  headingRow: {
-    alignItems: "flex-end",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
+  headingSection: { gap: Spacing.lg },
   heading: { gap: Spacing.xs },
+  headingActions: { flexDirection: "row", gap: Spacing.sm, width: "100%" },
+  headingAction: { flex: 1, minWidth: 0 },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 34, fontWeight: "800" },
   list: { gap: Spacing.md },

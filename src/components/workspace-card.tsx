@@ -28,10 +28,16 @@ export function WorkspaceCard({ workspace, onPress }: WorkspaceCardProps) {
       <View style={styles.row}>
         <View style={[styles.marker, { backgroundColor: colors.accent }]} />
         <View style={styles.content}>
-          <Text style={[styles.name, { color: colors.text }]}>
+          <Text
+            numberOfLines={1}
+            style={[styles.name, { color: colors.text }]}
+          >
             {workspace.getName()}
           </Text>
-          <Text style={[styles.meta, { color: colors.textMuted }]}>
+          <Text
+            numberOfLines={1}
+            style={[styles.meta, { color: colors.textMuted }]}
+          >
             Updated {formatDate(workspace.getUpdatedAt())}
           </Text>
         </View>

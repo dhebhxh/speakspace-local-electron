@@ -48,6 +48,10 @@ export class AppContainer {
     );
     const localLlmCoordinator = new LocalLlmCoordinator();
 
+    this.workspaceService = new WorkspaceService(workspaceRepository, noteRepository);
+    this.noteService = new NoteService(noteRepository, workspaceRepository);
+    this.llmModelService = new LlmModelService(llmModelRepository);
+    this.knowledgeService = new KnowledgeService(knowledgeDocumentRepository, this.llmModelService);
     this.workspaceService = new WorkspaceService(workspaceRepository);
     this.noteService = new NoteService(noteRepository);
     this.llmModelService = new LlmModelService(llmModelRepository, localLlmCoordinator);

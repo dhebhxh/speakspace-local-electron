@@ -5,7 +5,7 @@ import { useTheme } from "@/hooks/use-theme";
 
 type AppButtonProps = Omit<PressableProps, "style"> & {
   label: string;
-  variant?: "primary" | "secondary" | "quiet";
+  variant?: "primary" | "secondary" | "quiet" | "destructive";
 };
 
 export function AppButton({
@@ -33,6 +33,7 @@ export function AppButton({
           borderWidth: 1,
         },
         variant === "quiet" && styles.quiet,
+        variant === "destructive" && { backgroundColor: colors.danger },
         pressed && styles.pressed,
         disabled && styles.disabled,
       ]}
@@ -40,7 +41,7 @@ export function AppButton({
       <Text
         style={[
           styles.label,
-          { color: variant === "primary" ? colors.surface : colors.accent },
+          { color: variant === "primary" || variant === "destructive" ? colors.surface : colors.accent },
         ]}
       >
         {label}

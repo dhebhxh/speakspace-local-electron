@@ -5,10 +5,15 @@ import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -69,6 +74,11 @@ export default function NoteDetailScreen() {
   const [generation, setGeneration] = useState<GenerationState>({
     status: "idle",
   });
+  const [actionModal, setActionModal] = useState<"rename" | "move" | null>(null);
+  const [titleInput, setTitleInput] = useState("");
+  const [workspaces, setWorkspaces] = useState<Awaited<ReturnType<typeof workspaceService.getWorkspaces>>>([]);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [coreGeneration, setCoreGeneration] = useState<CoreInsightGenerationState>({ status: "idle" });
   const audioRelativePath =
     state.status === "success" ? state.note.getAudioRelativePath() : null;
@@ -203,6 +213,58 @@ export default function NoteDetailScreen() {
     }
   };
 
+  const openMove = async () => {
+    setActionError(null);
+    setActionModal("move");
+    try {
+      setWorkspaces(await workspaceService.getWorkspaces());
+    } catch {
+      setActionError("Unable to load workspaces.");
+    }
+  };
+
+  const renameNote = async () => {
+    setIsSaving(true);
+    setActionError(null);
+    try {
+      await noteService.renameNote(noteId, titleInput);
+      setActionModal(null);
+      await loadNote();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to rename note.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const moveNote = async (workspaceId: string) => {
+    setIsSaving(true);
+    setActionError(null);
+    try {
+      await noteService.moveNote(noteId, workspaceId);
+      setActionModal(null);
+      await loadNote();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to move note.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const confirmDeleteNote = () => {
+    if (state.status !== "success") return;
+    const workspaceId = state.note.getWorkspaceId();
+    Alert.alert("Delete note?", "This permanently deletes the note and its related insights, knowledge, and AI context.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => {
+        void noteService.deleteNote(noteId).then(
+          () => router.replace({ pathname: "/workspaces/[workspaceId]", params: { workspaceId } }),
+          () => Alert.alert("Unable to delete note", "Please try again."),
+        );
+      }},
+    ]);
+  };
+
   const generateCoreInsights = async () => {
     if (state.status !== "success") return;
     const startedAt = Date.now();
@@ -295,6 +357,15 @@ export default function NoteDetailScreen() {
                   } as unknown as Href)
                 }
               />
+              <View style={styles.actionRow}>
+                <AppButton label="Rename" variant="secondary" onPress={() => {
+                  setTitleInput(state.note.getName() ?? "");
+                  setActionError(null);
+                  setActionModal("rename");
+                }} />
+                <AppButton label="Move" variant="secondary" onPress={() => void openMove()} />
+                <AppButton label="Delete" variant="destructive" onPress={confirmDeleteNote} />
+              </View>
             </View>
             <View
               style={[
@@ -501,6 +572,26 @@ export default function NoteDetailScreen() {
           </>
         )}
       </ScrollView>
+      <Modal transparent animationType="slide" visible={actionModal !== null} onRequestClose={() => setActionModal(null)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalBackdrop}>
+          <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{actionModal === "rename" ? "Rename note" : "Move note"}</Text>
+              <Pressable onPress={() => setActionModal(null)}><Text style={{ color: colors.textMuted }}>Close</Text></Pressable>
+            </View>
+            {actionModal === "rename" ? <>
+              <TextInput autoFocus value={titleInput} onChangeText={setTitleInput} placeholder="Note title" placeholderTextColor={colors.textMuted} style={[styles.input, { borderColor: colors.border, color: colors.text }]} />
+              <AppButton label={isSaving ? "Saving..." : "Save title"} disabled={isSaving} onPress={() => void renameNote()} />
+            </> : <View style={styles.workspaceChoices}>
+              {workspaces.filter((workspace) => state.status === "success" && workspace.getId() !== state.note.getWorkspaceId()).map((workspace) => (
+                <AppButton key={workspace.getId()} label={workspace.getName()} variant="secondary" disabled={isSaving} onPress={() => void moveNote(workspace.getId())} />
+              ))}
+              {!actionError && workspaces.filter((workspace) => state.status === "success" && workspace.getId() !== state.note.getWorkspaceId()).length === 0 && <Text style={{ color: colors.textMuted }}>No other workspace is available.</Text>}
+            </View>}
+            {actionError && <Text selectable style={{ color: colors.danger }}>{actionError}</Text>}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -790,6 +881,12 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     gap: Spacing.sm,
   },
+  modalBackdrop: { backgroundColor: "rgba(0,0,0,0.36)", flex: 1, justifyContent: "flex-end" },
+  modal: { borderTopLeftRadius: Radius.lg, borderTopRightRadius: Radius.lg, gap: Spacing.md, padding: Spacing.lg },
+  modalHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  modalTitle: { fontSize: 23, fontWeight: "800" },
+  input: { borderRadius: Radius.sm, borderWidth: 1, fontSize: 16, minHeight: 48, paddingHorizontal: Spacing.md },
+  workspaceChoices: { gap: Spacing.sm },
   document: { gap: Spacing.lg },
   knowledgeSection: { gap: Spacing.sm },
   dividedSection: { borderTopWidth: 1, paddingTop: Spacing.lg },

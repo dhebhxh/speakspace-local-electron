@@ -5,16 +5,22 @@ import { useTheme } from "@/hooks/use-theme";
 
 type EmptyStateProps = {
   title: string;
+  description?: string;
   action?: React.ReactNode;
 };
 
-export function EmptyState({ title, action }: EmptyStateProps) {
+export function EmptyState({ title, description, action }: EmptyStateProps) {
   const theme = useTheme();
   const colors = Colors[theme.mode];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surfaceMuted }]}>
       <Text style={[styles.title, { color: colors.textMuted }]}>{title}</Text>
+      {description && (
+        <Text selectable style={[styles.description, { color: colors.textMuted }]}>
+          {description}
+        </Text>
+      )}
       {action}
     </View>
   );
@@ -31,4 +37,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  description: { fontSize: 14, lineHeight: 20, textAlign: "center" },
 });

@@ -32,6 +32,28 @@ export default function AiManagementScreen() {
         <View style={styles.modelLinks}>
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Manage text-to-speech models"
+            onPress={() => router.push("/ai/tts-models" as Href)}
+            style={({ pressed }) => [
+              styles.card,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <View style={styles.cardText}>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>TTS Models</Text>
+              <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>
+                Local voices for private, on-device speech synthesis.
+              </Text>
+            </View>
+            <View style={styles.cardAction}>
+              <Text style={[styles.actionLabel, { color: colors.accent }]}>Manage</Text>
+              <Text style={[styles.chevron, { color: colors.accent }]}>›</Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
             accessibilityLabel="Manage speech-to-text models"
             onPress={() => router.push("/ai/stt-models")}
             style={({ pressed }) => [

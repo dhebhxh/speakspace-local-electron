@@ -1,6 +1,7 @@
 import {
   CSSProperties,
   FormEvent,
+  useRef,
   useCallback,
   useEffect,
   useState,
@@ -44,6 +45,7 @@ export default function WorkspaceHomePage({
   const spotlight = useSpotlight();
   const [items, setItems] = useState<WorkspaceItem[]>([]);
   const [name, setName] = useState('');
+  const createInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
@@ -154,6 +156,7 @@ export default function WorkspaceHomePage({
             <span>{t('workspace.create.label')}</span>
             <div>
               <input
+                ref={createInputRef}
                 id="recent-workspace-name"
                 maxLength={80}
                 onChange={(event) => setName(event.target.value)}
@@ -213,7 +216,22 @@ export default function WorkspaceHomePage({
           </h2>
           <p>{t('workspace.list.desc')}</p>
         </div>
-        {!directory && <Link to="/Workspace">{t('workspace.viewAll')}</Link>}
+        <div className="workspace-list-actions">
+          <button
+            className="workspace-new-button"
+            onClick={() => {
+              createInputRef.current?.focus();
+              createInputRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              });
+            }}
+            type="button"
+          >
+            + {t('workspace.create.newButton')}
+          </button>
+          {!directory && <Link to="/Workspace">{t('workspace.viewAll')}</Link>}
+        </div>
       </div>
 
       {loading && (

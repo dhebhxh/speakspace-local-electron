@@ -171,6 +171,26 @@ const electronHandler = {
     },
   },
 
+  knowledge: {
+    get(noteId: number) {
+      return ipcRenderer.invoke('Knowledge:get', noteId);
+    },
+    generateStructuredNote(noteId: number) {
+      return ipcRenderer.invoke('Knowledge:generateStructuredNote', noteId);
+    },
+    generateScenario(noteId: number, scenario: string) {
+      return ipcRenderer.invoke('Knowledge:generateScenario', noteId, scenario);
+    },
+    toggleTask(noteId: number, taskId: string, completed: boolean) {
+      return ipcRenderer.invoke(
+        'Knowledge:toggleTask',
+        noteId,
+        taskId,
+        completed,
+      );
+    },
+  },
+
   // 通用外观设置通过主进程持久化，renderer 只调用此安全接口。
   settings: {
     get() {

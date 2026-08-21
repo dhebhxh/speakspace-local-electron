@@ -35,6 +35,7 @@ import './ipc/export-ipc';
 import './ipc/workspace-ipc';
 import './ipc/dashboard-ipc';
 import './ipc/trash-ipc';
+import './ipc/knowledge-generation-ipc';
 import { setBackgroundController } from './ipc/background-ipc';
 import { BackgroundController } from './background/BackgroundController';
 import { TrayController } from './background/TrayController';

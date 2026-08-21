@@ -103,6 +103,7 @@ function createDetail(
     toggleNoteSelection: jest.fn(),
     setSelectedNoteIds: jest.fn(),
     generateOutput: jest.fn(),
+    createNote: jest.fn(),
     renameWorkspace: jest.fn(),
     moveWorkspaceToTrash: jest.fn(),
     moveNoteToTrash: jest.fn(),
@@ -232,6 +233,18 @@ describe('WorkspacePage', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(detail.moveNoteToTrash).not.toHaveBeenCalled();
+  });
+
+  it('opens the manual note creation dialog', () => {
+    mockedUseWorkspaceDetail.mockReturnValue(createDetail([]));
+
+    renderPage();
+    fireEvent.click(screen.getByText('workspace.note.createButton'));
+
+    expect(
+      screen.getByRole('dialog', { name: 'workspace.note.createTitle' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('workspace.note.contentLabel')).toBeRequired();
   });
 
   it('uses a content-sized dialog for workspace deletion confirmation', () => {

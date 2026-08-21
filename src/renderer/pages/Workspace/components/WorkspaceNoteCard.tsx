@@ -14,6 +14,7 @@ import KnowledgeOutputPanel from './KnowledgeOutputPanel';
 import WorkspaceAudioPlayer from './WorkspaceAudioPlayer';
 import MarkdownText from '../../../components/Markdown/MarkdownText';
 import TrashCanButton from '../../../components/TrashCanButton';
+import NoteInsightsPanel from './NoteInsightsPanel';
 
 type Props = {
   workspaceId: number;
@@ -200,6 +201,11 @@ export default function WorkspaceNoteCard({
           note={note}
           onGenerate={onGenerate}
           templates={templates}
+        />
+
+        <NoteInsightsPanel
+          noteId={note.id}
+          hasTranscript={Boolean(note.transcript.trim())}
         />
 
         <section className="workspace-conversation-section">

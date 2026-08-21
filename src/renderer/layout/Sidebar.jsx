@@ -40,13 +40,6 @@ const ICONS = {
       <path d="M12 22V12" />
     </svg>
   ),
-  workflow: (
-    <svg {...svgProps}>
-      <path d="M14 3v4a1 1 0 0 0 1 1h4" />
-      <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z" />
-      <path d="M9 13h6M9 17h6" />
-    </svg>
-  ),
   settings: (
     <svg {...svgProps}>
       <circle cx="12" cy="12" r="3" />
@@ -68,7 +61,6 @@ const NAV_ITEMS = [
   { to: RoutePath.Dashboard, key: 'dashBoard' },
   { to: '/Workspace', key: 'workspace' },
   { to: '/ModelManagement', key: 'modelManagement' },
-  { to: '/Workflow', key: 'workflow' },
   { to: '/Settings', key: 'settings' },
 ];
 

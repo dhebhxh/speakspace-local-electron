@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import type { TrashActionResult } from '@shared/types/TrashTypes';
 import TrashUndoToast from '../../components/TrashUndoToast';
 import WorkspaceDetailHeader from './components/WorkspaceDetailHeader';
@@ -41,6 +41,11 @@ export default function WorkspacePage() {
   // 批量删除是不可逆感很强的操作，先弹窗确认，避免误点。
   const [showBatchDeleteModal, setShowBatchDeleteModal] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
+  const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
+  const [noteName, setNoteName] = useState('');
+  const [noteContent, setNoteContent] = useState('');
+  const [creatingNote, setCreatingNote] = useState(false);
+  const [createNoteError, setCreateNoteError] = useState('');
 
   const handleDeleteNote = async (noteId: number) => {
     const result = await detail.moveNoteToTrash(noteId);
@@ -221,6 +226,18 @@ export default function WorkspacePage() {
             />
           ))}
         </div>
+
+        {/* 语义查找已经跟着搜索框搬进顶栏了，这里不再放第二个 */}
+        <button
+          className="ws-btn ws-btn-primary workspace-create-note-button"
+          onClick={() => {
+            setCreateNoteError('');
+            setShowCreateNoteModal(true);
+          }}
+          type="button"
+        >
+          <Plus size={17} /> {t('workspace.note.createButton')}
+        </button>
       </div>
 
       {showRenameModal && (
@@ -331,6 +348,94 @@ export default function WorkspacePage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {showCreateNoteModal && (
+        <div className="workspace-modal-overlay">
+          <form
+            aria-labelledby="workspace-create-note-title"
+            aria-modal="true"
+            className="workspace-modal workspace-create-note-modal"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (!noteContent.trim() || creatingNote) return;
+              try {
+                setCreatingNote(true);
+                setCreateNoteError('');
+                const noteId = await detail.createNote(noteName, noteContent);
+                setShowCreateNoteModal(false);
+                setNoteName('');
+                setNoteContent('');
+                detail.revealNote(noteId);
+              } catch (reason) {
+                setCreateNoteError(
+                  reason instanceof Error
+                    ? reason.message
+                    : t('workspace.note.createFailed'),
+                );
+              } finally {
+                setCreatingNote(false);
+              }
+            }}
+            role="dialog"
+          >
+            <header className="workspace-modal-head">
+              <h2 id="workspace-create-note-title">
+                {t('workspace.note.createTitle')}
+              </h2>
+            </header>
+            <div className="workspace-create-note-body">
+              <label htmlFor="workspace-new-note-name">
+                <span>{t('workspace.note.nameLabel')}</span>
+                <input
+                  id="workspace-new-note-name"
+                  maxLength={80}
+                  onChange={(event) => setNoteName(event.target.value)}
+                  placeholder={t('workspace.note.namePlaceholder')}
+                  value={noteName}
+                />
+              </label>
+              <label htmlFor="workspace-new-note-content">
+                <span>{t('workspace.note.contentLabel')}</span>
+                <textarea
+                  // The primary field should receive focus when this modal opens.
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
+                  autoFocus
+                  id="workspace-new-note-content"
+                  onChange={(event) => setNoteContent(event.target.value)}
+                  placeholder={t('workspace.note.contentPlaceholder')}
+                  required
+                  rows={10}
+                  value={noteContent}
+                />
+              </label>
+              {createNoteError && (
+                <p className="workspace-detail-error" role="alert">
+                  {createNoteError}
+                </p>
+              )}
+              <div className="workspace-create-note-actions">
+                <button
+                  className="ws-btn"
+                  disabled={creatingNote}
+                  onClick={() => setShowCreateNoteModal(false)}
+                  type="button"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  className="ws-btn ws-btn-primary"
+                  disabled={!noteContent.trim() || creatingNote}
+                  type="submit"
+                >
+                  {creatingNote
+                    ? t('workspace.note.creating')
+                    : t('workspace.note.createButton')}
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
       )}
 

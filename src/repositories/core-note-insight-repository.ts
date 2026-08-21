@@ -82,6 +82,41 @@ export class CoreNoteInsightRepository {
     }
   }
 
+  public async setTaskCompleted(noteId: string, taskId: string, completed: boolean): Promise<void> {
+    await this.setItemCompleted(noteId, taskId, completed);
+  }
+
+  private async setItemCompleted(
+    noteId: string,
+    itemId: string,
+    completed: boolean,
+  ): Promise<void> {
+    try {
+      await this.databaseManager.getDatabase().withExclusiveTransactionAsync(async (database) => {
+        const now = new Date().toISOString();
+        const result = await database.runAsync(
+          `UPDATE core_note_tasks
+           SET status = ?, completed_at = ?
+           WHERE id = ? AND source_note_id = ?`,
+          completed ? "completed" : "pending",
+          completed ? now : null,
+          itemId,
+          noteId,
+        );
+        if (result.changes === 0) throw new Error("Core insight item not found.");
+        await database.runAsync(
+          "UPDATE core_note_insights SET updated_at = ? WHERE note_id = ?",
+          now,
+          noteId,
+        );
+      });
+    } catch (error) {
+      throw new DatabaseError("Unable to update the core insight item.", {
+        cause: error instanceof Error ? error : undefined,
+      });
+    }
+  }
+
   private mapAction(row: ActionRow): CoreActionItem {
     return { id: row.id, taskId: row.task_id, position: row.position, title: row.title, description: row.description, status: row.status as CoreInsightStatus, startsAt: row.starts_at, dueAt: row.due_at, completedAt: row.completed_at, sourceNoteId: row.source_note_id, externalSystem: row.external_system, externalId: row.external_id, metadata: this.parseMetadata(row.metadata_json) };
   }

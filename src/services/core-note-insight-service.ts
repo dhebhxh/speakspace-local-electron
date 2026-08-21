@@ -87,6 +87,17 @@ export class CoreNoteInsightService {
   ) {}
   public getForNote(noteId: string): Promise<CoreNoteInsight | null> { return this.repository.findByNoteId(noteId); }
 
+  public async setTaskCompleted(noteId: string, taskId: string, completed: boolean): Promise<CoreNoteInsight> {
+    await this.repository.setTaskCompleted(noteId, taskId, completed);
+    return this.getUpdatedInsight(noteId);
+  }
+
+  private async getUpdatedInsight(noteId: string): Promise<CoreNoteInsight> {
+    const insight = await this.repository.findByNoteId(noteId);
+    if (!insight) throw new CoreNoteInsightGenerationError("invalid-output", "Core note insights are no longer available.");
+    return insight;
+  }
+
   public getGenerationState(noteId: string): CoreInsightGenerationState {
     return this.generationStates.get(noteId) ?? { status: "idle" };
   }

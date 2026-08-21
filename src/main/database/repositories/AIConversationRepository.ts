@@ -60,9 +60,11 @@ export class AIConversationRepository implements Repository<AIConversation> {
   }
 
   public findAll(): AIConversation[] {
+    // 回收站里的不列出来；恢复之后自然又会出现
     const statement = this.database.prepare(`
             SELECT *
             FROM ai_conversations
+            WHERE trashed_at IS NULL
             ORDER BY updated_at DESC
         `);
 

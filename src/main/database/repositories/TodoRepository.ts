@@ -7,6 +7,8 @@ export interface TodoData {
   title: string;
   dateString: string;
   isCompleted: boolean;
+  /** 置顶的排在最前；浮窗里手动置顶用。 */
+  isPinned?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -72,6 +74,14 @@ export class TodoRepository {
     return rows.map((row) => TodoRepository.mapRowToTodoData(row));
   }
 
+  /** 置顶 / 取消置顶。 */
+  public updateTodoPinned(id: number, isPinned: boolean): void {
+    const stmt = this.database.prepare(`
+            UPDATE todos SET is_pinned = ?, updated_at = ? WHERE id = ?
+        `);
+    stmt.run(isPinned ? 1 : 0, new Date().toISOString(), id);
+  }
+
   public updateTodoStatus(id: number, isCompleted: boolean): void {
     const now = new Date().toISOString();
 
@@ -93,6 +103,7 @@ export class TodoRepository {
     return {
       id: row.id,
       noteId: row.note_id,
+      isPinned: row.is_pinned === 1,
       title: row.title,
       dateString: row.date_string,
       isCompleted: row.is_completed === 1,

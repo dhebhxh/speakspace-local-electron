@@ -377,12 +377,76 @@ const electronHandler = {
     },
   },
 
+  // 托盘 / 全局快捷键。设置页保存后调 apply()，主进程据此重装。
+  background: {
+    apply() {
+      return ipcRenderer.invoke('Background:apply');
+    },
+    getStatus() {
+      return ipcRenderer.invoke('Background:getStatus');
+    },
+    showWindow() {
+      return ipcRenderer.invoke('Background:showWindow');
+    },
+    /** 主进程转发过来的动作请求（跳转页面、开始/停止录音）。 */
+    onRequest(listener: (request: unknown) => void) {
+      const handler = (_event: unknown, request: unknown) => listener(request);
+      ipcRenderer.on('Background:request', handler);
+      return () => ipcRenderer.removeListener('Background:request', handler);
+    },
+    /** 关窗询问弹窗的选择：tray / quit / cancel。 */
+    resolveClose(choice: string, remember: boolean) {
+      return ipcRenderer.invoke('Background:resolveClose', choice, remember);
+    },
+    /** 主窗口上报录音状态，供录音浮窗显示。 */
+    reportRecording(state: unknown) {
+      return ipcRenderer.invoke('Hud:reportRecording', state);
+    },
+  },
+
+  // 右下角 / 屏幕中央的轻量浮窗
+  hud: {
+    close(kind: string) {
+      return ipcRenderer.invoke('Hud:close', kind);
+    },
+    stopRecording() {
+      return ipcRenderer.invoke('Hud:stopRecording');
+    },
+    cancelRecording() {
+      return ipcRenderer.invoke('Hud:cancelRecording');
+    },
+    /** 浮窗被（重新）显示：重新取数、重置自动淡出。 */
+    onShown(listener: () => void) {
+      const handler = () => listener();
+      ipcRenderer.on('Hud:shown', handler);
+      return () => ipcRenderer.removeListener('Hud:shown', handler);
+    },
+    onRecordingState(listener: (state: unknown) => void) {
+      const handler = (_event: unknown, state: unknown) => listener(state);
+      ipcRenderer.on('Hud:recording', handler);
+      return () => ipcRenderer.removeListener('Hud:recording', handler);
+    },
+  },
+
   dashboard: {
     getDashboardOverview() {
       return ipcRenderer.invoke('Dashboard:getDashboardOverview');
     },
     extractTodosForNote(noteId: number) {
       return ipcRenderer.invoke('Dashboard:extractTodosForNote', noteId);
+    },
+    classifyPendingNotes() {
+      return ipcRenderer.invoke('Dashboard:classifyPendingNotes');
+    },
+    setTodoCompleted(todoId: number, isCompleted: boolean) {
+      return ipcRenderer.invoke(
+        'Dashboard:setTodoCompleted',
+        todoId,
+        isCompleted,
+      );
+    },
+    setTodoPinned(todoId: number, isPinned: boolean) {
+      return ipcRenderer.invoke('Dashboard:setTodoPinned', todoId, isPinned);
     },
     toggleNotePin(noteId: number, isPinned: boolean) {
       return ipcRenderer.invoke('Dashboard:toggleNotePin', noteId, isPinned);
@@ -436,6 +500,9 @@ const electronHandler = {
     },
     moveNote(id: number) {
       return ipcRenderer.invoke('Trash:moveNote', id);
+    },
+    moveConversation(id: number) {
+      return ipcRenderer.invoke('Trash:moveConversation', id);
     },
     moveWorkspace(id: number) {
       return ipcRenderer.invoke('Trash:moveWorkspace', id);

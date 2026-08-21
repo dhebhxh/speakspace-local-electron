@@ -119,7 +119,6 @@
   border-radius: 50%;
   background: transparent;
   box-shadow: none;
-  font-size: var(--fs-lg);
   line-height: 1;
 }
 
@@ -571,6 +570,9 @@
   max-height: min(88vh, 900px);
   padding: 1.25rem;
   overflow-y: auto;
+  /* 内容一多就出滚动条，滚动条槽只吃右边，于是右侧的关闭按钮、下拉框
+     比左边的标题多缩进 10px，整块看着偏。both-edges 让两边都预留。 */
+  scrollbar-gutter: stable both-edges;
   border: 1px solid var(--border);
   border-radius: 18px;
   background: var(--surface);
@@ -618,16 +620,31 @@
   animation: studio-spin 0.7s linear infinite;
 }
 
-.studio-review-dialog__close {
+/* 用 grid + place-items 居中里面那个图标：
+   靠字体行高对齐永远会差半个像素，图标也不受字号影响。 */
+.studio-page .studio-review-dialog__close {
+  display: grid;
+  place-items: center;
   min-width: auto;
-  width: 36px;
-  height: 36px;
+  min-height: 32px;
+  width: 32px;
+  height: 32px;
   padding: 0;
+  line-height: 1;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 50%;
   background: var(--surface-soft);
-  font-size: var(--fs-xl);
+}
+
+.studio-review-dialog__close svg {
+  display: block;
+}
+
+.studio-review-dialog__close:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 
 .studio-review-texts {
@@ -683,6 +700,23 @@
   outline: none;
   background: var(--surface-strong);
   font: inherit;
+}
+
+/* 原生 select 的箭头由浏览器自己画，紧贴右边缘，不认元素的 padding——
+   于是文字左缩 0.75rem、箭头却几乎贴边，看着就是「偏右」。
+   关掉原生外观，自己画一个，位置和左边的文字内缩对齐。 */
+.studio-review-form select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2397a5a0' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  /* right 用和文字一样的 0.75rem，两边内缩就对称了 */
+  background-position: right 0.75rem center;
+}
+
+html[data-theme='light'] .studio-review-form select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235b6b66' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 .studio-review-form select:focus,

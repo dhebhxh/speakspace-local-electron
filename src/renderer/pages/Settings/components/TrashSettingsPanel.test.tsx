@@ -8,6 +8,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { TrashListResult } from '@shared/types/TrashTypes';
+import { ONBOARDING_STEPS } from '../../../onboarding/OnboardingSteps';
 import TrashSettingsPanel from './TrashSettingsPanel';
 
 jest.mock('react-i18next', () => ({
@@ -150,5 +151,15 @@ describe('TrashSettingsPanel', () => {
         itemType: 'workspace',
       }),
     );
+  });
+  it('carries the onboarding anchor the tour points at', async () => {
+    // 引导讲回收站时打光在这块面板上（见 onboarding/OnboardingSteps.ts）。
+    // 锚点被顺手删掉不会报错，引导只会退化成一张飘在屏幕中央的卡片。
+    const target = ONBOARDING_STEPS.find((step) => step.id === 'trash')
+      ?.target as string;
+    const { container } = renderPanel();
+    await waitFor(() => expect(trashApi.list).toHaveBeenCalled());
+
+    expect(container.querySelector(target)).not.toBeNull();
   });
 });

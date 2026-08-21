@@ -29,6 +29,9 @@ export class DatabaseManager {
     this.createCoreTables();
     this.ensureWorkspaceLastOpenedColumn();
     this.ensureTrashColumns();
+    this.ensureNoteCategoryColumn();
+    this.ensureConversationTrashColumn();
+    this.ensureTodoPinnedColumn();
     this.cleanupOrphanedConversations();
   }
 
@@ -97,6 +100,10 @@ export class DatabaseManager {
                 transcript TEXT NOT NULL,
 
                 is_pinned INTEGER NOT NULL DEFAULT 0,
+
+                -- 语言无关的分类 key（meeting / personal / ...），
+                -- NULL 表示还没分过类，界面上显示为「未分类」。
+                type_category TEXT,
 
                 pinned_at TEXT,
 
@@ -199,7 +206,10 @@ export class DatabaseManager {
 
                 created_at TEXT NOT NULL,
 
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+
+                -- NULL 表示正常；有时间戳表示已移入回收站，可恢复
+                trashed_at TEXT
             );
 
 
@@ -251,6 +261,8 @@ export class DatabaseManager {
                 title TEXT NOT NULL,
                 date_string TEXT NOT NULL,
                 is_completed INTEGER NOT NULL DEFAULT 0,
+                -- 置顶的待办排在最前，浮窗和仪表板都按它排序
+                is_pinned INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY(note_id)
@@ -273,6 +285,50 @@ export class DatabaseManager {
       this.database.exec(
         'ALTER TABLE workspaces ADD COLUMN last_opened_at TEXT',
       );
+    }
+  }
+
+  /** 待办置顶是后加的：老库补上这一列，默认 0。 */
+  private ensureTodoPinnedColumn(): void {
+    const columns = this.database
+      .prepare('PRAGMA table_info(todos)')
+      .all() as Array<{ name: string }>;
+
+    if (!columns.some((column) => column.name === 'is_pinned')) {
+      this.database.exec(
+        'ALTER TABLE todos ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0',
+      );
+    }
+  }
+
+  /** 会话回收站是后加的：老库补上这一列，NULL 表示没被删。 */
+  private ensureConversationTrashColumn(): void {
+    const columns = this.database
+      .prepare('PRAGMA table_info(ai_conversations)')
+      .all() as Array<{ name: string }>;
+
+    if (!columns.some((column) => column.name === 'trashed_at')) {
+      this.database.exec(
+        'ALTER TABLE ai_conversations ADD COLUMN trashed_at TEXT',
+      );
+    }
+    this.database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_ai_conversations_trashed_at
+        ON ai_conversations(trashed_at);
+    `);
+  }
+
+  /**
+   * 笔记类型是后加的列：老库直接补上，值为 NULL 表示还没分类，
+   * 后台补分类任务会挑出这些笔记逐条识别。
+   */
+  private ensureNoteCategoryColumn(): void {
+    const columns = this.database
+      .prepare('PRAGMA table_info(notes)')
+      .all() as Array<{ name: string }>;
+
+    if (!columns.some((column) => column.name === 'type_category')) {
+      this.database.exec('ALTER TABLE notes ADD COLUMN type_category TEXT');
     }
   }
 

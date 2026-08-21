@@ -95,7 +95,7 @@
 
 /* 笔记卡片与最近会话保持紧凑，但笔记卡片要为右下角删除按钮留位。 */
 .ask-ai-note-card,
-.ask-ai-recents-list > button {
+.ask-ai-recent-open {
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -112,7 +112,7 @@
 
 .ask-ai-note-card:hover,
 .ask-ai-note-card.active,
-.ask-ai-recents-list > button:hover {
+.ask-ai-recent-open:hover {
   background: var(--surface-soft);
   transform: none;
 }
@@ -126,6 +126,26 @@
 
 .ask-ai-note-card.active {
   border-color: color-mix(in srgb, var(--accent) 36%, transparent);
+}
+
+/* 会话条留一点内边距：上面那条共用规则把 padding 清成 0，
+   底色会紧贴文字，左侧的常亮竖条也没地方放。 */
+.ask-ai-recent-open {
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+}
+
+/* 当前正在进行的会话常亮：左侧一道竖条 + 淡底，和 hover 区分开
+   （hover 只有底色，松开就没了）。 */
+.ask-ai-recent-open.active {
+  position: relative;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.ask-ai-recent-open.active strong {
+  color: var(--text-strong);
+  font-weight: 700;
 }
 
 .ask-ai-note-main {
@@ -328,6 +348,44 @@
   background: var(--surface-soft);
 }
 
+/* 会话行：打开按钮铺满，删除按钮压在右下角，和笔记卡片一个样 */
+.ask-ai-recent-row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.ask-ai-recent-open {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* 给删除按钮让出位置，标题长了也不会压到它底下 */
+  padding-right: 1.9rem !important;
+}
+
+/* 常亮，不做 hover 才显形：图标平时藏着的话，用户是冲着「打开会话」
+   去点的，图标却在指针到位的瞬间冒出来，很容易误点成删除。
+   默认用最淡的 --faint，悬停才转成危险色，安静但一直在那儿。 */
+.ask-ai-recent-delete {
+  position: absolute;
+  right: 0.15rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--faint);
+}
+
+.ask-ai-page .ask-ai-recent-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+}
+
 .ask-ai-recents-list {
   display: flex;
   flex-direction: column;
@@ -474,7 +532,7 @@
   }
 }
 
-.ask-ai-recents-list > button {
+.ask-ai-recent-open {
   flex-shrink: 0;
 }
 

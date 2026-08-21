@@ -24,6 +24,23 @@ class DashboardIpcController {
       },
     );
 
+    // 只补分类、不重跑待办提取：给历史笔记用。
+    ipcMain.handle('Dashboard:classifyPendingNotes', async () => {
+      return this.service.classifyPendingNotes();
+    });
+
+    ipcMain.handle(
+      'Dashboard:setTodoCompleted',
+      (_event, todoId: number, isCompleted: boolean) =>
+        this.service.setTodoCompleted(todoId, Boolean(isCompleted)),
+    );
+
+    ipcMain.handle(
+      'Dashboard:setTodoPinned',
+      (_event, todoId: number, isPinned: boolean) =>
+        this.service.setTodoPinned(todoId, Boolean(isPinned)),
+    );
+
     ipcMain.handle(
       'Dashboard:toggleNotePin',
       async (event, noteId: number, isPinned: boolean) => {

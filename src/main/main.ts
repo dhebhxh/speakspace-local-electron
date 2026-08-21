@@ -35,6 +35,10 @@ import './ipc/export-ipc';
 import './ipc/workspace-ipc';
 import './ipc/dashboard-ipc';
 import './ipc/trash-ipc';
+import { setBackgroundController } from './ipc/background-ipc';
+import { BackgroundController } from './background/BackgroundController';
+import { TrayController } from './background/TrayController';
+import { SettingsService } from './settings/SettingsService';
 
 class AppUpdater {
   constructor() {
@@ -47,6 +51,18 @@ class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let background: BackgroundController | null = null;
+
+/**
+ * 单实例锁。
+ *
+ * 开了托盘常驻之后，窗口藏起来的时候再点一次桌面图标会起第二个进程，
+ * 两个进程抢同一个 sqlite 文件。这里直接把后来的挡掉，转而唤起已有窗口。
+ */
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
 
 ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
@@ -103,8 +119,21 @@ const createWindow = async () => {
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')
         : path.join(__dirname, '../../.erb/dll/preload.js'),
+      // 窗口藏到托盘后 Chromium 会把定时器和动画降频，录音计时、
+      // 波形、转录进度都会卡住——后台常驻的前提就是别节流。
+      backgroundThrottling: false,
     },
   });
+
+  // 托盘 / 全局快捷键 / 关窗策略。窗口只隐藏不销毁：录音用的是渲染层的
+  // MediaRecorder，窗口没了就录不成。
+  background = new BackgroundController(
+    new SettingsService(),
+    new TrayController(getAssetPath('icon.png')),
+  );
+  background.attachWindow(mainWindow);
+  setBackgroundController(background);
+  background.apply();
 
   mainWindow.loadURL(resolveHtmlPath('index.html'));
 
@@ -120,6 +149,12 @@ const createWindow = async () => {
       mainWindow.maximize();
       mainWindow.show();
     }
+  });
+
+  // 主窗口加载完之后再预热浮窗：启动阶段先把主界面给出来，
+  // 之后按快捷键才不会卡在「现建现加载」上。
+  mainWindow.webContents.once('did-finish-load', () => {
+    setTimeout(() => background?.prewarmHud(), 1500);
   });
 
   mainWindow.on('closed', () => {
@@ -145,21 +180,36 @@ const createWindow = async () => {
  */
 
 app.on('window-all-closed', () => {
-  // Respect the OSX convention of having the application in memory even
-  // after all windows have been closed
+  // 托盘还驻留着就是「后台运行」，不能退；否则沿用原来的约定：
+  // macOS 留在内存里，其它平台关完窗口就退出。
+  if (background?.isBackgroundActive() && !background.isQuitting()) return;
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
-app
-  .whenReady()
-  .then(() => {
-    createWindow();
-    app.on('activate', () => {
-      // On macOS it's common to re-create a window in the app when the
-      // dock icon is clicked and there are no other windows open.
-      if (mainWindow === null) createWindow();
-    });
-  })
-  .catch(console.log);
+// 第二次启动（点桌面图标、打开文件关联）时唤起已有窗口，而不是再开一个
+app.on('second-instance', () => {
+  background?.showWindow();
+});
+
+// 菜单退出 / 系统关机：先标记为「真的要退」，close 拦截才会放行
+app.on('before-quit', () => {
+  background?.beginQuit();
+  background?.dispose();
+});
+
+if (gotSingleInstanceLock) {
+  app
+    .whenReady()
+    .then(() => {
+      createWindow();
+      app.on('activate', () => {
+        // On macOS it's common to re-create a window in the app when the
+        // dock icon is clicked and there are no other windows open.
+        if (mainWindow === null) createWindow();
+        else background?.showWindow();
+      });
+    })
+    .catch(console.log);
+}

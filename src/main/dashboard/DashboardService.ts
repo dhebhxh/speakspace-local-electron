@@ -4,6 +4,7 @@ import {
   TodoRepository,
   TodoData,
 } from '../database/repositories/TodoRepository';
+import { NoteClassificationService } from './NoteClassificationService';
 
 export interface DashboardNoteDTO {
   id: number;
@@ -29,10 +30,23 @@ export class DashboardService {
 
   private todoRepository: TodoRepository;
 
+  private classificationService: NoteClassificationService;
+
   public constructor() {
     const dbManager = DatabaseManager.getInstance();
     this.database = dbManager.getDatabase();
     this.todoRepository = new TodoRepository(this.database);
+    this.classificationService = new NoteClassificationService();
+  }
+
+  /**
+   * 给还没有分类的历史笔记补上类型。
+   *
+   * 仪表板打开时在后台跑一次：分类是后加的能力，之前录的笔记都没有，
+   * 总不能让用户挨个重新提取一遍。返回这次实际补上的条数。
+   */
+  public async classifyPendingNotes(): Promise<number> {
+    return this.classificationService.classifyPendingNotes();
   }
 
   public getDashboardOverview(): DashboardOverviewDTO {
@@ -58,7 +72,8 @@ export class DashboardService {
       pinnedAt: row.pinned_at === null ? null : new Date(row.pinned_at),
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
-      typeCategory: '未分類',
+      // 空串交给渲染层归一成「未分类」，主进程不塞界面文案。
+      typeCategory: row.type_category ?? '',
       durationSeconds: 0,
     }));
 
@@ -68,6 +83,28 @@ export class DashboardService {
       notes,
       todos,
     };
+  }
+
+  /** 勾掉 / 取消勾掉一条待办。浮窗和仪表板共用。 */
+  public setTodoCompleted(todoId: number, isCompleted: boolean): boolean {
+    try {
+      this.todoRepository.updateTodoStatus(todoId, isCompleted);
+      return true;
+    } catch (error) {
+      console.error('Failed to update todo status:', error);
+      return false;
+    }
+  }
+
+  /** 置顶 / 取消置顶一条待办。 */
+  public setTodoPinned(todoId: number, isPinned: boolean): boolean {
+    try {
+      this.todoRepository.updateTodoPinned(todoId, isPinned);
+      return true;
+    } catch (error) {
+      console.error('Failed to update todo pin:', error);
+      return false;
+    }
   }
 
   public async toggleNotePin(

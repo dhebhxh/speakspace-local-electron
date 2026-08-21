@@ -123,12 +123,14 @@ html[data-theme='dark'] {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* 竖直方向整体收紧过一轮：全屏时仪表板要能一屏放下，
+   不用再往下滚才能看到日历底部或列表末尾。留白只减不加。 */
 .dashboard-header {
   width: 100%;
   box-sizing: border-box;
-  margin-bottom: 28px;
+  margin-bottom: 16px;
   border-bottom: 1px solid var(--border-color);
-  padding-bottom: 18px;
+  padding-bottom: 12px;
 }
 
 .header-main-row {
@@ -208,9 +210,11 @@ html[data-theme='dark'] {
   display: grid;
   /* minmax(0, …) 两列都必须写：grid 子项默认 min-width:auto，
      不允许收缩到内容以下，表格就会把右列顶宽。 */
-  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  /* 左列收窄到 320：再宽日历格子就被拉成长方形了（格宽 =(列宽-内边距-列间隙)/7）。 */
+  grid-template-columns: minmax(272px, 320px) minmax(0, 1fr);
   gap: 28px;
-  align-items: start;
+  /* stretch 而不是 start：右列要撑满整行高度，好跟左侧日历底部齐平。 */
+  align-items: stretch;
   min-width: 0;
 }
 
@@ -218,24 +222,47 @@ html[data-theme='dark'] {
   .dashboard-main-content {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  /* 单列堆叠时右列上方没有等高的邻居可对齐，改用视口高度限制，
+     滚动行为保持一致。 */
+  .dashboard-right-column {
+    position: static;
+    min-height: 0;
+  }
+
+  .dashboard-right-column > .note-list-section {
+    position: static;
+    max-height: 70vh;
+  }
 }
 
 /* Left Column & Metric Cards Grid */
 .dashboard-left-column {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
   min-width: 0;
 }
 
+/* 笔记列表不允许自己把页面越撑越长：行高由左列（指标卡 + 日历）决定，
+   右列用绝对定位填满这一行，多出来的笔记走列表内部滚动。
+   如果右列是普通流内元素，grid 行高会取两列的较大值，列表照样无限伸长。 */
 .dashboard-right-column {
   min-width: 0;
+  position: relative;
+  /* 左列很矮时（比如日历收起）也得留出够看几行的高度。 */
+  min-height: 360px;
+}
+
+.dashboard-right-column > .note-list-section {
+  position: absolute;
+  inset: 0;
 }
 
 .metric-cards-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 10px;
 }
 
 .metric-card {
@@ -244,10 +271,10 @@ html[data-theme='dark'] {
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 18px;
+  padding: 12px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
   box-shadow:
     var(--shadow-sm),
     inset 0 1px 0 var(--highlight);
@@ -315,13 +342,13 @@ html[data-theme='dark'] {
 }
 
 .card-icon-wrapper {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 18px;
   flex-shrink: 0;
 }
 
@@ -360,7 +387,7 @@ html[data-theme='dark'] {
 .card-trend {
   font-size: var(--fs-xs);
   font-weight: 600;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .trend-positive { color: var(--accent-green); }
@@ -372,7 +399,7 @@ html[data-theme='dark'] {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 14px;
   box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
@@ -382,7 +409,7 @@ html[data-theme='dark'] {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .calendar-title {
@@ -395,13 +422,13 @@ html[data-theme='dark'] {
 .calendar-month-badge {
   background: var(--tint-blue-bg);
   color: var(--tint-blue-text);
-  padding: 4px 10px;
+  padding: 2px 4px;
   border-radius: 20px;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
 }
 
 .calendar-nav-btn {
@@ -410,7 +437,11 @@ html[data-theme='dark'] {
   color: var(--tint-blue-text);
   cursor: pointer;
   font-weight: bold;
-  padding: 0 4px;
+  /* 固定成小方块：左右各留 4px 内边距时，两个箭头就把徽章撑长了 */
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  line-height: 1;
   border-radius: 4px;
   transition: background 0.2s;
 }
@@ -420,8 +451,10 @@ html[data-theme='dark'] {
 }
 
 .calendar-month-text {
-  min-width: 90px;
+  /* 「2026年8月」和「Aug 2026」都在 56px 内，再宽就是白占地方 */
+  min-width: 56px;
   text-align: center;
+  white-space: nowrap;
 }
 
 .calendar-weekdays {
@@ -431,25 +464,28 @@ html[data-theme='dark'] {
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-muted);
-  margin-bottom: 8px;
-  padding-bottom: 6px;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
   border-bottom: 1px dashed var(--border-color);
 }
 
 .calendar-days {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .calendar-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 3px;
 }
 
 .calendar-day {
-  height: 44px;
+  /* 宽度由七等分决定，高度跟着它走，格子就是正方形而不是长方条。 */
+  aspect-ratio: 1;
+  height: auto;
+  min-height: 30px;
   border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
@@ -572,6 +608,11 @@ html[data-theme='dark'] {
   z-index: 9999;
   box-shadow: var(--shadow-popover);
   animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  /* 一天可以有十几条待办，不限高的话弹窗会直接捅出屏幕。
+     这个值要和 CalendarWidget 里定位用的 POPOVER_MAX_HEIGHT 对上。 */
+  max-height: min(360px, calc(100vh - 24px));
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes popIn {
@@ -583,6 +624,18 @@ html[data-theme='dark'] {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 0;
+}
+
+/* 日期标题固定，只有待办条目滚动 */
+.event-list-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  min-height: 0;
+  /* 滚动条不要压在卡片边框上 */
+  padding-right: 2px;
 }
 
 .event-list-header {
@@ -595,16 +648,6 @@ html[data-theme='dark'] {
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 6px;
   margin-bottom: 4px;
-}
-
-.btn-close-pin {
-  background: var(--tint-red-bg);
-  border: 1px solid var(--tint-red-border);
-  color: var(--tint-red-text);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: var(--fs-xs);
-  cursor: pointer;
 }
 
 .todo-item-card {
@@ -673,10 +716,18 @@ html[data-theme='dark'] {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 16px 18px;
   box-shadow: var(--shadow-md);
   min-width: 0;
   overflow: hidden;
+  /* 头部（标题 + 筛选）固定，表格区拿走剩下的高度并在内部滚动。 */
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.note-list-section .table-header-controls {
+  flex: 0 0 auto;
 }
 
 .table-header-controls {
@@ -684,8 +735,8 @@ html[data-theme='dark'] {
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .table-title h3 {
@@ -695,37 +746,16 @@ html[data-theme='dark'] {
   color: var(--text-main) !important;
 }
 
-.table-filters {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.search-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
 .search-icon {
-  position: absolute;
-  left: 12px;
-  font-size: 14px;
+  flex: none;
   color: var(--text-muted);
   pointer-events: none;
 }
 
-/* 搜索框跟着可用宽度伸缩，不再用固定 240px / 聚焦时跳到 280px，
-   否则窄窗口下它会把整行控件顶出容器。 */
-.search-input-wrapper {
-  flex: 1 1 200px;
-  min-width: 150px;
-  max-width: 280px;
-}
-
+/* 图标和清除按钮现在是并排的兄弟节点，不再绝对定位压在框上，
+   所以内边距回到正常值，不用再给它们留位置。 */
 .search-input {
-  padding: 8px 32px 8px 34px;
+  padding: 6px 10px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   font-size: var(--fs-sm);
@@ -749,8 +779,6 @@ html[data-theme='dark'] {
 }
 
 .clear-search {
-  position: absolute;
-  right: 8px;
   background: none;
   border: none;
   color: var(--text-faint);
@@ -758,21 +786,13 @@ html[data-theme='dark'] {
   font-size: var(--fs-md);
 }
 
-.custom-select {
-  padding: 8px 14px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: var(--bg-card);
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  color: var(--text-main);
-  cursor: pointer;
-  outline: none;
-  transition: var(--transition);
-}
-
-.custom-select:hover, .custom-select:focus {
-  border-color: var(--primary-color);
+/* 滚动区的外框：发光条挂在这里，才不会跟着表格内容一起滚走。 */
+.table-scroll-frame {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .table-responsive {
@@ -780,6 +800,23 @@ html[data-theme='dark'] {
      正常情况下这里不会出现横向滚动条。 */
   overflow-x: auto;
   max-width: 100%;
+  /* min-height: 0 不能省：flex 子项默认不肯收缩到内容以下，
+     少了它 overflow-y 永远不触发，列表还是会把卡片顶高。 */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 滚动时表头留在原地，否则往下翻就不知道哪列是哪列了。
+   底色必须用不透明的 --bg-elevated：--bg-card 是半透明的玻璃面，
+   行会从表头底下透出来，看着就像文字重叠在一起。 */
+.notes-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  /* --surface-strong 是卡片面的不透明版本：既挡得住滚上来的行，
+     又不像 --bg-elevated 那样是一条突兀的纯白条。 */
+  background: var(--surface-strong);
 }
 
 .notes-table {
@@ -792,7 +829,7 @@ html[data-theme='dark'] {
 }
 
 .notes-table th {
-  padding: 12px 10px;
+  padding: 9px 10px;
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-muted);
@@ -800,6 +837,8 @@ html[data-theme='dark'] {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* 列名一律居中；正文仍按各自的对齐方式排 */
+  text-align: center;
 }
 
 .note-row {
@@ -808,7 +847,7 @@ html[data-theme='dark'] {
 }
 
 .note-row td {
-  padding: 16px 10px;
+  padding: 11px 10px;
   border-bottom: 1px solid var(--border-faint);
   vertical-align: middle;
   overflow: hidden;
@@ -816,6 +855,102 @@ html[data-theme='dark'] {
 
 .note-row:hover {
   background-color: var(--bg-hover);
+}
+
+/* =========================================================
+   悬停日历上的某天时，列表里当天有待办的笔记闪烁。
+   和日历那边的闪烁用同一套节奏（1s），两边看起来才像一件事。
+   只动背景和内阴影，不碰布局属性，避免逐帧重排。
+   ========================================================= */
+@keyframes note-row-flash {
+  0%,
+  100% {
+    background-color: var(--tint-amber-soft);
+  }
+  50% {
+    background-color: var(--tint-amber-bg);
+  }
+}
+
+/* 左侧那道竖条只给第一格。原来每个 td 都带 inset 阴影，
+   于是每条列边界上都多出一道亮线，整行被切成一段一段的。 */
+@keyframes note-row-flash-bar {
+  0%,
+  100% {
+    box-shadow: inset 3px 0 0 var(--tint-amber-border);
+  }
+  50% {
+    box-shadow: inset 3px 0 0 var(--tint-orange-text);
+  }
+}
+
+/* 盖过 .pinned-row 的底色：置顶的笔记也得看得出在闪。 */
+.note-row.is-flash-target td {
+  animation: note-row-flash 1s ease-in-out infinite;
+}
+
+.note-row.is-flash-target td:first-child {
+  animation:
+    note-row-flash 1s ease-in-out infinite,
+    note-row-flash-bar 1s ease-in-out infinite;
+}
+
+.note-row.is-flash-target .note-title-text {
+  font-weight: 700;
+}
+
+/* 命中的行滚出可视区时，上/下边缘发光，提示那个方向还有内容。 */
+@keyframes list-edge-flash {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.flash-edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--tint-orange-text);
+  box-shadow: 0 0 10px 2px rgba(245, 158, 11, 0.65);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.flash-edge-top {
+  top: 0;
+}
+
+.flash-edge-bottom {
+  bottom: 0;
+}
+
+.note-list-section.has-flash-above .flash-edge-top,
+.note-list-section.has-flash-below .flash-edge-bottom {
+  animation: list-edge-flash 1s ease-in-out infinite;
+}
+
+/* 开了「减少动态效果」就不闪，改成静态强调，和日历那边保持一致。 */
+@media (prefers-reduced-motion: reduce) {
+  .note-row.is-flash-target td {
+    animation: none;
+    background-color: var(--tint-amber-bg);
+  }
+
+  .note-row.is-flash-target td:first-child {
+    box-shadow: inset 3px 0 0 var(--tint-orange-text);
+  }
+
+  .note-list-section.has-flash-above .flash-edge-top,
+  .note-list-section.has-flash-below .flash-edge-bottom {
+    animation: none;
+    opacity: 1;
+  }
 }
 
 .pinned-row {
@@ -837,8 +972,188 @@ html[data-theme='dark'] {
  *   待办日期 🗓 + YYYY-MM-DD + 「+90」计数，是最宽的一列
  * 三列合计约 21.5rem，其余宽度全部留给标题列。 */
 .th-checkbox, .td-checkbox { width: 2.5rem; text-align: center; }
+/* =========================================================
+   表头里的就地控件：标题列点开搜索、类型列点开筛选下拉。
+   表格上方原来那一排搜索框 / 下拉已经撤掉，操作都回到列本身。
+   ========================================================= */
+/* 列名本身就是触发点，做成纯文字：不要底色、不要边框、不要圆角，
+   否则表头看起来像塞了几个悬浮按钮，和表格是两层东西。 */
+/* 列名本身就是触发点，做成纯文字：全局 button 样式那套胶囊底、内高光、
+   悬停上浮和扫光都要甩掉（加 .btn-plain 跳过），否则表头看着像塞了几个按钮。
+   这里只保留最轻的两个暗示：一枚极淡的小图标，和悬停时的一条虚线下划线。 */
+.th-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+/* 下划线画在文字上，不是在按钮外面套框 */
+.th-label {
+  border-bottom: 1px dashed transparent;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.th-button:hover {
+  color: var(--text-main);
+}
+
+.th-button:hover .th-label,
+.th-button:focus-visible .th-label {
+  border-bottom-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+
+/* 键盘用户还是要看得见焦点，只是不用按钮框来表达 */
+.th-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* 平时几乎看不见，悬停才浮出来：不打扰，但看得出这里能点。 */
+.th-affordance {
+  flex: none;
+  opacity: 0.32;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.th-button:hover .th-affordance,
+.th-button:focus-visible .th-affordance,
+.th-button[aria-expanded='true'] .th-affordance {
+  opacity: 0.9;
+}
+
+/* 下拉展开时箭头翻个面，和常见的下拉控件对齐直觉 */
+.th-button[aria-expanded='true'] .th-affordance {
+  transform: rotate(180deg);
+}
+
+/* 当前生效的搜索词 / 类型，直接挂在列名旁边，不用另找地方显示。 */
+.th-active-chip {
+  max-width: 6rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--tint-blue-bg);
+  border: 1px solid var(--tint-blue-border);
+  color: var(--tint-blue-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.th-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+/* 边打边报「命中 / 总数」 */
+.search-count {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 命中的词就地点亮，一眼看出这条为什么被搜出来 */
+.search-hit {
+  background: var(--tint-amber-bg);
+  color: var(--text-main);
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.th-search .search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 8px;
+  font-weight: 400;
+}
+
+/* fixed 而不是 absolute：菜单在表格的滚动容器里，absolute 会被容器裁掉。
+   坐标由 computeHeaderMenuPosition 在打开时算好写进 style。 */
+.th-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 132px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-popover);
+}
+
+.th-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-xs);
+  text-align: left;
+  white-space: nowrap;
+  font: inherit;
+  font-weight: 500;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.th-menu-item:hover {
+  background: var(--bg-hover);
+}
+
+.th-menu-item.is-active {
+  background: var(--tint-blue-bg);
+  color: var(--tint-blue-text);
+  font-weight: 700;
+}
+
+/* 筛选生效时才出现的「全清」按钮，就在列表标题旁边。 */
+.filters-reset {
+  padding: 4px 10px;
+  background: var(--tint-blue-bg);
+  border: 1px solid var(--tint-blue-border);
+  border-radius: 999px;
+  color: var(--tint-blue-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filters-reset:hover {
+  background: var(--bg-hover);
+}
+
 .th-star, .td-star { width: 4rem; text-align: center; cursor: pointer; }
-.th-type, .td-type { width: 6rem; }
+.th-type, .td-type { width: 8rem; }
+
+/* 下拉要能探出单元格，所以这一格不裁剪；其余列仍靠 overflow 截断长文本。
+   选择器必须写成 .notes-table th.th-type：上面那条 .notes-table th 的
+   overflow: hidden 权重是 0-1-1，单独一个 .th-type（0-1-0）压不过它，
+   菜单会被裁在 30px 高的单元格里——看起来就是「点了没反应」。 */
+.notes-table th.th-type {
+  position: relative;
+  overflow: visible;
+}
 /* 12.5rem 是量出来的：最宽的一条是「🗓 2026-08-20 +90」，
    小号字体下 emoji 不随 rem 等比缩小，11.5rem 会差 4px 被截断。 */
 .th-todo, .td-todo { width: 12.5rem; }
@@ -926,6 +1241,7 @@ html[data-theme='dark'] {
 .badge-blue { background: var(--tint-blue-bg); color: var(--tint-blue-text); border: 1px solid var(--tint-blue-border); }
 .badge-green { background: var(--tint-green-bg); color: var(--tint-green-text); border: 1px solid var(--tint-green-border); }
 .badge-brass { background: var(--tint-brass-bg); color: var(--tint-brass-text); border: 1px solid var(--tint-brass-border); }
+.badge-orange { background: var(--tint-orange-bg); color: var(--tint-orange-text); border: 1px solid var(--tint-orange-border); }
 .badge-gray { background: var(--tint-gray-bg); color: var(--tint-gray-text); border: 1px solid var(--tint-gray-border); }
 
 /* 待办日期列：重复待办会展开成很多条，这里只显示代表日期 + 计数。 */
@@ -986,10 +1302,12 @@ html[data-theme='dark'] {
    宁可少一列，也不要把整页顶出横向滚动条。
    ========================================================= */
 
-/* 现在固定列只剩星标 / 类型 / 待办日期，标题列宽裕得多。
-   窄屏先收类型列，待办日期比它更值得留着。 */
+/* 类型列现在兼着筛选入口，窄屏不能再整列藏掉，否则筛选就没地方点了。
+   改成收窄列宽并省掉列名旁的筛选标签，功能保留。 */
 @media (max-width: 640px) {
-  .th-type, .td-type { display: none; }
+  .th-type, .td-type { width: 5rem; }
+
+  .th-type .th-active-chip { display: none; }
 }
 
 /* =========================================================

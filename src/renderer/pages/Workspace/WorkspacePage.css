@@ -6,6 +6,9 @@
    - 控件一律小号，按钮不继承全局的大号渐变胶囊
    ========================================================= */
 
+/* 页面 = 顶栏 + 笔记容器两块，撑满内容区高度。
+   笔记在自己的容器里滚，被它裁掉，所以永远不可能盖到顶栏上去
+   （之前用 sticky 顶栏 + 整页滚动，内容是能从上面穿过去的）。 */
 .workspace-detail-page {
   --ws-gap: 0.9rem;
   --ws-radius: 14px;
@@ -16,7 +19,43 @@
   flex-direction: column;
   gap: var(--ws-gap);
   min-width: 0;
-  padding-bottom: 2rem;
+  /* 高度由上面那条 flex 链给，不用 height: 100% —— 中间任何一层没有
+     确定高度，百分比就会退化成 auto。 */
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* 这个页面自己管滚动：外层不再滚，高度一路交给页面。
+   中间还隔着 MainLayout 的 .anim-page 包装层，它默认是 auto 高度，
+   height: 100% 的百分比链会在这里断掉（页面被内容撑高，笔记容器
+   永远拿不到确定高度，也就滚不起来）。所以两层都改成 flex 竖排传高度。
+   :has() 在 Electron 35（Chromium 134）上没问题。 */
+.content-area:has(.workspace-detail-page) {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+.content-area:has(.workspace-detail-page) > .anim-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* 笔记容器：拿走剩下的高度，自己滚。
+   min-height: 0 不能省——flex 子项默认不肯收缩到内容以下，少了它
+   容器会被笔记撑高，滚动条又跑回外面那层去了。 */
+.workspace-detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-gap);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* 给滚动条留一点空隙，别压在卡片描边上 */
+  padding-right: 0.35rem;
+  padding-bottom: 0.5rem;
 }
 
 /* ---------- 通用小控件（不依赖其它页面的 CSS） ---------- */
@@ -116,12 +155,47 @@
   letter-spacing: 0.06em;
 }
 
-/* ---------- 顶部：返回 + 标题行 ---------- */
+/* ---------- 顶部：返回 + 标题行 + 元信息/工具条 ---------- */
+
+/* 顶栏是一张卡片，和下面的笔记卡片同一套外观（圆角 / 描边 / 内边距），
+   固定在页面顶部：它不参与滚动，笔记在下面那个容器里滚。 */
+.workspace-detail-topbar {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 1.1rem 0.8rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: var(--ws-radius);
+  box-shadow: 0 10px 22px -18px rgb(0 0 0 / 70%);
+}
+
+/* 工具条里的控件统一高度，参差不齐是这一行最显乱的地方 */
+.workspace-detail-page .workspace-detail-tools .ws-btn,
+.workspace-detail-page .workspace-detail-tools input {
+  height: 2rem;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* 搜索框做成内凹的，和旁边凸起的按钮区分开 */
+.workspace-detail-tools .workspace-search-field input {
+  background: var(--surface-sunken);
+}
+
+.workspace-detail-tools .workspace-search-field input:focus {
+  background: var(--surface-strong);
+}
 
 .workspace-back-link {
-  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: none;
   color: var(--muted);
   font-size: var(--fs-sm);
+  white-space: nowrap;
 }
 
 .workspace-back-link:hover {
@@ -132,23 +206,51 @@
    一屏先被标题吃掉。改成一行：左标题右操作。 */
 .workspace-detail-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  padding-bottom: 0.85rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.workspace-detail-identity {
+  align-items: center;
+  gap: 0.7rem;
   min-width: 0;
 }
 
+.workspace-detail-identity {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 吸顶栏要矮，标题从 2xl 收到 xl；名字太长就省略，别把操作挤走。 */
 .workspace-detail-identity h1 {
   margin: 0;
-  font-size: var(--fs-2xl);
+  font-size: var(--fs-xl);
   letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 返回和标题之间一道竖线，两者是不同层级的东西 */
+.workspace-detail-sep {
+  flex: none;
+  width: 1px;
+  height: 1.1em;
+  background: var(--border);
+}
+
+/* 左边概况、右边操作。窄了就换行，工具条整段掉到下一行。 */
+.workspace-detail-subrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.workspace-detail-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex: 1 1 420px;
+  min-width: 0;
 }
 
 /* 元信息压成一行，用 · 分隔，不再是一排圆角胶囊 */
@@ -176,20 +278,13 @@
 
 /* ---------- 工具条：关键词搜索 + 语义查找 ---------- */
 
-.workspace-toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
-}
-
 /* 搜索框不再占满整行——它只是个搜索框。 */
 .workspace-search-field {
   position: relative;
   display: flex;
   align-items: center;
-  flex: 1 1 260px;
-  max-width: 380px;
+  flex: 1 1 200px;
+  max-width: 320px;
 }
 
 .workspace-search-field input {
@@ -236,6 +331,9 @@
   gap: 0.35rem;
   padding-top: 0.6rem;
   border-top: 1px solid var(--border);
+  /* 结果现在长在吸顶栏里，不限高的话命中一多顶栏能占满整屏。 */
+  max-height: 32vh;
+  overflow-y: auto;
 }
 
 .workspace-semantic-results > span {
@@ -280,24 +378,6 @@
   white-space: nowrap;
 }
 
-/* ---------- 多选操作条 ---------- */
-
-.workspace-select-bar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 0.5rem 0.5rem 0.9rem;
-  color: var(--text);
-  background: color-mix(in srgb, var(--accent) 16%, var(--surface-strong));
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
-  border-radius: var(--ws-radius-sm);
-  font-size: var(--fs-md);
-}
-
 /* ---------- 笔记卡片 ---------- */
 
 .workspace-detail-notes {
@@ -320,18 +400,16 @@
   border-color: var(--accent);
 }
 
-.workspace-note-footer {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 0.65rem;
-  padding-top: 0.45rem;
-  border-top: 1px solid var(--border-hairline);
-}
-
 .workspace-note-head {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
+  min-width: 0;
+}
+
+/* 标题占满剩余宽度，工具区才会真的贴到右边 */
+.workspace-note-identity {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -367,11 +445,23 @@
   overflow-wrap: anywhere;
 }
 
+/* 播放 / 转 Word / 转 PDF / 日期 / 删除 —— 笔记级操作全在这一行 */
 .workspace-note-tools {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
   flex: none;
+}
+
+/* 正在播放时按钮点亮，一眼看出声音是从哪条笔记出来的 */
+.workspace-detail-page .workspace-note-tools .ws-btn.is-active {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-strong));
+}
+
+.workspace-note-tools .trash-can-button {
+  margin-left: 0.15rem;
 }
 
 .workspace-note-tools time {
@@ -381,33 +471,21 @@
   white-space: nowrap;
 }
 
-/* 录音收成一条细行，不再是一个占半屏的大盒子 */
+/* 录音条只在点了标题行的「播放」之后出现，平时一点地方都不占 */
 .workspace-note-audio {
   display: flex;
   align-items: center;
   gap: 0.6rem;
   min-width: 0;
-  margin-top: 0.7rem;
-  padding: 0.4rem 0.6rem;
+  margin-top: 0.6rem;
+  padding: 0.35rem 0.6rem;
   background: var(--surface-soft);
   border-radius: var(--ws-radius-sm);
-}
-
-.workspace-note-audio .ws-label {
-  flex: none;
 }
 
 .workspace-audio {
   width: 100%;
   height: 34px;
-}
-
-.workspace-audio-loader {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  min-width: 0;
-  flex: 1 1 auto;
 }
 
 .workspace-audio-error {
@@ -421,10 +499,13 @@
 
 /* ---------- 卡片内容区块 ---------- */
 
+/* 单列堆叠：转写 / AI 输出 / AI 对话 从上到下依次排，左边缘对齐。
+   原来是两列，sub-note 那一格空着时「AI 输出」被推到右半栏，
+   看起来像凭空缩进了一大段。 */
 .workspace-content-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 1.4rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
   margin-top: 0.4rem;
 }
 
@@ -451,9 +532,10 @@
   letter-spacing: 0.06em;
 }
 
-.workspace-transcript-section,
-.workspace-conversation-section {
-  grid-column: 1 / -1;
+.workspace-content-grid > section,
+.workspace-content-grid > * {
+  /* 单列了，谁都不再需要显式跨列 */
+  grid-column: 1;
 }
 
 .workspace-transcript {
@@ -692,17 +774,6 @@
 }
 
 /* ---------- 窄屏 ---------- */
-
-@media (max-width: 900px) {
-  .workspace-content-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .workspace-transcript-section,
-  .workspace-conversation-section {
-    grid-column: auto;
-  }
-}
 
 @media (max-width: 700px) {
   .workspace-search-field {

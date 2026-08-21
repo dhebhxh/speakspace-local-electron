@@ -479,40 +479,6 @@ a:hover {
   display: none;
 }
 
-/* 侧栏底部的运行状态条 */
-.sidebar-footer {
-  margin-top: auto;
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--radius-md);
-  background: var(--surface-soft);
-  color: var(--faint);
-  font-size: var(--fs-xs);
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.sidebar.is-collapsed .sidebar-footer {
-  justify-content: center;
-  padding: 0.6rem 0;
-}
-
-.sidebar.is-collapsed .sidebar-footer span {
-  display: none;
-}
-
-.sidebar-status-dot {
-  flex: 0 0 auto;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--success);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--success) 80%, transparent);
-}
-
 /* ---------------------------------------------------------
    内容区
    --------------------------------------------------------- */
@@ -639,10 +605,6 @@ a:hover {
 
   .sidebar nav a {
     flex: 1 1 calc(50% - 0.75rem);
-  }
-
-  .sidebar-footer {
-    display: none;
   }
 
   .content-area {

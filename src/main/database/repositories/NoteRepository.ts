@@ -139,6 +139,37 @@ export class NoteRepository implements Repository<Note> {
     return statement.get(id) !== undefined;
   }
 
+  /**
+   * 写入笔记类型。分类由模型在提取待办之后产出，和笔记内容分开更新，
+   * 不走 update()——那会把整行一起覆盖，可能盖掉并发的编辑。
+   * updated_at 也刻意不动：分类不是用户改动，不该让笔记跳到列表最前面。
+   */
+  public updateTypeCategory(noteId: number, category: string): boolean {
+    const statement = this.database.prepare(`
+            UPDATE notes
+            SET type_category = ?
+            WHERE id = ? AND trashed_at IS NULL
+        `);
+
+    return statement.run(category, noteId).changes > 0;
+  }
+
+  /** 还没分过类的笔记 id，用于给历史数据补分类。 */
+  public findIdsWithoutCategory(limit: number = 200): number[] {
+    const statement = this.database.prepare(`
+            SELECT notes.id
+            FROM notes
+            JOIN workspaces ON workspaces.id = notes.workspace_id
+            WHERE notes.trashed_at IS NULL
+              AND workspaces.trashed_at IS NULL
+              AND (notes.type_category IS NULL OR notes.type_category = '')
+            ORDER BY notes.updated_at DESC
+            LIMIT ?
+        `);
+
+    return (statement.all(limit) as Array<{ id: number }>).map((row) => row.id);
+  }
+
   private static toNote(row: any): Note {
     return new Note(
       row.id,

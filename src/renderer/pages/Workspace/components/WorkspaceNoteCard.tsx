@@ -1,6 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pin, Mic, AlignLeft, Sparkles, MessageSquare } from 'lucide-react';
+import {
+  Pin,
+  Play,
+  Square,
+  AlignLeft,
+  Sparkles,
+  MessageSquare,
+} from 'lucide-react';
 import { NoteItem, WorkspaceController } from '../WorkspaceController';
 import { WorkspaceTemplate } from '../WorkspaceWorkflowController';
 import KnowledgeOutputPanel from './KnowledgeOutputPanel';
@@ -31,6 +38,13 @@ export default function WorkspaceNoteCard({
   onGenerate,
 }: Props) {
   const { t, i18n } = useTranslation();
+  // 录音默认不占地方：点了标题行的「播放」才展开播放条。
+  const [showAudio, setShowAudio] = useState(false);
+  const hasAudio = Boolean(note.audio_relative_path);
+
+  const subNotes = note.subnotes.filter((s) => s.content_type === 'note');
+  const chatNotes = note.subnotes.filter((s) => s.content_type === 'chat');
+
   const handleExport = (format: 'word' | 'pdf') => {
     window.electron.export
       .note({
@@ -74,6 +88,17 @@ export default function WorkspaceNoteCard({
           <h2>{note.name || t('workspace.note.unnamed')}</h2>
         </div>
         <div className="workspace-note-tools">
+          {hasAudio && (
+            <button
+              className={`ws-btn ws-btn-quiet ${showAudio ? 'is-active' : ''}`}
+              onClick={() => setShowAudio((open) => !open)}
+              title={t('workspace.note.playTitle')}
+              type="button"
+            >
+              {showAudio ? <Square size={13} /> : <Play size={13} />}
+              {showAudio ? t('workspace.note.stop') : t('workspace.note.play')}
+            </button>
+          )}
           <button
             className="ws-btn ws-btn-quiet"
             onClick={() => handleExport('word')}
@@ -100,19 +125,23 @@ export default function WorkspaceNoteCard({
               i18n.language,
             )}
           </time>
+          {/* 删除按钮以前独占一行页脚，其实和上面这些一样是笔记级操作，
+              放在日期后面即可。 */}
+          <TrashCanButton
+            label={t('trash.action.moveNote')}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(note.id);
+            }}
+          />
         </div>
       </header>
 
-      <div className="workspace-note-audio">
-        <span
-          aria-hidden="true"
-          className="ws-label"
-          title={t('workspace.note.audioLabel')}
-        >
-          <Mic size={16} />
-        </span>
-        <WorkspaceAudioPlayer workspaceId={workspaceId} note={note} />
-      </div>
+      {showAudio && (
+        <div className="workspace-note-audio">
+          <WorkspaceAudioPlayer workspaceId={workspaceId} note={note} />
+        </div>
+      )}
 
       <div className="workspace-content-grid">
         <section className="workspace-transcript-section">
@@ -125,17 +154,17 @@ export default function WorkspaceNoteCard({
           </p>
         </section>
 
-        <section className="workspace-knowledge-section">
-          {note.subnotes.filter((s) => s.content_type === 'note').length >
-            0 && (
-            <div className="workspace-subnotes-list">
-              <h3>
-                <Sparkles size={16} style={{ marginRight: 6 }} />
-                {t('workspace.note.subNotes')}
-              </h3>
-              {note.subnotes
-                .filter((s) => s.content_type === 'note')
-                .map((s) => (
+        {/* 一条 sub-note 都没有时整块不渲染：以前空着也照样占一格，
+            右边那半栏空荡荡，「AI 输出」被挤到中间去了。 */}
+        {(subNotes.length > 0 || chatNotes.length > 0) && (
+          <section className="workspace-knowledge-section">
+            {subNotes.length > 0 && (
+              <div className="workspace-subnotes-list">
+                <h3>
+                  <Sparkles size={16} style={{ marginRight: 6 }} />
+                  {t('workspace.note.subNotes')}
+                </h3>
+                {subNotes.map((s) => (
                   <div key={s.id} className="workspace-subnote-item">
                     <span className="workspace-subnote-badge">Sub-note</span>
                     <MarkdownText
@@ -144,19 +173,16 @@ export default function WorkspaceNoteCard({
                     />
                   </div>
                 ))}
-            </div>
-          )}
+              </div>
+            )}
 
-          {note.subnotes.filter((s) => s.content_type === 'chat').length >
-            0 && (
-            <div className="workspace-subnotes-list">
-              <h3>
-                <MessageSquare size={16} style={{ marginRight: 6 }} />
-                {t('workspace.note.aiChat')}
-              </h3>
-              {note.subnotes
-                .filter((s) => s.content_type === 'chat')
-                .map((s) => (
+            {chatNotes.length > 0 && (
+              <div className="workspace-subnotes-list">
+                <h3>
+                  <MessageSquare size={16} style={{ marginRight: 6 }} />
+                  {t('workspace.note.aiChat')}
+                </h3>
+                {chatNotes.map((s) => (
                   <div key={s.id} className="workspace-subnote-item is-chat">
                     <MarkdownText
                       className="workspace-subnote-content"
@@ -164,9 +190,10 @@ export default function WorkspaceNoteCard({
                     />
                   </div>
                 ))}
-            </div>
-          )}
-        </section>
+              </div>
+            )}
+          </section>
+        )}
 
         <KnowledgeOutputPanel
           generating={generating}
@@ -216,16 +243,6 @@ export default function WorkspaceNoteCard({
           )}
         </section>
       </div>
-
-      <footer className="workspace-note-footer">
-        <TrashCanButton
-          label={t('trash.action.moveNote')}
-          onClick={(event) => {
-            event.stopPropagation();
-            onDelete(note.id);
-          }}
-        />
-      </footer>
     </article>
   );
 }

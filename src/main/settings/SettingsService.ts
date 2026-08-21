@@ -1,6 +1,15 @@
 import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import { isValidAccelerator } from '@shared/shortcuts/Accelerator';
+import {
+  BackgroundSettings,
+  CLOSE_ACTIONS,
+  CloseAction,
+  DEFAULT_BACKGROUND_SETTINGS,
+  ShortcutBindings,
+  SHORTCUT_ACTIONS,
+} from '@shared/types/BackgroundTypes';
 
 export type FontSizeSetting = 'small' | 'medium' | 'large';
 export type ThemeSetting = 'light' | 'dark' | 'system';
@@ -12,6 +21,8 @@ export type AppSettings = {
   language: LanguageSetting;
   /** 智能助理答完是否自动朗读；TTS 未就绪时静默跳过，不报错。 */
   agentAutoSpeak: boolean;
+  /** 托盘常驻与全局快捷键。 */
+  background: BackgroundSettings;
 };
 
 const DEFAULT_APPEARANCE = {
@@ -36,11 +47,51 @@ function detectSystemLanguage(): LanguageSetting {
   return locale.toLowerCase().startsWith('zh') ? 'zh' : 'en';
 }
 
+/**
+ * 后台设置的兜底与清洗。
+ *
+ * 这是后加的一整块，老配置里没有；而且快捷键是用户手输的字符串，
+ * 非法值不能让整份设置作废——按字段逐个回落到默认值即可。
+ */
+function normalizeBackground(value: unknown): BackgroundSettings {
+  const candidate = (value ?? {}) as Partial<BackgroundSettings>;
+  const defaults = DEFAULT_BACKGROUND_SETTINGS;
+
+  const closeAction: CloseAction =
+    candidate.closeAction && CLOSE_ACTIONS.includes(candidate.closeAction)
+      ? candidate.closeAction
+      : defaults.closeAction;
+
+  const trayEnabled =
+    typeof candidate.trayEnabled === 'boolean'
+      ? candidate.trayEnabled
+      : defaults.trayEnabled;
+
+  const rawShortcuts = (candidate.shortcuts ?? {}) as Partial<ShortcutBindings>;
+  const shortcuts = SHORTCUT_ACTIONS.reduce((acc, action) => {
+    const accelerator = rawShortcuts[action];
+    // 显式的 null 表示「用户特意不绑」，要保留；undefined 才回落到默认值
+    if (accelerator === null) {
+      acc[action] = null;
+    } else if (isValidAccelerator(accelerator)) {
+      acc[action] = accelerator;
+    } else if (accelerator === undefined) {
+      acc[action] = defaults.shortcuts[action];
+    } else {
+      acc[action] = null;
+    }
+    return acc;
+  }, {} as ShortcutBindings);
+
+  return { closeAction, trayEnabled, shortcuts };
+}
+
 function buildDefaultSettings(): AppSettings {
   return {
     ...DEFAULT_APPEARANCE,
     language: detectSystemLanguage(),
     agentAutoSpeak: DEFAULT_AGENT_AUTO_SPEAK,
+    background: normalizeBackground(undefined),
   };
 }
 
@@ -119,6 +170,7 @@ export class SettingsService {
       theme: candidate.theme,
       language,
       agentAutoSpeak,
+      background: normalizeBackground(candidate.background),
     };
   }
 }

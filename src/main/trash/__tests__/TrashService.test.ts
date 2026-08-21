@@ -51,7 +51,8 @@ function createDatabase(): Database.Database {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      trashed_at TEXT
     );
     CREATE TABLE ai_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -365,5 +366,140 @@ describeWithNativeDatabase('TrashService', () => {
     expect(
       database.prepare('SELECT 1 FROM notes WHERE id = ?').get(noteId),
     ).toBeDefined();
+  });
+});
+
+describeWithNativeDatabase('对话的回收站', () => {
+  /** 建一条会话并挂两条消息，返回会话 id。 */
+  function seedConversation(
+    database: Database.Database,
+    name = '关于银行材料',
+  ): number {
+    const info = database
+      .prepare(
+        `INSERT INTO ai_conversations (name, created_at, updated_at)
+         VALUES (?, ?, ?)`,
+      )
+      .run(name, FIRST_TIME, FIRST_TIME);
+    const id = Number(info.lastInsertRowid);
+    [1, 2].forEach((index) => {
+      database
+        .prepare(
+          `INSERT INTO ai_messages (conversation_id, role, content, created_at)
+           VALUES (?, ?, ?, ?)`,
+        )
+        .run(id, index === 1 ? 'user' : 'assistant', `m${index}`, FIRST_TIME);
+    });
+    return id;
+  }
+
+  it('移入回收站只打时间戳，消息一条不少', () => {
+    const database = createDatabase();
+    const service = new TrashService({ database });
+    const id = seedConversation(database);
+
+    const result = service.moveConversation(id);
+
+    expect(result.itemType).toBe('conversation');
+    expect(result.name).toBe('关于银行材料');
+    const row = database
+      .prepare('SELECT trashed_at FROM ai_conversations WHERE id = ?')
+      .get(id) as { trashed_at: string | null };
+    expect(row.trashed_at).not.toBeNull();
+    const messages = database
+      .prepare(
+        'SELECT COUNT(*) AS c FROM ai_messages WHERE conversation_id = ?',
+      )
+      .get(id) as { c: number };
+    expect(messages.c).toBe(2);
+  });
+
+  it('已经在回收站里的不能再删一次', () => {
+    const database = createDatabase();
+    const service = new TrashService({ database });
+    const id = seedConversation(database);
+    service.moveConversation(id);
+
+    expect(() => service.moveConversation(id)).toThrow();
+  });
+
+  it('回收站列表里能看到它，并带上消息条数', () => {
+    const database = createDatabase();
+    const service = new TrashService({ database });
+    const id = seedConversation(database);
+    service.moveConversation(id);
+
+    const listed = service
+      .list({ filter: 'conversation' })
+      .items.find((item) => item.id === id);
+
+    expect(listed).toMatchObject({
+      itemType: 'conversation',
+      name: '关于银行材料',
+      messageCount: 2,
+    });
+  });
+
+  it('按笔记 / 工作空间筛选时不会混进来', () => {
+    const database = createDatabase();
+    const service = new TrashService({ database });
+    service.moveConversation(seedConversation(database));
+
+    expect(service.list({ filter: 'note' }).items).toHaveLength(0);
+    expect(service.list({ filter: 'workspace' }).items).toHaveLength(0);
+    expect(service.list({ filter: 'all' }).items).toHaveLength(1);
+  });
+
+  it('搜索按会话名匹配', () => {
+    const database = createDatabase();
+    const service = new TrashService({ database });
+    service.moveConversation(seedConversation(database, '周会纪要'));
+
+    expect(service.list({ search: '周会' }).items).toHaveLength(1);
+    expect(service.list({ search: '不存在的词' }).items).toHaveLength(0);
+  });
+
+  it('恢复之后回到正常列表', () => {
+    const database = createDatabase();
+    const service = new TrashService({ database });
+    const id = seedConversation(database);
+    service.moveConversation(id);
+
+    service.restore({ itemType: 'conversation', id });
+
+    const row = database
+      .prepare('SELECT trashed_at FROM ai_conversations WHERE id = ?')
+      .get(id) as { trashed_at: string | null };
+    expect(row.trashed_at).toBeNull();
+    expect(service.list({ filter: 'conversation' }).items).toHaveLength(0);
+  });
+
+  it('彻底删除会连消息一起清掉，不留孤儿', () => {
+    const database = createDatabase();
+    const service = new TrashService({ database });
+    const id = seedConversation(database);
+    service.moveConversation(id);
+
+    service.permanentlyDelete({ itemType: 'conversation', id });
+
+    const conversations = database
+      .prepare('SELECT COUNT(*) AS c FROM ai_conversations')
+      .get() as { c: number };
+    const messages = database
+      .prepare('SELECT COUNT(*) AS c FROM ai_messages')
+      .get() as { c: number };
+    expect(conversations.c).toBe(0);
+    expect(messages.c).toBe(0);
+  });
+
+  it('没在回收站里的不能恢复、也不能彻底删除', () => {
+    const database = createDatabase();
+    const service = new TrashService({ database });
+    const id = seedConversation(database);
+
+    expect(() => service.restore({ itemType: 'conversation', id })).toThrow();
+    expect(() =>
+      service.permanentlyDelete({ itemType: 'conversation', id }),
+    ).toThrow();
   });
 });

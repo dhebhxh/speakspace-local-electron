@@ -1,5 +1,6 @@
 import React, { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import CloseIcon from '../../../components/CloseIcon';
 
 type WorkspaceOption = {
   id: number;
@@ -118,7 +119,7 @@ export default function SaveToWorkspaceDialog({
             onClick={onClose}
             aria-label={t('recording.saveDialog.close')}
           >
-            ×
+            <CloseIcon size={14} />
           </button>
         </header>
 

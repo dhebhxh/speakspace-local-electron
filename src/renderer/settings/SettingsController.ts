@@ -1,3 +1,5 @@
+import { BackgroundSettings } from '@shared/types/BackgroundTypes';
+
 export type FontSizeSetting = 'small' | 'medium' | 'large';
 export type ThemeSetting = 'light' | 'dark' | 'system';
 export type LanguageSetting = 'zh' | 'en';
@@ -8,6 +10,8 @@ export type AppSettings = {
   language: LanguageSetting;
   /** 智能助理答完是否自动朗读 */
   agentAutoSpeak: boolean;
+  /** 托盘常驻与全局快捷键 */
+  background: BackgroundSettings;
 };
 
 type SettingsApi = {

@@ -1,4 +1,4 @@
-export type TrashItemType = 'note' | 'workspace';
+export type TrashItemType = 'note' | 'workspace' | 'conversation';
 
 export type TrashFilter = 'all' | TrashItemType;
 
@@ -33,7 +33,19 @@ export type TrashedWorkspaceItem = {
   matchedContainedNote: boolean;
 };
 
-export type TrashItem = TrashedNoteItem | TrashedWorkspaceItem;
+export type TrashedConversationItem = {
+  itemType: 'conversation';
+  id: number;
+  name: string;
+  trashedAt: string;
+  /** 这次对话里有多少条消息，回收站里用来判断值不值得恢复。 */
+  messageCount: number;
+};
+
+export type TrashItem =
+  | TrashedNoteItem
+  | TrashedWorkspaceItem
+  | TrashedConversationItem;
 
 export type TrashListResult = {
   items: TrashItem[];

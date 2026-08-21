@@ -32,6 +32,14 @@ type NoteTrashRow = {
   preview: string;
 };
 
+type ConversationTrashRow = {
+  item_type: 'conversation';
+  id: number;
+  name: string;
+  trashed_at: string;
+  message_count: number;
+};
+
 type WorkspaceTrashRow = {
   item_type: 'workspace';
   id: number;
@@ -175,6 +183,43 @@ export default class TrashService {
     });
 
     const offset = (query.page - 1) * query.pageSize;
+    if (query.filter !== 'note' && query.filter !== 'workspace') {
+      const searchClause = searchPattern
+        ? `AND ai_conversations.name LIKE @searchPattern ESCAPE '\\'`
+        : '';
+      const conversationRows = this.database
+        .prepare(
+          `SELECT 'conversation' AS item_type, ai_conversations.id,
+            ai_conversations.name, ai_conversations.trashed_at,
+            (SELECT COUNT(*) FROM ai_messages
+              WHERE ai_messages.conversation_id = ai_conversations.id) AS message_count
+          FROM ai_conversations
+          WHERE ai_conversations.trashed_at IS NOT NULL
+            ${searchClause}
+          ORDER BY ai_conversations.trashed_at DESC, ai_conversations.id DESC
+          LIMIT @limit`,
+        )
+        .all(bindings) as ConversationTrashRow[];
+      const conversationCount = this.database
+        .prepare(
+          `SELECT COUNT(*) AS count
+          FROM ai_conversations
+          WHERE ai_conversations.trashed_at IS NOT NULL
+            ${searchClause}`,
+        )
+        .get(bindings) as { count: number };
+      total += Number(conversationCount.count);
+      items.push(
+        ...conversationRows.map((row) => ({
+          itemType: 'conversation' as const,
+          id: row.id,
+          name: row.name,
+          trashedAt: row.trashed_at,
+          messageCount: Number(row.message_count),
+        })),
+      );
+    }
+
     return {
       items: items.slice(offset, offset + query.pageSize),
       total,
@@ -274,16 +319,102 @@ export default class TrashService {
 
   public restore(rawTarget: unknown): TrashActionResult {
     const target = TrashService.normalizeTarget(rawTarget);
-    return target.itemType === 'note'
-      ? this.restoreNote(target.id)
-      : this.restoreWorkspace(target.id);
+    if (target.itemType === 'note') return this.restoreNote(target.id);
+    if (target.itemType === 'conversation') {
+      return this.restoreConversation(target.id);
+    }
+    return this.restoreWorkspace(target.id);
   }
 
   public permanentlyDelete(rawTarget: unknown): TrashActionResult {
     const target = TrashService.normalizeTarget(rawTarget);
-    return target.itemType === 'note'
-      ? this.permanentlyDeleteNote(target.id)
-      : this.permanentlyDeleteWorkspace(target.id);
+    if (target.itemType === 'note')
+      return this.permanentlyDeleteNote(target.id);
+    if (target.itemType === 'conversation') {
+      return this.permanentlyDeleteConversation(target.id);
+    }
+    return this.permanentlyDeleteWorkspace(target.id);
+  }
+
+  /** 会话移入回收站：只打时间戳，消息一条不动，恢复时原样回来。 */
+  public moveConversation(rawId: unknown): TrashActionResult {
+    const id = TrashService.normalizeId(rawId);
+    const row = this.database
+      .prepare(
+        `SELECT id, name FROM ai_conversations
+        WHERE id = ? AND trashed_at IS NULL`,
+      )
+      .get(id) as { id: number; name: string } | undefined;
+    if (!row) {
+      throw new Error(
+        '对话不存在或已在回收站 / Conversation not found or already in Trash',
+      );
+    }
+
+    const result = this.database
+      .prepare('UPDATE ai_conversations SET trashed_at = ? WHERE id = ?')
+      .run(new Date().toISOString(), id);
+    if (result.changes !== 1) {
+      throw new Error('无法移入回收站 / Could not move conversation to Trash');
+    }
+
+    return {
+      itemType: 'conversation',
+      id,
+      name: row.name,
+      workspaceId: null,
+      noteCount: 0,
+    };
+  }
+
+  private restoreConversation(id: number): TrashActionResult {
+    const row = this.database
+      .prepare(
+        `SELECT id, name FROM ai_conversations
+        WHERE id = ? AND trashed_at IS NOT NULL`,
+      )
+      .get(id) as { id: number; name: string } | undefined;
+    if (!row) {
+      throw new Error('对话不在回收站 / Conversation is not in Trash');
+    }
+
+    this.database
+      .prepare('UPDATE ai_conversations SET trashed_at = NULL WHERE id = ?')
+      .run(id);
+
+    return {
+      itemType: 'conversation',
+      id,
+      name: row.name,
+      workspaceId: null,
+      noteCount: 0,
+    };
+  }
+
+  private permanentlyDeleteConversation(id: number): TrashActionResult {
+    const row = this.database
+      .prepare(
+        `SELECT id, name FROM ai_conversations
+        WHERE id = ? AND trashed_at IS NOT NULL`,
+      )
+      .get(id) as { id: number; name: string } | undefined;
+    if (!row) {
+      throw new Error('对话不在回收站 / Conversation is not in Trash');
+    }
+
+    // 消息挂在会话上，会话没了它们也没有意义，一并清掉
+    this.database
+      .prepare('DELETE FROM ai_messages WHERE conversation_id = ?')
+      .run(id);
+    this.database.prepare('DELETE FROM ai_conversations WHERE id = ?').run(id);
+
+    return {
+      itemType: 'conversation',
+      id,
+      name: row.name,
+      workspaceId: null,
+      noteCount: 0,
+    };
   }
 
   private restoreNote(id: number): TrashActionResult {
@@ -457,7 +588,11 @@ export default class TrashService {
       throw new Error('无效的回收站操作 / Invalid Trash action');
     }
     const candidate = value as Partial<TrashActionTarget>;
-    if (candidate.itemType !== 'note' && candidate.itemType !== 'workspace') {
+    if (
+      candidate.itemType !== 'note' &&
+      candidate.itemType !== 'workspace' &&
+      candidate.itemType !== 'conversation'
+    ) {
       throw new Error('无效的条目类型 / Invalid item type');
     }
     return {
@@ -502,7 +637,12 @@ export default class TrashService {
   }
 
   private static isFilter(value: unknown): value is TrashFilter {
-    return value === 'all' || value === 'note' || value === 'workspace';
+    return (
+      value === 'all' ||
+      value === 'note' ||
+      value === 'workspace' ||
+      value === 'conversation'
+    );
   }
 
   private static toLikePattern(search: string): string {

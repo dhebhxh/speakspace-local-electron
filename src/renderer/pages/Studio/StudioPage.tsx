@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import useAskAIPage from '../AskAI/useAskAIPage';
 import { AskAINote } from '../AskAI/AskAITypes';
 import AskAINotesPanel from '../AskAI/components/AskAINotesPanel';
@@ -22,6 +22,7 @@ import useTranscriptionController from '../Recording/useTranscriptionController'
 import { WorkspaceSaveSelection } from '../Recording/components/SaveToWorkspaceDialog';
 import StudioChatPanel from './components/StudioChatPanel';
 import useStudioAgent from './useStudioAgent';
+import useRoutedNoteChat from './useRoutedNoteChat';
 import RecordingReviewDialog from './components/RecordingReviewDialog';
 import StudioReadinessGate from './components/StudioReadinessGate';
 import { StudioWorkspace } from './StudioTypes';
@@ -88,6 +89,7 @@ function sanitizeTitle(raw: string): string {
 export default function StudioPage() {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const page = useAskAIPage();
   const [engine, setEngine] = useState<Engine>(createEngine);
   const snapshot = useRecordingSession(engine.session);
@@ -154,6 +156,11 @@ export default function StudioPage() {
   const [recordError, setRecordError] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [trashUndo, setTrashUndo] = useState<NoteTrashUndo | null>(null);
+  /** 刚被移入回收站的会话，用于撤销浮条。 */
+  const [conversationUndo, setConversationUndo] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [trashError, setTrashError] = useState('');
   const preserveLinksOnSelectionChange = useRef(false);
   const startedAtRef = useRef<number | null>(null);
@@ -326,6 +333,47 @@ export default function StudioPage() {
 
   // 新建会话直接开一个空白对话：不预先弹窗让用户配置，
   // 关联笔记、助理模式都留到输入框里现场决定。
+  /**
+   * 把一次会话移入回收站。
+   *
+   * 和笔记一样是软删除：只打时间戳，消息一条不动，能从「设置 → 回收站」
+   * 或这里的撤销浮条恢复。删的正好是当前打开的那个时，顺手清空对话区。
+   */
+  const handleDeleteConversation = useCallback(
+    async (conversationId: number) => {
+      const target = page.conversations.find(
+        (item) => item.id === conversationId,
+      );
+      try {
+        setTrashError('');
+        await window.electron.trash.moveConversation(conversationId);
+        if (page.activeConversation?.id === conversationId) page.resetChat();
+        await page.reloadConversations();
+        setConversationUndo({
+          id: conversationId,
+          name: target?.name ?? '',
+        });
+      } catch (reason) {
+        setTrashError(
+          reason instanceof Error
+            ? reason.message
+            : t('trash.error.moveConversation'),
+        );
+      }
+    },
+    [page, t],
+  );
+
+  const undoDeleteConversation = useCallback(async () => {
+    if (!conversationUndo) return;
+    await window.electron.trash.restore({
+      itemType: 'conversation',
+      id: conversationUndo.id,
+    });
+    await page.reloadConversations();
+    setConversationUndo(null);
+  }, [conversationUndo, page]);
+
   const startBlankConversation = useCallback(() => {
     page.resetChat();
     resetAgent();
@@ -335,6 +383,19 @@ export default function StudioPage() {
     setPreviewNoteId(null);
     agentConversationId.current = null;
   }, [page, resetAgent]);
+
+  // 从工作空间「笔记问答」跳过来时，自动挂上笔记、开新对话并问出第一句。
+  useRoutedNoteChat({
+    askNoteIds: (location.state as { askNoteIds?: number[] } | null)
+      ?.askNoteIds,
+    notes: page.notes,
+    question: t('workspace.detail.noteChatPrompt'),
+    startConversation: startBlankConversation,
+    linkNote: addLinkedNote,
+    ask: (question, context) => page.ask(question, context),
+    onHandled: () =>
+      navigate(location.pathname, { replace: true, state: null }),
+  });
 
   // 智能体模式的回答由主进程 Agent 生成，不走 askAI.ask，
   // 所以要在这里补一次落库，否则「最近会话」里永远看不到它。
@@ -443,6 +504,76 @@ export default function StudioPage() {
     }
   }, [engine, openReview, t]);
 
+  /** 取消快速录音：停掉这一段但不弹复核窗，录到的内容直接丢掉。 */
+  const cancelRecording = useCallback(async () => {
+    try {
+      await engine.session.stop();
+    } catch {
+      // 停不下来也要把引擎重置掉，不然界面会卡在「录音中」
+    }
+    // 和关掉复核窗一样：在途的转写 / 整理也要放弃，否则录音按钮会一直是灰的
+    await engine.transcription.abort().catch(() => undefined);
+    resetEngine();
+  }, [engine, resetEngine]);
+
+  /**
+   * 全局快捷键 / 托盘触发的快速录音。
+   *
+   * 「开始」由 useBackgroundRequests 先跳到本页再通过路由 state 传进来
+   * （见下一个 effect）：主进程直接发消息的话，用户当时停在别的页面就没人接。
+   * 「停止 / 取消」在这里接：能录音就说明本页已经挂着了。
+   */
+  useEffect(() => {
+    const api = window.electron.background;
+    if (!api?.onRequest) return undefined;
+
+    const dispose = api.onRequest((raw: unknown) => {
+      const request = raw as { type?: string };
+      if (request?.type === 'stopQuickRecord') {
+        stopRecording().catch(() => undefined);
+        return;
+      }
+      if (request?.type === 'cancelQuickRecord') {
+        cancelRecording().catch(() => undefined);
+      }
+    });
+    return () => {
+      dispose();
+    };
+  }, [stopRecording, cancelRecording]);
+
+  /**
+   * 路由 state 里带着 quickRecord 时间戳就开录。
+   *
+   * 用时间戳而不是布尔：连按两次快捷键，state 不同才会再次触发。
+   * 处理完立刻清掉 state，刷新页面不会莫名其妙又开始录音。
+   */
+  const quickRecordAt = (location.state as { quickRecord?: number } | null)
+    ?.quickRecord;
+  const handledQuickRecord = useRef<number | null>(null);
+  useEffect(() => {
+    if (!quickRecordAt || handledQuickRecord.current === quickRecordAt) return;
+    handledQuickRecord.current = quickRecordAt;
+    navigate(location.pathname, { replace: true, state: null });
+    startRecording();
+  }, [quickRecordAt, navigate, location.pathname, startRecording]);
+
+  // 录音状态变化时同步给浮窗：出错或自行停止时，浮窗要跟着收起来。
+  const recordingHudActive = useRef(false);
+  useEffect(() => {
+    const api = window.electron.background;
+    if (!api?.reportRecording) return;
+    if (recordingActive === recordingHudActive.current && !recordError) return;
+    recordingHudActive.current = recordingActive;
+    api
+      .reportRecording({
+        active: recordingActive,
+        startedAt: recordingActive ? startedAtRef.current : null,
+        error: recordError,
+      })
+      .catch(() => undefined);
+  }, [recordingActive, recordError]);
+
   const uploadAudio = useCallback(() => {
     setRecordError(null);
     engine.transcription
@@ -486,9 +617,13 @@ export default function StudioPage() {
   const closeReview = useCallback(() => {
     setReviewOpen(false);
     setSaveError(null);
+    // 关窗＝放弃这一轮：主进程的转写任务要取消掉，在途的实时分段和语义整理
+    // 也要作废。只 resetEngine 的话它们还在后台跑，新引擎会接着显示「转写中」，
+    // 录音和上传按钮一直是灰的，用户没法重录。
+    engine.transcription.abort().catch(() => undefined);
     // 重置录音引擎：丢弃本次未保存的录音/上传，避免已完成的任务再次触发复核窗。
     resetEngine();
-  }, [resetEngine]);
+  }, [engine, resetEngine]);
 
   const saveAsNote = useCallback(
     async (selection: WorkspaceSaveSelection) => {
@@ -625,6 +760,7 @@ export default function StudioPage() {
         notes={page.notes}
         workspaces={workspaces}
         conversations={page.conversations}
+        activeConversationId={page.activeConversation?.id ?? null}
         selectedNoteId={page.selectedNote?.id ?? null}
         onAddNote={(workspaceId) => {
           setCreateWorkspaceId(workspaceId ?? null);
@@ -635,6 +771,7 @@ export default function StudioPage() {
         onPreviewNote={openPreview}
         onOpenConversation={page.openConversation}
         onDeleteNote={handleDeleteNote}
+        onDeleteConversation={handleDeleteConversation}
       />
 
       <StudioChatPanel
@@ -732,6 +869,19 @@ export default function StudioPage() {
           })}
           onDismiss={() => setTrashUndo(null)}
           onUndo={undoDeleteNote}
+          undoLabel={t('trash.action.undo')}
+          undoingLabel={t('trash.action.restoring')}
+        />
+      )}
+
+      {conversationUndo && (
+        <TrashUndoToast
+          dismissLabel={t('trash.action.dismiss')}
+          message={t('trash.notice.conversationMoved', {
+            name: conversationUndo.name || t('trash.item.untitledConversation'),
+          })}
+          onDismiss={() => setConversationUndo(null)}
+          onUndo={undoDeleteConversation}
           undoLabel={t('trash.action.undo')}
           undoingLabel={t('trash.action.restoring')}
         />

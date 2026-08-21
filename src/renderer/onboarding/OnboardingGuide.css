@@ -11,6 +11,9 @@
 .tour {
   position: fixed;
   inset: 0;
+  /* 故意不往上抬。日历那个悬停弹窗是 9999，比这里高 —— 联动演示要的就是
+     它浮在遮罩上面看得见。代价是弹窗可能压住说明卡，所以那一步的卡片钉在
+     右下角（placement: 'corner'），跟弹窗的落点错开。 */
   z-index: 2000;
   pointer-events: none;
 }
@@ -290,6 +293,8 @@
 .tour__rail {
   display: flex;
   align-items: center;
+  /* 步骤变多之后一行排不下，允许换行，别把卡片顶宽 */
+  flex-wrap: wrap;
   gap: 4px;
   margin: 0.9rem 0 0.7rem;
 }
@@ -387,5 +392,477 @@
 
   .tour__body {
     animation-duration: 1ms;
+  }
+}
+
+/* ---------------------------------------------------------
+   实物浮窗（讲三个快捷键的那几步）
+
+   三个浮窗是独立窗口，聚光灯照不到真身，光用文字讲「右下角会弹出一张
+   卡片」用户还是不知道会冒出什么。所以引导直接把真的浮窗组件摆到它真正
+   会出现的位置上：右下角（统计 / 待办）和下方居中（录音）。
+
+   这里只管「摆在哪、多大」，卡片长什么样全部来自 hud/Hud.css —— 浮窗改了
+   样式，引导里演示的会跟着变，不会各说各话。
+   --------------------------------------------------------- */
+.tour-hud-stage {
+  position: fixed;
+  /* 尺寸和边距由 TourHudStage 按 HUD_SIZES 内联给出，和真窗口同一份常量 */
+
+  /* 演示归演示：引导里点一下就把某条待办真勾掉，那是意外不是教学。
+     整块不收点击，底下的拦截层照常吃掉所有操作。 */
+  pointer-events: none;
+
+  /* 聚光灯的洞是按元素外框 + 8px 算的，这里给个圆角，
+     光斑才会顺着卡片的形状收边，而不是套一个方框 */
+  border-radius: 22px;
+}
+
+.tour-hud-stage--record {
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+}
+
+/* 两个图标按钮轮流「点」一下：浮窗上这俩平时压得很淡，
+   不提示一下，用户不会知道它们是能按的。
+
+   选第一组的第一条。用的是 :first-of-type 而不是 :first-child ——
+   每组里排在最前面的是那个「今天 / 明天」的 span 标签，
+   待办行没有一个是 :first-child，写成那样等于整段规则不生效。 */
+.tour-hud-stage--todos .hud-todo-section:first-child .hud-todo-item:first-of-type .hud-todo-check {
+  animation: tour-hud-poke 2.4s ease-in-out infinite;
+}
+
+/* 已经置顶的那条图钉本来就常亮，再去闪只会把它按回灰色，所以跳过 */
+.tour-hud-stage--todos .hud-todo-section:first-child .hud-todo-item:first-of-type:not(.is-pinned) .hud-todo-pin {
+  animation: tour-hud-poke-pin 2.4s ease-in-out 1.2s infinite;
+}
+
+@keyframes tour-hud-poke {
+  0%, 55%, 100% {
+    color: var(--faint);
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
+
+  25% {
+    color: var(--accent);
+    transform: scale(1.22);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+}
+
+@keyframes tour-hud-poke-pin {
+  0%, 55%, 100% {
+    color: var(--faint);
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
+
+  25% {
+    color: var(--accent-star, var(--accent));
+    transform: scale(1.22);
+    box-shadow:
+      0 0 0 5px
+      color-mix(in srgb, var(--accent-star, var(--accent)) 20%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-hud-stage--todos .hud-todo-check,
+  .tour-hud-stage--todos .hud-todo-pin {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------
+   拖拽演示（把笔记拖进对话那一步）
+
+   说「拖到右边的对话框」，用户既不知道终点是哪一块，也不知道拖过去会
+   发生什么。这里让一张虚拟卡片自己飞一趟：从笔记上抬起 → 移动 → 落进
+   对话区，落点用的是对话区真的那层拖拽提示。
+
+   两段动画共用一个 2.8s 周期、统一 linear，靠关键帧百分比对齐 ——
+   卡片飞到的那一刻，落点正好亮起来。任何一边改了时长都会错拍。
+   --------------------------------------------------------- */
+.tour-drag {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* 自成一个层叠上下文。里面那层 .studio-drop-hint 自带 z-index: 15，
+     不圈起来的话它会盖到后面的说明卡上面去 —— 卡片没写 z-index，
+     按层叠规则排在所有正 z-index 的兄弟下面。 */
+  isolation: isolate;
+}
+
+/* 罩在对话区上的落点框。里面那层 .studio-drop-hint 是真拖拽时的同一个
+   组件样式（inset: 0.6rem 的虚线框），这里只负责把它摆到对话区的位置上。 */
+.tour-drag__drop {
+  position: fixed;
+  z-index: 1;
+  animation: tour-drag-zone 2800ms linear infinite;
+}
+
+@keyframes tour-drag-zone {
+  /* 卡片还在路上：落点先按住不亮，免得一上来就抢注意力 */
+  0%, 46% {
+    opacity: 0;
+  }
+
+  56%, 88% {
+    opacity: 1;
+  }
+
+  /* 卡片放下之后一起收，回到「什么都没发生」再重来 */
+  100% {
+    opacity: 0;
+  }
+}
+
+/* 被拖着走的那张小卡片 */
+.tour-drag__ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  /* 压在落点框上面：卡片是被拖的那个，不该被落点罩住 */
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.7rem;
+  box-sizing: border-box;
+  color: var(--text);
+  background: var(--surface-raised);
+  border: 1px solid color-mix(in srgb, var(--accent) 60%, var(--border));
+  border-radius: 10px;
+  box-shadow: 0 14px 28px -12px rgb(0 0 0 / 55%);
+  animation: tour-drag-fly 2800ms linear infinite;
+}
+
+/* 左边那道竖杠，暗示「这里可以抓」 */
+.tour-drag__grip {
+  flex: none;
+  width: 3px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.tour-drag__label {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@keyframes tour-drag-fly {
+  /* 出现 */
+  0% {
+    opacity: 0;
+    transform: translate(var(--from-x), var(--from-y)) scale(0.92);
+  }
+
+  8% {
+    opacity: 1;
+    transform: translate(var(--from-x), var(--from-y)) scale(1);
+  }
+
+  /* 抬起来：稍微放大并歪一点，像被手拎住 */
+  18% {
+    opacity: 1;
+    transform: translate(var(--from-x), var(--from-y)) scale(1.05)
+      rotate(-2.5deg);
+    /* 出发这一段用缓动，中间飞得快、两头慢，才像手在拖 */
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  /* 飞到了 */
+  70% {
+    opacity: 1;
+    transform: translate(var(--to-x), var(--to-y)) scale(1.05) rotate(-2.5deg);
+  }
+
+  /* 放下 */
+  84% {
+    opacity: 1;
+    transform: translate(var(--to-x), var(--to-y)) scale(0.96) rotate(0deg);
+  }
+
+  92%, 100% {
+    opacity: 0;
+    transform: translate(var(--to-x), var(--to-y)) scale(0.9);
+  }
+}
+
+/* 开了「减少动态效果」就不飞了：直接停在终点，落点常亮，
+   靠位置本身说明「拖到这儿」 */
+@media (prefers-reduced-motion: reduce) {
+  .tour-drag__ghost {
+    animation: none;
+    transform: translate(var(--to-x), var(--to-y));
+  }
+
+  .tour-drag__drop {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------
+   双击演示（双击笔记看全文那一步）
+
+   双击是个隐藏动作，界面上没有任何东西提示这张卡片还能双击。这里画一个
+   鼠标指针摸过去连点两下，右边随即滑出详情面板，位置和宽度照真的那一栏来。
+
+   四段动画（指针 / 两圈水波 / 面板）共用 3000ms 周期、统一 linear，
+   全靠关键帧百分比对齐：指针按下的那一刻水波才扩，第二下之后面板才滑出。
+   任何一段改了时长都会错拍。
+   --------------------------------------------------------- */
+.tour-click {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* 同 .tour-drag：里面借用了页面上带 z-index 的真样式，
+     圈起来才不会盖到后面的说明卡上去 */
+  isolation: isolate;
+}
+
+/* ---- 右边滑出来的详情面板 ---- */
+.tour-click__panel {
+  position: fixed;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 0 16px 16px 0;
+  box-shadow: -18px 0 36px -24px rgb(0 0 0 / 70%);
+  animation: tour-click-panel 3000ms linear infinite;
+}
+
+/* 借用真面板的底色和左边框；它在真页面里是网格的一列，这里得自己撑满 */
+.tour-click__panel .studio-source {
+  height: 100%;
+  padding: 0.9rem 1rem;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* 骨架条：示意「这儿会有内容」，不编一段像真摘要的假文字 */
+.tour-click__line {
+  display: block;
+  height: 8px;
+  margin: 0.42rem 0;
+  background: color-mix(in srgb, var(--text) 16%, transparent);
+  border-radius: 4px;
+}
+
+@keyframes tour-click-panel {
+  /* 第二下点完之前，右边什么都没有 */
+  0%, 44% {
+    opacity: 0;
+    transform: translateX(16px);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+
+  56%, 88% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+
+/* ---- 指针 ---- */
+.tour-click__cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  display: block;
+  /* 箭头尖在图形的左上角，缩放时才不会离开落点 */
+  transform-origin: top left;
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 45%));
+  animation: tour-click-cursor 3000ms linear infinite;
+}
+
+@keyframes tour-click-cursor {
+  0% {
+    opacity: 0;
+    transform: translate(var(--from-x), var(--from-y)) scale(1);
+  }
+
+  8% {
+    opacity: 1;
+    transform: translate(var(--from-x), var(--from-y)) scale(1);
+    /* 移过去这一段用缓动，才像手在动 */
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 到位 */
+  28%,
+  32% {
+    opacity: 1;
+    transform: translate(var(--click-x), var(--click-y)) scale(1);
+  }
+
+  /* 第一下 */
+  34% {
+    transform: translate(var(--click-x), var(--click-y)) scale(0.8);
+  }
+
+  38% {
+    transform: translate(var(--click-x), var(--click-y)) scale(1);
+  }
+
+  /* 第二下 */
+  42% {
+    transform: translate(var(--click-x), var(--click-y)) scale(0.8);
+  }
+
+  46%,
+  88% {
+    opacity: 1;
+    transform: translate(var(--click-x), var(--click-y)) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(var(--click-x), var(--click-y)) scale(1);
+  }
+}
+
+/* ---- 两下点击的水波 ---- */
+.tour-click__ripple {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  /* 起手就得是透明的。第二圈要等 240ms 才开始，这段延迟里元素显示的是
+     基础样式 —— 不写这句的话，刚进这一步时会有一个实心圆环钉在屏幕
+     左上角闪一下（transform 还没生效，位置是 0,0）。 */
+  opacity: 0;
+  animation: tour-click-ripple 3000ms linear infinite backwards;
+}
+
+/* 第二下：同周期错开 240ms，正好落在指针第二次按下的那一帧 */
+.tour-click__ripple--second {
+  animation-delay: 240ms;
+}
+
+@keyframes tour-click-ripple {
+  0%,
+  33% {
+    opacity: 0;
+    /* 两段 translate 叠加：先移到落点，再用自身尺寸的 -50% 居中 */
+    transform: translate(var(--click-x), var(--click-y)) translate(-50%, -50%)
+      scale(0.25);
+  }
+
+  35% {
+    opacity: 0.65;
+    transform: translate(var(--click-x), var(--click-y)) translate(-50%, -50%)
+      scale(0.3);
+  }
+
+  48%,
+  100% {
+    opacity: 0;
+    transform: translate(var(--click-x), var(--click-y)) translate(-50%, -50%)
+      scale(1.5);
+  }
+}
+
+/* 开了「减少动态效果」就不演了：指针停在落点，面板直接摊开，
+   静态地把「点这儿 → 开在那儿」这层关系摆出来 */
+@media (prefers-reduced-motion: reduce) {
+  .tour-click__cursor {
+    animation: none;
+    transform: translate(var(--click-x), var(--click-y));
+  }
+
+  .tour-click__panel {
+    animation: none;
+  }
+
+  .tour-click__ripple {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------
+   联动演示（日历悬停 → 弹窗 → 笔记列表跟着滚那一步）
+
+   这里没有假动画：弹窗、列表滚动、行高亮全是应用被真的 mouseover 触发后
+   自己做出来的。引导只画两样东西 —— 一个指针，和一圈套住「鼠标此刻停在
+   哪儿」的光环。位置用 transition 过渡，指针和光环会一站站滑过去。
+   --------------------------------------------------------- */
+.tour-hover {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.tour-hover__ring {
+  position: fixed;
+  z-index: 1;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+  opacity: 0;
+  /* 位置也过渡：光环是「跟着鼠标走」的，瞬移就看不出是同一个东西了 */
+  transition:
+    top var(--dur-slow, 320ms) var(--ease-out, ease-out),
+    left var(--dur-slow, 320ms) var(--ease-out, ease-out),
+    width var(--dur-slow, 320ms) var(--ease-out, ease-out),
+    height var(--dur-slow, 320ms) var(--ease-out, ease-out),
+    opacity 200ms ease;
+}
+
+.tour-hover__ring.is-on {
+  opacity: 1;
+  animation: tour-hover-pulse 1400ms ease-in-out infinite;
+}
+
+@keyframes tour-hover-pulse {
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+}
+
+.tour-hover__cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: block;
+  opacity: 0;
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 45%));
+  /* 时长要和 TourHoverDemo 里的 TRAVEL_MS 对上：
+     那边等这段走完才派发 mouseover，快了就成了指针没到、界面先动。 */
+  transition:
+    transform 520ms var(--ease-out, ease-out),
+    opacity 220ms ease;
+}
+
+.tour-hover__cursor.is-on {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-hover__ring,
+  .tour-hover__cursor {
+    transition: opacity 120ms ease;
+  }
+
+  .tour-hover__ring.is-on {
+    animation: none;
   }
 }

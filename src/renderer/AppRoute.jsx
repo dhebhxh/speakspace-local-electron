@@ -9,10 +9,18 @@ import StudioPage from './pages/Studio/StudioPage';
 import WorkflowPage from './pages/Workflow/WorkflowPage';
 import AgentPage from './pages/Agent/AgentPage';
 import { RoutePath } from './router/RouteManager';
+import StatsHud from './hud/StatsHud';
+import TodoHud from './hud/TodoHud';
+import RecordHud from './hud/RecordHud';
 
 export default function AppRoute() {
   return (
     <Routes>
+      {/* 轻量浮窗：独立窗口加载 #/hud/xxx，不进主布局 */}
+      <Route path="/hud/stats" element={<StatsHud />} />
+      <Route path="/hud/todos" element={<TodoHud />} />
+      <Route path="/hud/record" element={<RecordHud />} />
+
       <Route element={<MainLayout />}>
         {/* 首�??�為實�?轉�? (StudioPage) */}
         <Route path="/" element={<StudioPage />} />

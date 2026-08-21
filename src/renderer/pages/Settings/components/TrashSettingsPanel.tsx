@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type {
   TrashActionResult,
   TrashFilter,
@@ -8,6 +8,7 @@ import type {
   TrashListResult,
 } from '@shared/types/TrashTypes';
 import './TrashSettingsPanel.css';
+import CloseIcon from '../../../components/CloseIcon';
 
 const PAGE_SIZE = 30;
 
@@ -26,6 +27,7 @@ export default function TrashSettingsPanel({
 }: TrashSettingsPanelProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filter, setFilter] = useState<TrashFilter>('all');
@@ -144,11 +146,14 @@ export default function TrashSettingsPanel({
 
   const itemKey = (item: TrashItem) => `${item.itemType}:${item.id}`;
 
+  const untitledKey = (itemType: TrashItem['itemType']) => {
+    if (itemType === 'note') return 'trash.item.untitledNote';
+    if (itemType === 'conversation') return 'trash.item.untitledConversation';
+    return 'trash.item.untitledWorkspace';
+  };
+
   const displayName = (item: TrashItem) =>
-    item.name ||
-    (item.itemType === 'note'
-      ? t('trash.item.untitledNote')
-      : t('trash.item.untitledWorkspace'));
+    item.name || t(untitledKey(item.itemType));
 
   const formatDate = (value: string) => {
     const date = new Date(value);
@@ -200,13 +205,15 @@ export default function TrashSettingsPanel({
   };
 
   const viewRestored = (result: TrashActionResult) => {
+    // 带上来源，详情页的返回按钮才会回到设置页而不是首页。
+    const from = location.pathname;
     if (result.itemType === 'workspace') {
-      navigate(`/Workspace/${result.id}`);
+      navigate(`/Workspace/${result.id}`, { state: { from } });
       return;
     }
     if (result.workspaceId) {
       navigate(`/Workspace/${result.workspaceId}`, {
-        state: { noteId: result.id },
+        state: { from, noteId: result.id },
       });
     }
   };
@@ -219,11 +226,12 @@ export default function TrashSettingsPanel({
   const emptyDescriptionKey = emptyFromSearch
     ? 'trash.empty.searchDesc'
     : 'trash.empty.desc';
-  const filters: TrashFilter[] = ['all', 'note', 'workspace'];
+  const filters: TrashFilter[] = ['all', 'note', 'conversation', 'workspace'];
 
   return (
     <section
       className="settings-panel trash-settings"
+      data-tour="settings-trash-panel"
       aria-labelledby="trash-title"
     >
       <div className="settings-panel-heading">
@@ -262,7 +270,7 @@ export default function TrashSettingsPanel({
               onClick={() => setSearch('')}
               type="button"
             >
-              ×
+              <CloseIcon size={12} />
             </button>
           )}
         </label>
@@ -299,16 +307,12 @@ export default function TrashSettingsPanel({
               ? t('trash.notice.itemRestored', {
                   name:
                     notice.result.name ||
-                    (notice.result.itemType === 'note'
-                      ? t('trash.item.untitledNote')
-                      : t('trash.item.untitledWorkspace')),
+                    t(untitledKey(notice.result.itemType)),
                 })
               : t('trash.notice.itemDeleted', {
                   name:
                     notice.result.name ||
-                    (notice.result.itemType === 'note'
-                      ? t('trash.item.untitledNote')
-                      : t('trash.item.untitledWorkspace')),
+                    t(untitledKey(notice.result.itemType)),
                 })}
           </span>
           {notice.kind === 'restored' && (
@@ -322,7 +326,7 @@ export default function TrashSettingsPanel({
             onClick={() => setNotice(null)}
             type="button"
           >
-            ×
+            <CloseIcon size={12} />
           </button>
         </div>
       )}
@@ -356,7 +360,8 @@ export default function TrashSettingsPanel({
                   className={`trash-item-glyph is-${item.itemType}`}
                   aria-hidden="true"
                 >
-                  {item.itemType === 'note' ? 'N' : 'W'}
+                  {/* N 笔记 / C 对话 / W 工作空间 */}
+                  {item.itemType.charAt(0).toUpperCase()}
                 </span>
                 <div className="trash-item-content">
                   <div className="trash-item-title-row">
@@ -376,7 +381,8 @@ export default function TrashSettingsPanel({
                         })}
                       </span>
                     </>
-                  ) : (
+                  ) : null}
+                  {item.itemType === 'workspace' && (
                     <span className="trash-item-meta">
                       {t('trash.item.noteCount', { count: item.noteCount })}
                       {item.matchedContainedNote && (
@@ -384,6 +390,13 @@ export default function TrashSettingsPanel({
                           {t('trash.item.containsMatch')}
                         </span>
                       )}
+                    </span>
+                  )}
+                  {item.itemType === 'conversation' && (
+                    <span className="trash-item-meta">
+                      {t('trash.item.messageCount', {
+                        count: item.messageCount,
+                      })}
                     </span>
                   )}
                   <time className="trash-item-time" dateTime={item.trashedAt}>

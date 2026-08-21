@@ -37,6 +37,8 @@ export default function WorkspaceHomePage({
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  // 进详情页时留下来源，返回按钮才知道该回哪一页（见 BackNavigation）。
+  const detailState = { from: location.pathname };
   // 卡片跟随光标的柔光。写的是 CSS 变量，不进 React 状态，
   // 因此 pointermove 再密也不会触发重渲染。
   const spotlight = useSpotlight();
@@ -107,7 +109,7 @@ export default function WorkspaceHomePage({
       setCreating(true);
       setError('');
       const created = await workspaceController.createWorkspace(name);
-      navigate(`/Workspace/${created.id}`);
+      navigate(`/Workspace/${created.id}`, { state: detailState });
     } catch (reason) {
       setError(
         WorkspaceController.getErrorMessage(
@@ -190,7 +192,11 @@ export default function WorkspaceHomePage({
             })}
           </span>
           <button
-            onClick={() => navigate(`/Workspace/${restoredWorkspace.id}`)}
+            onClick={() =>
+              navigate(`/Workspace/${restoredWorkspace.id}`, {
+                state: detailState,
+              })
+            }
             type="button"
           >
             {t('trash.action.view')}
@@ -228,7 +234,9 @@ export default function WorkspaceHomePage({
             <button
               className="workspace-home-card fx-spotlight fx-sheen"
               key={item.id}
-              onClick={() => navigate(`/Workspace/${item.id}`)}
+              onClick={() =>
+                navigate(`/Workspace/${item.id}`, { state: detailState })
+              }
               type="button"
               // 错位进场的序号。上限 10 是故意的：再往后延迟会长到
               // 让人觉得列表在卡，超出的都跟第 10 张一起出现。

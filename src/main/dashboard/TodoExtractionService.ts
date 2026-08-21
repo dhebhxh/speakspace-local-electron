@@ -27,6 +27,7 @@ import {
   parseOwnershipVerdicts,
 } from './TodoOwnershipFilter';
 import { buildExtractionPrompt } from './TodoExtractionPrompt';
+import { NoteClassificationService } from './NoteClassificationService';
 
 export class TodoExtractionService {
   private noteRepository: NoteRepository;
@@ -37,11 +38,14 @@ export class TodoExtractionService {
 
   private embeddingService: OllamaEmbeddingService;
 
+  private classificationService: NoteClassificationService;
+
   constructor() {
     this.noteRepository = new NoteRepository();
     this.todoRepository = new TodoRepository();
     this.chatService = new LocalChatService();
     this.embeddingService = new OllamaEmbeddingService();
+    this.classificationService = new NoteClassificationService();
   }
 
   private static chunkText(text: string, size = 500, overlap = 100): string[] {
@@ -188,6 +192,11 @@ export class TodoExtractionService {
         console.warn(`Note ${noteId} has no transcript.`);
         return false;
       }
+
+      // 顺手把笔记类型也认出来。放在提取之前是因为下面有好几个提前
+      // return（整段已完成、模型没吐出 JSON），放后面这些笔记就永远没分类。
+      // 分类失败只是留空，不影响待办提取。
+      await this.classificationService.classifyNote(noteId);
 
       // 整次提取共用同一个「现在」，避免跨零点时 prompt 和落库的日期不一致。
       const now = new Date();

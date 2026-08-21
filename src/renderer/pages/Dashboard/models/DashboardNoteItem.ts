@@ -1,5 +1,6 @@
 import { Note } from '@shared/entities/Note';
 import { DashboardCategory, DashboardCategoryKey } from './DashboardCategory';
+import { matchesAllTerms, splitSearchTerms } from './NoteSearch';
 import { DashboardTimeUtil, RelativeUpdatedTime } from './DashboardTimeUtil';
 
 export class DashboardNoteItem extends Note {
@@ -67,15 +68,16 @@ export class DashboardNoteItem extends Note {
     query: string,
     categoryLabel: string = this.typeCategory,
   ): boolean {
-    if (!query || query.trim() === '') return true;
-    const q = query.toLowerCase();
-    const titleMatch = this.getName()
-      ? this.getName()!.toLowerCase().includes(q)
-      : false;
-    const transcriptMatch = this.getTranscript()
-      ? this.getTranscript().toLowerCase().includes(q)
-      : false;
-    const typeMatch = categoryLabel.toLowerCase().includes(q);
-    return titleMatch || transcriptMatch || typeMatch;
+    const terms = splitSearchTerms(query);
+    if (terms.length === 0) return true;
+
+    // 每个词都要命中，但可以分别落在标题、正文或类型上：
+    // 「银行 执照」这种查法，两个词往往一个在标题一个在正文。
+    const haystack = [
+      this.getName() ?? '',
+      this.getTranscript() ?? '',
+      categoryLabel,
+    ].join(' ');
+    return matchesAllTerms(haystack, terms);
   }
 }

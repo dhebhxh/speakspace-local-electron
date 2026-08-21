@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './TrashUndoToast.css';
+import CloseIcon from './CloseIcon';
 
 type TrashUndoToastProps = {
   message: string;
@@ -62,7 +63,7 @@ export default function TrashUndoToast({
         onClick={onDismiss}
         type="button"
       >
-        ×
+        <CloseIcon size={12} />
       </button>
     </div>
   );

@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { DEFAULT_BACKGROUND_SETTINGS } from '@shared/types/BackgroundTypes';
 import i18n from '../../i18n';
 import { AppSettings, SettingsController } from './SettingsController';
 
@@ -24,6 +25,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   language: 'zh',
   agentAutoSpeak: true,
+  background: DEFAULT_BACKGROUND_SETTINGS,
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -116,6 +118,9 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
           await settingsController.updateSettings(nextSettings);
         setSettings(savedSettings);
         setLoadError('');
+        // 托盘和全局快捷键在主进程里，保存完要让它按新配置重装一遍。
+        // 失败不该影响保存本身——设置页会另行显示每个快捷键的状态。
+        await window.electron.background?.apply?.().catch(() => undefined);
       },
     }),
     [loadError, loading, resolvedTheme, settings],

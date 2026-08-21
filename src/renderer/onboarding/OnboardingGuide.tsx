@@ -5,8 +5,12 @@ import {
   OnboardingController,
 } from './OnboardingController';
 import useOnboardingTour, { TargetRect } from './useOnboardingTour';
-import { ONBOARDING_STEPS } from './OnboardingSteps';
+import { ONBOARDING_STEPS, StepPlacement } from './OnboardingSteps';
 import './OnboardingGuide.css';
+import TourClickDemo from './TourClickDemo';
+import TourHoverDemo from './TourHoverDemo';
+import TourDragDemo from './TourDragDemo';
+import TourHudStage from './TourHudStage';
 
 const CARD_WIDTH = 340;
 // 卡片和聚光灯之间留的空隙，箭头就画在这段里
@@ -38,10 +42,27 @@ function clamp(value: number, min: number, max: number): number {
  * 子元素，transform 会变成它们的包含块；而且 top/left 配合 CSS
  * transition 已经能做出「卡片滑到下一个目标旁边」的效果。
  */
-function placeCard(rect: TargetRect | null, cardHeight: number): CardPosition {
+function placeCard(
+  rect: TargetRect | null,
+  cardHeight: number,
+  placement: StepPlacement = 'auto',
+): CardPosition {
   const viewportW = window.innerWidth;
   const viewportH = window.innerHeight;
   const height = cardHeight || CARD_HEIGHT_FALLBACK;
+
+  // 聚光灯罩住大半个页面时，auto 会退化成「贴着某条边居中」，
+  // 那正好压在被演示的东西上。这种步骤直接钉右下角。
+  if (placement === 'corner') {
+    return {
+      style: {
+        top: Math.max(EDGE, viewportH - height - EDGE),
+        left: Math.max(EDGE, viewportW - CARD_WIDTH - EDGE),
+        width: CARD_WIDTH,
+      },
+      arrow: 'none',
+    };
+  }
 
   if (!rect) {
     return {
@@ -186,8 +207,8 @@ export default function OnboardingGuide() {
 
   const placement = useMemo(
     // rect 移动或卡片高度变化都要重算位置
-    () => placeCard(tour.rect, cardHeight),
-    [tour.rect, cardHeight],
+    () => placeCard(tour.rect, cardHeight, tour.step.placement),
+    [tour.rect, cardHeight, tour.step.placement],
   );
 
   if (!open) return null;
@@ -246,6 +267,37 @@ export default function OnboardingGuide() {
           style={cometStyle}
           aria-hidden="true"
         />
+      )}
+
+      {/* 讲快捷键的那三步：把真的浮窗摆到它真正会出现的位置上。
+          放在聚光灯之后，才不会被那圈遮罩压暗；它自己带 data-tour="hud-demo"，
+          于是上面的聚光灯和下面的说明卡会像对待普通控件一样围住它。 */}
+      {tour.step.hudDemo && (
+        <TourHudStage key={tour.step.hudDemo} kind={tour.step.hudDemo} />
+      )}
+
+      {/* 拖拽那一步：让一张虚拟卡片从笔记飞到对话区，把「拖到哪儿、
+          拖过去会怎样」演一遍。同样放在聚光灯之后才不会被遮罩压暗。 */}
+      {tour.step.dragDemo && (
+        <TourDragDemo
+          fallbackSelector={tour.step.target}
+          key={tour.step.id}
+          spec={tour.step.dragDemo}
+        />
+      )}
+
+      {/* 双击那一步：指针连点两下，右边滑出详情面板 */}
+      {tour.step.clickDemo && (
+        <TourClickDemo
+          fallbackSelector={tour.step.target}
+          key={tour.step.id}
+          spec={tour.step.clickDemo}
+        />
+      )}
+
+      {/* 联动那一步：把日历悬停那套真的跑一遍，指针和光环只是解说 */}
+      {tour.step.hoverDemo && (
+        <TourHoverDemo key={tour.step.id} spec={tour.step.hoverDemo} />
       )}
 
       <section

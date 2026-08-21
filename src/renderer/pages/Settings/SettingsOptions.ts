@@ -1,3 +1,4 @@
+import { CloseAction } from '@shared/types/BackgroundTypes';
 import {
   FontSizeSetting,
   LanguageSetting,
@@ -95,3 +96,103 @@ export const LANGUAGE_OPTIONS: Array<{
     glyph: 'EN',
   },
 ];
+
+/** 关闭主窗口时的行为。默认「每次询问」，勾一次「记住」就不再打扰。 */
+export const CLOSE_ACTION_OPTIONS: Array<{
+  value: CloseAction;
+  labelKey: string;
+  descKey: string;
+  glyph: string;
+}> = [
+  {
+    value: 'ask',
+    labelKey: 'settings.background.close.ask',
+    descKey: 'settings.background.close.ask.desc',
+    glyph: '?',
+  },
+  {
+    value: 'tray',
+    labelKey: 'settings.background.close.tray',
+    descKey: 'settings.background.close.tray.desc',
+    glyph: '▼',
+  },
+  {
+    value: 'quit',
+    labelKey: 'settings.background.close.quit',
+    descKey: 'settings.background.close.quit.desc',
+    glyph: '⏻',
+  },
+];
+
+/**
+ * 设置页左边的分类。
+ *
+ * 放在这个纯模块里，是因为 id 不只是页面内部的事：它同时是地址栏
+ * ?section= 的取值，新手引导靠它把人直接送进某一栏。写在页面组件里的话，
+ * 想校验「引导指的那一栏真的存在」就得把整个设置页（连同七个面板和 CSS）
+ * 一起拖进测试。
+ */
+export type SettingsCategoryId =
+  | 'appearance'
+  | 'language'
+  | 'agent'
+  | 'background'
+  | 'hardware'
+  | 'trash'
+  | 'guide';
+
+export const SETTINGS_CATEGORIES: Array<{
+  id: SettingsCategoryId;
+  labelKey: string;
+  descKey: string;
+  glyph: string;
+}> = [
+  {
+    id: 'appearance',
+    labelKey: 'settings.category.appearance',
+    descKey: 'settings.category.appearance.desc',
+    glyph: '◐',
+  },
+  {
+    id: 'language',
+    labelKey: 'settings.category.language',
+    descKey: 'settings.category.language.desc',
+    glyph: '文',
+  },
+  {
+    id: 'agent',
+    labelKey: 'settings.category.agent',
+    descKey: 'settings.category.agent.desc',
+    glyph: '✦',
+  },
+  {
+    id: 'background',
+    labelKey: 'settings.category.background',
+    descKey: 'settings.category.background.desc',
+    glyph: '⌂',
+  },
+  {
+    id: 'hardware',
+    labelKey: 'settings.category.hardware',
+    descKey: 'settings.category.hardware.desc',
+    glyph: '▣',
+  },
+  {
+    id: 'trash',
+    labelKey: 'settings.category.trash',
+    descKey: 'settings.category.trash.desc',
+    glyph: '♲',
+  },
+  {
+    id: 'guide',
+    labelKey: 'settings.category.guide',
+    descKey: 'settings.category.guide.desc',
+    glyph: '?',
+  },
+];
+
+export function isSettingsCategoryId(
+  value: string | null | undefined,
+): value is SettingsCategoryId {
+  return SETTINGS_CATEGORIES.some((category) => category.id === value);
+}

@@ -10,7 +10,11 @@ export default function AgentSettingsPanel({
 }: SettingsPanelProps) {
   const { t } = useTranslation();
   return (
-    <section className="settings-panel" aria-labelledby="agent-speak-title">
+    <section
+      aria-labelledby="agent-speak-title"
+      className="settings-panel"
+      data-tour="settings-agent-panel"
+    >
       <div className="settings-panel-heading">
         <span className="settings-panel-icon" aria-hidden="true">
           ♪

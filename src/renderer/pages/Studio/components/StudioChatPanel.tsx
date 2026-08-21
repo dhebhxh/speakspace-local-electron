@@ -22,6 +22,7 @@ import TTSPlayButton from '../../../tts/TTSPlayButton';
 import CopyButton from '../../../components/CopyButton';
 import MarkdownText from '../../../components/Markdown/MarkdownText';
 import { useAppSettings } from '../../../settings/AppSettingsProvider';
+import CloseIcon from '../../../components/CloseIcon';
 
 type RecordingUiState = {
   active: boolean;
@@ -719,7 +720,7 @@ export default function StudioChatPanel({
                   onClick={() => onUnlinkWorkspace(workspace.id)}
                   aria-label={`${t('studio.chat.unlinkPrefix')}${workspace.name}`}
                 >
-                  ×
+                  <CloseIcon size={10} />
                 </button>
               </span>
             ))}
@@ -733,7 +734,7 @@ export default function StudioChatPanel({
                   onClick={() => onRemoveLinkedNote(note.id)}
                   aria-label={`${t('studio.chat.unlinkPrefix')}${note.name}`}
                 >
-                  ×
+                  <CloseIcon size={10} />
                 </button>
               </span>
             ))}

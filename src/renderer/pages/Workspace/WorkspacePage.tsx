@@ -7,8 +7,8 @@ import TrashUndoToast from '../../components/TrashUndoToast';
 import WorkspaceDetailHeader from './components/WorkspaceDetailHeader';
 import WorkspaceNoteCard from './components/WorkspaceNoteCard';
 import WorkspaceSemanticSearch from './components/WorkspaceSemanticSearch';
-import WorkspaceMultiNoteModal from './components/WorkspaceMultiNoteModal';
 import useWorkspaceDetail from './useWorkspaceDetail';
+import { useBackNavigation } from '../../router/BackNavigation';
 import './WorkspacePage.css';
 
 /**
@@ -20,6 +20,7 @@ export default function WorkspacePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const detail = useWorkspaceDetail();
+  const back = useBackNavigation();
   const {
     workspace,
     loading,
@@ -32,16 +33,55 @@ export default function WorkspacePage() {
     toggleNoteSelection,
     revealNote,
   } = detail;
-  const [showMultiModal, setShowMultiModal] = useState(false);
   const [noteUndo, setNoteUndo] = useState<TrashActionResult | null>(null);
 
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameInput, setRenameInput] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  // 批量删除是不可逆感很强的操作，先弹窗确认，避免误点。
+  const [showBatchDeleteModal, setShowBatchDeleteModal] = useState(false);
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
   const handleDeleteNote = async (noteId: number) => {
     const result = await detail.moveNoteToTrash(noteId);
     if (result) setNoteUndo(result);
+  };
+
+  /**
+   * 带着选中的笔记去对话工作台开一轮问答。
+   *
+   * 原来是就地弹一个只读的分析窗，问完就没了——既接不上追问，
+   * 也不会留进会话历史。改成跳到工作台：笔记自动挂上、新开一个对话、
+   * 并自动发出第一个问题，之后可以照常追问。
+   */
+  const startNoteChat = () => {
+    // 走 `/`：侧边栏「对话工作台」那一项高亮的是这个路径，
+    // /Transcription 虽然渲染的是同一个页面，但导航项不会亮。
+    navigate(`/`, {
+      state: { askNoteIds: [...selectedNoteIds] },
+    });
+  };
+
+  /**
+   * 把勾选的笔记逐条移入回收站。
+   *
+   * 串行是有意的：moveNoteToTrash 每次都会改选中集合和笔记列表，
+   * 并发跑几条会互相盖掉对方的状态更新。数量本来也就几条到几十条。
+   */
+  const handleBatchDelete = async () => {
+    setBatchDeleting(true);
+    try {
+      // 先拍一份快照：删除过程中 selectedNoteIds 会被逐条清空。
+      const targets = [...selectedNoteIds];
+      // eslint-disable-next-line no-restricted-syntax
+      for (const noteId of targets) {
+        // eslint-disable-next-line no-await-in-loop
+        await detail.moveNoteToTrash(noteId);
+      }
+    } finally {
+      setBatchDeleting(false);
+      setShowBatchDeleteModal(false);
+    }
   };
 
   useEffect(() => {
@@ -74,16 +114,65 @@ export default function WorkspacePage() {
         <p className="workspace-detail-error" role="alert">
           {error || t('workspace.error.notFound')}
         </p>
-        <Link className="workspace-back-link" to="/">
-          {t('workspace.detail.back')}
+        <Link className="workspace-back-link" to={back.path}>
+          {back.labelKey
+            ? t('workspace.detail.backTo', { page: t(back.labelKey) })
+            : t('workspace.detail.back')}
         </Link>
       </section>
     );
   }
 
+  // 顶栏右侧的工具条：搜索 / 查找 / 批量操作。跟着顶栏一起固定，
+  // 勾选笔记之后不必滚回页面顶部就能操作。
+  const toolbar = (
+    <>
+      <div className="workspace-search-field">
+        <Search className="workspace-search-icon" size={18} />
+        <input
+          aria-label={t('workspace.detail.search')}
+          id="workspace-search"
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t('workspace.detail.searchPlaceholder')}
+          title={t('workspace.detail.search')}
+          type="search"
+          value={query}
+        />
+      </div>
+
+      <WorkspaceSemanticSearch
+        onSelect={revealNote}
+        query={query}
+        workspaceId={detail.workspaceId}
+      />
+
+      {/* 勾选之后才出现：平时工具条上不该挂着删除之类的按钮。
+          两个都带计数，所以不必再单开一行显示「已选中 N 篇」。 */}
+      {selectedNoteIds.length > 0 && (
+        <>
+          <button
+            className="ws-btn ws-btn-primary"
+            onClick={startNoteChat}
+            type="button"
+          >
+            {t('workspace.detail.noteChat')} ({selectedNoteIds.length})
+          </button>
+          <button
+            className="ws-btn ws-btn-danger-solid"
+            onClick={() => setShowBatchDeleteModal(true)}
+            type="button"
+          >
+            {t('workspace.detail.batchDelete')} ({selectedNoteIds.length})
+          </button>
+        </>
+      )}
+    </>
+  );
+
   return (
     <section className="workspace-detail-page">
       <WorkspaceDetailHeader
+        toolbar={toolbar}
         onDelete={() => setShowDeleteModal(true)}
         onRename={() => {
           setRenameInput(workspace.name);
@@ -92,91 +181,47 @@ export default function WorkspacePage() {
         workspace={workspace}
       />
 
-      {error && (
-        <p className="workspace-detail-error" role="alert">
-          {error}
-        </p>
-      )}
-      {status && <p className="workspace-detail-success">{status}</p>}
+      {/* 笔记全部装进这个容器，它自己滚。顶栏是页面里另一个独立的块，
+          两者互不重叠——内容被这个容器裁掉，根本到不了顶栏那一层。 */}
+      <div className="workspace-detail-body">
+        {error && (
+          <p className="workspace-detail-error" role="alert">
+            {error}
+          </p>
+        )}
+        {status && <p className="workspace-detail-success">{status}</p>}
 
-      <div className="workspace-toolbar">
-        <div className="workspace-search-field">
-          <Search className="workspace-search-icon" size={18} />
-          <input
-            aria-label={t('workspace.detail.search')}
-            id="workspace-search"
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t('workspace.detail.searchPlaceholder')}
-            title={t('workspace.detail.search')}
-            type="search"
-            value={query}
-          />
+        {visibleNotes.length === 0 && (
+          <div className="workspace-detail-empty">
+            <strong>
+              {query
+                ? t('workspace.detail.emptySearch')
+                : t('workspace.detail.empty')}
+            </strong>
+            <span>
+              {query
+                ? t('workspace.detail.emptySearchDesc')
+                : t('workspace.detail.emptyDesc')}
+            </span>
+          </div>
+        )}
+
+        <div className="workspace-detail-notes">
+          {visibleNotes.map((note) => (
+            <WorkspaceNoteCard
+              generating={detail.generatingNoteId === note.id}
+              key={note.id}
+              note={note}
+              isSelected={selectedNoteIds.includes(note.id)}
+              onToggleSelection={toggleNoteSelection}
+              onDelete={handleDeleteNote}
+              onGenerate={detail.generateOutput}
+              templates={detail.templates}
+              workspaceId={detail.workspaceId}
+            />
+          ))}
         </div>
-
-        <WorkspaceSemanticSearch
-          onSelect={revealNote}
-          query={query}
-          workspaceId={detail.workspaceId}
-        />
       </div>
-
-      {visibleNotes.length === 0 && (
-        <div className="workspace-detail-empty">
-          <strong>
-            {query
-              ? t('workspace.detail.emptySearch')
-              : t('workspace.detail.empty')}
-          </strong>
-          <span>
-            {query
-              ? t('workspace.detail.emptySearchDesc')
-              : t('workspace.detail.emptyDesc')}
-          </span>
-        </div>
-      )}
-
-      {selectedNoteIds.length > 0 && (
-        <div className="workspace-select-bar">
-          <span>
-            {t('workspace.detail.selected')} {selectedNoteIds.length}{' '}
-            {t('workspace.detail.notesSuffix')}
-          </span>
-          <button
-            className="ws-btn ws-btn-primary"
-            disabled={selectedNoteIds.length < 2}
-            onClick={() => setShowMultiModal(true)}
-            type="button"
-          >
-            {selectedNoteIds.length < 2
-              ? t('workspace.detail.selectMore')
-              : t('workspace.detail.actionOnSelected')}
-          </button>
-        </div>
-      )}
-
-      <div className="workspace-detail-notes">
-        {visibleNotes.map((note) => (
-          <WorkspaceNoteCard
-            generating={detail.generatingNoteId === note.id}
-            key={note.id}
-            note={note}
-            isSelected={selectedNoteIds.includes(note.id)}
-            onToggleSelection={toggleNoteSelection}
-            onDelete={handleDeleteNote}
-            onGenerate={detail.generateOutput}
-            templates={detail.templates}
-            workspaceId={detail.workspaceId}
-          />
-        ))}
-      </div>
-
-      {showMultiModal && (
-        <WorkspaceMultiNoteModal
-          selectedNoteIds={selectedNoteIds}
-          workspaceId={detail.workspaceId}
-          onClose={() => setShowMultiModal(false)}
-        />
-      )}
 
       {showRenameModal && (
         <div className="workspace-modal-overlay">
@@ -232,6 +277,56 @@ export default function WorkspacePage() {
                   type="button"
                 >
                   {t('common.confirm', 'Confirm')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBatchDeleteModal && (
+        <div className="workspace-modal-overlay">
+          <div
+            aria-labelledby="workspace-batch-delete-title"
+            aria-modal="true"
+            className="workspace-modal workspace-confirm-modal"
+            role="dialog"
+          >
+            <header className="workspace-modal-head">
+              <h2 id="workspace-batch-delete-title">
+                {t('workspace.detail.batchDelete')}
+              </h2>
+            </header>
+            <div className="workspace-modal-body" style={{ padding: '24px' }}>
+              <p style={{ marginBottom: '16px', lineHeight: '1.5' }}>
+                {t('workspace.detail.batchDeleteConfirm', {
+                  count: selectedNoteIds.length,
+                })}
+              </p>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '8px',
+                }}
+              >
+                <button
+                  className="ws-btn"
+                  disabled={batchDeleting}
+                  onClick={() => setShowBatchDeleteModal(false)}
+                  type="button"
+                >
+                  {t('common.cancel', 'Cancel')}
+                </button>
+                <button
+                  className="ws-btn ws-btn-danger-solid"
+                  disabled={batchDeleting}
+                  onClick={handleBatchDelete}
+                  type="button"
+                >
+                  {batchDeleting
+                    ? t('workspace.detail.batchDeleting')
+                    : t('workspace.detail.batchDelete')}
                 </button>
               </div>
             </div>

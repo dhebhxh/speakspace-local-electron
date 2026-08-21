@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import CloseIcon from '../../../components/CloseIcon';
 
 type AskAICreateNoteDialogProps = {
   onClose: () => void;
@@ -38,7 +39,7 @@ export default function AskAICreateNoteDialog({
             onClick={onClose}
             aria-label={t('askAI.createNote.close')}
           >
-            ×
+            <CloseIcon size={14} />
           </button>
         </header>
 

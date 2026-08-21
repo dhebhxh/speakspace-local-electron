@@ -1,69 +1,30 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { AppSettings } from '../../settings/SettingsController';
 import { useAppSettings } from '../../settings/AppSettingsProvider';
 import AgentSettingsPanel from './components/AgentSettingsPanel';
+import BackgroundSettingsPanel from './components/BackgroundSettingsPanel';
 import FontSizeSettingsPanel from './components/FontSizeSettingsPanel';
 import HardwareSettingsPanel from './components/HardwareSettingsPanel';
 import LanguageSettingsPanel from './components/LanguageSettingsPanel';
 import OnboardingSettingsPanel from './components/OnboardingSettingsPanel';
 import ThemeSettingsPanel from './components/ThemeSettingsPanel';
 import TrashSettingsPanel from './components/TrashSettingsPanel';
+import {
+  isSettingsCategoryId,
+  SETTINGS_CATEGORIES,
+  SettingsCategoryId,
+} from './SettingsOptions';
 import './SettingsPage.css';
 
-type CategoryId =
-  | 'appearance'
-  | 'language'
-  | 'agent'
-  | 'hardware'
-  | 'trash'
-  | 'guide';
-
-const CATEGORIES: Array<{
-  id: CategoryId;
-  labelKey: string;
-  descKey: string;
-  glyph: string;
-}> = [
-  {
-    id: 'appearance',
-    labelKey: 'settings.category.appearance',
-    descKey: 'settings.category.appearance.desc',
-    glyph: '◐',
-  },
-  {
-    id: 'language',
-    labelKey: 'settings.category.language',
-    descKey: 'settings.category.language.desc',
-    glyph: '文',
-  },
-  {
-    id: 'agent',
-    labelKey: 'settings.category.agent',
-    descKey: 'settings.category.agent.desc',
-    glyph: '✦',
-  },
-  {
-    id: 'hardware',
-    labelKey: 'settings.category.hardware',
-    descKey: 'settings.category.hardware.desc',
-    glyph: '▣',
-  },
-  {
-    id: 'trash',
-    labelKey: 'settings.category.trash',
-    descKey: 'settings.category.trash.desc',
-    glyph: '♲',
-  },
-  {
-    id: 'guide',
-    labelKey: 'settings.category.guide',
-    descKey: 'settings.category.guide.desc',
-    glyph: '?',
-  },
-];
-
-/** 设置主页面：左侧分类导航 + 右侧对应内容面板，加载/保存状态集中管理。 */
+/**
+ * 设置主页面：左侧分类导航 + 右侧对应内容面板，加载/保存状态集中管理。
+ *
+ * 打开哪一类记在地址栏的 ?section= 上。这样别处才能直接把人送到具体某一栏，
+ * 而不是只能把他扔在「外观」那一页、再让他自己找 —— 新手引导讲后台常驻和
+ * 全局快捷键时指的就是面板里的控件，控件得先在页面上。
+ */
 export default function SettingsPage() {
   const { t } = useTranslation();
   const { settings, resolvedTheme, loading, loadError, updateSettings } =
@@ -71,8 +32,21 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [trashCount, setTrashCount] = useState(0);
-  const [activeCategory, setActiveCategory] =
-    useState<CategoryId>('appearance');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedCategory = searchParams.get('section');
+  const [activeCategory, setActiveCategory] = useState<SettingsCategoryId>(
+    () =>
+      isSettingsCategoryId(requestedCategory)
+        ? requestedCategory
+        : 'appearance',
+  );
+
+  // 地址栏变了就跟着切（引导正是靠这个把人带进某一栏）
+  useEffect(() => {
+    if (isSettingsCategoryId(requestedCategory)) {
+      setActiveCategory(requestedCategory);
+    }
+  }, [requestedCategory]);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,7 +108,7 @@ export default function SettingsPage() {
 
       <div className="settings-layout">
         <nav className="settings-nav" aria-label={t('settings.title')}>
-          {CATEGORIES.map((category) => (
+          {SETTINGS_CATEGORIES.map((category) => (
             <button
               type="button"
               key={category.id}
@@ -142,7 +116,12 @@ export default function SettingsPage() {
                 activeCategory === category.id ? ' is-active' : ''
               }`}
               aria-current={activeCategory === category.id}
-              onClick={() => setActiveCategory(category.id)}
+              onClick={() => {
+                setActiveCategory(category.id);
+                // 同步到地址栏，刷新或分享链接都还停在这一栏。
+                // replace 是为了别把「点了七个分类」塞满后退历史。
+                setSearchParams({ section: category.id }, { replace: true });
+              }}
               // 手把手引导按分类 id 定位到具体某一项（见 OnboardingSteps.ts）
               data-tour={`settings-${category.id}`}
             >
@@ -186,6 +165,14 @@ export default function SettingsPage() {
 
           {activeCategory === 'language' && (
             <LanguageSettingsPanel
+              disabled={disabled}
+              save={save}
+              settings={settings}
+            />
+          )}
+
+          {activeCategory === 'background' && (
+            <BackgroundSettingsPanel
               disabled={disabled}
               save={save}
               settings={settings}

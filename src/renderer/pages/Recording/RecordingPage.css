@@ -569,17 +569,20 @@
   font-size: var(--fs-xl);
 }
 
+/* grid + place-items 居中里面的图标；不要靠字号和行高去凑 */
 .workspace-save-dialog__close {
+  display: grid;
+  place-items: center;
   min-width: auto !important;
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   padding: 0 !important;
+  line-height: 1;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 50%;
   background: var(--surface-soft);
   box-shadow: none;
-  font-size: var(--fs-xl);
 }
 
 .workspace-save-dialog__hint {

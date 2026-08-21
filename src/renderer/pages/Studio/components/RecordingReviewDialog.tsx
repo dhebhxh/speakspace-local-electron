@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WorkspaceSaveSelection } from '../../Recording/components/SaveToWorkspaceDialog';
 import MarkdownText from '../../../components/Markdown/MarkdownText';
+import CloseIcon from '../../../components/CloseIcon';
 
 type WorkspaceOption = { id: number; name: string };
 
@@ -128,12 +129,12 @@ export default function RecordingReviewDialog({
           </div>
           <button
             type="button"
-            className="studio-review-dialog__close"
+            className="btn-plain studio-review-dialog__close"
             disabled={saving}
             onClick={onClose}
             aria-label={t('recording.review.close')}
           >
-            ×
+            <CloseIcon />
           </button>
         </header>
 

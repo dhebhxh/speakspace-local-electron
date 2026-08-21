@@ -14,7 +14,30 @@
  * 随时可能因为改版被换掉，而 data-tour 一眼就能看出「这里被引导引用了，
  * 别乱改」。
  */
-export type StepPlacement = 'auto' | 'center';
+import type { HudKind } from '@shared/hud/HudLayout';
+import type { ClickDemoSpec } from './TourClickDemo';
+import type { DragDemoSpec } from './TourDragDemo';
+import type { HoverDemoSpec } from './TourHoverDemo';
+
+/**
+ * 说明卡摆在哪儿。
+ *   auto   —— 贴着聚光灯放得下的那一侧（绝大多数步骤）
+ *   center —— 屏幕正中（开场、结束这种不打光的）
+ *   corner —— 钉在右下角。给那种「聚光灯几乎罩住整页」的步骤用：
+ *             auto 这时会退化成贴着某条边居中，正好压在演示上。
+ */
+export type StepPlacement = 'auto' | 'center' | 'corner';
+
+/** 引导自己摆出来的那个演示浮窗；讲快捷键的三步都打光在它身上。 */
+export const HUD_DEMO_TARGET = '[data-tour="hud-demo"]';
+
+/**
+ * 设置页里具体某一栏。
+ *
+ * 面板只有在那一栏被选中时才渲染，光跳到 /Settings 是指不到里面控件的 ——
+ * 聚光灯会找不到目标，干等 2.6 秒然后退化成一张飘在屏幕中央的卡片。
+ */
+const settingsSection = (section: string) => `/Settings?section=${section}`;
 
 export type OnboardingStep = {
   /** 稳定 id，用作 React key 和进度定位 */
@@ -32,6 +55,38 @@ export type OnboardingStep = {
   descKey: string;
   /** 可选的一句操作提示，显示在描述下方，带一个跳动的箭头 */
   hintKey?: string;
+  /**
+   * 这一步要在界面上摆一个「实物」浮窗出来。
+   *
+   * 那三个浮窗是独立窗口，引导的聚光灯照不到它们，光用文字说
+   * 「右下角会弹出一张卡片」用户还是不知道长什么样。所以由引导自己在
+   * 真实的落点（右下角 / 下方居中）渲染一个同样的浮窗，再把聚光灯打上去。
+   * 目标选择器就是下面这个 HUD_DEMO_TARGET。
+   */
+  hudDemo?: HudKind;
+  /**
+   * 这一步要演示一次「从哪儿拖到哪儿」。
+   *
+   * 拖拽光靠文字讲不清：说「拖到右边的对话框」，用户既不知道终点是哪一块，
+   * 也不知道拖过去之后会发生什么。写上之后引导会让一张虚拟卡片自己飞一趟。
+   * 起点找不到时退回这一步的 target。
+   */
+  dragDemo?: DragDemoSpec;
+  /**
+   * 这一步要演示一次「双击这里，那边会开出一块东西」。
+   *
+   * 双击是隐藏动作，界面上没有任何提示说这东西还能双击。写上之后引导会画
+   * 一个鼠标指针过去连点两下，再把开出来的面板演一遍。
+   * 被双击的元素找不到时退回这一步的 target。
+   */
+  clickDemo?: ClickDemoSpec;
+  /**
+   * 这一步要把一整套「悬停联动」真的跑一遍。
+   *
+   * 引导会往真实元素上派发鼠标事件，弹窗、滚动、行高亮都是应用自己的反应，
+   * 所以演示永远不会和真实行为对不上。
+   */
+  hoverDemo?: HoverDemoSpec;
 };
 
 export const ONBOARDING_STEPS: OnboardingStep[] = [
@@ -102,6 +157,25 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     titleKey: 'onboarding.tour.libraryDrag.title',
     descKey: 'onboarding.tour.libraryDrag.desc',
     hintKey: 'onboarding.tour.libraryDrag.hint',
+    // 起点是列表里第一张笔记卡片，终点是右边整块对话区
+    dragDemo: {
+      fromSelector: '.ask-ai-note-card',
+      toSelector: '.studio-chat',
+    },
+  },
+  {
+    id: 'notePreview',
+    route: '/',
+    // 和上一步指同一块，聚光灯不用挪；双击哪一张由 clickDemo 自己演
+    target: '.ask-ai-note-list',
+    placement: 'auto',
+    titleKey: 'onboarding.tour.notePreview.title',
+    descKey: 'onboarding.tour.notePreview.desc',
+    hintKey: 'onboarding.tour.notePreview.hint',
+    clickDemo: {
+      onSelector: '.ask-ai-note-card',
+      panelHostSelector: '.studio-page',
+    },
   },
   {
     id: 'recents',
@@ -154,6 +228,39 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     hintKey: 'onboarding.tour.calendar.hint',
   },
   {
+    id: 'calendarTodos',
+    route: '/DashBoard',
+    // 联动的两头（日历和笔记列表）都得亮着，所以打光在装着它俩的那一整块；
+    // 卡片相应钉到右下角，别压住弹窗
+    target: '.dashboard-main-content',
+    placement: 'corner',
+    titleKey: 'onboarding.tour.calendarTodos.title',
+    descKey: 'onboarding.tour.calendarTodos.desc',
+    hintKey: 'onboarding.tour.calendarTodos.hint',
+    hoverDemo: {
+      openSelector: '.calendar-day.has-events',
+      itemSelector: '.calendar-popover-panel .todo-item-card',
+      maxItems: 2,
+    },
+  },
+  {
+    id: 'todoDateHover',
+    route: '/DashBoard',
+    // 反向联动：手停在右边的列表，亮的是左边的日历，两头同样都得看得见
+    target: '.dashboard-main-content',
+    placement: 'corner',
+    titleKey: 'onboarding.tour.todoDateHover.title',
+    descKey: 'onboarding.tour.todoDateHover.desc',
+    hintKey: 'onboarding.tour.todoDateHover.hint',
+    // 停在日期药丸上就行 —— 事件冒泡到那一格，联动是挂在格子上的。
+    // 不用 .td-todo:has(.todo-date-pill)：没有待办的格子传的是 null，
+    // 停上去什么都不会亮，等于演了个寂寞。
+    hoverDemo: {
+      itemSelector: '.notes-table .todo-date-pill',
+      maxItems: 3,
+    },
+  },
+  {
     id: 'models',
     route: '/ModelManagement',
     target: '.model-module-list',
@@ -180,12 +287,71 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   },
   {
     id: 'settingsAgent',
-    route: '/Settings',
-    target: '[data-tour="settings-agent"]',
+    route: settingsSection('agent'),
+    target: '[data-tour="settings-agent-panel"]',
     placement: 'auto',
     titleKey: 'onboarding.tour.settingsAgent.title',
     descKey: 'onboarding.tour.settingsAgent.desc',
     hintKey: 'onboarding.tour.settingsAgent.hint',
+  },
+  {
+    id: 'background',
+    route: settingsSection('background'),
+    target: '[data-tour="settings-close-behavior"]',
+    placement: 'auto',
+    titleKey: 'onboarding.tour.background.title',
+    descKey: 'onboarding.tour.background.desc',
+    hintKey: 'onboarding.tour.background.hint',
+  },
+  {
+    id: 'shortcuts',
+    route: settingsSection('background'),
+    target: '[data-tour="settings-shortcut-list"]',
+    placement: 'auto',
+    titleKey: 'onboarding.tour.shortcuts.title',
+    descKey: 'onboarding.tour.shortcuts.desc',
+    hintKey: 'onboarding.tour.shortcuts.hint',
+  },
+  // 三个浮窗是独立窗口，聚光灯照不到真身；这三步由引导在真实落点摆一个
+  // 一模一样的出来（见 hudDemo），再把光打上去。
+  {
+    id: 'hudStats',
+    route: settingsSection('background'),
+    target: HUD_DEMO_TARGET,
+    placement: 'auto',
+    titleKey: 'onboarding.tour.hudStats.title',
+    descKey: 'onboarding.tour.hudStats.desc',
+    hintKey: 'onboarding.tour.hudStats.hint',
+    hudDemo: 'stats',
+  },
+  {
+    id: 'hudTodos',
+    route: settingsSection('background'),
+    target: HUD_DEMO_TARGET,
+    placement: 'auto',
+    titleKey: 'onboarding.tour.hudTodos.title',
+    descKey: 'onboarding.tour.hudTodos.desc',
+    hintKey: 'onboarding.tour.hudTodos.hint',
+    hudDemo: 'todos',
+  },
+  {
+    id: 'hudRecord',
+    route: settingsSection('background'),
+    target: HUD_DEMO_TARGET,
+    placement: 'auto',
+    titleKey: 'onboarding.tour.hudRecord.title',
+    descKey: 'onboarding.tour.hudRecord.desc',
+    hintKey: 'onboarding.tour.hudRecord.hint',
+    hudDemo: 'record',
+  },
+  {
+    id: 'trash',
+    route: settingsSection('trash'),
+    target: '[data-tour="settings-trash-panel"]',
+    placement: 'auto',
+    titleKey: 'onboarding.tour.trash.title',
+    descKey: 'onboarding.tour.trash.desc',
+    hintKey: 'onboarding.tour.trash.hint',
   },
   {
     id: 'done',

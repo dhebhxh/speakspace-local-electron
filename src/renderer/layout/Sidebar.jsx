@@ -171,11 +171,6 @@ export default function Sidebar({ collapsed, onToggle }) {
           </ul>
         </div>
       </nav>
-
-      <div className="sidebar-footer" title={t('sidebar.localRuntime')}>
-        <span className="sidebar-status-dot anim-breathe" aria-hidden="true" />
-        <span>{t('sidebar.localRuntime')}</span>
-      </div>
     </aside>
   );
 }

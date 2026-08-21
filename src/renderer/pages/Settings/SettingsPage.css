@@ -100,3 +100,34 @@
   .settings-header, .settings-nav, .settings-panel { animation-duration: 1ms !important; animation-delay: 0ms !important; }
   .settings-nav-item:hover .settings-nav-glyph, .settings-check { transform: none; }
 }
+
+/* ---------- 后台与快捷键 ---------- */
+
+/* 开关行：左边一个复选框，右边标题 + 说明，和上面的单选卡片同一套底色 */
+.settings-toggle-row { display: flex; align-items: flex-start; gap: 0.7rem; margin-top: 0.9rem; padding: 0.8rem 0.9rem; border: 1px solid var(--border); border-radius: 17px; background: var(--surface-soft); cursor: pointer; }
+.settings-toggle-row input { margin-top: 0.2rem; width: 16px; height: 16px; accent-color: var(--accent); }
+.settings-toggle-row span { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.settings-toggle-row small { color: var(--muted); font-size: var(--fs-sm); }
+
+.settings-shortcut-list { display: flex; flex-direction: column; gap: 0.55rem; }
+.settings-shortcut-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem 1rem; padding: 0.75rem 0.9rem; border: 1px solid var(--border); border-radius: 17px; background: var(--surface-soft); }
+.settings-shortcut-copy { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; }
+.settings-shortcut-copy small { color: var(--muted); font-size: var(--fs-sm); }
+.settings-shortcut-controls { display: flex; align-items: center; gap: 0.6rem; }
+
+/* 快捷键本体用等宽字，Ctrl+Alt+D 这类组合排出来才整齐 */
+.settings-shortcut-key { min-width: 8.5rem; padding: 0.4rem 0.8rem; color: var(--text); font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: var(--fs-sm); font-weight: 600; text-align: center; background: var(--surface-strong); border: 1px solid var(--border); border-radius: 9px; cursor: pointer; }
+.settings-shortcut-key:hover:not(:disabled) { border-color: var(--accent); }
+.settings-shortcut-key.is-recording { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface-strong)); color: var(--accent); }
+.settings-shortcut-key:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.settings-shortcut-clear { padding: 0.35rem 0.6rem; color: var(--muted); background: none; border: none; font-size: var(--fs-sm); cursor: pointer; }
+.settings-shortcut-clear:hover:not(:disabled) { color: var(--danger); }
+
+.settings-shortcut-state { min-width: 5rem; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); }
+.settings-shortcut-state.is-registered { color: var(--accent-green, var(--accent)); }
+.settings-shortcut-state.is-conflict, .settings-shortcut-state.is-invalid { color: var(--danger); }
+
+.settings-shortcut-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 0.9rem; }
+.settings-shortcut-reset { padding: 0.4rem 0.9rem; color: var(--text); background: var(--surface-strong); border: 1px solid var(--border); border-radius: 9px; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; }
+.settings-shortcut-reset:hover:not(:disabled) { border-color: var(--accent); }

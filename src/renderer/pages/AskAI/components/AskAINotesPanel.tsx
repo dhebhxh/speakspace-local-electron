@@ -16,6 +16,8 @@ type AskAINotesPanelProps = {
   /** 提供后，笔记按所属工作区分组显示。 */
   workspaces?: { id: number; name: string }[];
   conversations: AskAIConversation[];
+  /** 当前正在进行的会话；null 表示还没开始或刚点了「新建会话」。 */
+  activeConversationId?: number | null;
   selectedNoteId: number | null;
   /** 传入工作区 id 表示在该工作区下新增笔记。 */
   onAddNote: (workspaceId?: number | null) => void;
@@ -26,12 +28,15 @@ type AskAINotesPanelProps = {
   onPreviewNote?: (noteId: number) => void;
   onOpenConversation: (conversationId: number) => void;
   onDeleteNote: (noteId: number) => void;
+  /** 提供后，每条最近会话旁出现删除按钮（同样是移入回收站）。 */
+  onDeleteConversation?: (conversationId: number) => void;
 };
 
 export default function AskAINotesPanel({
   notes,
   workspaces,
   conversations,
+  activeConversationId = null,
   selectedNoteId,
   onAddNote,
   onNewConversation,
@@ -39,6 +44,7 @@ export default function AskAINotesPanel({
   onPreviewNote,
   onOpenConversation,
   onDeleteNote,
+  onDeleteConversation,
 }: AskAINotesPanelProps) {
   const { t } = useTranslation();
   const split = useLibrarySplit();
@@ -227,16 +233,37 @@ export default function AskAINotesPanel({
             <div className="ask-ai-recents-list">
               {conversations
                 .slice(0, RECENT_CONVERSATION_LIMIT)
-                .map((conversation) => (
-                  <button
-                    type="button"
-                    key={conversation.id}
-                    onClick={() => onOpenConversation(conversation.id)}
-                  >
-                    <strong>{conversation.name}</strong>
-                    <time>{formatAskAIDate(conversation.updatedAt)}</time>
-                  </button>
-                ))}
+                .map((conversation) => {
+                  // 会话一多就分不清正在用哪个了，当前这条常亮标出来。
+                  const isActive = activeConversationId === conversation.id;
+                  return (
+                    // 一行两个按钮：打开会话 + 删除。删除按钮不能嵌在打开按钮
+                    // 里面（button 不能套 button），所以外面包一层。
+                    <div className="ask-ai-recent-row" key={conversation.id}>
+                      <button
+                        type="button"
+                        className={`ask-ai-recent-open${
+                          isActive ? ' active' : ''
+                        }`}
+                        aria-current={isActive ? 'true' : undefined}
+                        onClick={() => onOpenConversation(conversation.id)}
+                      >
+                        <strong>{conversation.name}</strong>
+                        <time>{formatAskAIDate(conversation.updatedAt)}</time>
+                      </button>
+                      {onDeleteConversation && (
+                        <TrashCanButton
+                          className="ask-ai-recent-delete"
+                          label={t('trash.action.moveConversation')}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onDeleteConversation(conversation.id);
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           </section>
         </>

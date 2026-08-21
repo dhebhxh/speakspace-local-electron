@@ -506,6 +506,24 @@ export default class TranscriptionController {
     return this.start({ kind: 'recording', relativePath });
   }
 
+  /**
+   * 彻底放弃当前这一轮采集。
+   *
+   * 关掉复核窗时用：主进程那边的转写任务要真的取消掉，本地在途的实时分段和
+   * 语义整理也要作废，否则它们回来之后还会继续改状态，用户就一直不能重新录。
+   */
+  public async abort(): Promise<void> {
+    const { job } = this;
+    // 先 resetLive：liveGeneration 一变，在途的实时/整理回调回来就自动丢弃
+    this.resetLive(null);
+    if (!job || job.status !== 'processing') return;
+    try {
+      await window.electron.transcription.cancel(job.id);
+    } catch {
+      // 任务可能已经自己结束了，取消失败不影响本地状态已经清干净
+    }
+  }
+
   public async cancel(): Promise<void> {
     if (!this.job || this.job.status !== 'processing') return;
     await this.runRequest(async () => {
@@ -762,7 +780,10 @@ export default class TranscriptionController {
   private receiveStatus(rawJob: unknown): void {
     if (typeof rawJob !== 'object' || rawJob === null) return;
     const job = rawJob as TranscriptionJob;
-    if (this.job && job.id !== this.job.id) return;
+    // 状态事件是全局广播的。只认自己发起的那个任务：
+    // 否则新建的 controller（比如关掉复核窗后重建的那个）会把上一轮
+    // 还没结束的任务认领过来，界面立刻变成「转写中」，录音和上传都点不动。
+    if (!this.job || job.id !== this.job.id) return;
 
     this.job = job;
     if (this.inputMode === 'file' && job.status === 'completed') {

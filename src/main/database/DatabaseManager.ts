@@ -29,7 +29,50 @@ export class DatabaseManager {
     this.createCoreTables();
     this.ensureWorkspaceLastOpenedColumn();
     this.ensureTrashColumns();
+    this.ensureKnowledgeGenerationTables();
     this.cleanupOrphanedConversations();
+  }
+
+  private ensureKnowledgeGenerationTables(): void {
+    this.database.exec(`
+      CREATE TABLE IF NOT EXISTS structured_notes (
+        note_id INTEGER PRIMARY KEY,
+        scenario TEXT,
+        payload TEXT NOT NULL,
+        model_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(note_id) REFERENCES notes(id) ON DELETE CASCADE
+      );
+      CREATE TABLE IF NOT EXISTS scenario_knowledge (
+        note_id INTEGER PRIMARY KEY,
+        scenario TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        model_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(note_id) REFERENCES notes(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_structured_notes_updated_at ON structured_notes(updated_at);
+      CREATE INDEX IF NOT EXISTS idx_scenario_knowledge_updated_at ON scenario_knowledge(updated_at);
+    `);
+    const legacyTable = this.database
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'core_note_insights'",
+      )
+      .get();
+    if (legacyTable) {
+      this.database.transaction(() => {
+        this.database.exec(`
+          INSERT OR IGNORE INTO structured_notes (
+            note_id, scenario, payload, model_id, created_at, updated_at
+          )
+          SELECT note_id, scenario, payload, model_id, created_at, updated_at
+          FROM core_note_insights;
+          DROP TABLE core_note_insights;
+        `);
+      })();
+    }
   }
 
   /**

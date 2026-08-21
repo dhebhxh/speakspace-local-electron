@@ -163,14 +163,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     hintKey: 'onboarding.tour.models.hint',
   },
   {
-    id: 'templates',
-    route: '/Workflow',
-    target: '.workflow-page',
-    placement: 'auto',
-    titleKey: 'onboarding.tour.templates.title',
-    descKey: 'onboarding.tour.templates.desc',
-  },
-  {
     id: 'settings',
     route: '/Settings',
     target: '.settings-nav',

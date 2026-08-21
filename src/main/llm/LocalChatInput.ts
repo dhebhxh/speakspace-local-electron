@@ -57,3 +57,17 @@ export function normalizeTemperature(value: unknown): number {
   }
   return Math.min(2, Math.max(0, value.temperature));
 }
+
+/** Structured output is only accepted as a JSON-schema-like plain object. */
+export function normalizeChatFormat(
+  value: unknown,
+): Record<string, unknown> | undefined {
+  if (typeof value !== 'object' || value === null || !('format' in value)) {
+    return undefined;
+  }
+  const { format } = value;
+  if (typeof format !== 'object' || format === null || Array.isArray(format)) {
+    return undefined;
+  }
+  return format as Record<string, unknown>;
+}

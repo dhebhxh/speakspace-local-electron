@@ -284,7 +284,7 @@ export default function NoteDetailScreen() {
       setCoreGeneration({ status: "idle" });
       console.info("[NoteDetail] Core insights displayed", { noteId: state.note.getId(), durationMs: Date.now() - startedAt });
     } catch (error) {
-      const message = error instanceof CoreNoteInsightGenerationError ? error.message : "Core note insights did not finish. Please try again.";
+      const message = error instanceof CoreNoteInsightGenerationError ? error.message : "Structured Note did not finish. Please try again.";
       console.error("[NoteDetail] Core insights generation failed", { noteId: state.note.getId(), durationMs: Date.now() - startedAt, error });
       setCoreGeneration({ status: "error", message });
     }
@@ -416,7 +416,7 @@ export default function NoteDetailScreen() {
             </View>}
             {activeSection === "insights" && <View style={[styles.knowledgeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.headingCopy}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Core Note Insights</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Structured Note</Text>
                 <Text style={[styles.supportingText, { color: colors.textMuted }]}>Summary, key points, tasks, reminders, and calendar events.</Text>
               </View>
               {coreGeneration.status === "generating" || coreGeneration.status === "queued" ? (
@@ -897,7 +897,7 @@ function formatCoreInsightsAsHtml(insight: CoreNoteInsight): string {
     ? `<ul>${items.map((item) => `<li><strong>${escapeHtml(item.title)}</strong>${optionalParagraph(item.description)}${optionalMeta("Time", time(item))}</li>`).join("")}</ul>`
     : `<p><em>${empty}</em></p>`;
 
-  return `<article><h1>Core Note Insights</h1><h2>Summary</h2><p>${escapeHtml(insight.getSummary() || empty)}</p><h2>Key Points</h2>${list(insight.getKeyPoints())}<h2>Tasks &amp; Action Plan</h2>${tasks}<h2>Reminders</h2>${timedList(reminders, (item) => coreTimeDisplay(item.metadata, item.remindAt ? "remindAt" : item.dueAt ? "dueAt" : "startsAt", item.remindAt ?? item.dueAt ?? item.startsAt))}<h2>Calendar Intents</h2>${timedList(calendarIntents, (item) => coreTimeDisplay(item.metadata, "startsAt", item.startsAt))}<hr><p><small>Generated locally · ${escapeHtml(formatDate(insight.getUpdatedAt()))}</small></p></article>`;
+  return `<article><h1>Structured Note</h1><h2>Summary</h2><p>${escapeHtml(insight.getSummary() || empty)}</p><h2>Key Points</h2>${list(insight.getKeyPoints())}<h2>Tasks &amp; Action Plan</h2>${tasks}<h2>Reminders</h2>${timedList(reminders, (item) => coreTimeDisplay(item.metadata, item.remindAt ? "remindAt" : item.dueAt ? "dueAt" : "startsAt", item.remindAt ?? item.dueAt ?? item.startsAt))}<h2>Calendar Intents</h2>${timedList(calendarIntents, (item) => coreTimeDisplay(item.metadata, "startsAt", item.startsAt))}<hr><p><small>Generated locally · ${escapeHtml(formatDate(insight.getUpdatedAt()))}</small></p></article>`;
 }
 
 function coreTimeDisplay(metadata: Record<string, unknown>, field: string, normalized: string | null): string | null {

@@ -98,7 +98,7 @@ export class CoreNoteInsightService {
 
   private async getUpdatedInsight(noteId: string): Promise<CoreNoteInsight> {
     const insight = await this.repository.findByNoteId(noteId);
-    if (!insight) throw new CoreNoteInsightGenerationError("invalid-output", "Core note insights are no longer available.");
+    if (!insight) throw new CoreNoteInsightGenerationError("invalid-output", "Structured Note is no longer available.");
     return insight;
   }
 
@@ -141,7 +141,7 @@ export class CoreNoteInsightService {
       },
       (error: unknown) => {
         this.activeGenerations.delete(noteId);
-        this.publish(noteId, { status: "failed", requestId, finishedAt: Date.now(), message: error instanceof Error ? error.message : "Core note insights did not finish. Please try again." });
+        this.publish(noteId, { status: "failed", requestId, finishedAt: Date.now(), message: error instanceof Error ? error.message : "Structured Note did not finish. Please try again." });
       },
     );
     return promise;
@@ -177,7 +177,7 @@ export class CoreNoteInsightService {
     } catch (error) {
       console.error("[CoreInsights] Generation failed", { requestId, noteId, durationMs: Date.now() - startedAt, errorCode: error instanceof CoreNoteInsightGenerationError ? error.code : "unexpected", error });
       if (error instanceof CoreNoteInsightGenerationError) throw error;
-      throw new CoreNoteInsightGenerationError("generation-failed", "Core note insights did not finish. Please try again.", { cause: error instanceof Error ? error : undefined });
+      throw new CoreNoteInsightGenerationError("generation-failed", "Structured Note did not finish. Please try again.", { cause: error instanceof Error ? error : undefined });
     } finally {
       if (context) try {
         const releaseStartedAt = Date.now();

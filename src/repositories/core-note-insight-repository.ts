@@ -43,7 +43,7 @@ export class CoreNoteInsightRepository {
       );
     } catch (error) {
       console.error("[CoreInsights] Unable to load saved insights", { noteId, error });
-      throw new DatabaseError("Unable to load core note insights.", { cause: error instanceof Error ? error : undefined });
+      throw new DatabaseError("Unable to load Structured Note.", { cause: error instanceof Error ? error : undefined });
     }
   }
 
@@ -122,7 +122,7 @@ export class CoreNoteInsightRepository {
       });
     } catch (error) {
       console.error("[CoreInsights] Unable to persist insights", { noteId: insight.getNoteId(), error });
-      throw new DatabaseError("Unable to save core note insights.", { cause: error instanceof Error ? error : undefined });
+      throw new DatabaseError("Unable to save Structured Note.", { cause: error instanceof Error ? error : undefined });
     }
   }
 

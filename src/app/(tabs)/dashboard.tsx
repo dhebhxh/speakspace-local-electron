@@ -113,7 +113,7 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.section}>
-          <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>Calendar</Text><Text style={[styles.sectionMeta, { color: colors.textMuted }]}>CoreNote Insights</Text></View>
+          <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>Calendar</Text><Text style={[styles.sectionMeta, { color: colors.textMuted }]}>Structured Note</Text></View>
           <View style={[styles.calendarCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Calendar markedDates={markedDates} onDayPress={(day: DateData) => setSelectedDate(day.dateString)} theme={{ calendarBackground: colors.surface, dayTextColor: colors.text, monthTextColor: colors.text, textDisabledColor: colors.border, todayTextColor: colors.accent, arrowColor: colors.accent, selectedDayBackgroundColor: colors.accent, selectedDayTextColor: colors.surface }} />
             <View style={[styles.agenda, { borderTopColor: colors.border }]}>

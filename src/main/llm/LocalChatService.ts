@@ -1,6 +1,10 @@
 import ollama, { ChatRequest, ChatResponse } from 'ollama';
 import { LLMModelManager } from '../AI-module/LLMModelManager';
-import { normalizeChatMessages, normalizeTemperature } from './LocalChatInput';
+import {
+  normalizeChatFormat,
+  normalizeChatMessages,
+  normalizeTemperature,
+} from './LocalChatInput';
 
 type ChatClient = {
   chat(request: ChatRequest & { stream: false }): Promise<ChatResponse>;
@@ -13,6 +17,7 @@ type LocalChatDependencies = {
 
 export type LocalChatOptions = {
   temperature?: number;
+  format?: Record<string, unknown>;
 };
 
 export type LocalChatResult = {
@@ -41,6 +46,7 @@ export default class LocalChatService {
   ): Promise<LocalChatResult> {
     const messages = normalizeChatMessages(rawMessages);
     const temperature = normalizeTemperature(rawOptions);
+    const format = normalizeChatFormat(rawOptions);
     const activeModel = await this.modelManager.getActivatedModel();
 
     if (!activeModel) {
@@ -53,6 +59,7 @@ export default class LocalChatService {
       model: activeModel.modelName,
       messages,
       stream: false,
+      ...(format ? { format } : {}),
       options: { temperature },
     });
     const content = response.message?.content?.trim();

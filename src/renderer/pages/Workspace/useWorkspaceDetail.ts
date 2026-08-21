@@ -98,6 +98,32 @@ export default function useWorkspaceDetail() {
     [workspaceId],
   );
 
+  const createNote = useCallback(
+    async (name: string, transcript: string): Promise<number> => {
+      try {
+        setError('');
+        setStatus('');
+        const created = (await window.electron.workspace.saveTranscriptionNote({
+          workspaceId,
+          name,
+          transcript,
+          summaries: [],
+        })) as { noteId: number };
+        await reloadNotes();
+        setStatus(t('workspace.note.createSuccess'));
+        return created.noteId;
+      } catch (reason) {
+        const message = WorkspaceController.getErrorMessage(
+          reason,
+          t('workspace.note.createFailed'),
+        );
+        setError(message);
+        throw new Error(message);
+      }
+    },
+    [reloadNotes, t, workspaceId],
+  );
+
   const renameWorkspace = useCallback(
     async (nextName: string) => {
       if (!workspace) return;
@@ -174,6 +200,7 @@ export default function useWorkspaceDetail() {
     toggleNoteSelection,
     setSelectedNoteIds,
     generateOutput,
+    createNote,
     renameWorkspace,
     moveWorkspaceToTrash,
     moveNoteToTrash,

@@ -8,6 +8,14 @@ import { ASK_AI_PROMPT_BUDGET } from "@/constants/ask-ai-inference-config";
 import { InferenceError } from "@/errors/inference-error";
 
 import type { TranscriptContextBlock } from "./ask-ai-grounded-messages";
+import {
+  chunkTranscriptText,
+  isTranscriptOverviewQuestion,
+  normalizeEvidenceText,
+  normalizeForSearch,
+  stemToken,
+  tokenizeMeaningful,
+} from "./ask-ai-evidence-text";
 import { countFormattedPromptTokens } from "./llm-context-budget";
 
 const SUPPORTED_FINAL_ANSWER_POLICY = `You are answering a question that has already been verified as supported.
@@ -16,45 +24,17 @@ Answer the CURRENT USER QUESTION using only the VERIFIED TRANSCRIPT EVIDENCE.
 
 Rules:
 - Use no outside or pretrained factual knowledge.
+- Answer in the same language as the CURRENT USER QUESTION.
 - Answer directly and concisely.
 - Preserve names, dates, numbers, uncertainty, and negation.
+- For a summary or overview, include every distinct stated date, participant, event, and topic.
 - Do not invent missing facts.
 - Do not add names, products, commands, numbers, dates, places, organisations, technical terms, or factual claims that are not supported by VERIFIED TRANSCRIPT EVIDENCE.
 - If the evidence directly contains the answer, prefer wording close to the evidence.
 - Do not output the evidence itself unless the user asks for quotations or a list.`;
 
-const MIN_CHUNK_WORDS = 4;
-const MIN_CHUNK_CHARS = 24;
-const MAX_CHUNK_CHARS = 240;
 const MAX_CANDIDATES = 5;
 const MAX_CANDIDATES_WITH_TIE = 6;
-const STOPWORDS = new Set([
-  "a",
-  "an",
-  "and",
-  "are",
-  "do",
-  "does",
-  "did",
-  "for",
-  "had",
-  "has",
-  "have",
-  "how",
-  "in",
-  "is",
-  "of",
-  "on",
-  "or",
-  "the",
-  "to",
-  "was",
-  "were",
-  "what",
-  "when",
-  "where",
-  "who",
-]);
 const COMMON_SENTENCE_STARTERS = new Set([
   "a",
   "an",
@@ -132,6 +112,7 @@ export type RetrievalIntent =
   | "command-or-procedure"
   | "location"
   | "quantity"
+  | "summary-or-overview"
   | "general";
 
 export type QuestionKind =
@@ -152,6 +133,7 @@ export type AnswerType =
   | "description";
 export type DeterministicGuard =
   | "relation-mismatch"
+  | "overview-context-present"
   | "yes-no-explicit-support"
   | "meta-missing"
   | "classifier-fallback";
@@ -345,7 +327,8 @@ export function classifySelectedEvidence(
   const status =
     deterministicGuard === "relation-mismatch"
       ? "unsupported"
-      : deterministicGuard === "yes-no-explicit-support"
+      : deterministicGuard === "overview-context-present" ||
+          deterministicGuard === "yes-no-explicit-support"
         ? "supported"
         : deterministicGuard === "meta-missing"
           ? "missing"
@@ -422,7 +405,7 @@ function buildVerifiedAnswerMessages(
       content: [
         "Answer the current user question using only the verified evidence.",
         constrainedRetry
-          ? "Return a short answer using only information explicitly present in VERIFIED TRANSCRIPT EVIDENCE. Prefer copying the exact factual value or sentence fragment from the evidence. Do not add outside facts. Do not refuse; this question has already been classified as supported."
+          ? "Return a short answer using only information explicitly present in VERIFIED TRANSCRIPT EVIDENCE. Prefer copying the exact factual value or sentence fragment from the evidence. For a summary or overview, include every stated date, participant, event, and topic. Do not add outside facts. Do not refuse; this question has already been classified as supported."
           : "",
         "",
         "--- CURRENT USER QUESTION ---",
@@ -709,6 +692,16 @@ function selectDeterministicEvidence(
       }
       return right.candidate.score - left.candidate.score;
     });
+
+  if (queryAnalysis.relation === "summary-or-overview") {
+    return {
+      selectedEvidenceCandidates: evaluations.map(
+        (evaluation) => evaluation.candidate,
+      ),
+      anchorCompatibility: evaluations.at(0) ?? null,
+    };
+  }
+
   const anchorEvaluation = evaluations.at(0);
   if (anchorEvaluation === undefined) {
     return {
@@ -762,7 +755,10 @@ function evaluateCandidate(
     relationScore,
     answerShapeScore,
     followUpScore,
-    compatible: currentTopicScore > 0 && relationScore > 0,
+    compatible:
+      relationScore > 0 &&
+      (queryAnalysis.relation === "summary-or-overview" ||
+        currentTopicScore > 0),
   };
 }
 
@@ -846,6 +842,7 @@ function isRelationCompatible(
       return /\b\d+|one|two|three|four|five|several|many|few|multiple\b/.test(
         normalizedEvidence,
       );
+    case "summary-or-overview":
     case "general":
       return true;
   }
@@ -966,7 +963,7 @@ function analyzeQuery(question: string): QueryAnalysis {
     /^(is|are|was|were|do|does|did|has|have|had|can|could|will|would|should)$/.test(
       firstToken,
     );
-  const relation = detectRetrievalIntent(normalizedQuestion, firstToken);
+  const relation = detectRetrievalIntent(question, normalizedQuestion, firstToken);
   const kind: QuestionKind = isMultiPart
     ? "multi-part"
     : firstToken === "why"
@@ -1054,6 +1051,10 @@ function detectDeterministicGuard(
 
   if (selectedEvidenceCandidates.length === 0) {
     return "relation-mismatch";
+  }
+
+  if (queryAnalysis.relation === "summary-or-overview") {
+    return "overview-context-present";
   }
 
   if (
@@ -1186,6 +1187,10 @@ function rankEvidenceCandidates(
 ): ScoredEvidenceChunk[] {
   const question = extractionContext.currentQuestion;
   const retrievalIntent = analyzeQuery(question).relation;
+  if (retrievalIntent === "summary-or-overview") {
+    return evidenceChunks.map((chunk) => ({ ...chunk, score: 1 }));
+  }
+
   const followUp = analyzeFollowUpNeed(question);
   const excludedQuestionTokens = extractNegatedQuestionTokens(question);
   const questionTokens = tokenizeMeaningful(question).filter(
@@ -1386,9 +1391,14 @@ function scoreExpectedAnswerShapeBonus(
 }
 
 function detectRetrievalIntent(
+  question: string,
   normalizedQuestion: string,
   firstToken: string = normalizeForSearch(normalizedQuestion).split(" ")[0] ?? "",
 ): RetrievalIntent {
+  if (isTranscriptOverviewQuestion(question)) {
+    return "summary-or-overview";
+  }
+
   if (/^how (many|much)\b/.test(normalizedQuestion)) {
     return "quantity";
   }
@@ -1646,13 +1656,6 @@ function analyzeFollowUpNeed(question: string): FollowUpAnalysis {
   return { usesPreviousUser: false, reason: "none" };
 }
 
-function tokenizeMeaningful(text: string): string[] {
-  return normalizeForSearch(text)
-    .split(/\s+/)
-    .map(stemToken)
-    .filter((token) => token.length > 1 && !STOPWORDS.has(token));
-}
-
 function extractNegatedQuestionTokens(question: string): Set<string> {
   const tokens = normalizeForSearch(question).split(/\s+/);
   const excluded = new Set<string>();
@@ -1668,7 +1671,7 @@ function extractNegatedQuestionTokens(question: string): Set<string> {
       lookaheadIndex += 1
     ) {
       const token = stemToken(tokens[lookaheadIndex] ?? "");
-      if (token.length > 1 && !STOPWORDS.has(token)) {
+      if (token.length > 1 && tokenizeMeaningful(token).length > 0) {
         excluded.add(token);
       }
     }
@@ -1688,27 +1691,6 @@ function buildPhrases(tokens: string[]): string[] {
   return phrases;
 }
 
-function normalizeForSearch(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function stemToken(token: string): string {
-  if (token.length > 5 && token.endsWith("ing")) {
-    return token.slice(0, -3);
-  }
-  if (token.length > 4 && token.endsWith("ed")) {
-    return token.slice(0, -2);
-  }
-  if (token.length > 3 && token.endsWith("s")) {
-    return token.slice(0, -1);
-  }
-  return token;
-}
-
 function buildEvidenceChunks(
   transcriptBlocks: TranscriptContextBlock[],
 ): EvidenceChunk[] {
@@ -1722,82 +1704,4 @@ function buildEvidenceChunks(
       text,
     }));
   });
-}
-
-function chunkTranscriptText(transcript: string): string[] {
-  const paragraphs = transcript
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter((paragraph) => paragraph.length > 0);
-  const chunks: string[] = [];
-
-  for (const paragraph of paragraphs) {
-    const sentences = splitParagraphIntoAtomicText(paragraph);
-
-    for (const sentence of sentences) {
-      if (sentence.length > MAX_CHUNK_CHARS) {
-        chunks.push(...splitLongText(sentence));
-        continue;
-      }
-
-      chunks.push(sentence);
-    }
-  }
-
-  return chunks.filter(isUsefulChunk);
-}
-
-function splitParagraphIntoAtomicText(paragraph: string): string[] {
-  const hasSentenceBoundary = /[.!?]/.test(paragraph);
-  if (hasSentenceBoundary) {
-    return splitIntoSentences(normalizeEvidenceText(paragraph));
-  }
-
-  return paragraph
-    .split(/\n+/)
-    .map(normalizeEvidenceText)
-    .filter(Boolean);
-}
-
-function splitIntoSentences(text: string): string[] {
-  const matches = text.match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g);
-  return (matches ?? [text]).map(normalizeEvidenceText).filter(Boolean);
-}
-
-function splitLongText(text: string): string[] {
-  const words = text.split(/\s+/);
-  const chunks: string[] = [];
-  let buffer = "";
-
-  for (const word of words) {
-    const candidate = buffer.length > 0 ? `${buffer} ${word}` : word;
-    if (candidate.length <= MAX_CHUNK_CHARS) {
-      buffer = candidate;
-      continue;
-    }
-
-    if (buffer.length > 0) {
-      chunks.push(buffer);
-    }
-    buffer = word;
-  }
-
-  if (buffer.length > 0) {
-    chunks.push(buffer);
-  }
-
-  return chunks;
-}
-
-function isUsefulChunk(text: string): boolean {
-  const words = text.split(/\s+/).filter(Boolean);
-  const hasSpecificToken = /[A-Z0-9]/.test(text);
-  return (
-    (text.length >= MIN_CHUNK_CHARS && words.length >= MIN_CHUNK_WORDS) ||
-    (text.length >= 3 && hasSpecificToken)
-  );
-}
-
-function normalizeEvidenceText(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
 }

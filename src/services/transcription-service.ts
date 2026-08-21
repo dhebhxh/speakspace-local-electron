@@ -2,28 +2,44 @@ import { Directory, File, Paths } from "expo-file-system";
 import * as LegacyFileSystem from "expo-file-system/legacy";
 import {
   initParakeet,
+  initWhisper,
   type ParakeetContext,
+  type WhisperContext,
 } from "whisper.rn/index";
 import AudioConverter from "../../modules/audio-converter";
 import {
   AudioPcmStreamAdapter,
 } from "whisper.rn/realtime-transcription/adapters/AudioPcmStreamAdapter";
+// whisper.rn 0.7.2 exposes this index through an explicit trailing-slash export.
+/* eslint-disable import/no-unresolved */
 import {
   RealtimeTranscriber,
   type AudioStreamConfig,
   type AudioStreamData,
   type AudioStreamInterface,
   type RealtimeTranscribeEvent,
+  type RealtimeTranscriberDependencies,
   type WavFileWriterFs,
 } from "whisper.rn/realtime-transcription/";
+/* eslint-enable import/no-unresolved */
 
+import { MAX_IMPORTED_AUDIO_BYTES } from "@/domain/audio-import/audio-import";
 import { SttModelService } from "@/services/stt-model-service";
+import { ensureStorageAvailable } from "@/services/storage-safety-service";
 
 export const RECORDINGS_DIRECTORY_NAME = "recordings";
+export const MAX_AUDIO_DURATION_SECONDS = 2 * 60 * 60;
+const LIVE_AUDIO_BYTES_PER_SECOND = 16_000 * 1 * 2;
+const MAX_PREPARED_WAV_BYTES =
+  MAX_AUDIO_DURATION_SECONDS * LIVE_AUDIO_BYTES_PER_SECOND + 44;
+const MAX_AUDIO_DURATION_MS = MAX_AUDIO_DURATION_SECONDS * 1000;
+const DURATION_WARNING_MS = 5 * 60 * 1000;
 
 type SessionCallbacks = {
   onText: (text: string) => void;
   onError: (message: string) => void;
+  onDurationWarning?: (remainingSeconds: number) => void;
+  onDurationLimitReached?: () => void;
 };
 
 type ImportedAudioCallbacks = {
@@ -122,13 +138,19 @@ const fileSystemAdapter: WavFileWriterFs = {
 };
 
 export class TranscriptionService {
-  private context: ParakeetContext | null = null;
+  private context: ParakeetContext | WhisperContext | null = null;
   private transcriber: RealtimeTranscriber | null = null;
   private audioStream: PausableAudioStream | null = null;
   private recordingRelativePath: string | null = null;
   private results = new Map<number, string>();
   private paused = false;
   private queueMaintenanceTimer: ReturnType<typeof setInterval> | null = null;
+  private durationWarningTimer: ReturnType<typeof setTimeout> | null = null;
+  private durationLimitTimer: ReturnType<typeof setTimeout> | null = null;
+  private recordingStartedAt: number | null = null;
+  private accumulatedRecordingMs = 0;
+  private durationWarningDelivered = false;
+  private sessionCallbacks: SessionCallbacks | null = null;
 
   public constructor(private readonly sttModelService: SttModelService) {}
 
@@ -141,14 +163,15 @@ export class TranscriptionService {
     if (model === null) {
       throw new Error("Choose an active speech recognition model first.");
     }
-    if (model.getEngine() !== "parakeet") {
-      throw new Error("The active model is not supported by this transcriber.");
-    }
-
     const modelFile = this.sttModelService.resolveModelFile(model);
     if (!modelFile.exists) {
       throw new Error("The active model file is missing.");
     }
+
+    ensureStorageAvailable(
+      MAX_PREPARED_WAV_BYTES,
+      "start a two-hour live transcription",
+    );
 
     const recordings = new Directory(Paths.document, RECORDINGS_DIRECTORY_NAME);
     recordings.create({ idempotent: true, intermediates: true });
@@ -157,15 +180,31 @@ export class TranscriptionService {
     this.recordingRelativePath = `${RECORDINGS_DIRECTORY_NAME}/${fileName}`;
     this.results.clear();
     this.paused = false;
+    this.accumulatedRecordingMs = 0;
+    this.durationWarningDelivered = false;
+    this.sessionCallbacks = callbacks;
 
     try {
-      this.context = await initParakeet({
-        filePath: modelFile.uri,
-        useGpu: true,
-      });
+      this.context = await this.initializeContext(
+        model.getEngine(),
+        modelFile.uri,
+      );
       this.audioStream = new PausableAudioStream();
+      const dependencies: RealtimeTranscriberDependencies =
+        model.getEngine() === "parakeet"
+          ? {
+              parakeetContext: this.context as ParakeetContext,
+              audioStream: this.audioStream,
+              fs: fileSystemAdapter,
+            }
+          : {
+              whisperContext: this.context as WhisperContext,
+              audioStream: this.audioStream,
+              fs: fileSystemAdapter,
+            };
+      const catalogEntry = this.sttModelService.getCatalogEntry(model.getId());
       this.transcriber = new RealtimeTranscriber(
-        { parakeetContext: this.context, audioStream: this.audioStream, fs: fileSystemAdapter },
+        dependencies,
         {
           audioSliceSec: 8,
           audioMinSec: 0.8,
@@ -173,6 +212,14 @@ export class TranscriptionService {
           realtimeProcessingPauseMs: 1200,
           initRealtimeAfterMs: 800,
           audioOutputPath: recording.uri,
+          ...(model.getEngine() === "whisper"
+            ? {
+                transcribeOptions: {
+                  language: catalogEntry?.transcriptionLanguage ?? "auto",
+                  translate: false,
+                },
+              }
+            : {}),
         },
         {
           onTranscribe: (event: RealtimeTranscribeEvent) => {
@@ -185,6 +232,8 @@ export class TranscriptionService {
         },
       );
       await this.transcriber.start();
+      this.recordingStartedAt = Date.now();
+      this.scheduleDurationTimers();
       this.queueMaintenanceTimer = setInterval(
         () => this.compactPendingTranscriptions(),
         500,
@@ -200,20 +249,26 @@ export class TranscriptionService {
       return;
     }
     await this.audioStream.stop();
-    await this.transcriber.nextSlice();
+    this.captureActiveRecordingDuration();
+    this.clearDurationTimers();
     this.paused = true;
+    await this.transcriber.nextSlice();
   }
 
   public async resume(): Promise<void> {
     if (this.audioStream === null || !this.paused) return;
     await this.audioStream.restart();
     this.paused = false;
+    this.recordingStartedAt = Date.now();
+    this.scheduleDurationTimers();
   }
 
   public async finish(): Promise<{ transcript: string; audioRelativePath: string }> {
     if (this.transcriber === null || this.recordingRelativePath === null) {
       throw new Error("There is no active transcription session.");
     }
+    this.captureActiveRecordingDuration();
+    this.clearDurationTimers();
     await this.transcriber.nextSlice();
     await this.transcriber.stop();
     const result = {
@@ -244,9 +299,6 @@ export class TranscriptionService {
       console.warn("[AudioImport] No active STT model", { requestId });
       throw new Error("Choose an active speech recognition model first.");
     }
-    if (model.getEngine() !== "parakeet") {
-      throw new Error("The active model is not supported by this transcriber.");
-    }
     const modelFile = this.sttModelService.resolveModelFile(model);
     if (!modelFile.exists) {
       console.warn("[AudioImport] Active STT model file missing", {
@@ -255,6 +307,18 @@ export class TranscriptionService {
       });
       throw new Error("The active model file is missing.");
     }
+
+    const inputFile = new File(inputUri);
+    if (!inputFile.exists) {
+      throw new Error("The selected audio file is missing.");
+    }
+    if (inputFile.size > MAX_IMPORTED_AUDIO_BYTES) {
+      throw new Error("Audio files must be no larger than 2 GB.");
+    }
+    ensureStorageAvailable(
+      MAX_PREPARED_WAV_BYTES,
+      "prepare this audio file for transcription",
+    );
 
     console.info("[AudioImport] Active STT model resolved", {
       requestId,
@@ -283,17 +347,23 @@ export class TranscriptionService {
       callbacks.onPrepared();
       const modelLoadStartedAt = Date.now();
       console.info("[AudioImport] Loading local STT model", { requestId });
-      this.context = await initParakeet({
-        filePath: modelFile.uri,
-        useGpu: true,
-      });
+      this.context = await this.initializeContext(
+        model.getEngine(),
+        modelFile.uri,
+      );
       console.info("[AudioImport] Local STT model loaded", {
         requestId,
         durationMs: Date.now() - modelLoadStartedAt,
       });
       const inferenceStartedAt = Date.now();
       console.info("[AudioImport] Local file inference started", { requestId });
-      const request = this.context.transcribe(prepared.uri);
+      const catalogEntry = this.sttModelService.getCatalogEntry(model.getId());
+      const request = model.getEngine() === "parakeet"
+        ? (this.context as ParakeetContext).transcribe(prepared.uri)
+        : (this.context as WhisperContext).transcribe(prepared.uri, {
+            language: catalogEntry?.transcriptionLanguage ?? "auto",
+            translate: false,
+          });
       const result = await request.promise;
       const transcript = result.result.trim();
       console.info("[AudioImport] Local file inference completed", {
@@ -334,6 +404,11 @@ export class TranscriptionService {
     const extension = originalName.match(/\.[a-z0-9]{1,8}$/i)?.[0].toLowerCase() ?? ".audio";
     const fileName = `imported-${Date.now()}${extension}`;
     const destination = new File(recordings, fileName);
+    const inputFile = new File(inputUri);
+    if (!inputFile.exists) {
+      throw new Error("The selected audio file is missing.");
+    }
+    ensureStorageAvailable(inputFile.size, "save this audio recording");
     console.info("[AudioImport] Preserving original audio for note", {
       originalName,
       destinationName: fileName,
@@ -374,9 +449,75 @@ export class TranscriptionService {
       .trim();
   }
 
+  private captureActiveRecordingDuration(): void {
+    if (this.recordingStartedAt === null) return;
+    this.accumulatedRecordingMs += Date.now() - this.recordingStartedAt;
+    this.recordingStartedAt = null;
+  }
+
+  private scheduleDurationTimers(): void {
+    this.clearDurationTimers();
+    const elapsedMs = this.accumulatedRecordingMs;
+    const warningAtMs = MAX_AUDIO_DURATION_MS - DURATION_WARNING_MS;
+
+    if (!this.durationWarningDelivered) {
+      const warningDelayMs = warningAtMs - elapsedMs;
+      if (warningDelayMs <= 0) {
+        this.durationWarningDelivered = true;
+        this.sessionCallbacks?.onDurationWarning?.(DURATION_WARNING_MS / 1000);
+      } else {
+        this.durationWarningTimer = setTimeout(() => {
+          this.durationWarningTimer = null;
+          this.durationWarningDelivered = true;
+          this.sessionCallbacks?.onDurationWarning?.(DURATION_WARNING_MS / 1000);
+        }, warningDelayMs);
+      }
+    }
+
+    const limitDelayMs = Math.max(0, MAX_AUDIO_DURATION_MS - elapsedMs);
+    this.durationLimitTimer = setTimeout(() => {
+      this.durationLimitTimer = null;
+      void this.pause()
+        .then(() => this.sessionCallbacks?.onDurationLimitReached?.())
+        .catch((error: unknown) => {
+          this.sessionCallbacks?.onError(
+            error instanceof Error
+              ? error.message
+              : "The recording could not be stopped at the two-hour limit.",
+          );
+        });
+    }, limitDelayMs);
+  }
+
+  private clearDurationTimers(): void {
+    if (this.durationWarningTimer !== null) {
+      clearTimeout(this.durationWarningTimer);
+      this.durationWarningTimer = null;
+    }
+    if (this.durationLimitTimer !== null) {
+      clearTimeout(this.durationLimitTimer);
+      this.durationLimitTimer = null;
+    }
+  }
+
+  private initializeContext(
+    engine: "parakeet" | "whisper",
+    modelUri: string,
+  ): Promise<ParakeetContext | WhisperContext> {
+    if (engine === "parakeet") {
+      return initParakeet({ filePath: modelUri, useGpu: true });
+    }
+
+    return initWhisper({
+      filePath: modelUri,
+      useGpu: true,
+      useCoreMLIos: false,
+    });
+  }
+
   /**
-   * whisper.rn 0.7.2 queues repeated full snapshots of the same slice faster
-   * than Parakeet can consume them. Keep only the newest pending snapshot for
+   * whisper.rn 0.7.2 can queue repeated full snapshots of the same slice faster
+   * than a local model consumes them. Keep only the newest pending snapshot for
    * each slice so long sessions cannot fall permanently behind live audio.
    */
   private compactPendingTranscriptions(): void {
@@ -408,6 +549,11 @@ export class TranscriptionService {
     this.context = null;
     this.recordingRelativePath = null;
     this.paused = false;
+    this.captureActiveRecordingDuration();
+    this.clearDurationTimers();
+    this.accumulatedRecordingMs = 0;
+    this.durationWarningDelivered = false;
+    this.sessionCallbacks = null;
     if (this.queueMaintenanceTimer !== null) {
       clearInterval(this.queueMaintenanceTimer);
       this.queueMaintenanceTimer = null;

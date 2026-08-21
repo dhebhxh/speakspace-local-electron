@@ -1,18 +1,20 @@
 import {
   deleteModelByCategory,
-  ensureModelByCategory,
+  extractModelByCategory,
   ModelCategory,
   refreshModelsByCategory,
   type DownloadProgress,
   type TtsModelMeta,
 } from "react-native-sherpa-onnx/download";
 import { detectTtsModel } from "react-native-sherpa-onnx/tts";
+import { File, Paths } from "expo-file-system";
 
 import { TTS_MODEL_CATALOG, TtsModelCatalogEntry } from "@/constants/tts-model-catalog";
 import { TtsModel } from "@/domain/tts-model/tts-model";
 import { TtsModelNotFoundError } from "@/errors/tts-model-not-found-error";
 import { ValidationError } from "@/errors/validation-error";
 import { TtsModelRepository } from "@/repositories/tts-model-repository";
+import { ensureStorageAvailable } from "@/services/storage-safety-service";
 
 export type TtsModelDownloadProgress = {
   bytesWritten: number;
@@ -87,10 +89,61 @@ export class TtsModelService {
     onProgress: (progress: DownloadProgress) => void,
   ): Promise<TtsModel> {
     const models = await refreshModelsByCategory<TtsModelMeta>(ModelCategory.Tts);
-    if (!models.some((model) => model.id === entry.id)) {
+    const remoteModel = models.find((model) => model.id === entry.id);
+    if (!remoteModel) {
       throw new ValidationError("This TTS model is not available in the sherpa-onnx release catalog.");
     }
-    const result = await ensureModelByCategory(ModelCategory.Tts, entry.id, {
+
+    // The archive and extracted model coexist until validation completes.
+    ensureStorageAvailable(
+      Math.max(entry.sizeBytes, remoteModel.bytes) * 2,
+      "download this text-to-speech model",
+    );
+
+    const archive = new File(
+      Paths.document,
+      "sherpa-onnx",
+      "models",
+      "tts",
+      `${entry.id}.tar.bz2`,
+    );
+    archive.parentDirectory.create({ idempotent: true, intermediates: true });
+
+    if (archive.exists && remoteModel.bytes > 0 && archive.size !== remoteModel.bytes) {
+      this.safelyDeleteFile(archive);
+    }
+
+    if (!archive.exists) {
+      const task = File.createDownloadTask(remoteModel.downloadUrl, archive, {
+        sessionType: "foreground",
+        onProgress: ({ bytesWritten, totalBytes }) => onProgress({
+          bytesDownloaded: bytesWritten,
+          totalBytes: totalBytes > 0 ? totalBytes : remoteModel.bytes,
+          percent: remoteModel.bytes > 0 ? (bytesWritten / remoteModel.bytes) * 100 : 0,
+          phase: "downloading",
+        }),
+      });
+
+      let downloadedArchive: File | null;
+      try {
+        downloadedArchive = await task.downloadAsync();
+      } catch (error) {
+        this.safelyDeleteFile(archive);
+        throw new Error("Unable to download the TTS model. Please try again.", {
+          cause: error instanceof Error ? error : undefined,
+        });
+      }
+      if (!downloadedArchive?.exists) {
+        this.safelyDeleteFile(archive);
+        throw new Error("The TTS model download did not complete. Please try again.");
+      }
+      if (remoteModel.bytes > 0 && downloadedArchive.size !== remoteModel.bytes) {
+        this.safelyDeleteFile(downloadedArchive);
+        throw new Error("The downloaded TTS model archive is incomplete. Please try again.");
+      }
+    }
+
+    const result = await extractModelByCategory(ModelCategory.Tts, entry.id, {
       onProgress,
       deleteArchiveAfterExtract: true,
     });
@@ -105,6 +158,10 @@ export class TtsModelService {
     try { await this.repository.create(model); }
     catch (error) { await deleteModelByCategory(ModelCategory.Tts, entry.id); throw error; }
     return model;
+  }
+
+  private safelyDeleteFile(file: File): void {
+    try { if (file.exists) file.delete(); } catch { /* Best-effort cleanup. */ }
   }
 
   public async setActiveModel(id: string): Promise<void> {

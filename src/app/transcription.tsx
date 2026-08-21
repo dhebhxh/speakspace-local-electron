@@ -1,9 +1,14 @@
 import { requestRecordingPermissionsAsync } from "expo-audio";
+import {
+  activateKeepAwakeAsync,
+  deactivateKeepAwake,
+} from "expo-keep-awake";
 import { Stack, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
+  AppState,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -16,6 +21,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { addAudioInterruptionListener } from "../../modules/audio-session-events";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
@@ -25,6 +31,7 @@ import { useTheme } from "@/hooks/use-theme";
 
 type SessionStatus = "idle" | "starting" | "recording" | "paused" | "finishing";
 type FinishedSession = { transcript: string; audioRelativePath: string };
+const LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG = "speakspace-live-transcription";
 
 export default function TranscriptionScreen() {
   const router = useRouter();
@@ -33,6 +40,7 @@ export default function TranscriptionScreen() {
   const insets = useSafeAreaInsets();
   const { transcriptionService, workspaceService, noteService } = appContainer;
   const [status, setStatus] = useState<SessionStatus>("idle");
+  const statusRef = useRef<SessionStatus>("idle");
   const [transcript, setTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [finished, setFinished] = useState<FinishedSession | null>(null);
@@ -41,12 +49,56 @@ export default function TranscriptionScreen() {
   const [noteName, setNoteName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    const pauseForSystem = (message: string) => {
+      if (statusRef.current !== "recording") return;
+
+      statusRef.current = "paused";
+      setStatus("paused");
+      void deactivateKeepAwake(LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG).catch(
+        () => undefined,
+      );
+      void transcriptionService.pause().then(
+        () => setError(message),
+        () => {
+          setError(
+            "SpeakSpace could not fully pause the recording. Return to the app and finish or discard it.",
+          );
+        },
+      );
+    };
+
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active" || statusRef.current !== "recording") return;
+      pauseForSystem(
+        "Recording paused because SpeakSpace left the foreground or the iPhone was locked. Tap Resume when you are ready.",
+      );
+    });
+    const interruptionSubscription = addAudioInterruptionListener((event) => {
+      if (event.type === "began") {
+        pauseForSystem(
+          "Recording paused because another app or system feature interrupted the microphone. Tap Resume when you are ready.",
+        );
+      }
+    });
+
+    return () => {
+      subscription.remove();
+      interruptionSubscription.remove();
+    };
+  }, [transcriptionService]);
+
   useEffect(() => () => {
+    statusRef.current = "idle";
+    void deactivateKeepAwake(LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG).catch(
+      () => undefined,
+    );
     void transcriptionService.discard();
   }, [transcriptionService]);
 
   const start = async () => {
     Keyboard.dismiss();
+    statusRef.current = "starting";
     setStatus("starting");
     setError(null);
     setTranscript("");
@@ -56,10 +108,24 @@ export default function TranscriptionScreen() {
       await transcriptionService.start({
         onText: setTranscript,
         onError: setError,
+        onDurationWarning: () => {
+          Alert.alert(
+            "Five minutes remaining",
+            "Live transcription will finish automatically at the two-hour limit.",
+          );
+        },
+        onDurationLimitReached: () => {
+          void finish(true);
+        },
       });
+      statusRef.current = "recording";
       setStatus("recording");
+      void activateKeepAwakeAsync(LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG).catch(
+        () => undefined,
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to start transcription.");
+      statusRef.current = "idle";
       setStatus("idle");
     }
   };
@@ -67,37 +133,91 @@ export default function TranscriptionScreen() {
   const togglePause = async () => {
     try {
       if (status === "recording") {
+        statusRef.current = "paused";
         await transcriptionService.pause();
         setStatus("paused");
+        void deactivateKeepAwake(LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG).catch(
+          () => undefined,
+        );
       } else if (status === "paused") {
         await transcriptionService.resume();
+        statusRef.current = "recording";
         setStatus("recording");
+        setError(null);
+        void activateKeepAwakeAsync(LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG).catch(
+          () => undefined,
+        );
       }
     } catch {
       setError("Unable to change recording state.");
     }
   };
 
-  const finish = async () => {
-    setStatus("finishing");
+  const discardFinishedSession = (session: FinishedSession) => {
+    transcriptionService.deleteRecording(session.audioRelativePath);
+    setFinished(null);
+    setTranscript("");
+    setNoteName("");
     setError(null);
-    try {
-      const result = await transcriptionService.finish();
-      setTranscript(result.transcript);
-      setStatus("idle");
-      Alert.alert("Finish transcription?", "Save this note or discard the recording and transcript.", [
+  };
+
+  const confirmDiscardFinishedSession = () => {
+    if (finished === null || isSaving) return;
+    Keyboard.dismiss();
+    Alert.alert(
+      "Discard recording?",
+      "This permanently deletes the finished recording and transcript.",
+      [
+        { text: "Cancel", style: "cancel" },
         {
           text: "Discard",
           style: "destructive",
-          onPress: () => {
-            transcriptionService.deleteRecording(result.audioRelativePath);
-            setTranscript("");
-          },
+          onPress: () => discardFinishedSession(finished),
+        },
+      ],
+    );
+  };
+
+  const finish = async (reachedDurationLimit = false) => {
+    statusRef.current = "finishing";
+    setStatus("finishing");
+    setError(null);
+    void deactivateKeepAwake(LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG).catch(
+      () => undefined,
+    );
+    try {
+      const result = await transcriptionService.finish();
+      setTranscript(result.transcript);
+      statusRef.current = "idle";
+      setStatus("idle");
+      if (result.transcript.trim().length === 0) {
+        Alert.alert(
+          "No speech detected",
+          "SpeakSpace cannot create a note because no speech was transcribed. Discard the empty recording and try again.",
+          [
+            {
+              text: "Discard recording",
+              style: "destructive",
+              onPress: () => discardFinishedSession(result),
+            },
+          ],
+          { cancelable: false },
+        );
+        return;
+      }
+      Alert.alert(reachedDurationLimit ? "Two-hour limit reached" : "Finish transcription?", reachedDurationLimit
+        ? "The recording finished safely. Save this note or discard the recording and transcript."
+        : "Save this note or discard the recording and transcript.", [
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => discardFinishedSession(result),
         },
         { text: "Save", onPress: () => void prepareSave(result) },
       ], { cancelable: false });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to finish transcription.");
+      statusRef.current = "idle";
       setStatus("idle");
     }
   };
@@ -190,38 +310,67 @@ export default function TranscriptionScreen() {
         </View>
       </ScrollView>
 
-      <Modal visible={finished !== null} animationType="slide" transparent onRequestClose={() => undefined}>
+      <Modal
+        visible={finished !== null}
+        animationType="slide"
+        transparent
+        onRequestClose={confirmDiscardFinishedSession}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.modalBackdrop}
         >
           <ScrollView
+            contentInsetAdjustmentBehavior="never"
             contentContainerStyle={[
-              styles.modal,
+              styles.modalViewport,
               {
-                backgroundColor: colors.surface,
                 paddingBottom: Spacing.lg + insets.bottom,
+                paddingTop: Spacing.lg + insets.top,
               },
             ]}
             keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Save transcription</Text>
-            <Text style={[styles.label, { color: colors.textMuted }]}>Note name</Text>
-            <TextInput autoFocus value={noteName} onChangeText={setNoteName} placeholder="e.g. Weekly planning" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
-            <Text style={[styles.label, { color: colors.textMuted }]}>Workspace</Text>
-            <View style={styles.workspaceList}>
-              {workspaces.map((workspace) => {
-                const selected = workspace.getId() === selectedWorkspaceId;
-                return (
-                  <Pressable key={workspace.getId()} onPress={() => setSelectedWorkspaceId(workspace.getId())} style={[styles.workspace, { borderColor: selected ? colors.accent : colors.border, backgroundColor: selected ? colors.accentSoft : colors.background }]}>
-                    <Text style={{ color: colors.text, fontWeight: selected ? "800" : "500" }}>{workspace.getName()}</Text>
-                  </Pressable>
-                );
-              })}
+            <View
+              accessibilityViewIsModal
+              style={[
+                styles.modal,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Save transcription</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Discard recording"
+                  disabled={isSaving}
+                  hitSlop={10}
+                  onPress={confirmDiscardFinishedSession}
+                >
+                  <Text style={[styles.discardLabel, { color: colors.danger }]}>Discard</Text>
+                </Pressable>
+              </View>
+              <Text style={[styles.label, { color: colors.textMuted }]}>Note name</Text>
+              <TextInput autoFocus value={noteName} onChangeText={setNoteName} placeholder="e.g. Weekly planning" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
+              <Text style={[styles.label, { color: colors.textMuted }]}>Workspace</Text>
+              <View style={styles.workspaceList}>
+                {workspaces.map((workspace) => {
+                  const selected = workspace.getId() === selectedWorkspaceId;
+                  return (
+                    <Pressable key={workspace.getId()} onPress={() => setSelectedWorkspaceId(workspace.getId())} style={[styles.workspace, { borderColor: selected ? colors.accent : colors.border, backgroundColor: selected ? colors.accentSoft : colors.background }]}>
+                      <Text style={{ color: colors.text, fontWeight: selected ? "800" : "500" }}>{workspace.getName()}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {error && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
+              <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0} onPress={() => void save()} />
             </View>
-            {error && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
-            <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0} onPress={() => void save()} />
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
@@ -256,9 +405,12 @@ const styles = StyleSheet.create({
   finishButton: { alignItems: "center", borderRadius: Radius.md, borderWidth: 1, justifyContent: "center", minHeight: 46, paddingHorizontal: Spacing.md },
   finishLabel: { fontSize: 14, fontWeight: "800" },
   controlPressed: { opacity: 0.72, transform: [{ scale: 0.98 }] },
-  modalBackdrop: { backgroundColor: "rgba(0,0,0,0.36)", flex: 1, justifyContent: "flex-end" },
-  modal: { borderTopLeftRadius: Radius.lg, borderTopRightRadius: Radius.lg, gap: Spacing.md, padding: Spacing.lg },
+  modalBackdrop: { backgroundColor: "rgba(0,0,0,0.36)", flex: 1 },
+  modalViewport: { flexGrow: 1, justifyContent: "center", paddingHorizontal: Spacing.lg },
+  modal: { alignSelf: "center", borderCurve: "continuous", borderRadius: Radius.lg, borderWidth: 1, boxShadow: Shadows.raised, gap: Spacing.md, maxWidth: 560, padding: Spacing.lg, width: "100%" },
+  modalHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   modalTitle: { fontSize: 24, fontWeight: "800" },
+  discardLabel: { fontSize: 14, fontWeight: "800" },
   label: { fontSize: 14, fontWeight: "700" },
   input: { borderRadius: Radius.sm, borderWidth: 1, fontSize: 16, minHeight: 48, paddingHorizontal: Spacing.md },
   workspaceList: { gap: Spacing.sm },

@@ -29,6 +29,7 @@ import {
   getGroundingRefusal,
   type VerifiedEvidenceResult,
 } from "./ask-ai-evidence-gate";
+import { findMissingOverviewNumberAtoms } from "./ask-ai-evidence-text";
 import { AiConversationService } from "./ai-conversation-service";
 
 export type GenerateCallbacks = {
@@ -408,6 +409,7 @@ export class LlmInferenceService {
     const validation = this.validateGeneratedAnswerAgainstEvidence(
       assistantText,
       verifiedEvidence,
+      currentQuestion,
     );
     const unexpectedRefusal = this.looksLikeUnexpectedRefusal(assistantText);
     const valid = validation.valid && !unexpectedRefusal;
@@ -536,16 +538,24 @@ export class LlmInferenceService {
   private validateGeneratedAnswerAgainstEvidence(
     answerText: string,
     verifiedEvidence: string[],
+    currentQuestion: string,
   ): GroundingValidationResult {
     const evidenceText = verifiedEvidence.join(" ");
     const normalizedEvidence = this.normalizeGroundingText(evidenceText);
     const unsupportedAtoms = this.extractHighRiskAtoms(answerText).filter(
       (atom) => !normalizedEvidence.includes(this.normalizeGroundingText(atom)),
     );
+    const missingRequiredAtoms = findMissingOverviewNumberAtoms(
+      currentQuestion,
+      evidenceText,
+      answerText,
+    );
 
     return {
-      valid: unsupportedAtoms.length === 0,
+      valid:
+        unsupportedAtoms.length === 0 && missingRequiredAtoms.length === 0,
       unsupportedAtoms,
+      missingRequiredAtoms,
     };
   }
 
@@ -838,6 +848,7 @@ type ClassifiedDecision = {
 type GroundingValidationResult = {
   valid: boolean;
   unsupportedAtoms: string[];
+  missingRequiredAtoms: string[];
 };
 
 type FinalAttemptResult = {

@@ -11,6 +11,9 @@
     "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/expo.icon",
+      "supportsTablet": false,
+      "deploymentTarget": "16.4",
+      "buildNumber": "1",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "SpeakSpace uses the microphone to create local transcripts and recordings."
       },
@@ -28,11 +31,8 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.dhebhxh.speakspacelocalmobile",
       "permissions": [
-        "RECORD_AUDIO",
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -50,17 +50,24 @@
         }
       ],
       "expo-sqlite",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "SpeakSpace uses the microphone to create local transcripts and recordings.",
+          "enableBackgroundPlayback": false,
+          "enableBackgroundRecording": false
+        }
+      ],
       [
         "llama.rn",
         {
-          "enableEntitlements": true,
-          "entitlementsProfile": "production",
+          "enableEntitlements": false,
           "forceCxx20": true,
           "enableOpenCLAndHexagon": true
         }
       ],
-      "expo-image"
+      "expo-image",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

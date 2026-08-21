@@ -1,4 +1,5 @@
 import { File, Paths } from "expo-file-system";
+import { initParakeet, initWhisper } from "whisper.rn/index";
 
 import {
   STT_MODEL_CATALOG,
@@ -10,6 +11,7 @@ import { DatabaseError } from "@/errors/database-error";
 import { SttModelNotFoundError } from "@/errors/stt-model-not-found-error";
 import { ValidationError } from "@/errors/validation-error";
 import { SttModelRepository } from "@/repositories/stt-model-repository";
+import { ensureStorageAvailable } from "@/services/storage-safety-service";
 
 export type SttModelDownloadProgress = {
   bytesWritten: number;
@@ -33,6 +35,10 @@ export class SttModelService {
 
   public getCatalog(): readonly SttModelCatalogEntry[] {
     return STT_MODEL_CATALOG;
+  }
+
+  public getCatalogEntry(catalogId: string): SttModelCatalogEntry | null {
+    return STT_MODEL_CATALOG.find((entry) => entry.id === catalogId) ?? null;
   }
 
   public async getInstalledModels(): Promise<SttModel[]> {
@@ -88,6 +94,8 @@ export class SttModelService {
       return activeDownload.promise;
     }
 
+    ensureStorageAvailable(catalogEntry.sizeBytes, "download this speech model");
+
     const destinationFile = new File(
       Paths.document,
       STT_MODELS_DIRECTORY_NAME,
@@ -108,6 +116,7 @@ export class SttModelService {
       catalogEntry.downloadUrl,
       destinationFile,
       {
+        sessionType: "foreground",
         onProgress: (data) => {
           state.progress = {
             bytesWritten: data.bytesWritten,
@@ -146,7 +155,18 @@ export class SttModelService {
     }
 
     if (downloadedFile === null || !downloadedFile.exists) {
+      this.safelyDeleteFile(destinationFile);
       throw new DatabaseError("Model download did not complete.");
+    }
+
+    if (
+      catalogEntry.expectedSizeBytes !== undefined &&
+      downloadedFile.size !== catalogEntry.expectedSizeBytes
+    ) {
+      this.safelyDeleteFile(downloadedFile);
+      throw new DatabaseError(
+        "The downloaded model file is incomplete. Please try again.",
+      );
     }
 
     const now = new Date().toISOString();
@@ -184,6 +204,21 @@ export class SttModelService {
       );
     }
 
+    try {
+      const context = model.getEngine() === "parakeet"
+        ? await initParakeet({ filePath: file.uri, useGpu: true })
+        : await initWhisper({
+            filePath: file.uri,
+            useGpu: true,
+            useCoreMLIos: false,
+          });
+      await context.release();
+    } catch {
+      throw new ValidationError(
+        "This speech recognition model could not be loaded. Download it again.",
+      );
+    }
+
     await this.sttModelRepository.deactivateAll();
     model.activate();
     await this.sttModelRepository.update(model);
@@ -217,11 +252,9 @@ export class SttModelService {
   }
 
   private getCatalogEntryOrThrow(catalogId: string): SttModelCatalogEntry {
-    const catalogEntry = STT_MODEL_CATALOG.find(
-      (entry) => entry.id === catalogId,
-    );
+    const catalogEntry = this.getCatalogEntry(catalogId);
 
-    if (catalogEntry === undefined) {
+    if (catalogEntry === null) {
       throw new ValidationError("Unknown speech recognition model.");
     }
 

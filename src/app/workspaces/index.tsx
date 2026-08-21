@@ -20,7 +20,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 import { WorkspaceCard } from "@/components/workspace-card";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import { ValidationError } from "@/errors/validation-error";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -179,57 +179,71 @@ export function WorkspaceListScreen({ embeddedInTab = false }: { embeddedInTab?:
           style={styles.modalBackdrop}
         >
           <ScrollView
+            contentInsetAdjustmentBehavior="never"
             contentContainerStyle={[
-              styles.modal,
+              styles.modalViewport,
               {
-                backgroundColor: colors.surface,
                 paddingBottom: Spacing.lg + insets.bottom,
+                paddingTop: Spacing.lg + insets.top,
               },
             ]}
             keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>
-                New workspace
-              </Text>
-              <Pressable
-                hitSlop={10}
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setIsModalVisible(false);
-                }}
-                accessibilityLabel="Close"
-              >
-                <Text style={[styles.close, { color: colors.textMuted }]}>
-                  Close
-                </Text>
-              </Pressable>
-            </View>
-            <Text style={[styles.label, { color: colors.textMuted }]}>
-              Name
-            </Text>
-            <TextInput
-              autoFocus
-              placeholder="e.g. Personal"
-              placeholderTextColor={colors.textMuted}
-              value={name}
-              onChangeText={setName}
+            <View
+              accessibilityViewIsModal
               style={[
-                styles.input,
-                { borderColor: colors.border, color: colors.text },
+                styles.modal,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
               ]}
-            />
-            {formError && (
-              <Text style={[styles.formError, { color: colors.danger }]}>
-                {formError}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
+                  New workspace
+                </Text>
+                <Pressable
+                  accessibilityLabel="Close"
+                  accessibilityRole="button"
+                  hitSlop={10}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setIsModalVisible(false);
+                  }}
+                >
+                  <Text style={[styles.close, { color: colors.textMuted }]}>
+                    Close
+                  </Text>
+                </Pressable>
+              </View>
+              <Text style={[styles.label, { color: colors.textMuted }]}>
+                Name
               </Text>
-            )}
-            <AppButton
-              label={isSaving ? "Creating..." : "Create workspace"}
-              disabled={isSaving}
-              onPress={() => void createWorkspace()}
-            />
+              <TextInput
+                autoFocus
+                placeholder="e.g. Personal"
+                placeholderTextColor={colors.textMuted}
+                value={name}
+                onChangeText={setName}
+                style={[
+                  styles.input,
+                  { borderColor: colors.border, color: colors.text },
+                ]}
+              />
+              {formError && (
+                <Text style={[styles.formError, { color: colors.danger }]}>
+                  {formError}
+                </Text>
+              )}
+              <AppButton
+                label={isSaving ? "Creating..." : "Create workspace"}
+                disabled={isSaving}
+                onPress={() => void createWorkspace()}
+              />
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
@@ -259,13 +273,18 @@ const styles = StyleSheet.create({
   modalBackdrop: {
     backgroundColor: "rgba(0, 0, 0, 0.36)",
     flex: 1,
-    justifyContent: "flex-end",
   },
+  modalViewport: { flexGrow: 1, justifyContent: "center", paddingHorizontal: Spacing.lg },
   modal: {
-    borderTopLeftRadius: Radius.lg,
-    borderTopRightRadius: Radius.lg,
+    alignSelf: "center",
+    borderCurve: "continuous",
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    boxShadow: Shadows.raised,
     gap: Spacing.md,
+    maxWidth: 560,
     padding: Spacing.lg,
+    width: "100%",
   },
   modalHeader: {
     alignItems: "center",

@@ -31,7 +31,10 @@ import type {
   KnowledgeDocument,
   KnowledgeScenario,
 } from "@/domain/knowledge/knowledge-document";
-import type { CoreNoteInsight } from "@/domain/core-note-insight/core-note-insight";
+import type {
+  CoreNoteInsight,
+  CoreTask,
+} from "@/domain/core-note-insight/core-note-insight";
 import { CoreNoteInsightGenerationError } from "@/errors/core-note-insight-generation-error";
 import { KnowledgeGenerationError } from "@/errors/knowledge-generation-error";
 import { useTheme } from "@/hooks/use-theme";
@@ -80,6 +83,7 @@ export default function NoteDetailScreen() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [coreGeneration, setCoreGeneration] = useState<CoreInsightGenerationState>({ status: "idle" });
+  const [coreItemError, setCoreItemError] = useState<string | null>(null);
   const audioRelativePath =
     state.status === "success" ? state.note.getAudioRelativePath() : null;
   const audioUri = audioRelativePath
@@ -282,6 +286,20 @@ export default function NoteDetailScreen() {
     }
   };
 
+  const setCoreTaskCompleted = async (taskId: string, completed: boolean) => {
+    if (state.status !== "success") return;
+    setCoreItemError(null);
+    try {
+      const coreInsights = await coreNoteInsightService.setTaskCompleted(
+        state.note.getId(), taskId, completed,
+      );
+      setState((current) => current.status === "success" ? { ...current, coreInsights } : current);
+    } catch (error) {
+      setCoreItemError(error instanceof Error ? error.message : "Unable to update this task.");
+      throw error;
+    }
+  };
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <Stack.Screen
@@ -395,7 +413,16 @@ export default function NoteDetailScreen() {
                 </View>
               ) : (
                 <>
-                  {state.coreInsights && <CoreInsightResult insight={state.coreInsights} textColor={colors.text} mutedColor={colors.textMuted} borderColor={colors.border} />}
+                  {state.coreInsights && <CoreInsightResult
+                    insight={state.coreInsights}
+                    textColor={colors.text}
+                    mutedColor={colors.textMuted}
+                    borderColor={colors.border}
+                    accentColor={colors.accent}
+                    surfaceMutedColor={colors.surfaceMuted}
+                    onTaskCompletedChange={setCoreTaskCompleted}
+                  />}
+                  {coreItemError && <Text selectable style={[styles.errorText, { color: colors.danger }]}>{coreItemError}</Text>}
                   {coreGeneration.status === "error" && <Text selectable style={[styles.errorText, { color: colors.danger }]}>{coreGeneration.message}</Text>}
                   <AppButton label={state.coreInsights ? "Regenerate Core Insights" : "Generate Core Insights"} variant={state.coreInsights ? "secondary" : undefined} onPress={() => void generateCoreInsights()} />
                 </>
@@ -596,11 +623,14 @@ export default function NoteDetailScreen() {
   );
 }
 
-function CoreInsightResult({ insight, textColor, mutedColor, borderColor }: {
+function CoreInsightResult({ insight, textColor, mutedColor, borderColor, accentColor, surfaceMutedColor, onTaskCompletedChange }: {
   insight: CoreNoteInsight;
   textColor: string;
   mutedColor: string;
   borderColor: string;
+  accentColor: string;
+  surfaceMutedColor: string;
+  onTaskCompletedChange: (taskId: string, completed: boolean) => Promise<void>;
 }) {
   const reminders = insight.getCalendarIntents().filter((item) => item.kind === "reminder");
   const calendarIntents = insight.getCalendarIntents().filter((item) => item.kind === "calendar");
@@ -626,22 +656,10 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor }: {
       </InsightSection>
       <InsightSection title="Tasks & Action Plan" borderColor={borderColor} textColor={textColor}>
         {insight.getTasks().length ? insight.getTasks().map((task, taskIndex) => (
-          <View key={task.id} style={styles.taskGroup}>
-            <Text selectable style={[styles.taskTitle, { color: textColor }]}>{taskIndex + 1}. {task.title}</Text>
-            {displayValue(task.description) && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{task.description}</Text>}
-            {coreTimeDisplay(task.metadata, "dueAt", task.dueAt) && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>截止时间：{coreTimeDisplay(task.metadata, "dueAt", task.dueAt)}</Text>}
-            <View style={styles.actionSteps}>
-              {task.actionItems.length ? task.actionItems.map((item, index) => (
-                <View key={item.id} style={styles.actionStep}>
-                  <Text selectable style={[styles.stepNumber, { color: mutedColor }]}>{index + 1}</Text>
-                  <View style={styles.stepCopy}>
-                    <Text selectable style={[styles.resultItem, { color: textColor }]}>{item.title}</Text>
-                    {displayValue(item.description) && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{item.description}</Text>}
-                  </View>
-                </View>
-              )) : <EmptyInsight text="未生成可执行步骤" color={mutedColor} />}
-            </View>
-          </View>
+          <InteractiveTask key={task.id} task={task} index={taskIndex} textColor={textColor}
+            mutedColor={mutedColor} borderColor={borderColor} accentColor={accentColor}
+            surfaceMutedColor={surfaceMutedColor} onTaskCompletedChange={onTaskCompletedChange}
+          />
         )) : <EmptyInsight text={empty} color={mutedColor} />}
         {insight.getUnassignedActionItems().map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={coreTimeDisplay(item.metadata, item.dueAt ? "dueAt" : "startsAt", item.dueAt ?? item.startsAt)} textColor={textColor} mutedColor={mutedColor} />)}
       </InsightSection>
@@ -654,6 +672,99 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor }: {
       <Text selectable style={[styles.generatedMeta, { color: mutedColor }]}>Generated locally · {formatDate(insight.getUpdatedAt())}</Text>
       <CopyInsightsButton html={formattedHtml} position="bottom" />
     </View>
+  );
+}
+
+function InteractiveTask({ task, index, textColor, mutedColor, borderColor, accentColor, surfaceMutedColor, onTaskCompletedChange }: {
+  task: CoreTask;
+  index: number;
+  textColor: string;
+  mutedColor: string;
+  borderColor: string;
+  accentColor: string;
+  surfaceMutedColor: string;
+  onTaskCompletedChange: (taskId: string, completed: boolean) => Promise<void>;
+}) {
+  const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
+  const toggle = async (id: string, completed: boolean, update: (id: string, completed: boolean) => Promise<void>) => {
+    if (busyIds.has(id)) return;
+    setBusyIds((current) => new Set(current).add(id));
+    try { await update(id, completed); }
+    catch { /* The parent displays the persistence error. */ }
+    finally {
+      setBusyIds((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  return (
+    <View style={[styles.taskCard, { backgroundColor: surfaceMutedColor, borderColor }]}>
+      <ChecklistRow
+        title={`${index + 1}. ${task.title}`}
+        description={task.description}
+        time={coreTimeDisplay(task.metadata, "dueAt", task.dueAt)}
+        completed={task.status === "completed"}
+        busy={busyIds.has(task.id)}
+        emphasized
+        textColor={textColor}
+        mutedColor={mutedColor}
+        borderColor={borderColor}
+        accentColor={accentColor}
+        onPress={() => void toggle(task.id, task.status !== "completed", onTaskCompletedChange)}
+      />
+      <View style={styles.actionSteps}>
+        {task.actionItems.length ? task.actionItems.map((item, actionIndex) => (
+          <View key={item.id} style={styles.actionStep}>
+            <Text selectable style={[styles.stepNumber, { color: mutedColor }]}>{actionIndex + 1}</Text>
+            <View style={styles.stepCopy}>
+              <Text selectable style={[styles.resultItem, { color: textColor }]}>{item.title}</Text>
+              {displayValue(item.description) && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{item.description}</Text>}
+              {coreTimeDisplay(item.metadata, item.dueAt ? "dueAt" : "startsAt", item.dueAt ?? item.startsAt) && (
+                <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>截止时间：{coreTimeDisplay(item.metadata, item.dueAt ? "dueAt" : "startsAt", item.dueAt ?? item.startsAt)}</Text>
+              )}
+            </View>
+          </View>
+        )) : <EmptyInsight text="未生成可执行步骤" color={mutedColor} />}
+      </View>
+    </View>
+  );
+}
+
+function ChecklistRow({ title, description, time, completed, busy, emphasized = false, textColor, mutedColor, borderColor, accentColor, onPress }: {
+  title: string;
+  description: string | null;
+  time: string | null;
+  completed: boolean;
+  busy: boolean;
+  emphasized?: boolean;
+  textColor: string;
+  mutedColor: string;
+  borderColor: string;
+  accentColor: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: completed, disabled: busy }}
+      accessibilityLabel={`${completed ? "Mark incomplete" : "Mark complete"}: ${title}`}
+      disabled={busy}
+      onPress={onPress}
+      style={({ pressed }) => [styles.checklistRow, pressed && styles.pressed]}
+    >
+      <View style={[styles.checkbox, { borderColor: completed ? accentColor : borderColor }, completed && { backgroundColor: accentColor }]}>
+        {busy ? <ActivityIndicator size="small" color={completed ? "#ffffff" : accentColor} /> : completed && <Text style={styles.checkmark}>✓</Text>}
+      </View>
+      <View style={styles.stepCopy}>
+        <Text selectable style={[emphasized ? styles.taskTitle : styles.resultItem,
+          { color: completed ? mutedColor : textColor }, completed && styles.completedText]}>{title}</Text>
+        {displayValue(description) && <Text selectable style={[styles.supportingText, { color: mutedColor }, completed && styles.completedText]}>{description}</Text>}
+        {time && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>截止时间：{time}</Text>}
+      </View>
+    </Pressable>
   );
 }
 
@@ -902,12 +1013,16 @@ const styles = StyleSheet.create({
   structuredItem: { gap: Spacing.xs, paddingVertical: Spacing.xs },
   structuredMeta: { fontSize: 12, fontVariant: ["tabular-nums"] },
   emptyInsight: { fontSize: 14, fontStyle: "italic", lineHeight: 20 },
-  taskGroup: { gap: Spacing.xs, paddingVertical: Spacing.sm },
+  taskCard: { borderCurve: "continuous", borderRadius: Radius.md, borderWidth: 1, gap: Spacing.sm, padding: Spacing.sm },
   taskTitle: { fontSize: 17, fontWeight: "800", lineHeight: 24 },
-  actionSteps: { gap: Spacing.sm, paddingTop: Spacing.xs, paddingLeft: Spacing.sm },
-  actionStep: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm },
-  stepNumber: { minWidth: 22, fontSize: 13, fontWeight: "800", lineHeight: 25, fontVariant: ["tabular-nums"] },
+  actionSteps: { gap: Spacing.xs, paddingLeft: Spacing.lg },
+  actionStep: { alignItems: "flex-start", flexDirection: "row", gap: Spacing.sm, paddingVertical: Spacing.xs },
+  stepNumber: { fontSize: 13, fontVariant: ["tabular-nums"], fontWeight: "800", lineHeight: 25, minWidth: 22 },
   stepCopy: { flex: 1, gap: 2 },
+  checklistRow: { alignItems: "flex-start", flexDirection: "row", gap: Spacing.sm, minHeight: 44, padding: Spacing.xs },
+  checkbox: { alignItems: "center", borderRadius: 7, borderWidth: 2, height: 24, justifyContent: "center", width: 24 },
+  checkmark: { color: "#ffffff", fontSize: 16, fontWeight: "900", lineHeight: 19 },
+  completedText: { textDecorationLine: "line-through" },
   copyBlock: { gap: Spacing.xs },
   copyError: { color: Colors.light.danger, fontSize: 13, lineHeight: 18 },
 });

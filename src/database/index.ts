@@ -11,6 +11,7 @@ import { KnowledgeDocumentSchemaRepairMigration } from "./migrations/knowledge-d
 import { CoreNoteInsightSchemaMigration } from "./migrations/core-note-insight-schema-migration";
 import { CoreNoteTaskHierarchyMigration } from "./migrations/core-note-task-hierarchy-migration";
 import { TtsModelSchemaMigration } from "./migrations/tts-model-schema-migration";
+import { CoreNoteItemSyncLinkMigration } from "./migrations/core-note-item-sync-link-migration";
 
 export { DatabaseConfig } from "./config/database-config";
 export { DatabaseManager } from "./core/database-manager";
@@ -24,10 +25,11 @@ export { KnowledgeDocumentSchemaRepairMigration } from "./migrations/knowledge-d
 export { CoreNoteInsightSchemaMigration } from "./migrations/core-note-insight-schema-migration";
 export { CoreNoteTaskHierarchyMigration } from "./migrations/core-note-task-hierarchy-migration";
 export { TtsModelSchemaMigration } from "./migrations/tts-model-schema-migration";
+export { CoreNoteItemSyncLinkMigration } from "./migrations/core-note-item-sync-link-migration";
 export { Repository } from "./repositories/repository";
 export type { DatabaseConnection } from "./types/database-types";
 
-export const databaseConfig = new DatabaseConfig("speakspace.db", 8);
+export const databaseConfig = new DatabaseConfig("speakspace.db", 9);
 
 export const migrationRunner = new MigrationRunner([
   new InitialSchemaMigration(),
@@ -38,6 +40,7 @@ export const migrationRunner = new MigrationRunner([
   new CoreNoteInsightSchemaMigration(),
   new CoreNoteTaskHierarchyMigration(),
   new TtsModelSchemaMigration(),
+  new CoreNoteItemSyncLinkMigration(),
 ]);
 
 export const databaseManager = new DatabaseManager(

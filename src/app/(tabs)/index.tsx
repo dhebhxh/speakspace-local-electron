@@ -1,4 +1,4 @@
-import { Link, type Href, useFocusEffect } from "expo-router";
+import { Link, type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Calendar, type DateData } from "react-native-calendars";
@@ -6,8 +6,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
+import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
+import { NoteCard } from "@/components/note-card";
 import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import type { CoreCalendarIntent, CoreInsightStatus } from "@/domain/core-note-insight/core-note-insight";
 import type { Note } from "@/domain/note/note";
@@ -17,6 +19,7 @@ type OverviewState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "success"; notes: Note[]; tasks: { id: string; noteId: string; status: CoreInsightStatus }[]; calendarIntents: CoreCalendarIntent[]; loadedAt: number };
+type NoteFilter = "all" | "pinned" | "todos";
 
 function toDateKey(value: string | null): string | null {
   if (!value) return null;
@@ -31,7 +34,9 @@ export default function HomeScreen() {
   const theme = useTheme();
   const colors = Colors[theme.mode];
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [overview, setOverview] = useState<OverviewState>({ status: "loading" });
+  const [noteFilter, setNoteFilter] = useState<NoteFilter>("all");
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date().toISOString())!);
 
   const loadOverview = useCallback(async () => {
@@ -52,6 +57,8 @@ export default function HomeScreen() {
     if (overview.status !== "success") return null;
     const weekAgo = overview.loadedAt - 7 * 24 * 60 * 60 * 1000;
     const recentNotes = overview.notes.filter((note) => new Date(note.getCreatedAt()).getTime() >= weekAgo);
+    const pendingNoteIds = new Set(overview.tasks.filter((task) => task.status === "pending").map((task) => task.noteId));
+    const filteredNotes = overview.notes.filter((note) => noteFilter === "pinned" ? note.getIsPinned() : noteFilter === "todos" ? pendingNoteIds.has(note.getId()) : true);
     const calendarByDate = new Map<string, CoreCalendarIntent[]>();
     for (const intent of overview.calendarIntents) {
       const dateKey = toDateKey(intent.startsAt ?? intent.dueAt ?? intent.remindAt);
@@ -60,12 +67,13 @@ export default function HomeScreen() {
     return {
       pinnedCount: overview.notes.filter((note) => note.getIsPinned()).length,
       pendingCount: overview.tasks.filter((task) => task.status === "pending").length,
+      filteredNotes,
       transcriptCount: overview.notes.reduce((sum, note) => sum + note.getTranscript().length, 0),
       recentTranscriptCount: recentNotes.reduce((sum, note) => sum + note.getTranscript().length, 0),
       recentNoteCount: recentNotes.length,
       calendarByDate,
     };
-  }, [overview]);
+  }, [noteFilter, overview]);
 
   const markedDates = useMemo(() => {
     if (!overviewData) return {};
@@ -76,6 +84,7 @@ export default function HomeScreen() {
   }, [colors.accent, overviewData, selectedDate]);
 
   const selectedEvents = overviewData?.calendarByDate.get(selectedDate) ?? [];
+  const toggleNoteFilter = (next: Exclude<NoteFilter, "all">) => setNoteFilter((current) => current === next ? "all" : next);
 
   return (
     <ScrollView
@@ -128,9 +137,18 @@ export default function HomeScreen() {
         {overview.status === "success" && overviewData && <>
           <View style={styles.statsGrid}>
             <HomeStatCard label="Total notes" value={overview.notes.length} detail={`+${overviewData.recentNoteCount} this week`} />
-            <HomeStatCard label="Pinned" value={overviewData.pinnedCount} detail="Saved for quick access" />
+            <HomeStatCard label="Pinned" value={overviewData.pinnedCount} detail={noteFilter === "pinned" ? "Show all notes" : "Filter pinned notes"} active={noteFilter === "pinned"} onPress={() => toggleNoteFilter("pinned")} />
             <HomeStatCard label="Characters" value={overviewData.transcriptCount} detail={`+${formatNumber(overviewData.recentTranscriptCount)} this week`} />
-            <HomeStatCard label="Open tasks" value={overviewData.pendingCount} detail="From Core Note Insights" />
+            <HomeStatCard label="Open tasks" value={overviewData.pendingCount} detail={noteFilter === "todos" ? "Show all notes" : "Filter unfinished notes"} active={noteFilter === "todos"} onPress={() => toggleNoteFilter("todos")} />
+          </View>
+          <View style={styles.notesSection}>
+            <View style={styles.notesHeading}>
+              <Text style={[styles.calendarTitle, { color: colors.text }]}>Notes</Text>
+              <Text style={[styles.notesCount, { color: colors.textMuted }]}>{overviewData.filteredNotes.length} shown</Text>
+            </View>
+            {overviewData.filteredNotes.length === 0
+              ? <EmptyState title={noteFilter === "all" ? "No notes yet" : "No matching notes"} description={noteFilter === "todos" ? "Notes with unfinished Core Note tasks appear here." : undefined} />
+              : <View style={styles.noteList}>{overviewData.filteredNotes.map((note) => <NoteCard key={note.getId()} note={note} onPress={() => router.push({ pathname: "/notes/[noteId]", params: { noteId: note.getId() } })} />)}</View>}
           </View>
           <View style={styles.calendarSection}>
             <Text style={[styles.calendarTitle, { color: colors.text }]}>Calendar</Text>
@@ -166,13 +184,17 @@ function MicrophoneIcon({ color }: { color: string }) {
   );
 }
 
-function HomeStatCard({ label, value, detail }: { label: string; value: number; detail: string }) {
+function HomeStatCard({ label, value, detail, active = false, onPress }: { label: string; value: number; detail: string; active?: boolean; onPress?: () => void }) {
   const colors = Colors[useTheme().mode];
-  return <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-    <Text style={[styles.statLabel, { color: colors.textMuted }]}>{label}</Text>
+  const content = <>
+    <Text style={[styles.statLabel, { color: active ? colors.accent : colors.textMuted }]}>{label}</Text>
     <Text selectable style={[styles.statValue, { color: colors.text }]}>{formatNumber(value)}</Text>
-    <Text style={[styles.statDetail, { color: colors.textMuted }]} numberOfLines={2}>{detail}</Text>
-  </View>;
+    <Text style={[styles.statDetail, { color: onPress ? colors.accent : colors.textMuted }]} numberOfLines={2}>{detail}{onPress ? "  →" : ""}</Text>
+  </>;
+  const cardStyle = [styles.statCard, { backgroundColor: active ? colors.accentSoft : colors.surface, borderColor: active ? colors.accent : colors.border }];
+  return onPress
+    ? <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress} style={({ pressed }) => [cardStyle, pressed && styles.pressed]}>{content}</Pressable>
+    : <View style={cardStyle}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -218,6 +240,10 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, fontWeight: "700" },
   statValue: { fontSize: 25, fontVariant: ["tabular-nums"], fontWeight: "800" },
   statDetail: { fontSize: 11, lineHeight: 15 },
+  notesSection: { gap: Spacing.sm },
+  notesHeading: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between" },
+  notesCount: { fontSize: 12, fontWeight: "700" },
+  noteList: { gap: Spacing.sm },
   calendarSection: { gap: Spacing.sm },
   calendarTitle: { fontSize: 19, fontWeight: "800" },
   calendarCard: { borderCurve: "continuous", borderRadius: Radius.lg, borderWidth: 1, boxShadow: Shadows.card, overflow: "hidden" },

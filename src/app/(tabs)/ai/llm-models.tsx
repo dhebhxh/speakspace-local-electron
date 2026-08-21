@@ -159,8 +159,6 @@ export default function LlmModelsScreen() {
         ]}
       >
         <View style={styles.heading}>
-          <Text style={[styles.kicker, { color: colors.accent }]}>LANGUAGE MODELS</Text>
-          <Text style={[styles.title, { color: colors.text }]}>LLM Models</Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
             Download GGUF models for fully local language inference on this device.
           </Text>

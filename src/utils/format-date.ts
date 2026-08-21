@@ -5,7 +5,7 @@ export function formatDate(value: string): string {
     return "Unknown date";
   }
 
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString("en-GB", {
     month: "short",
     day: "numeric",
     year: "numeric",

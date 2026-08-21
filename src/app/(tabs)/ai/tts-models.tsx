@@ -74,9 +74,7 @@ export default function TtsModelsScreen() {
   return <View style={[styles.screen, { backgroundColor: colors.background }]}>
     <Stack.Screen options={{ title: "TTS Models" }} />
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.content, { paddingBottom: Spacing.xxl + insets.bottom }]}>
-      <View style={styles.heading}><Text style={[styles.kicker, { color: colors.accent }]}>TEXT TO SPEECH</Text>
-        <Text style={[styles.title, { color: colors.text }]}>TTS Models</Text>
-        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Download voices for private speech synthesis with sherpa-onnx on this device.</Text></View>
+      <View style={styles.heading}><Text style={[styles.subtitle, { color: colors.textMuted }]}>Download voices for private speech synthesis with sherpa-onnx on this device.</Text></View>
       {state.status === "error" && <Text style={[styles.error, { color: colors.danger }]}>{state.message}</Text>}
       <View style={styles.list}>{catalog.map((entry) => {
         const installed = state.status === "success" ? state.installedById.get(entry.id) ?? null : null;

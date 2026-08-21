@@ -221,8 +221,6 @@ export default function AudioTranscriptionScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: Spacing.xxl + insets.bottom }]}
       >
         <View style={styles.header}>
-          <Text style={[styles.kicker, { color: colors.accent }]}>ON-DEVICE TRANSCRIPTION</Text>
-          <Text style={[styles.title, { color: colors.text }]}>Bring your own audio.</Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>Choose an audio file from anywhere on your device. It never leaves this device.</Text>
         </View>
 
@@ -271,7 +269,7 @@ export default function AudioTranscriptionScreen() {
 
       <Modal visible={showSave} animationType="slide" transparent onRequestClose={() => setShowSave(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalBackdrop}>
-          <ScrollView contentContainerStyle={[styles.modal, { backgroundColor: colors.surface, paddingBottom: Spacing.lg + insets.bottom }]} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={[styles.modal, { backgroundColor: colors.surface, paddingBottom: Spacing.lg + insets.bottom }]} keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"} keyboardShouldPersistTaps="handled">
             <Text style={[styles.modalTitle, { color: colors.text }]}>Save transcription</Text>
             <Text style={[styles.label, { color: colors.textMuted }]}>Note name</Text>
             <TextInput value={noteName} onChangeText={setNoteName} placeholder="e.g. Interview recording" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />

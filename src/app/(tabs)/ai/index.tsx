@@ -22,8 +22,6 @@ export default function AiManagementScreen() {
         ]}
       >
         <View style={styles.heading}>
-          <Text style={[styles.kicker, { color: colors.accent }]}>ON-DEVICE AI</Text>
-          <Text style={[styles.title, { color: colors.text }]}>AI Management</Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
             Manage the speech and language models that run locally on this device.
           </Text>

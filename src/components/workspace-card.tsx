@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import { Workspace } from "@/domain/workspace/workspace";
 import { useTheme } from "@/hooks/use-theme";
 import { formatDate } from "@/utils/format-date";
@@ -49,8 +49,10 @@ export function WorkspaceCard({ workspace, onPress }: WorkspaceCardProps) {
 
 const styles = StyleSheet.create({
   card: {
+    borderCurve: "continuous",
     borderRadius: Radius.md,
     borderWidth: 1,
+    boxShadow: Shadows.card,
     padding: Spacing.md,
   },
   row: {

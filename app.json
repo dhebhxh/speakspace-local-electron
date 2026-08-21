@@ -3,10 +3,12 @@
     "name": "speakspace-local-mobile",
     "slug": "speakspace-local-mobile",
     "version": "1.0.0",
+    "backgroundColor": "#F3F7F5",
+    "primaryColor": "#356F68",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "speakspacelocalmobile",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/expo.icon",
       "infoPlist": {
@@ -15,8 +17,10 @@
       "bundleIdentifier": "com.dhebhxh.speakspacelocalmobile"
     },
     "android": {
+      "backgroundColor": "#F3F7F5",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#E8F1EE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -40,7 +44,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#F3F7F5",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }

@@ -1,7 +1,7 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { AppButton } from "@/components/app-button";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { formatBytes } from "@/utils/format-bytes";
 
@@ -150,8 +150,10 @@ export function SttModelCard({
 
 const styles = StyleSheet.create({
   card: {
+    borderCurve: "continuous",
     borderRadius: Radius.md,
     borderWidth: 1,
+    boxShadow: Shadows.card,
     gap: Spacing.md,
     padding: Spacing.md,
   },

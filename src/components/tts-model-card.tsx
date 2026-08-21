@@ -1,7 +1,7 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { AppButton } from "@/components/app-button";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { formatBytes } from "@/utils/format-bytes";
 
@@ -56,7 +56,7 @@ export function TtsModelCard(props: Props) {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: Radius.md, borderWidth: 1, gap: Spacing.md, padding: Spacing.md },
+  card: { borderCurve: "continuous", borderRadius: Radius.md, borderWidth: 1, boxShadow: Shadows.card, gap: Spacing.md, padding: Spacing.md },
   header: { flexDirection: "row", gap: Spacing.sm, justifyContent: "space-between" },
   info: { flex: 1, gap: Spacing.xs, minWidth: 0 }, name: { fontSize: 17, fontWeight: "700" },
   meta: { fontSize: 13, fontWeight: "600" }, description: { fontSize: 13, lineHeight: 18 },

@@ -199,10 +199,6 @@ export default function SttModelsScreen() {
         ]}
       >
         <View style={styles.heading}>
-          <Text style={[styles.kicker, { color: colors.accent }]}>
-            SPEECH TO TEXT
-          </Text>
-          <Text style={[styles.title, { color: colors.text }]}>STT Models</Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
             Download models to run speech recognition fully on this device.
           </Text>

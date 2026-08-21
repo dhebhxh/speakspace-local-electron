@@ -1,6 +1,6 @@
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Keyboard, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
@@ -48,7 +48,7 @@ export default function NoteSearchScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ title: "Search notes" }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: Spacing.xxl + insets.bottom }]}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" onScrollBeginDrag={Keyboard.dismiss} contentContainerStyle={[styles.content, { paddingBottom: Spacing.xxl + insets.bottom }]}>
         <TextInput
           autoFocus
           accessibilityLabel="Search notes"
@@ -57,6 +57,8 @@ export default function NoteSearchScreen() {
           placeholder="Search titles and transcripts"
           placeholderTextColor={colors.textMuted}
           returnKeyType="search"
+          blurOnSubmit
+          onSubmitEditing={Keyboard.dismiss}
           style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
         />
         {state.status === "idle" && <EmptyState title="Search your notes" description="Enter a word or phrase from a title or transcript." />}

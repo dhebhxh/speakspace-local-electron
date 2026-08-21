@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Calendar, type DateData } from "react-native-calendars";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 import { NoteCard } from "@/components/note-card";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import type { CoreCalendarIntent, CoreInsightStatus } from "@/domain/core-note-insight/core-note-insight";
 import type { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
@@ -34,7 +34,6 @@ export default function DashboardScreen() {
   const theme = useTheme();
   const colors = Colors[theme.mode];
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const [state, setState] = useState<DashboardState>({ status: "loading" });
   const [filter, setFilter] = useState<NoteFilter>("all");
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date().toISOString())!);
@@ -87,17 +86,19 @@ export default function DashboardScreen() {
   const toggleFilter = (next: Exclude<NoteFilter, "all">) => setFilter((current) => current === next ? "all" : next);
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background }} contentContainerStyle={[styles.content, { paddingTop: insets.top + Spacing.lg, paddingBottom: insets.bottom + 96 }]}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: colors.background, experimental_backgroundImage: Backgrounds[theme.mode] }} contentContainerStyle={[styles.content, { paddingTop: insets.top + Spacing.lg, paddingBottom: insets.bottom + 96 }]}>
       <View style={styles.heading}>
-        <Text style={[styles.kicker, { color: colors.accent }]}>SPEAKSPACE</Text>
-        <Text style={[styles.title, { color: colors.text }]}>Dashboard</Text>
-        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Your notes, tasks, and upcoming moments at a glance.</Text>
+        <View style={styles.headingCopy}>
+          <Text style={[styles.kicker, { color: colors.accent }]}>SPEAKSPACE</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Dashboard</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>Your notes, tasks, and upcoming moments at a glance.</Text>
+        </View>
       </View>
 
       {state.status === "loading" && <LoadingState />}
       {state.status === "error" && <ErrorState message={state.message} onRetry={() => void loadDashboard()} />}
       {state.status === "success" && data && <>
-        <View style={[styles.statsGrid, width < 390 && styles.statsGridSingle]}>
+        <View style={styles.statsGrid}>
           <StatCard label="Total notes" value={state.notes.length} detail={`+${data.recentNoteCount} in the last 7 days`} />
           <StatCard label="Pinned notes" value={data.pinnedCount} detail={filter === "pinned" ? "Show all notes" : "Quick filter"} active={filter === "pinned"} onPress={() => toggleFilter("pinned")} />
           <StatCard label="Transcript characters" value={data.transcriptCount} detail={`+${formatNumber(data.recentTranscriptCount)} in the last 7 days`} />
@@ -138,13 +139,13 @@ function StatCard({ label, value, detail, active = false, onPress }: { label: st
 
 const styles = StyleSheet.create({
   content: { gap: Spacing.xl, paddingHorizontal: Spacing.lg },
-  heading: { gap: Spacing.xs },
+  heading: { gap: Spacing.md },
+  headingCopy: { gap: Spacing.xs },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 34, fontWeight: "800" },
   subtitle: { fontSize: 16, lineHeight: 23, maxWidth: 520 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.md },
-  statsGridSingle: { flexDirection: "column" },
-  statCard: { borderCurve: "continuous", borderRadius: Radius.md, borderWidth: 1, flexBasis: "46%", flexGrow: 1, gap: Spacing.xs, minHeight: 142, padding: Spacing.md },
+  statCard: { borderCurve: "continuous", borderRadius: Radius.md, borderWidth: 1, boxShadow: Shadows.card, flexBasis: "46%", flexGrow: 1, gap: Spacing.xs, minHeight: 142, padding: Spacing.md },
   statLabel: { fontSize: 13, fontWeight: "700" },
   statValue: { fontSize: 30, fontVariant: ["tabular-nums"], fontWeight: "800" },
   statDetail: { fontSize: 13, lineHeight: 18 },
@@ -153,7 +154,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 24, fontWeight: "800" },
   sectionMeta: { fontSize: 13, fontWeight: "600" },
   noteList: { gap: Spacing.md },
-  calendarCard: { borderCurve: "continuous", borderRadius: Radius.lg, borderWidth: 1, overflow: "hidden" },
+  calendarCard: { borderCurve: "continuous", borderRadius: Radius.lg, borderWidth: 1, boxShadow: Shadows.card, overflow: "hidden" },
   agenda: { borderTopWidth: 1, gap: Spacing.sm, padding: Spacing.md },
   agendaDate: { fontSize: 15, fontVariant: ["tabular-nums"], fontWeight: "800" },
   agendaEmpty: { fontSize: 14, lineHeight: 20 },

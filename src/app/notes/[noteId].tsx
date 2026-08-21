@@ -64,6 +64,9 @@ type CoreInsightGenerationState =
   | { status: "queued" | "generating" }
   | { status: "error"; message: string };
 
+type NoteSection = "transcript" | "insights" | "knowledge";
+type InsightSectionKey = "summary" | "key-points" | "tasks" | "reminders" | "calendar";
+
 export default function NoteDetailScreen() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
   const theme = useTheme();
@@ -84,6 +87,7 @@ export default function NoteDetailScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [coreGeneration, setCoreGeneration] = useState<CoreInsightGenerationState>({ status: "idle" });
   const [coreItemError, setCoreItemError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<NoteSection>("transcript");
   const audioRelativePath =
     state.status === "success" ? state.note.getAudioRelativePath() : null;
   const audioUri = audioRelativePath
@@ -324,46 +328,58 @@ export default function NoteDetailScreen() {
         {state.status === "success" && (
           <>
             <View style={styles.header}>
-              <Text style={[styles.kicker, { color: colors.accent }]}>
-                NOTE
-              </Text>
-              <Text style={[styles.title, { color: colors.text }]}>
-                {state.note.getName() || "Untitled note"}
-              </Text>
-              <View style={styles.metaRow}>
-                {state.workspaceName && (
+              <View style={styles.headerUtilityRow}>
+                <View style={styles.metaRow}>
+                  {state.workspaceName && (
+                    <Text style={[styles.meta, { color: colors.textMuted }]}>
+                      {state.workspaceName}
+                    </Text>
+                  )}
                   <Text style={[styles.meta, { color: colors.textMuted }]}>
-                    {state.workspaceName}
+                    {formatDate(state.note.getUpdatedAt())}
                   </Text>
-                )}
-                <Text style={[styles.meta, { color: colors.textMuted }]}>
-                  {formatDate(state.note.getUpdatedAt())}
-                </Text>
-                {state.note.getIsPinned() && (
-                  <Text style={[styles.meta, { color: colors.accent }]}>
-                    Pinned
-                  </Text>
-                )}
+                  {state.note.getIsPinned() && (
+                    <Text style={[styles.meta, { color: colors.accent }]}>
+                      Pinned
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.noteActionRow}>
+                  <NoteIconAction label="Rename note" symbol="✎" color={colors.accent} backgroundColor={colors.accentSoft} onPress={() => {
+                    setTitleInput(state.note.getName() ?? "");
+                    setActionError(null);
+                    setActionModal("rename");
+                  }} />
+                  <NoteIconAction label="Move note" symbol="⇄" color={colors.accent} backgroundColor={colors.accentSoft} onPress={() => void openMove()} />
+                  <NoteIconAction label="Delete note" symbol="×" color={colors.danger} backgroundColor={colors.surfaceMuted} onPress={confirmDeleteNote} />
+                </View>
               </View>
               {state.note.getAudioRelativePath() && (
-                <View
-                  style={[
-                    styles.audioBadge,
-                    { backgroundColor: colors.accentSoft },
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={playerStatus.playing ? "Pause recording" : "Play recording"}
+                  accessibilityState={{ selected: playerStatus.playing }}
+                  onPress={() => playerStatus.playing ? player.pause() : player.play()}
+                  style={({ pressed }) => [
+                    styles.audioPlayer,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                    pressed && styles.pressed,
                   ]}
                 >
-                  <AppButton
-                    label={
-                      playerStatus.playing
-                        ? "Pause recording"
-                        : "Play recording"
-                    }
-                    variant="quiet"
-                    onPress={() =>
-                      playerStatus.playing ? player.pause() : player.play()
-                    }
-                  />
-                </View>
+                  <View style={[styles.audioControl, { backgroundColor: colors.accent }]}>
+                    {playerStatus.playing ? (
+                      <View style={styles.pauseGlyph}>
+                        <View style={styles.pauseBar} />
+                        <View style={styles.pauseBar} />
+                      </View>
+                    ) : <View style={styles.playGlyph} />}
+                  </View>
+                  <View style={styles.audioCopy}>
+                    <Text style={[styles.audioTitle, { color: colors.text }]}>Recording audio</Text>
+                    <Text style={[styles.audioStatus, { color: colors.textMuted }]}>{playerStatus.playing ? "Playing on this device" : "Tap to listen"}</Text>
+                  </View>
+                  <Text style={[styles.audioAction, { color: colors.accent }]}>{playerStatus.playing ? "Pause" : "Play"}</Text>
+                </Pressable>
               )}
               <AppButton
                 label="Ask AI about this transcript"
@@ -375,17 +391,17 @@ export default function NoteDetailScreen() {
                   } as unknown as Href)
                 }
               />
-              <View style={styles.actionRow}>
-                <AppButton label="Rename" variant="secondary" onPress={() => {
-                  setTitleInput(state.note.getName() ?? "");
-                  setActionError(null);
-                  setActionModal("rename");
-                }} />
-                <AppButton label="Move" variant="secondary" onPress={() => void openMove()} />
-                <AppButton label="Delete" variant="destructive" onPress={confirmDeleteNote} />
-              </View>
             </View>
-            <View
+            <SectionTabs
+              activeSection={activeSection}
+              onChange={setActiveSection}
+              accentColor={colors.accent}
+              backgroundColor={colors.surfaceMuted}
+              mutedColor={colors.textMuted}
+              surfaceColor={colors.surface}
+              textColor={colors.text}
+            />
+            {activeSection === "transcript" && <View
               style={[
                 styles.transcript,
                 { backgroundColor: colors.surface, borderColor: colors.border },
@@ -397,11 +413,11 @@ export default function NoteDetailScreen() {
               <Text style={[styles.body, { color: colors.text }]}>
                 {state.note.getTranscript()}
               </Text>
-            </View>
-            <View style={[styles.knowledgeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            </View>}
+            {activeSection === "insights" && <View style={[styles.knowledgeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.headingCopy}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Core Note Insights</Text>
-                <Text style={[styles.supportingText, { color: colors.textMuted }]}>Universal summary, key points, actions, and time-based intents extracted locally.</Text>
+                <Text style={[styles.supportingText, { color: colors.textMuted }]}>Summary, key points, tasks, reminders, and calendar events.</Text>
               </View>
               {coreGeneration.status === "generating" || coreGeneration.status === "queued" ? (
                 <View style={[styles.generationStatus, { backgroundColor: colors.surfaceMuted }]}>
@@ -427,8 +443,8 @@ export default function NoteDetailScreen() {
                   <AppButton label={state.coreInsights ? "Regenerate Core Insights" : "Generate Core Insights"} variant={state.coreInsights ? "secondary" : undefined} onPress={() => void generateCoreInsights()} />
                 </>
               )}
-            </View>
-            <View
+            </View>}
+            {activeSection === "knowledge" && <View
               style={[
                 styles.knowledgeCard,
                 { backgroundColor: colors.surface, borderColor: colors.border },
@@ -595,13 +611,13 @@ export default function NoteDetailScreen() {
                   }
                 />
               )}
-            </View>
+            </View>}
           </>
         )}
       </ScrollView>
       <Modal transparent animationType="slide" visible={actionModal !== null} onRequestClose={() => setActionModal(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalBackdrop}>
-          <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+          <ScrollView keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.modal, { backgroundColor: colors.surface }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>{actionModal === "rename" ? "Rename note" : "Move note"}</Text>
               <Pressable onPress={() => setActionModal(null)}><Text style={{ color: colors.textMuted }}>Close</Text></Pressable>
@@ -616,7 +632,7 @@ export default function NoteDetailScreen() {
               {!actionError && workspaces.filter((workspace) => state.status === "success" && workspace.getId() !== state.note.getWorkspaceId()).length === 0 && <Text style={{ color: colors.textMuted }}>No other workspace is available.</Text>}
             </View>}
             {actionError && <Text selectable style={{ color: colors.danger }}>{actionError}</Text>}
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
     </View>
@@ -632,17 +648,19 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor, accent
   surfaceMutedColor: string;
   onTaskCompletedChange: (taskId: string, completed: boolean) => Promise<void>;
 }) {
+  const [activeSection, setActiveSection] = useState<InsightSectionKey>("summary");
   const reminders = insight.getCalendarIntents().filter((item) => item.kind === "reminder");
   const calendarIntents = insight.getCalendarIntents().filter((item) => item.kind === "calendar");
-  const empty = "未识别到相关信息";
+  const empty = "No relevant information found.";
   const formattedHtml = formatCoreInsightsAsHtml(insight);
   return (
     <View style={styles.document}>
       <CopyInsightsButton html={formattedHtml} position="top" />
-      <InsightSection title="Summary" borderColor={borderColor} textColor={textColor} first>
+      <InsightTabs activeSection={activeSection} onChange={setActiveSection} accentColor={accentColor} borderColor={borderColor} mutedColor={mutedColor} surfaceMutedColor={surfaceMutedColor} />
+      {activeSection === "summary" && <InsightSection title="Summary" borderColor={borderColor} textColor={textColor} first>
         <Text selectable style={[styles.body, { color: insight.getSummary() ? textColor : mutedColor }]}>{insight.getSummary() || empty}</Text>
-      </InsightSection>
-      <InsightSection title="Key Points" borderColor={borderColor} textColor={textColor}>
+      </InsightSection>}
+      {activeSection === "key-points" && <InsightSection title="Key Points" borderColor={borderColor} textColor={textColor} first>
         {insight.getKeyPoints().length ? (
           <View style={styles.bulletList}>
             {insight.getKeyPoints().map((item, index) => (
@@ -653,8 +671,8 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor, accent
             ))}
           </View>
         ) : <EmptyInsight text={empty} color={mutedColor} />}
-      </InsightSection>
-      <InsightSection title="Tasks & Action Plan" borderColor={borderColor} textColor={textColor}>
+      </InsightSection>}
+      {activeSection === "tasks" && <InsightSection title="Tasks & Action Plan" borderColor={borderColor} textColor={textColor} first>
         {insight.getTasks().length ? insight.getTasks().map((task, taskIndex) => (
           <InteractiveTask key={task.id} task={task} index={taskIndex} textColor={textColor}
             mutedColor={mutedColor} borderColor={borderColor} accentColor={accentColor}
@@ -662,17 +680,81 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor, accent
           />
         )) : <EmptyInsight text={empty} color={mutedColor} />}
         {insight.getUnassignedActionItems().map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={coreTimeDisplay(item.metadata, item.dueAt ? "dueAt" : "startsAt", item.dueAt ?? item.startsAt)} textColor={textColor} mutedColor={mutedColor} />)}
-      </InsightSection>
-      <InsightSection title="Reminders" borderColor={borderColor} textColor={textColor}>
+      </InsightSection>}
+      {activeSection === "reminders" && <InsightSection title="Reminders" borderColor={borderColor} textColor={textColor} first>
         {reminders.length ? reminders.map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={coreTimeDisplay(item.metadata, item.remindAt ? "remindAt" : item.dueAt ? "dueAt" : "startsAt", item.remindAt ?? item.dueAt ?? item.startsAt)} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
-      </InsightSection>
-      <InsightSection title="Calendar Intents" borderColor={borderColor} textColor={textColor}>
+      </InsightSection>}
+      {activeSection === "calendar" && <InsightSection title="Calendar Intents" borderColor={borderColor} textColor={textColor} first>
         {calendarIntents.length ? calendarIntents.map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={coreTimeDisplay(item.metadata, "startsAt", item.startsAt)} textColor={textColor} mutedColor={mutedColor} />) : <EmptyInsight text={empty} color={mutedColor} />}
-      </InsightSection>
+      </InsightSection>}
       <Text selectable style={[styles.generatedMeta, { color: mutedColor }]}>Generated locally · {formatDate(insight.getUpdatedAt())}</Text>
-      <CopyInsightsButton html={formattedHtml} position="bottom" />
     </View>
   );
+}
+
+function SectionTabs({ activeSection, onChange, accentColor, backgroundColor, mutedColor, surfaceColor, textColor }: {
+  activeSection: NoteSection;
+  onChange: (section: NoteSection) => void;
+  accentColor: string;
+  backgroundColor: string;
+  mutedColor: string;
+  surfaceColor: string;
+  textColor: string;
+}) {
+  const sections: { key: NoteSection; label: string }[] = [
+    { key: "transcript", label: "Transcript" },
+    { key: "insights", label: "Insights" },
+    { key: "knowledge", label: "Knowledge" },
+  ];
+  return (
+    <View accessibilityRole="tablist" style={[styles.sectionTabs, { backgroundColor }]}>
+      {sections.map((section) => {
+        const selected = section.key === activeSection;
+        return <Pressable key={section.key} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => onChange(section.key)} style={({ pressed }) => [styles.sectionTab, { borderColor: "transparent" }, selected && { backgroundColor: surfaceColor, borderColor: accentColor }, pressed && styles.pressed]}>
+          <Text style={[styles.sectionTabText, { color: selected ? textColor : mutedColor }]}>{section.label}</Text>
+        </Pressable>;
+      })}
+    </View>
+  );
+}
+
+function InsightTabs({ activeSection, onChange, accentColor, borderColor, mutedColor, surfaceMutedColor }: {
+  activeSection: InsightSectionKey;
+  onChange: (section: InsightSectionKey) => void;
+  accentColor: string;
+  borderColor: string;
+  mutedColor: string;
+  surfaceMutedColor: string;
+}) {
+  const sections: { key: InsightSectionKey; label: string }[] = [
+    { key: "summary", label: "Summary" },
+    { key: "key-points", label: "Key points" },
+    { key: "tasks", label: "Tasks" },
+    { key: "reminders", label: "Reminders" },
+    { key: "calendar", label: "Calendar" },
+  ];
+  return (
+    <View accessibilityRole="tablist" style={styles.insightTabs}>
+      {sections.map((section) => {
+        const selected = activeSection === section.key;
+        return <Pressable key={section.key} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => onChange(section.key)} style={({ pressed }) => [styles.insightTab, { backgroundColor: selected ? accentColor : surfaceMutedColor, borderColor: selected ? accentColor : borderColor }, pressed && styles.pressed]}>
+          <Text style={[styles.insightTabText, { color: selected ? "#ffffff" : mutedColor }]}>{section.label}</Text>
+        </Pressable>;
+      })}
+    </View>
+  );
+}
+
+function NoteIconAction({ label, symbol, color, backgroundColor, onPress }: {
+  label: string;
+  symbol: string;
+  color: string;
+  backgroundColor: string;
+  onPress: () => void;
+}) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} hitSlop={6} onPress={onPress} style={({ pressed }) => [styles.noteIconAction, { backgroundColor }, pressed && styles.pressed]}>
+    <Text style={[styles.noteIconSymbol, { color }]}>{symbol}</Text>
+  </Pressable>;
 }
 
 function InteractiveTask({ task, index, textColor, mutedColor, borderColor, accentColor, surfaceMutedColor, onTaskCompletedChange }: {
@@ -723,11 +805,11 @@ function InteractiveTask({ task, index, textColor, mutedColor, borderColor, acce
               <Text selectable style={[styles.resultItem, { color: textColor }]}>{item.title}</Text>
               {displayValue(item.description) && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{item.description}</Text>}
               {coreTimeDisplay(item.metadata, item.dueAt ? "dueAt" : "startsAt", item.dueAt ?? item.startsAt) && (
-                <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>截止时间：{coreTimeDisplay(item.metadata, item.dueAt ? "dueAt" : "startsAt", item.dueAt ?? item.startsAt)}</Text>
+                <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>Due: {coreTimeDisplay(item.metadata, item.dueAt ? "dueAt" : "startsAt", item.dueAt ?? item.startsAt)}</Text>
               )}
             </View>
           </View>
-        )) : <EmptyInsight text="未生成可执行步骤" color={mutedColor} />}
+        )) : <EmptyInsight text="No actionable steps generated." color={mutedColor} />}
       </View>
     </View>
   );
@@ -762,7 +844,7 @@ function ChecklistRow({ title, description, time, completed, busy, emphasized = 
         <Text selectable style={[emphasized ? styles.taskTitle : styles.resultItem,
           { color: completed ? mutedColor : textColor }, completed && styles.completedText]}>{title}</Text>
         {displayValue(description) && <Text selectable style={[styles.supportingText, { color: mutedColor }, completed && styles.completedText]}>{description}</Text>}
-        {time && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>截止时间：{time}</Text>}
+        {time && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>Due: {time}</Text>}
       </View>
     </Pressable>
   );
@@ -770,6 +852,8 @@ function ChecklistRow({ title, description, time, completed, busy, emphasized = 
 
 function CopyInsightsButton({ html, position }: { html: string; position: "top" | "bottom" }) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const theme = useTheme();
+  const colors = Colors[theme.mode];
 
   const copy = async () => {
     try {
@@ -785,23 +869,27 @@ function CopyInsightsButton({ html, position }: { html: string; position: "top" 
 
   return (
     <View style={styles.copyBlock}>
-      <AppButton
-        label={copyState === "copied" ? "Copied with formatting" : "Copy formatted insights"}
-        variant="secondary"
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Copy formatted insights"
         onPress={() => void copy()}
-      />
+        style={({ pressed }) => [styles.copyButton, { backgroundColor: colors.accentSoft }, pressed && styles.pressed]}
+      >
+        <Text style={[styles.copyIcon, { color: colors.accent }]}>⧉</Text>
+        <Text style={[styles.copyLabel, { color: colors.accent }]}>{copyState === "copied" ? "Copied" : "Copy insights"}</Text>
+      </Pressable>
       {copyState === "error" && <Text selectable style={styles.copyError}>Unable to copy. Please try again.</Text>}
     </View>
   );
 }
 
 function formatCoreInsightsAsHtml(insight: CoreNoteInsight): string {
-  const empty = "未识别到相关信息";
+  const empty = "No relevant information found.";
   const list = (items: readonly string[]) => items.length
     ? `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
     : `<p><em>${empty}</em></p>`;
   const tasks = insight.getTasks().length
-    ? `<ol>${insight.getTasks().map((task) => `<li><strong>${escapeHtml(task.title)}</strong>${optionalParagraph(task.description)}${optionalMeta("截止时间", coreTimeDisplay(task.metadata, "dueAt", task.dueAt))}${task.actionItems.length ? `<ol>${task.actionItems.map((item) => `<li>${escapeHtml(item.title)}${optionalParagraph(item.description)}${optionalMeta("截止时间", coreTimeDisplay(item.metadata, "dueAt", item.dueAt))}</li>`).join("")}</ol>` : `<p><em>未生成可执行步骤</em></p>`}</li>`).join("")}</ol>`
+    ? `<ol>${insight.getTasks().map((task) => `<li><strong>${escapeHtml(task.title)}</strong>${optionalParagraph(task.description)}${optionalMeta("Due", coreTimeDisplay(task.metadata, "dueAt", task.dueAt))}${task.actionItems.length ? `<ol>${task.actionItems.map((item) => `<li>${escapeHtml(item.title)}${optionalParagraph(item.description)}${optionalMeta("Due", coreTimeDisplay(item.metadata, "dueAt", item.dueAt))}</li>`).join("")}</ol>` : `<p><em>No actionable steps generated.</em></p>`}</li>`).join("")}</ol>`
     : `<p><em>${empty}</em></p>`;
   const reminders = insight.getCalendarIntents().filter((item) => item.kind === "reminder");
   const calendarIntents = insight.getCalendarIntents().filter((item) => item.kind === "calendar");
@@ -834,12 +922,13 @@ function coreTimeDisplay(metadata: Record<string, unknown>, field: string, norma
 
 function formatResolvedDate(value: string): string | null {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return match ? `${Number(match[1])}年${Number(match[2])}月${Number(match[3])}日` : null;
+  if (!match) return null;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
 function formatResolvedTime(value: string): string {
   const dateTime = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-  if (dateTime) return `${Number(dateTime[1])}年${Number(dateTime[2])}月${Number(dateTime[3])}日 ${dateTime[4]}:${dateTime[5]}`;
+  if (dateTime) return `${new Date(Number(dateTime[1]), Number(dateTime[2]) - 1, Number(dateTime[3])).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}, ${dateTime[4]}:${dateTime[5]}`;
   return formatResolvedDate(value) ?? value;
 }
 
@@ -860,7 +949,7 @@ function InsightSection({ title, borderColor, textColor, first = false, children
 }
 
 function InsightRow({ title, detail, time, textColor, mutedColor }: { title: string; detail?: string | null; time?: string | null; textColor: string; mutedColor: string }) {
-  return <View style={styles.structuredItem}><Text selectable style={[styles.resultItem, { color: textColor }]}>{title}</Text>{displayValue(detail) && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{detail}</Text>}{displayValue(time) && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>时间：{time}</Text>}</View>;
+  return <View style={styles.structuredItem}><Text selectable style={[styles.resultItem, { color: textColor }]}>{title}</Text>{displayValue(detail) && <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{detail}</Text>}{displayValue(time) && <Text selectable style={[styles.structuredMeta, { color: mutedColor }]}>Time: {time}</Text>}</View>;
 }
 
 function displayValue(value: string | null | undefined): value is string {
@@ -926,19 +1015,22 @@ function KnowledgeResult({
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { gap: Spacing.xl, padding: Spacing.lg },
-  header: { gap: Spacing.sm },
+  content: { gap: Spacing.lg, padding: Spacing.lg },
+  header: { gap: Spacing.md },
+  headerUtilityRow: { alignItems: "center", flexDirection: "row", gap: Spacing.md, justifyContent: "space-between" },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 36, fontWeight: "800", lineHeight: 42 },
-  metaRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.md },
+  metaRow: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
   meta: { fontSize: 13 },
-  audioBadge: {
-    alignSelf: "flex-start",
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-  },
-  audioText: { fontSize: 13, fontWeight: "700" },
+  audioPlayer: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.md, borderWidth: 1, flexDirection: "row", gap: Spacing.md, minHeight: 64, padding: Spacing.sm },
+  audioControl: { alignItems: "center", borderRadius: 20, height: 40, justifyContent: "center", width: 40 },
+  audioCopy: { flex: 1, gap: 2, minWidth: 0 },
+  audioTitle: { fontSize: 15, fontWeight: "800" },
+  audioStatus: { fontSize: 12 },
+  audioAction: { fontSize: 13, fontWeight: "800", paddingHorizontal: Spacing.xs },
+  playGlyph: { borderBottomWidth: 6, borderLeftColor: "#ffffff", borderLeftWidth: 9, borderTopWidth: 6, borderBottomColor: "transparent", borderTopColor: "transparent", height: 0, marginLeft: 2, width: 0 },
+  pauseGlyph: { flexDirection: "row", gap: 4 },
+  pauseBar: { backgroundColor: "#ffffff", borderRadius: 1, height: 14, width: 3 },
   transcript: {
     borderRadius: Radius.md,
     borderWidth: 1,
@@ -950,8 +1042,8 @@ const styles = StyleSheet.create({
   knowledgeCard: {
     borderRadius: Radius.md,
     borderWidth: 1,
-    gap: Spacing.lg,
-    padding: Spacing.lg,
+    gap: Spacing.md,
+    padding: Spacing.md,
   },
   knowledgeHeading: {
     flexDirection: "row",
@@ -992,6 +1084,22 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     gap: Spacing.sm,
   },
+  noteActionRow: { flexDirection: "row", gap: 6, justifyContent: "flex-end" },
+  noteIconAction: {
+    alignItems: "center",
+    borderCurve: "continuous",
+    borderRadius: 12,
+    height: 42,
+    justifyContent: "center",
+    width: 42,
+  },
+  noteIconSymbol: { fontSize: 23, fontWeight: "700", lineHeight: 27 },
+  sectionTabs: { borderCurve: "continuous", borderRadius: Radius.md, flexDirection: "row", gap: 4, padding: 4 },
+  sectionTab: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, flex: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: Spacing.xs },
+  sectionTabText: { fontSize: 13, fontWeight: "800" },
+  insightTabs: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+  insightTab: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, flexBasis: "30%", flexGrow: 1, justifyContent: "center", minHeight: 42, paddingHorizontal: Spacing.sm },
+  insightTabText: { fontSize: 13, fontWeight: "800", textAlign: "center" },
   modalBackdrop: { backgroundColor: "rgba(0,0,0,0.36)", flex: 1, justifyContent: "flex-end" },
   modal: { borderTopLeftRadius: Radius.lg, borderTopRightRadius: Radius.lg, gap: Spacing.md, padding: Spacing.lg },
   modalHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
@@ -1023,6 +1131,9 @@ const styles = StyleSheet.create({
   checkbox: { alignItems: "center", borderRadius: 7, borderWidth: 2, height: 24, justifyContent: "center", width: 24 },
   checkmark: { color: "#ffffff", fontSize: 16, fontWeight: "900", lineHeight: 19 },
   completedText: { textDecorationLine: "line-through" },
-  copyBlock: { gap: Spacing.xs },
+  copyBlock: { alignItems: "flex-start", gap: Spacing.xs },
+  copyButton: { alignItems: "center", borderCurve: "continuous", borderRadius: 999, flexDirection: "row", gap: Spacing.xs, minHeight: 40, paddingHorizontal: Spacing.md },
+  copyIcon: { fontSize: 19, fontWeight: "700" },
+  copyLabel: { fontSize: 14, fontWeight: "800" },
   copyError: { color: Colors.light.danger, fontSize: 13, lineHeight: 18 },
 });

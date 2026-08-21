@@ -188,24 +188,21 @@ export default function WorkspaceDetailScreen() {
         {state.status === "success" && (
           <>
             <View style={styles.header}>
-              <Text style={[styles.kicker, { color: colors.accent }]}>
-                WORKSPACE
-              </Text>
-              <Text style={[styles.title, { color: colors.text }]}>
-                {state.workspace.getName()}
-              </Text>
-              <Text style={[styles.meta, { color: colors.textMuted }]}>
-                Updated{" "}
-                {new Date(state.workspace.getUpdatedAt()).toLocaleDateString()}
-              </Text>
+              <View style={styles.headerCopy}>
+                <Text style={[styles.meta, { color: colors.textMuted }]}>Updated {new Date(state.workspace.getUpdatedAt()).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</Text>
+              </View>
               <View style={styles.actionRow}>
-                <AppButton label="Rename" variant="secondary" onPress={() => {
+                <Pressable accessibilityRole="button" accessibilityLabel="Rename workspace" onPress={() => {
                   setModalMode("rename");
                   setNoteName(state.workspace.getName());
                   setFormError(null);
                   setIsModalVisible(true);
-                }} />
-                <AppButton label="Delete" variant="destructive" onPress={confirmDeleteWorkspace} />
+                }} style={({ pressed }) => [styles.iconButton, { backgroundColor: colors.accentSoft, borderColor: colors.border }, pressed && styles.pressed]}>
+                  <Text style={[styles.editIcon, { color: colors.accent }]}>✎</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel="Delete workspace" onPress={confirmDeleteWorkspace} style={({ pressed }) => [styles.iconButton, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}>
+                  <Text style={[styles.deleteIcon, { color: colors.danger }]}>×</Text>
+                </Pressable>
               </View>
             </View>
             <View style={styles.sectionHeader}>
@@ -219,7 +216,7 @@ export default function WorkspaceDetailScreen() {
                 </Text>
               </View>
               <AppButton
-                label="New note"
+                label="＋ New note"
                 onPress={() => {
                   setModalMode("create-note");
                   setNoteName("");
@@ -383,11 +380,15 @@ export default function WorkspaceDetailScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { gap: Spacing.xl, padding: Spacing.lg },
-  header: { gap: Spacing.xs },
-  actionRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+  content: { gap: Spacing.lg, padding: Spacing.lg },
+  header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  headerCopy: { gap: Spacing.xs },
+  actionRow: { flexDirection: "row", gap: Spacing.sm },
+  iconButton: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, height: 44, justifyContent: "center", width: 44 },
+  editIcon: { fontSize: 23, fontWeight: "700" },
+  deleteIcon: { fontSize: 30, fontWeight: "400", lineHeight: 32 },
+  pressed: { opacity: 0.65 },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
-  title: { fontSize: 36, fontWeight: "800" },
   meta: { fontSize: 13 },
   sectionHeader: {
     alignItems: "center",

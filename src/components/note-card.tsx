@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
 import { formatDate } from "@/utils/format-date";
@@ -76,13 +76,13 @@ export function NoteCard({
             isPinning && styles.disabled,
           ]}
         >
-          <Text style={[styles.pin, { color: colors.accent }]}>
-            {isPinning ? "Saving..." : note.getIsPinned() ? "Unpin" : "Pin"}
+          <Text style={[styles.pinIcon, { color: colors.accent }]}>
+            {isPinning ? "…" : note.getIsPinned() ? "★" : "☆"}
           </Text>
         </Pressable>
       ) : note.getIsPinned() ? (
-        <Text style={[styles.pinBadge, styles.pin, { color: colors.accent }]}>
-          Pinned
+        <Text accessibilityLabel="Pinned note" style={[styles.pinBadge, styles.pinIcon, { color: colors.accent }]}>
+          ★
         </Text>
       ) : null}
     </View>
@@ -91,8 +91,10 @@ export function NoteCard({
 
 const styles = StyleSheet.create({
   card: {
+    borderCurve: "continuous",
     borderRadius: Radius.md,
     borderWidth: 1,
+    boxShadow: Shadows.card,
     overflow: "hidden",
     position: "relative",
   },
@@ -101,7 +103,7 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
   },
   contentWithPin: {
-    paddingRight: 84,
+    paddingRight: 58,
   },
   header: {
     alignItems: "center",
@@ -114,18 +116,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     minWidth: 0,
   },
-  pin: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
+  pinIcon: { fontSize: 22, fontWeight: "700" },
   pinButton: {
     alignItems: "center",
-    borderRadius: Radius.sm,
-    borderWidth: 1,
+    borderRadius: 18,
+    borderWidth: 0,
     justifyContent: "center",
     minHeight: 36,
-    minWidth: 56,
-    paddingHorizontal: Spacing.sm,
+    minWidth: 36,
     position: "absolute",
     right: Spacing.md,
     top: Spacing.md,

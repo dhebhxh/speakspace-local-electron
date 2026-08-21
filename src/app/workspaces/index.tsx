@@ -34,7 +34,7 @@ type WorkspaceListState =
       >;
     };
 
-export default function WorkspacesScreen() {
+export function WorkspaceListScreen({ embeddedInTab = false }: { embeddedInTab?: boolean }) {
   const router = useRouter();
   const theme = useTheme();
   const colors = Colors[theme.mode];
@@ -89,34 +89,43 @@ export default function WorkspacesScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: "Workspaces" }} />
+      {!embeddedInTab && <Stack.Screen options={{ title: "Workspaces" }} />}
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: Spacing.xxl + insets.bottom },
+          {
+            paddingBottom: Spacing.xxl + insets.bottom,
+            paddingTop: embeddedInTab ? insets.top + Spacing.md : Spacing.lg,
+          },
         ]}
       >
         <View style={styles.headingSection}>
-          <View style={styles.heading}>
-            <Text style={[styles.kicker, { color: colors.accent }]}>
-              YOUR LIBRARY
-            </Text>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Workspaces
-            </Text>
-          </View>
-          <View style={styles.headingActions}>
-            <View style={styles.headingAction}>
-              <AppButton
-                label="Search"
-                variant="secondary"
-                onPress={() => router.push("/notes/search")}
-              />
+          {embeddedInTab && (
+            <View style={styles.heading}>
+              <Text style={[styles.title, { color: colors.text }]}>Workspaces</Text>
+              <Text style={[styles.workspaceSubtitle, { color: colors.textMuted }]}>Browse and organize your saved notes.</Text>
             </View>
+          )}
+          <View style={styles.headingActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Search notes"
+              hitSlop={6}
+              onPress={() => router.push("/notes/search")}
+              style={({ pressed }) => [
+                styles.searchButton,
+                { backgroundColor: colors.accentSoft, borderColor: colors.border },
+                pressed && styles.pressed,
+              ]}
+            >
+              <View style={[styles.searchLens, { borderColor: colors.accent }]}>
+                <View style={[styles.searchHandle, { backgroundColor: colors.accent }]} />
+              </View>
+            </Pressable>
             <View style={styles.headingAction}>
               <AppButton
-                label="New workspace"
+                label="+ New workspace"
                 onPress={() => setIsModalVisible(true)}
               />
             </View>
@@ -228,15 +237,24 @@ export default function WorkspacesScreen() {
   );
 }
 
+export default function WorkspacesScreen() {
+  return <WorkspaceListScreen />;
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { gap: Spacing.xl, padding: Spacing.lg },
   headingSection: { gap: Spacing.lg },
   heading: { gap: Spacing.xs },
-  headingActions: { flexDirection: "row", gap: Spacing.sm, width: "100%" },
+  headingActions: { flexDirection: "row", gap: Spacing.sm, justifyContent: "flex-end", width: "100%" },
   headingAction: { flex: 1, minWidth: 0 },
+  searchButton: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, height: 46, justifyContent: "center", width: 46 },
+  searchLens: { borderRadius: 8, borderWidth: 2.2, height: 16, position: "relative", width: 16 },
+  searchHandle: { borderRadius: 2, bottom: -6, height: 8, position: "absolute", right: -4, transform: [{ rotate: "-45deg" }], width: 2.2 },
+  pressed: { opacity: 0.72 },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 34, fontWeight: "800" },
+  workspaceSubtitle: { fontSize: 14, lineHeight: 20 },
   list: { gap: Spacing.md },
   modalBackdrop: {
     backgroundColor: "rgba(0, 0, 0, 0.36)",

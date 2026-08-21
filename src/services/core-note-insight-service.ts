@@ -76,6 +76,10 @@ const intentSchema = {
 } as const;
 
 export class CoreNoteInsightService {
+  public getDashboardItems() {
+    return this.repository.findDashboardItems();
+  }
+
   private readonly generationStates = new Map<string, CoreInsightGenerationState>();
   private readonly activeGenerations = new Map<string, Promise<CoreNoteInsight>>();
   private readonly listeners = new Map<string, Set<(state: CoreInsightGenerationState) => void>>();

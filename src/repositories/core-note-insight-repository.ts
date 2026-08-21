@@ -15,6 +15,11 @@ type ActionRow = { id: string; task_id: string | null; position: number; title: 
 type TaskRow = { id: string; position: number; title: string; description: string | null; status: string; starts_at: string | null; due_at: string | null; completed_at: string | null; source_note_id: string; external_system: string | null; external_id: string | null; metadata_json: string };
 type CalendarRow = { id: string; kind: string; title: string; description: string | null; status: string; starts_at: string | null; ends_at: string | null; due_at: string | null; remind_at: string | null; all_day: number; timezone: string | null; source_note_id: string; external_system: string | null; external_id: string | null; metadata_json: string };
 
+export type CoreDashboardItems = {
+  tasks: { id: string; noteId: string; status: CoreInsightStatus }[];
+  calendarIntents: CoreCalendarIntent[];
+};
+
 export class CoreNoteInsightRepository {
   public constructor(private readonly databaseManager: DatabaseManager) {}
 
@@ -39,6 +44,33 @@ export class CoreNoteInsightRepository {
     } catch (error) {
       console.error("[CoreInsights] Unable to load saved insights", { noteId, error });
       throw new DatabaseError("Unable to load core note insights.", { cause: error instanceof Error ? error : undefined });
+    }
+  }
+
+  public async findDashboardItems(): Promise<CoreDashboardItems> {
+    try {
+      const database = this.databaseManager.getDatabase();
+      const [tasks, calendarRows] = await Promise.all([
+        database.getAllAsync<{ id: string; source_note_id: string; status: string }>(
+          "SELECT id, source_note_id, status FROM core_note_tasks",
+        ),
+        database.getAllAsync<CalendarRow>(
+          "SELECT * FROM core_note_calendar_intents ORDER BY starts_at, due_at, remind_at",
+        ),
+      ]);
+
+      return {
+        tasks: tasks.map((task) => ({
+          id: task.id,
+          noteId: task.source_note_id,
+          status: task.status as CoreInsightStatus,
+        })),
+        calendarIntents: calendarRows.map((item) => this.mapCalendar(item)),
+      };
+    } catch (error) {
+      throw new DatabaseError("Unable to load dashboard insights.", {
+        cause: error instanceof Error ? error : undefined,
+      });
     }
   }
 

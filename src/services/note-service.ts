@@ -20,6 +20,10 @@ export class NoteService {
     return this.noteRepository.findByWorkspaceId(workspaceId);
   }
 
+  public async getAllNotes(): Promise<Note[]> {
+    return this.noteRepository.findAll();
+  }
+
   public async getNote(id: string): Promise<Note | null> {
     return this.noteRepository.findById(id);
   }

@@ -23,15 +23,9 @@ export default function Index() {
       ]}
     >
       <View style={styles.intro}>
-        <Text style={[styles.eyebrow, { color: colors.accent }]}>
-          SPEAKSPACE
-        </Text>
-        <Text style={[styles.title, { color: colors.text }]}>
-          A calmer place for your thoughts.
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-          Start with a workspace, then keep every note close to its context.
-        </Text>
+        <Text style={[styles.eyebrow, { color: colors.accent }]}>SPEAKSPACE</Text>
+        <Text style={[styles.title, { color: colors.text }]}>A calmer place for your thoughts.</Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Start with a workspace, then keep every note close to its context.</Text>
       </View>
       <Link href="/workspaces" asChild>
         <AppButton label="Open workspaces" />
@@ -47,32 +41,10 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "space-between",
-    padding: Spacing.xl,
-  },
-  intro: {
-    gap: Spacing.md,
-    marginTop: Spacing.xxl,
-  },
-  eyebrow: {
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 1.5,
-  },
-  title: {
-    fontSize: 42,
-    fontWeight: "800",
-    lineHeight: 47,
-    maxWidth: 420,
-  },
-  subtitle: {
-    fontSize: 17,
-    lineHeight: 26,
-    maxWidth: 420,
-  },
-  button: {
-    borderRadius: Radius.md,
-  },
+  container: { flex: 1, justifyContent: "space-between", padding: Spacing.xl },
+  intro: { gap: Spacing.md, marginTop: Spacing.xxl },
+  eyebrow: { fontSize: 13, fontWeight: "800", letterSpacing: 1.5 },
+  title: { fontSize: 42, fontWeight: "800", lineHeight: 47, maxWidth: 420 },
+  subtitle: { fontSize: 17, lineHeight: 26, maxWidth: 420 },
+  button: { borderRadius: Radius.md },
 });

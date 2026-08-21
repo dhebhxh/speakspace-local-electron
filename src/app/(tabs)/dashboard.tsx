@@ -67,7 +67,6 @@ export default function DashboardScreen() {
     return {
       filteredNotes,
       pinnedCount: state.notes.filter((note) => note.getIsPinned()).length,
-      todoCount: state.tasks.length,
       pendingCount: state.tasks.filter((task) => task.status === "pending").length,
       transcriptCount: state.notes.reduce((sum, note) => sum + note.getTranscript().length, 0),
       recentTranscriptCount: recentNotes.reduce((sum, note) => sum + note.getTranscript().length, 0),
@@ -102,7 +101,7 @@ export default function DashboardScreen() {
           <StatCard label="Total notes" value={state.notes.length} detail={`+${data.recentNoteCount} in the last 7 days`} />
           <StatCard label="Pinned notes" value={data.pinnedCount} detail={filter === "pinned" ? "Show all notes" : "Quick filter"} active={filter === "pinned"} onPress={() => toggleFilter("pinned")} />
           <StatCard label="Transcript characters" value={data.transcriptCount} detail={`+${formatNumber(data.recentTranscriptCount)} in the last 7 days`} />
-          <StatCard label="To-dos" value={data.todoCount} detail={filter === "todos" ? "Show all notes" : `${data.pendingCount} unfinished · Filter`} active={filter === "todos"} onPress={() => toggleFilter("todos")} />
+          <StatCard label="To-dos" value={data.pendingCount} detail={filter === "todos" ? "Show all notes" : "Filter unfinished notes"} active={filter === "todos"} onPress={() => toggleFilter("todos")} />
         </View>
 
         <View style={styles.section}>

@@ -52,10 +52,22 @@ export class CoreNoteInsightRepository {
       const database = this.databaseManager.getDatabase();
       const [tasks, calendarRows] = await Promise.all([
         database.getAllAsync<{ id: string; source_note_id: string; status: string }>(
-          "SELECT id, source_note_id, status FROM core_note_tasks",
+          `SELECT tasks.id, tasks.source_note_id, tasks.status
+           FROM core_note_tasks AS tasks
+           INNER JOIN core_note_insights AS insights
+             ON insights.id = tasks.insight_id
+             AND insights.note_id = tasks.source_note_id
+           INNER JOIN notes ON notes.id = tasks.source_note_id
+           WHERE tasks.status IN ('pending', 'completed', 'cancelled')`,
         ),
         database.getAllAsync<CalendarRow>(
-          "SELECT * FROM core_note_calendar_intents ORDER BY starts_at, due_at, remind_at",
+          `SELECT calendar.*
+           FROM core_note_calendar_intents AS calendar
+           INNER JOIN core_note_insights AS insights
+             ON insights.id = calendar.insight_id
+             AND insights.note_id = calendar.source_note_id
+           INNER JOIN notes ON notes.id = calendar.source_note_id
+           ORDER BY calendar.starts_at, calendar.due_at, calendar.remind_at`,
         ),
       ]);
 

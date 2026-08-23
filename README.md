@@ -10,8 +10,6 @@
 
 <p align="center">
   Local-first voice notes and knowledge workspace
-  <br />
-  本地优先的语音笔记与知识工作台
 </p>
 
 <p align="center">
@@ -308,7 +306,7 @@ sequenceDiagram
     end
   end
 
-  Note over Agent: Duplicate calls are short-circuited; tools are removed on the final step
+  Note over Agent: Duplicate calls are short-circuited and tools are removed on the final step
   Agent->>History: Persist the turn and linked sources
   Agent-->>UI: Step timeline + final answer
 ```
@@ -425,6 +423,8 @@ npm start
 ## Packaging and release
 
 Windows packages use an NSIS installer. Models are downloaded on demand after installation and are not included in the installer.
+
+Installers for both macOS and Windows are available from [GitHub Releases](https://github.com/dhebhxh/speakspace-local-electron/releases).
 
 ```bash
 npm run package

@@ -308,7 +308,7 @@ sequenceDiagram
     end
   end
 
-  Note over Agent: 重复工具调用会短路；最后一步不再提供工具
+  Note over Agent: 重复工具调用会短路，最后一步不再提供工具
   Agent->>History: 保存问答与关联来源
   Agent-->>UI: 步骤时间线 + 最终答案
 ```
@@ -425,6 +425,8 @@ npm start
 ## 打包与发布
 
 Windows 使用 NSIS 安装器。模型由用户安装应用后按需下载，不进入安装包。
+
+macOS 和 Windows 安装器均可从 [GitHub Releases](https://github.com/dhebhxh/speakspace-local-electron/releases) 获取。
 
 ```bash
 npm run package

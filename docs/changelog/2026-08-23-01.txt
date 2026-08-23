@@ -1107,4 +1107,10 @@ README 保留产品 Logo、Tests、CodeQL、MIT、版本和技术栈徽章，并
 本地生成但不进入 Git：
     release/installers/4.6.0/windows-x64/
     SpeakSpace-Local-Setup-4.6.0-x64.exe
+
+README 修复：
+    删除英文版标题区残留的中文副标题
+    修复 Agent 时序图注释分号导致的 GitHub Mermaid 解析错误
+    补充 GitHub Releases 同时提供 macOS 与 Windows 安装器的说明
+    同步中文版 README 的发布说明与 Mermaid 安全写法
 ========================================================================

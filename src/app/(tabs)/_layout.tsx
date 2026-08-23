@@ -1,5 +1,11 @@
 import { Tabs } from "expo-router";
-import { SymbolView, type SFSymbol } from "expo-symbols";
+import {
+  SymbolView,
+  type AndroidSymbol,
+  type SFSymbol,
+} from "expo-symbols";
+import androidRegular from "expo-symbols/androidWeights/regular";
+import androidSemiBold from "expo-symbols/androidWeights/semiBold";
 import type { ColorValue } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -37,7 +43,11 @@ export default function TabsLayout() {
             <TabBarIcon
               color={color}
               focused={focused}
-              name="rectangle.grid.2x2"
+              name={{
+                ios: "rectangle.grid.2x2",
+                android: "dashboard",
+                web: "dashboard",
+              }}
             />
           ),
         }}
@@ -47,7 +57,11 @@ export default function TabsLayout() {
         options={{
           title: "Workspaces",
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon color={color} focused={focused} name="folder" />
+            <TabBarIcon
+              color={color}
+              focused={focused}
+              name={{ ios: "folder", android: "folder", web: "folder" }}
+            />
           ),
         }}
       />
@@ -57,7 +71,15 @@ export default function TabsLayout() {
         options={{
           title: "AI",
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon color={color} focused={focused} name="cube" />
+            <TabBarIcon
+              color={color}
+              focused={focused}
+              name={{
+                ios: "cube",
+                android: "deployed_code",
+                web: "deployed_code",
+              }}
+            />
           ),
         }}
       />
@@ -72,7 +94,7 @@ function TabBarIcon({
 }: {
   color: ColorValue;
   focused: boolean;
-  name: SFSymbol;
+  name: { ios: SFSymbol; android: AndroidSymbol; web: AndroidSymbol };
 }) {
   return (
     <SymbolView
@@ -80,7 +102,10 @@ function TabBarIcon({
       resizeMode="scaleAspectFit"
       size={22}
       tintColor={color}
-      weight={focused ? "semibold" : "regular"}
+      weight={{
+        ios: focused ? "semibold" : "regular",
+        android: focused ? androidSemiBold : androidRegular,
+      }}
     />
   );
 }

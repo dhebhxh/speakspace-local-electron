@@ -4,13 +4,17 @@ import test from "node:test";
 
 const sourcePath = new URL("../src/app/(tabs)/_layout.tsx", import.meta.url);
 
-test("bottom tabs use the requested dashboard, folder, and cube icons", async () => {
+test("bottom tabs map the requested icons on iOS, Android, and web", async () => {
   const source = await readFile(sourcePath, "utf8");
 
-  assert.match(source, /name="rectangle\.grid\.2x2"/);
-  assert.match(source, /name="folder"/);
-  assert.match(source, /name="cube"/);
-  assert.match(source, /import \{ SymbolView/);
+  assert.match(source, /ios: "rectangle\.grid\.2x2"/);
+  assert.match(source, /android: "dashboard"/);
+  assert.match(source, /ios: "folder", android: "folder", web: "folder"/);
+  assert.match(source, /ios: "cube"/);
+  assert.match(source, /android: "deployed_code"/);
+  assert.match(source, /import \{\s*SymbolView/);
+  assert.match(source, /expo-symbols\/androidWeights\/regular/);
+  assert.match(source, /expo-symbols\/androidWeights\/semiBold/);
 });
 
 test("bottom tabs stay above the iPhone home indicator", async () => {

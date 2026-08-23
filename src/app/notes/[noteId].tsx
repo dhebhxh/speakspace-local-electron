@@ -22,6 +22,7 @@ import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
+import { SpeechPlaybackButton } from "@/components/speech-playback-button";
 import {
   KNOWLEDGE_SCENARIO_DEFINITIONS,
   getKnowledgeScenarioDefinition,
@@ -656,6 +657,11 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor, accent
   return (
     <View style={styles.document}>
       <CopyInsightsButton html={formattedHtml} position="top" />
+      <SpeechPlaybackButton
+        speechId={`structured-note:${insight.getId()}:${insight.getUpdatedAt()}`}
+        label="Structured Note"
+        text={formatCoreInsightsAsSpeech(insight)}
+      />
       <InsightTabs activeSection={activeSection} onChange={setActiveSection} accentColor={accentColor} borderColor={borderColor} mutedColor={mutedColor} surfaceMutedColor={surfaceMutedColor} />
       {activeSection === "summary" && <InsightSection title="Summary" borderColor={borderColor} textColor={textColor} first>
         <Text selectable style={[styles.body, { color: insight.getSummary() ? textColor : mutedColor }]}>{insight.getSummary() || empty}</Text>
@@ -900,6 +906,23 @@ function formatCoreInsightsAsHtml(insight: CoreNoteInsight): string {
   return `<article><h1>Structured Note</h1><h2>Summary</h2><p>${escapeHtml(insight.getSummary() || empty)}</p><h2>Key Points</h2>${list(insight.getKeyPoints())}<h2>Tasks &amp; Action Plan</h2>${tasks}<h2>Reminders</h2>${timedList(reminders, (item) => coreTimeDisplay(item.metadata, item.remindAt ? "remindAt" : item.dueAt ? "dueAt" : "startsAt", item.remindAt ?? item.dueAt ?? item.startsAt))}<h2>Calendar Intents</h2>${timedList(calendarIntents, (item) => coreTimeDisplay(item.metadata, "startsAt", item.startsAt))}<hr><p><small>Generated locally · ${escapeHtml(formatDate(insight.getUpdatedAt()))}</small></p></article>`;
 }
 
+function formatCoreInsightsAsSpeech(insight: CoreNoteInsight): string {
+  const parts = ["Structured Note."];
+  if (insight.getSummary()) parts.push(`Summary. ${insight.getSummary()}`);
+  if (insight.getKeyPoints().length) parts.push(`Key points. ${insight.getKeyPoints().join(". ")}`);
+  if (insight.getTasks().length) {
+    parts.push(`Tasks. ${insight.getTasks().map((task) => {
+      const steps = task.actionItems.length ? ` Steps. ${task.actionItems.map((item) => item.title).join(". ")}` : "";
+      return `${task.title}.${steps}`;
+    }).join(" ")}`);
+  }
+  const reminders = insight.getCalendarIntents().filter((item) => item.kind === "reminder");
+  if (reminders.length) parts.push(`Reminders. ${reminders.map((item) => item.title).join(". ")}`);
+  const calendar = insight.getCalendarIntents().filter((item) => item.kind === "calendar");
+  if (calendar.length) parts.push(`Calendar. ${calendar.map((item) => item.title).join(". ")}`);
+  return parts.join(" ");
+}
+
 function coreTimeDisplay(metadata: Record<string, unknown>, field: string, normalized: string | null): string | null {
   const expressions = metadata.timeExpressions;
   if (expressions && typeof expressions === "object" && !Array.isArray(expressions)) {
@@ -976,6 +999,14 @@ function KnowledgeResult({
   const visibleSections = document.getSections().filter((section) => section.items.length > 0 && !coreInsightSectionKeys.has(section.key));
   return (
     <View style={styles.document}>
+      <SpeechPlaybackButton
+        speechId={`knowledge:${document.getId()}:${document.getUpdatedAt()}`}
+        label="Knowledge document"
+        text={[
+          document.getSummary(),
+          ...visibleSections.flatMap((section) => [section.title, ...section.items]),
+        ].filter(Boolean).join(". ")}
+      />
       {visibleSections.length === 0 && (
         <Text selectable style={[styles.emptyInsight, { color: mutedColor }]}>No supported scenario-specific information was found in this note.</Text>
       )}

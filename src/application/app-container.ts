@@ -20,6 +20,7 @@ import { KnowledgeService } from "@/services/knowledge-service";
 import { CoreNoteInsightRepository } from "@/repositories/core-note-insight-repository";
 import { CoreNoteInsightService } from "@/services/core-note-insight-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { SpeechPlaybackService } from "@/services/speech-playback-service";
 
 export class AppContainer {
   public readonly workspaceService: WorkspaceService;
@@ -32,6 +33,7 @@ export class AppContainer {
   public readonly coreNoteInsightService: CoreNoteInsightService;
   public readonly aiConversationService: AiConversationService;
   public readonly llmInferenceService: LlmInferenceService;
+  public readonly speechPlaybackService: SpeechPlaybackService;
 
   public constructor(databaseManager: DatabaseManager) {
     const workspaceRepository = new WorkspaceRepository(databaseManager);
@@ -55,7 +57,8 @@ export class AppContainer {
     this.coreNoteInsightService = new CoreNoteInsightService(coreNoteInsightRepository, this.llmModelService, localLlmCoordinator);
     this.sttModelService = new SttModelService(sttModelRepository);
     this.ttsModelService = new TtsModelService(ttsModelRepository);
-    this.transcriptionService = new TranscriptionService(this.sttModelService);
+    this.speechPlaybackService = new SpeechPlaybackService(this.ttsModelService, localLlmCoordinator);
+    this.transcriptionService = new TranscriptionService(this.sttModelService, localLlmCoordinator);
     this.aiConversationService = new AiConversationService(
       aiConversationRepository,
       aiMessageRepository,

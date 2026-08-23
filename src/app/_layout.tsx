@@ -1,15 +1,39 @@
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
+import { AppState } from "react-native";
 
 import { FloatingAskAiButton } from "@/components/floating-ask-ai-button";
+import { appContainer } from "@/application";
 import { Colors } from "@/constants/theme";
 import { databaseConfig, initializeDatabase } from "@/database";
 import { useTheme } from "@/hooks/use-theme";
+import { ThemeProvider } from "@/providers/theme-provider";
+
+void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <ThemedRootLayout />
+    </ThemeProvider>
+  );
+}
+
+function ThemedRootLayout() {
   const theme = useTheme();
   const colors = Colors[theme.mode];
+
+  useEffect(() => {
+    appContainer.speechPlaybackService.initialize();
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active") appContainer.speechPlaybackService.pauseForBackground();
+    });
+    void SplashScreen.hideAsync();
+    return () => subscription.remove();
+  }, []);
 
   return (
     <SQLiteProvider

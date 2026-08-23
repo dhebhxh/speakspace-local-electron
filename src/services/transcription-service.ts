@@ -26,6 +26,7 @@ import {
 import { MAX_IMPORTED_AUDIO_BYTES } from "@/domain/audio-import/audio-import";
 import { SttModelService } from "@/services/stt-model-service";
 import { ensureStorageAvailable } from "@/services/storage-safety-service";
+import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 
 export const RECORDINGS_DIRECTORY_NAME = "recordings";
 export const MAX_AUDIO_DURATION_SECONDS = 2 * 60 * 60;
@@ -151,13 +152,28 @@ export class TranscriptionService {
   private accumulatedRecordingMs = 0;
   private durationWarningDelivered = false;
   private sessionCallbacks: SessionCallbacks | null = null;
+  private releaseInferenceSlot: (() => void) | null = null;
+  private starting = false;
 
-  public constructor(private readonly sttModelService: SttModelService) {}
+  public constructor(
+    private readonly sttModelService: SttModelService,
+    private readonly coordinator: LocalLlmCoordinator,
+  ) {}
 
   public async start(callbacks: SessionCallbacks): Promise<void> {
-    if (this.transcriber !== null) {
+    if (this.starting || this.transcriber !== null || this.releaseInferenceSlot !== null) {
       throw new Error("A transcription session is already active.");
     }
+
+    this.starting = true;
+    try {
+      await this.startExclusive(callbacks);
+    } finally {
+      this.starting = false;
+    }
+  }
+
+  private async startExclusive(callbacks: SessionCallbacks): Promise<void> {
 
     const model = await this.sttModelService.getActiveModel();
     if (model === null) {
@@ -175,6 +191,7 @@ export class TranscriptionService {
 
     const recordings = new Directory(Paths.document, RECORDINGS_DIRECTORY_NAME);
     recordings.create({ idempotent: true, intermediates: true });
+    this.releaseInferenceSlot = await this.coordinator.acquire("transcription");
     const fileName = `recording-${Date.now()}.wav`;
     const recording = new File(recordings, fileName);
     this.recordingRelativePath = `${RECORDINGS_DIRECTORY_NAME}/${fileName}`;
@@ -283,10 +300,20 @@ export class TranscriptionService {
     await this.release(true);
   }
 
-  public async transcribeFile(
+  public transcribeFile(
     inputUri: string,
     callbacks: ImportedAudioCallbacks,
     requestId = `audio-import-${Date.now()}`,
+  ): Promise<string> {
+    return this.coordinator.runExclusive("transcription", () =>
+      this.transcribeFileExclusive(inputUri, callbacks, requestId),
+    );
+  }
+
+  private async transcribeFileExclusive(
+    inputUri: string,
+    callbacks: ImportedAudioCallbacks,
+    requestId: string,
   ): Promise<string> {
     const startedAt = Date.now();
     console.info("[AudioImport] Local transcription service started", { requestId });
@@ -544,9 +571,11 @@ export class TranscriptionService {
     const recordingPath = this.recordingRelativePath;
     const transcriber = this.transcriber;
     const context = this.context;
+    const releaseInferenceSlot = this.releaseInferenceSlot;
     this.transcriber = null;
     this.audioStream = null;
     this.context = null;
+    this.releaseInferenceSlot = null;
     this.recordingRelativePath = null;
     this.paused = false;
     this.captureActiveRecordingDuration();
@@ -561,6 +590,7 @@ export class TranscriptionService {
 
     await transcriber?.release().catch(() => undefined);
     await context?.release().catch(() => undefined);
+    releaseInferenceSlot?.();
     if (deleteRecording && recordingPath !== null) {
       const file = new File(Paths.document, ...recordingPath.split("/"));
       if (file.exists) file.delete();

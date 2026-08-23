@@ -14,6 +14,7 @@ import { TtsModel } from "@/domain/tts-model/tts-model";
 import { TtsModelNotFoundError } from "@/errors/tts-model-not-found-error";
 import { ValidationError } from "@/errors/validation-error";
 import { TtsModelRepository } from "@/repositories/tts-model-repository";
+import { resolveDocumentPath, toDocumentRelativePath } from "@/services/sandbox-document-path";
 import { ensureStorageAvailable } from "@/services/storage-safety-service";
 
 export type TtsModelDownloadProgress = {
@@ -154,7 +155,7 @@ export class TtsModelService {
     }
     const now = new Date().toISOString();
     const model = new TtsModel(entry.id, "sherpa-onnx", entry.name, entry.modelType,
-      entry.languages.join(", "), result.localPath, entry.sizeBytes, false, now, now, now);
+      entry.languages.join(", "), toDocumentRelativePath(result.localPath), entry.sizeBytes, false, now, now, now);
     try { await this.repository.create(model); }
     catch (error) { await deleteModelByCategory(ModelCategory.Tts, entry.id); throw error; }
     return model;
@@ -166,7 +167,7 @@ export class TtsModelService {
 
   public async setActiveModel(id: string): Promise<void> {
     const model = await this.getInstalledOrThrow(id);
-    const detection = await detectTtsModel({ type: "file", path: model.getFilePath() });
+    const detection = await detectTtsModel({ type: "file", path: this.resolveModelPath(model) });
     if (!detection.success) throw new ValidationError(detection.error ?? "This TTS model cannot be loaded.");
     model.activate();
     await this.repository.activateExclusively(model);
@@ -177,6 +178,10 @@ export class TtsModelService {
     if (model.getIsActive()) throw new ValidationError("This model is currently in use and cannot be uninstalled.");
     await deleteModelByCategory(ModelCategory.Tts, id);
     await this.repository.delete(id);
+  }
+
+  public resolveModelPath(model: TtsModel): string {
+    return resolveDocumentPath(model.getFilePath(), Paths.document.uri);
   }
 
   private getCatalogEntry(id: string): TtsModelCatalogEntry {

@@ -8,7 +8,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "speakspacelocalmobile",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
       "supportsTablet": false,
@@ -46,7 +46,11 @@
         {
           "backgroundColor": "#F3F7F5",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 76,
+          "dark": {
+            "backgroundColor": "#0B1714",
+            "image": "./assets/images/splash-icon.png"
+          }
         }
       ],
       "expo-sqlite",

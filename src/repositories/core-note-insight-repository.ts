@@ -8,6 +8,7 @@ import {
   type CoreTask,
 } from "@/domain/core-note-insight/core-note-insight";
 import { DatabaseError } from "@/errors/database-error";
+import { coreTaskIdentity } from "@/services/core-task-identity";
 
 type InsightRow = { id: string; note_id: string; summary: string; model_id: string; created_at: string; updated_at: string };
 type KeyPointRow = { content: string };
@@ -16,7 +17,7 @@ type TaskRow = { id: string; position: number; title: string; description: strin
 type CalendarRow = { id: string; kind: string; title: string; description: string | null; status: string; starts_at: string | null; ends_at: string | null; due_at: string | null; remind_at: string | null; all_day: number; timezone: string | null; source_note_id: string; external_system: string | null; external_id: string | null; metadata_json: string };
 
 export type CoreDashboardItems = {
-  tasks: { id: string; noteId: string; status: CoreInsightStatus }[];
+  tasks: CoreTask[];
   calendarIntents: CoreCalendarIntent[];
 };
 
@@ -51,14 +52,15 @@ export class CoreNoteInsightRepository {
     try {
       const database = this.databaseManager.getDatabase();
       const [tasks, calendarRows] = await Promise.all([
-        database.getAllAsync<{ id: string; source_note_id: string; status: string }>(
-          `SELECT tasks.id, tasks.source_note_id, tasks.status
+        database.getAllAsync<TaskRow>(
+          `SELECT tasks.*
            FROM core_note_tasks AS tasks
            INNER JOIN core_note_insights AS insights
              ON insights.id = tasks.insight_id
              AND insights.note_id = tasks.source_note_id
            INNER JOIN notes ON notes.id = tasks.source_note_id
-           WHERE tasks.status IN ('pending', 'completed', 'cancelled')`,
+           WHERE tasks.status IN ('pending', 'completed', 'cancelled')
+           ORDER BY COALESCE(tasks.due_at, tasks.starts_at), tasks.position`,
         ),
         database.getAllAsync<CalendarRow>(
           `SELECT calendar.*
@@ -72,11 +74,7 @@ export class CoreNoteInsightRepository {
       ]);
 
       return {
-        tasks: tasks.map((task) => ({
-          id: task.id,
-          noteId: task.source_note_id,
-          status: task.status as CoreInsightStatus,
-        })),
+        tasks: tasks.map((task) => this.mapTask(task, [])),
         calendarIntents: calendarRows.map((item) => this.mapCalendar(item)),
       };
     } catch (error) {
@@ -90,6 +88,20 @@ export class CoreNoteInsightRepository {
     try {
       await this.databaseManager.getDatabase().withExclusiveTransactionAsync(async (database) => {
         const existing = await database.getFirstAsync<{ id: string }>("SELECT id FROM core_note_insights WHERE note_id = ?", insight.getNoteId());
+        const previousCompletedByIdentity = new Map<string, string[]>();
+        if (existing) {
+          const previousTasks = await database.getAllAsync<TaskRow>(
+            "SELECT * FROM core_note_tasks WHERE insight_id = ? AND status = 'completed' ORDER BY position",
+            existing.id,
+          );
+          for (const task of previousTasks) {
+            const identity = coreTaskIdentity(task.title, task.due_at, task.starts_at);
+            previousCompletedByIdentity.set(identity, [
+              ...(previousCompletedByIdentity.get(identity) ?? []),
+              task.completed_at ?? new Date().toISOString(),
+            ]);
+          }
+        }
         if (existing) await database.runAsync("DELETE FROM core_note_insights WHERE id = ?", existing.id);
         await database.runAsync(
           "INSERT INTO core_note_insights (id, note_id, summary, model_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -99,10 +111,16 @@ export class CoreNoteInsightRepository {
           await database.runAsync("INSERT INTO core_note_key_points (id, insight_id, position, content) VALUES (?, ?, ?, ?)", `${insight.getId()}-key-${position}`, insight.getId(), position, keyPoint);
         }
         for (const [position, task] of insight.getTasks().entries()) {
+          const previousCompletedAt = previousCompletedByIdentity
+            .get(coreTaskIdentity(task.title, task.dueAt, task.startsAt))
+            ?.shift() ?? null;
           await database.runAsync(
             `INSERT INTO core_note_tasks (id, insight_id, position, title, description, status, starts_at, due_at, completed_at, source_note_id, external_system, external_id, metadata_json)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            task.id, insight.getId(), position, task.title, task.description, task.status, task.startsAt, task.dueAt, task.completedAt, task.sourceNoteId, task.externalSystem, task.externalId, JSON.stringify(task.metadata),
+            task.id, insight.getId(), position, task.title, task.description,
+            previousCompletedAt ? "completed" : task.status,
+            task.startsAt, task.dueAt, previousCompletedAt ?? task.completedAt,
+            task.sourceNoteId, task.externalSystem, task.externalId, JSON.stringify(task.metadata),
           );
         }
         for (const item of insight.getActionItems()) {

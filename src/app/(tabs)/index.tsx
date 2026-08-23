@@ -10,15 +10,16 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 import { NoteCard } from "@/components/note-card";
+import { HomeTaskList } from "@/components/home-task-list";
 import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme";
-import type { CoreCalendarIntent, CoreInsightStatus } from "@/domain/core-note-insight/core-note-insight";
+import type { CoreCalendarIntent, CoreTask } from "@/domain/core-note-insight/core-note-insight";
 import type { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
 
 type OverviewState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "success"; notes: Note[]; tasks: { id: string; noteId: string; status: CoreInsightStatus }[]; calendarIntents: CoreCalendarIntent[]; loadedAt: number };
+  | { status: "success"; notes: Note[]; tasks: CoreTask[]; calendarIntents: CoreCalendarIntent[]; loadedAt: number };
 type NoteFilter = "all" | "pinned" | "todos";
 
 function toDateKey(value: string | null): string | null {
@@ -57,7 +58,7 @@ export default function HomeScreen() {
     if (overview.status !== "success") return null;
     const weekAgo = overview.loadedAt - 7 * 24 * 60 * 60 * 1000;
     const recentNotes = overview.notes.filter((note) => new Date(note.getCreatedAt()).getTime() >= weekAgo);
-    const pendingNoteIds = new Set(overview.tasks.filter((task) => task.status === "pending").map((task) => task.noteId));
+    const pendingNoteIds = new Set(overview.tasks.filter((task) => task.status === "pending").map((task) => task.sourceNoteId));
     const filteredNotes = overview.notes.filter((note) => noteFilter === "pinned" ? note.getIsPinned() : noteFilter === "todos" ? pendingNoteIds.has(note.getId()) : true);
     const calendarByDate = new Map<string, CoreCalendarIntent[]>();
     for (const intent of overview.calendarIntents) {
@@ -141,6 +142,14 @@ export default function HomeScreen() {
             <HomeStatCard label="Characters" value={overviewData.transcriptCount} detail={`+${formatNumber(overviewData.recentTranscriptCount)} this week`} />
             <HomeStatCard label="Open tasks" value={overviewData.pendingCount} detail={noteFilter === "todos" ? "Show all notes" : "Filter unfinished notes"} active={noteFilter === "todos"} onPress={() => toggleNoteFilter("todos")} />
           </View>
+          <HomeTaskList
+            tasks={overview.tasks}
+            onOpenNote={(noteId) => router.push({ pathname: "/notes/[noteId]", params: { noteId } })}
+            onTaskCompletedChange={async (task, completed) => {
+              await appContainer.coreNoteInsightService.setTaskCompleted(task.sourceNoteId, task.id, completed);
+              await loadOverview();
+            }}
+          />
           <View style={styles.notesSection}>
             <View style={styles.notesHeading}>
               <Text style={[styles.calendarTitle, { color: colors.text }]}>Notes</Text>

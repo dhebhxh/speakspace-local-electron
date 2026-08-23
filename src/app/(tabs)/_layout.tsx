@@ -65,7 +65,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="dashboard" options={{ href: null }} />
       <Tabs.Screen
         name="ai"
         options={{
@@ -79,6 +78,19 @@ export default function TabsLayout() {
                 android: "deployed_code",
                 web: "deployed_code",
               }}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon
+              color={color}
+              focused={focused}
+              name={{ ios: "gearshape", android: "settings", web: "settings" }}
             />
           ),
         }}

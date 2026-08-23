@@ -23,6 +23,7 @@ import { AppButton } from "@/components/app-button";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
+import { SpeechPlaybackButton } from "@/components/speech-playback-button";
 import {
   NO_ACTIVE_LLM_ERROR,
   TRANSCRIPT_TOO_LONG_ERROR,
@@ -678,6 +679,13 @@ export default function AskAiScreen() {
                     >
                       {message.getContent()}
                     </Text>
+                    {message.getRole() === "assistant" && (
+                      <SpeechPlaybackButton
+                        speechId={`ask-ai:${message.getId()}`}
+                        label="AI answer"
+                        text={message.getContent()}
+                      />
+                    )}
                   </View>
                 ))}
                 {streamingText.length > 0 && (

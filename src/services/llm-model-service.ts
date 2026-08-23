@@ -12,6 +12,7 @@ import { LlmModelNotFoundError } from "@/errors/llm-model-not-found-error";
 import { ValidationError } from "@/errors/validation-error";
 import { LlmModelRepository } from "@/repositories/llm-model-repository";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { ensureStorageAvailable } from "@/services/storage-safety-service";
 
 export type LlmModelDownloadProgress = {
   bytesWritten: number;
@@ -71,6 +72,8 @@ export class LlmModelService {
       return activeDownload.promise;
     }
 
+    ensureStorageAvailable(catalogEntry.sizeBytes, "download this language model");
+
     const destinationFile = new File(
       Paths.document,
       LLM_MODELS_DIRECTORY_NAME,
@@ -82,6 +85,7 @@ export class LlmModelService {
     const listeners = new Set<(progress: LlmModelDownloadProgress) => void>();
     if (onProgress !== undefined) listeners.add(onProgress);
     const task = File.createDownloadTask(catalogEntry.downloadUrl, destinationFile, {
+      sessionType: "foreground",
       onProgress: (data) => {
         state.progress = {
           bytesWritten: data.bytesWritten,

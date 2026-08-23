@@ -1,4 +1,4 @@
-export type SttModelEngine = "parakeet";
+export type SttModelEngine = "parakeet" | "whisper";
 
 export class SttModel {
   private readonly id: string;

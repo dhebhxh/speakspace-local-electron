@@ -24,6 +24,7 @@ class AudioConverterModule : Module() {
       if (!input.isFile || !input.canRead()) {
         throw IllegalArgumentException("The selected audio file cannot be read.")
       }
+      ensureDurationWithinLimit(input.absolutePath)
       if (isCompatibleWav(input)) {
         return@AsyncFunction mapOf("uri" to inputUri, "temporary" to false)
       }
@@ -56,6 +57,7 @@ class AudioConverterModule : Module() {
         var channels = -1
         var sampleRate = -1
         var bits = -1
+        var dataSize = -1L
         while (wav.filePointer + 8 <= wav.length()) {
           val id = readAscii(wav, 4)
           val size = readLittleInt(wav).toLong() and 0xffffffffL
@@ -68,12 +70,40 @@ class AudioConverterModule : Module() {
             wav.skipBytes(6)
             bits = readLittleShort(wav)
           }
+          if (id == "data") dataSize = size
           wav.seek(next)
         }
-        format == 1 && channels == 1 && sampleRate == TARGET_SAMPLE_RATE && bits == 16
+        val compatible = format == 1 && channels == 1 &&
+          sampleRate == TARGET_SAMPLE_RATE && bits == 16
+        if (compatible && dataSize > MAX_OUTPUT_SAMPLES * 2) {
+          throw AudioDurationLimitException()
+        }
+        compatible
       }
+    } catch (error: AudioDurationLimitException) {
+      throw error
     } catch (_: Throwable) {
       false
+    }
+  }
+
+  private fun ensureDurationWithinLimit(inputPath: String) {
+    val extractor = MediaExtractor()
+    try {
+      extractor.setDataSource(inputPath)
+      val audioFormat = (0 until extractor.trackCount)
+        .map { extractor.getTrackFormat(it) }
+        .firstOrNull {
+          it.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
+        } ?: throw IllegalArgumentException(
+          "No readable audio track was found in this file.",
+        )
+      if (audioFormat.containsKey(MediaFormat.KEY_DURATION)) {
+        val durationUs = audioFormat.getLong(MediaFormat.KEY_DURATION)
+        if (durationUs > MAX_DURATION_US) throw AudioDurationLimitException()
+      }
+    } finally {
+      extractor.release()
     }
   }
 
@@ -215,6 +245,9 @@ class AudioConverterModule : Module() {
     }
 
     fun writeSample(sample: Float) {
+      if (sampleCount >= MAX_OUTPUT_SAMPLES) {
+        throw AudioDurationLimitException()
+      }
       val value = (sample.coerceIn(-1f, 1f) * 32767f).roundToInt().toShort()
       output.write(value.toInt() and 0xff)
       output.write(value.toInt().ushr(8) and 0xff)
@@ -252,5 +285,11 @@ class AudioConverterModule : Module() {
   companion object {
     private const val TARGET_SAMPLE_RATE = 16_000
     private const val TIMEOUT_US = 10_000L
+    private const val MAX_DURATION_SECONDS = 2L * 60L * 60L
+    private const val MAX_DURATION_US = MAX_DURATION_SECONDS * 1_000_000L
+    private const val MAX_OUTPUT_SAMPLES = MAX_DURATION_SECONDS * TARGET_SAMPLE_RATE
   }
+
+  private class AudioDurationLimitException :
+    IllegalArgumentException("Audio files must be no longer than two hours.")
 }

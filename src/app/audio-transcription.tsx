@@ -1,4 +1,5 @@
 import * as DocumentPicker from "expo-document-picker";
+import { File } from "expo-file-system";
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -18,6 +19,7 @@ import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import type { Workspace } from "@/domain/workspace/workspace";
+import { validateImportedAudio } from "@/domain/audio-import/audio-import";
 import { useTheme } from "@/hooks/use-theme";
 import { formatBytes } from "@/utils/format-bytes";
 
@@ -75,12 +77,20 @@ export default function AudioTranscriptionScreen() {
         return;
       }
       const asset = result.assets[0];
+      const selectedFile = new File(asset.uri);
+      const sizeBytes = asset.size ?? selectedFile.size;
       console.info("[AudioImport] Audio selected", {
         fileName: asset.name,
-        sizeBytes: asset.size ?? null,
+        sizeBytes,
         mimeType: asset.mimeType ?? null,
       });
-      replaceSelection({ uri: asset.uri, name: asset.name, size: asset.size ?? 0 });
+      const validationError = validateImportedAudio(asset.name, sizeBytes);
+      if (validationError !== null) {
+        transcriptionService.deleteTemporaryImport(asset.uri);
+        setError(validationError);
+        return;
+      }
+      replaceSelection({ uri: asset.uri, name: asset.name, size: sizeBytes });
       setTranscript("");
       setStatus("selected");
     } catch (caught) {
@@ -135,6 +145,13 @@ export default function AudioTranscriptionScreen() {
         setError("No speech recognition model is active. Activate a model in AI first.");
       } else if (detail.includes("missing")) {
         setError("The active speech recognition model is unavailable. Please download or activate it again.");
+      } else if (
+        detail.includes("two hours") ||
+        detail.includes("2 GB") ||
+        detail.includes("free storage") ||
+        detail.includes("Not enough free storage")
+      ) {
+        setError(detail);
       } else if (phase === "preparing") {
         setError("This audio could not be prepared. The file may be damaged or use an unsupported codec.");
       } else {
@@ -227,7 +244,7 @@ export default function AudioTranscriptionScreen() {
         {selected === null ? (
           <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.cardTitle, { color: colors.text }]}>Choose an audio file</Text>
-            <Text style={{ color: colors.textMuted, lineHeight: 22 }}>MP3, M4A, AAC, WAV, FLAC, OGG and other device-supported audio formats.</Text>
+            <Text style={{ color: colors.textMuted, lineHeight: 22 }}>WAV, MP3, M4A, AAC, or FLAC; up to two hours and 2 GB.</Text>
             <AppButton label="Choose audio" onPress={() => void chooseAudio()} />
           </View>
         ) : (

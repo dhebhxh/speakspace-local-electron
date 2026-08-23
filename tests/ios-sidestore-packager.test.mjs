@@ -27,6 +27,7 @@ test("SideStore packager creates a checksummed IPA without signing assets", asyn
 });
 
 test("team config supports a per-developer iOS bundle identifier", async () => {
+  const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
   const appJson = JSON.parse(
     await readFile(new URL("../app.json", import.meta.url), "utf8"),
   );
@@ -39,7 +40,9 @@ test("team config supports a per-developer iOS bundle identifier", async () => {
     appJson.expo.ios.bundleIdentifier,
     "com.dhebhxh.speakspacelocalmobile",
   );
-  assert.equal(appJson.expo.ios.buildNumber, "1");
+  assert.equal(packageJson.version, "1.1.0");
+  assert.equal(appJson.expo.version, packageJson.version);
+  assert.equal(appJson.expo.ios.buildNumber, "2");
   assert.match(dynamicConfig, /process\.env\.IOS_BUNDLE_IDENTIFIER/);
   assert.doesNotMatch(dynamicConfig, /DEVELOPMENT_TEAM|PROVISIONING_PROFILE/);
 });

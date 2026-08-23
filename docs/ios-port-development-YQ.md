@@ -364,6 +364,18 @@ TTS 模型页面原本只有下载、激活和模型检测，没有生成音频�
 > - Method: XCUITest 真实触控与状态断言；测试后重新复制手机 Documents 并执行表计数、前缀残留查询和 SQLite integrity check
 > - Confidence: High；结论覆盖本轮三个功能，不替代 `docs/ios-device-acceptance.md` 中尚未逐项填写的完整 STT、长时录音和 Windows SideStore 验收矩阵
 
+### 9.7 iOS v1.1.0 稳定版封版
+
+本轮功能验收完成后，把应用版本提升为 `1.1.0`、iOS build number 提升为 `2`，并以团队中性 Bundle ID 重新执行 Expo prebuild、CocoaPods 安装和完整 iPhoneOS Release 编译。公开 IPA 使用 `CODE_SIGNING_ALLOWED=NO` 生成中性 `.app`，随后由项目打包器去除所有残余签名材料；真机验收另用个人 Team 对同一源码生成签名 Release，避免在公开制品中写入个人 Team ID。
+
+干净安装依赖时发现 `llama.rn` 的原生制品下载脚本被 `--ignore-scripts` 跳过，导致 Pods 工程找不到 `rnllama/rn-llama.h`。恢复该包声明的 postinstall 后，下载内容按包内清单 SHA-256 `ae9a37ae15a9e8d6ef0330f4afa3d8199af3590f7ecf371bfe48b35fd946c4ae` 验证，再重新生成 Pods，原始构建错误不再复现。此次修复不修改应用业务代码或 `llama.rn` 版本。
+
+发布资产为 `SpeakSpace-iOS-v1.1.0.ipa`，大小 33,759,216 bytes，SHA-256 为 `565b3893b0681fe80c54e2fc9e877424c99c93591c3890f82ad21cf7dc060df8`。包内版本为 `1.1.0 (2)`，最低 iOS 16.4，设备族仅 iPhone，可执行文件仅 arm64，包含 4,334,861-byte 的离线 JavaScript bundle，不包含 `_CodeSignature`、`embedded.mobileprovision`、其他 provisioning profile 或 `__MACOSX` 元数据。
+
+发布前还把 React Native 锁定的 Metro `0.84.4` 补丁更新为同系列 `0.84.5`，消除了 `image-size` 带来的 4 个 high severity 构建链公告；没有执行会降级 Expo 的 `npm audit fix --force`。旧 `ios-v1.0.0` Release 保留为回滚包，最新版使用独立的 `ios-v1.1.0` 标签和资产，避免覆盖已发布制品。
+
+封版真机复核使用连接的 iPhone 16 Pro Max（iOS 27.0）：个人签名 Release 通过 `verify-ios-release --require-signed` 和 `codesign --verify --deep --strict`，随后以相同 Bundle ID 覆盖安装。设备应用清单显示版本 `1.1.0`、build `2`，`devicectl` 冷启动成功，复查时新进程仍在运行；未卸载应用，也未主动清除已有容器数据。功能批次在版本封板前已经完成主题、Task、TTS 合成及暂停/续播的 XCUITest 真机验收，本次复核用于确认最终版本元数据、签名产物、安装和脱离 Metro 启动链路。
+
 ## 十、参考资料
 
 - Expo SDK 57 app config：<https://docs.expo.dev/versions/v57.0.0/config/app/>

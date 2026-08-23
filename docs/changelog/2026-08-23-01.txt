@@ -733,23 +733,29 @@ NotSigned。首次安装可能看到 Windows SmartScreen「未知发布者」，
 ========================================================================
 
 ------------------------------------------------------------------------
-27. 【文档】删除 Electron React Boilerplate 模板内容
+27. 【文档】整合产品说明与 Electron 工程文档
 ------------------------------------------------------------------------
 
 发现：
-  根 README 仍是上游 Electron React Boilerplate 的 Banner、Discord、
-  OpenCollective、赞助商和 clone 教程；根 CHANGELOG 也是上游 0.x–2.x
-  历史，与 SpeakSpace Local 无关。
+  根 README 原本完全沿用上游 Electron React Boilerplate 模板，其中包含
+  Banner、Discord、OpenCollective 和赞助商内容，但它同时承载了有价值的
+  Electron 技术栈、开发启动与打包说明；根 CHANGELOG 则仍是上游 0.x–2.x
+  历史，与 SpeakSpace Local 的产品版本无关。
 
 处理：
-  - README 改为当前产品能力、开发、验证、打包、模型存储和目录入口。
+  - README 以 SpeakSpace Local 为产品主体，同时保留并更新 Electron React
+    Boilerplate、Electron、React、React Router、Webpack 和 React Fast
+    Refresh 的工程说明。
+  - 合并当前产品能力、本地模型策略、仓库安装、开发启动、验证、桌面端打包、
+    签名检查、项目目录和上游 Electron 文档入口。
   - CHANGELOG 改为 SpeakSpace Local 4.6.0 的正式摘要，并链接详细日志。
   - LICENSE 增加 SpeakSpace Local contributors，同时保留上游 MIT 版权。
   - 删除 .github/FUNDING.yml 中错误的上游赞助账号。
   - 重写三个 Issue 模板为 SpeakSpace Local 的问题 / 使用 / 功能模板。
   - 删除永远被 electron-react-boilerplate owner 条件拦住的旧 publish workflow；
     在正式签名和发布策略确定前，不保留一个看似存在、实际不运行的流程。
-  - 删除 README 不再引用的三张 .erb/img 模板宣传图片。
+  - 删除 README 不再引用的三张 .erb/img 上游宣传图片；保留上游技术文档、
+    GitHub 仓库和 MIT 许可归属链接。
 
 
 ------------------------------------------------------------------------

@@ -1,5 +1,7 @@
 # SpeakSpace Local 文档索引
 
+项目总览：[English](../README.md) · [简体中文](../README.zh-CN.md)
+
 根目录只保留项目级入口；设计决策、测试证据和历史过程统一放在这里。
 
 ## 当前工程文档
@@ -14,8 +16,7 @@
 
 ## 历史与追踪
 
-- [`changelog/`](./changelog/) 保存逐次开发日志；根目录
-  [`CHANGELOG.md`](../CHANGELOG.md) 只保留面向版本的摘要。
+- [`changelog/`](./changelog/) 保存逐次开发日志。
 - [`archive/`](./archive/) 保存已经完成阶段的迁移或审计材料，不代表当前实现。
 - 当前架构和开发规则以根目录 [`README.md`](../README.md) 与
   [`AGENTS.md`](../AGENTS.md) 为准。

@@ -4,6 +4,81 @@ SpeakSpace is a local-first mobile transcription, notes, and on-device AI app.
 The repository targets Android phones and iPhone; it does not contain an iPad,
 Mac, or App Store distribution target.
 
+## Windows 组员：没有 Mac 也能安装 iPhone 测试版
+
+SpeakSpace 没有发布到 App Store。没有 Mac、没有付费 Apple Developer Program
+账号的组员，可以使用 **Windows + SideStore + 自己的免费 Apple Account** 安装
+小组提供的 IPA。Windows 电脑只在第一次配置 SideStore 时需要；之后通常可以在
+iPhone 上连接 Wi-Fi 和 LocalDevVPN 完成刷新。
+
+### 1. 准备设备和账号
+
+- 一台 64 位 Windows 10 或 Windows 11 电脑；Windows 10 ARM 不受 SideStore
+  当前工具支持。
+- 一台运行 iOS 16.4 或更高版本、已设置锁屏密码的 iPhone。
+- iPhone 数据线和 Wi-Fi；SideStore 初次配置和刷新不能只依赖蜂窝网络。
+- 每位测试者自己的 Apple Account。不要共用账号、密码、验证码或设备配对文件。
+- 在 iPhone 上从 App Store 安装 `LocalDevVPN`，允许它添加 VPN 配置。
+
+SideStore 的系统要求和下载入口可能变化，开始前先打开
+[SideStore 官方 Prerequisites](https://docs.sidestore.io/docs/installation/prerequisites)
+和 [Install](https://docs.sidestore.io/docs/installation/install) 页面。
+
+### 2. 在 Windows 安装 SideStore
+
+1. 按 SideStore 官方 Prerequisites 安装 iTunes。官方目前建议优先尝试 Apple
+   网站提供的版本；如果 iTunes 无法识别手机，再尝试 Apple Devices App。
+2. 从 SideStore 官方页面下载并安装 Windows 版 `iloader`，推荐使用 MSI。
+3. 用数据线连接 iPhone，在手机上选择“信任此电脑”并输入锁屏密码。
+4. 打开 `iloader`，登录自己的 Apple Account，选择自己的 iPhone。
+5. 点击 `Install SideStore (Stable)`，等待安装完成。
+6. 在 iPhone 打开“设置 → 通用 → VPN 与设备管理”，信任对应 Apple Account
+   的开发者 App。
+7. 打开“设置 → 隐私与安全性 → 开发者模式”，启用后按提示重启 iPhone。
+8. 连接 `LocalDevVPN`，打开 SideStore，使用和 iloader 相同的 Apple Account 登录。
+9. 进入 `My Apps`，点击 SideStore 右侧的 `7 DAYS`，完成第一次手动 Refresh。
+
+### 3. 下载并校验 SpeakSpace
+
+从小组仓库的
+[iOS v1.0.0 Release](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.0.0)
+下载以下两个文件：
+
+- [`SpeakSpace-iOS-v1.0.0.ipa`](https://github.com/dhebhxh/speakspace-local-mobile/releases/download/ios-v1.0.0/SpeakSpace-iOS-v1.0.0.ipa)
+- [`SpeakSpace-iOS-v1.0.0.ipa.sha256`](https://github.com/dhebhxh/speakspace-local-mobile/releases/download/ios-v1.0.0/SpeakSpace-iOS-v1.0.0.ipa.sha256)
+
+把两个文件放进同一个文件夹，在 PowerShell 中运行：
+
+```powershell
+Get-FileHash .\SpeakSpace-iOS-v1.0.0.ipa -Algorithm SHA256
+Get-Content .\SpeakSpace-iOS-v1.0.0.ipa.sha256
+```
+
+两个 SHA-256 值必须完全相同。本次发布的正确值是：
+
+```text
+95308e11392d881db71ca8e6c410bc9fea837b97d3558b8682704c1d5e4f32fa
+```
+
+### 4. 用 SideStore 安装和刷新
+
+1. 把 IPA 保存到 iPhone 的“文件”App，或者直接在 iPhone 上打开 Release 下载。
+2. 连接 `LocalDevVPN`，使用共享菜单选择 SideStore；也可以在 SideStore 中使用
+   添加 IPA 的入口。
+3. 等待 SideStore 完成重新签名和安装，过程中不要关闭 SideStore 或 VPN。
+4. 打开 SpeakSpace 并允许麦克风权限，然后在 `AI` 页面下载并启用所需的 STT、
+   LLM 和 TTS 模型。模型下载时保持 SpeakSpace 在前台。
+5. 建议每 5 至 6 天连接一次 `LocalDevVPN`，打开 SideStore 的 `My Apps`，点击
+   SpeakSpace 旁边的剩余天数完成 Refresh。
+
+免费 Personal Team 的 provisioning profile 只有 7 天有效期，因此免费方案不能变成
+“安装一次永久使用”。Refresh 不会主动清除数据，但**不要卸载 SpeakSpace**；卸载会由
+iOS 删除本地笔记、录音、Workspace、聊天和已下载模型。不要从第三方网盘、共享企业
+证书或所谓“永久免签”网站下载安装包。
+
+更完整的截图记录、验收步骤和故障排查见
+[Windows + SideStore 中文指南](docs/ios-sidestore-windows.md)。
+
 ## Current iPhone baseline
 
 - iPhone only, portrait orientation
@@ -20,10 +95,8 @@ See [docs/ios-local-install.md](docs/ios-local-install.md) for the complete
 iPhone setup and signing procedure. Record the physical-device results in
 [docs/ios-device-acceptance.md](docs/ios-device-acceptance.md).
 
-For testers who only have Windows, use the team release IPA with
-[docs/ios-sidestore-windows.md](docs/ios-sidestore-windows.md). The engineering
-work, decisions, failures, and fixes behind the iPhone port are documented in
-[docs/ios-port-development-YQ.md](docs/ios-port-development-YQ.md).
+The engineering work, decisions, failures, and fixes behind the iPhone port are
+documented in [docs/ios-port-development-YQ.md](docs/ios-port-development-YQ.md).
 
 ## Development
 

@@ -6,7 +6,7 @@
 
 - SideStore 不是 Apple 官方分发渠道；它使用 Apple 免费 Personal Team 的设备测试能力。
 - 免费签名通常只有 7 天有效期。到期前必须刷新，过期后应用会暂时无法启动。
-- Apple 免费账号每台设备最多同时安装 3 个开发应用，SideStore 本身也会占用一个名额。
+- 免费账号可同时安装的开发应用名额有限，SideStore 本身也会占用一个名额。
 - 第一次配置需要 Windows 电脑；配置完成后通常可以在 iPhone 上通过 SideStore 和本地 VPN 刷新。
 - 刷新签名不等于卸载。不要删除 SpeakSpace，否则本地笔记、录音、Workspace、聊天和已下载模型会一起被 iOS 删除。
 - 不要多人共享 Apple Account，也不要把密码、验证码或配对文件发给组员。
@@ -15,11 +15,14 @@ Apple 对免费 Personal Team 的限制见 [Choosing a Membership](https://devel
 
 ## 需要准备
 
-1. Windows 10 或 Windows 11 电脑。
+1. 64 位 Windows 10 或 Windows 11 电脑；Windows 10 ARM 不受当前工具支持。
 2. 一台运行 iOS 16.4 或更高版本的 iPhone。
 3. iPhone 数据线，第一次配对时使用。
 4. 每位测试者自己的 Apple Account。建议使用专门用于课程项目测试的账号。
-5. GitHub Release 中的两个文件：
+5. Wi-Fi 网络；SideStore 初次配置和刷新不能只依赖蜂窝网络。
+6. iPhone 上安装的 `LocalDevVPN`。
+7. Windows 上按 SideStore 官方 Prerequisites 安装的 iTunes 和 `iloader`。
+8. GitHub Release 中的两个文件：
    - `SpeakSpace-iOS-v1.0.0.ipa`
    - `SpeakSpace-iOS-v1.0.0.ipa.sha256`
 
@@ -42,14 +45,15 @@ Get-Content .\SpeakSpace-iOS-v1.0.0.ipa.sha256
 
 ## 第二步：安装并配置 SideStore
 
-1. 打开 [SideStore 官方安装文档](https://docs.sidestore.io/docs/installation/install)。
-2. 选择当前提供的 Windows 安装路线，下载文档指定的官方工具。
-3. 用数据线连接 iPhone，在 iPhone 上点击“信任此电脑”。
-4. 按官方文档生成并导入这台 iPhone 的 pairing file。这个文件只属于当前设备，不要分享。
-5. 使用自己的 Apple Account 完成 SideStore 的免费签名。
+1. 打开 [SideStore 官方 Prerequisites](https://docs.sidestore.io/docs/installation/prerequisites)，在 iPhone 上从 App Store 安装 `LocalDevVPN`，允许它添加 VPN 配置。
+2. 按官方页面在 Windows 安装 iTunes。当前官方建议优先尝试 Apple 网站提供的版本；如果无法识别手机，再尝试 Apple Devices App。
+3. 从官方页面下载并安装 Windows 版 `iloader`，推荐使用 MSI。
+4. 用数据线连接 iPhone，在 iPhone 上点击“信任此电脑”并输入锁屏密码。
+5. 打开 `iloader`，登录自己的 Apple Account，选择自己的 iPhone，然后点击 `Install SideStore (Stable)`。
 6. 在 iPhone 打开“设置 → 通用 → VPN 与设备管理”，信任对应的开发者 App。
 7. 在“设置 → 隐私与安全性 → 开发者模式”中启用 Developer Mode，并按系统要求重启。
-8. 按 SideStore 文档配置 LocalDevVPN，确认 SideStore 可以正常打开并显示剩余签名天数。
+8. 连接 `LocalDevVPN`，打开 SideStore，使用和 iloader 相同的 Apple Account 登录。
+9. 进入 `My Apps`，点击 SideStore 右侧的 `7 DAYS`，完成第一次手动 Refresh，并确认倒计时恢复。
 
 不要从不明网盘或所谓“企业证书商店”下载 SideStore。共享企业证书可能随时被撤销，也无法证明安装包未被修改。
 

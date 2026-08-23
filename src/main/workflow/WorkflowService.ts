@@ -1,13 +1,28 @@
 import { KnowledgeTemplate } from '@shared/entities/KnowledgeTemplate';
+import {
+  KNOWLEDGE_SCENARIOS,
+  type ScenarioTemplateOption,
+} from '@shared/types/KnowledgeGenerationTypes';
 import type { KnowledgeTemplateDTO } from '@shared/types/WorkflowTypes';
 import { KnowledgeTemplateRepository } from '../database/repositories/KnowledgeTemplateRepository';
+import {
+  getScenarioDefinition,
+  type KnowledgeOutputLanguage,
+} from '../knowledge/KnowledgeScenarios';
+import KnowledgeTemplateNormalizer from './KnowledgeTemplateNormalizer';
 
 /** 模板 CRUD 的验证和 DTO 转换集中在主进程，Renderer 不接收类实例。 */
 export default class WorkflowService {
   private readonly repository: KnowledgeTemplateRepository;
 
-  public constructor(repository = new KnowledgeTemplateRepository()) {
+  private readonly normalizer: KnowledgeTemplateNormalizer;
+
+  public constructor(
+    repository = new KnowledgeTemplateRepository(),
+    normalizer = new KnowledgeTemplateNormalizer(),
+  ) {
     this.repository = repository;
+    this.normalizer = normalizer;
   }
 
   public listTemplates(): KnowledgeTemplateDTO[] {
@@ -21,33 +36,80 @@ export default class WorkflowService {
     return template ? WorkflowService.serializeTemplate(template) : null;
   }
 
-  public createTemplate(
+  public listScenarioTemplates(
+    rawLanguage: unknown = 'en',
+  ): ScenarioTemplateOption[] {
+    const language = WorkflowService.normalizeLanguage(rawLanguage);
+    const builtIn = KNOWLEDGE_SCENARIOS.map((scenario) => {
+      const definition = getScenarioDefinition(scenario, language);
+      return {
+        key: `builtin:${scenario}`,
+        source: 'builtin' as const,
+        scenario,
+        templateId: null,
+        name: definition.name,
+        description: definition.description,
+        sections: definition.sections,
+        isNormalized: true,
+        updatedAt: null,
+      };
+    });
+    const custom = this.repository.findAll().map((template) => {
+      const definition = template.getEffectiveDefinition();
+      return {
+        key: `custom:${template.getId()}`,
+        source: 'custom' as const,
+        scenario: null,
+        templateId: template.getId(),
+        name: template.getName(),
+        description: definition.description,
+        sections: definition.sections,
+        isNormalized: template.getDefinition() !== null,
+        updatedAt: template.getUpdatedAt().toISOString(),
+      };
+    });
+    return [...builtIn, ...custom];
+  }
+
+  public async createTemplate(
     rawName: unknown,
     rawPrompt: unknown,
-  ): KnowledgeTemplateDTO {
+    rawLanguage: unknown = 'en',
+  ): Promise<KnowledgeTemplateDTO> {
     const name = WorkflowService.normalizeName(rawName);
     const prompt = WorkflowService.normalizePrompt(rawPrompt);
-    const id = this.repository.create(name, prompt);
+    const definition = await this.normalizer.normalize(
+      name,
+      prompt,
+      WorkflowService.normalizeLanguage(rawLanguage),
+    );
+    const id = this.repository.create(name, prompt, definition, new Date());
     return this.requireTemplate(id);
   }
 
-  public updateTemplate(
+  public async updateTemplate(
     rawId: unknown,
     rawName: unknown,
     rawPrompt: unknown,
-  ): KnowledgeTemplateDTO {
+    rawLanguage: unknown = 'en',
+  ): Promise<KnowledgeTemplateDTO> {
     const id = WorkflowService.normalizeId(rawId);
+    const name = WorkflowService.normalizeName(rawName);
+    const prompt = WorkflowService.normalizePrompt(rawPrompt);
+    const definition = await this.normalizer.normalize(
+      name,
+      prompt,
+      WorkflowService.normalizeLanguage(rawLanguage),
+    );
     const updated = this.repository.update(
       id,
-      WorkflowService.normalizeName(rawName),
-      WorkflowService.normalizePrompt(rawPrompt),
+      name,
+      prompt,
+      definition,
+      new Date(),
     );
     if (!updated) throw new Error('知识模板不存在 / Template not found');
     return this.requireTemplate(id);
-  }
-
-  public deleteTemplate(rawId: unknown): boolean {
-    return this.repository.deleteById(WorkflowService.normalizeId(rawId));
   }
 
   private requireTemplate(id: number): KnowledgeTemplateDTO {
@@ -77,6 +139,10 @@ export default class WorkflowService {
     return prompt;
   }
 
+  private static normalizeLanguage(value: unknown): KnowledgeOutputLanguage {
+    return value === 'zh' ? 'zh' : 'en';
+  }
+
   private static serializeTemplate(
     template: KnowledgeTemplate,
   ): KnowledgeTemplateDTO {
@@ -84,6 +150,8 @@ export default class WorkflowService {
       id: template.getId(),
       name: template.getName(),
       prompt: template.getPrompt(),
+      definition: template.getDefinition(),
+      normalizedAt: template.getNormalizedAt()?.toISOString() ?? null,
       createdAt: template.getCreatedAt().toISOString(),
       updatedAt: template.getUpdatedAt().toISOString(),
     };

@@ -214,14 +214,11 @@ export default function WorkspacePage() {
         <div className="workspace-detail-notes">
           {visibleNotes.map((note) => (
             <WorkspaceNoteCard
-              generating={detail.generatingNoteId === note.id}
               key={note.id}
               note={note}
               isSelected={selectedNoteIds.includes(note.id)}
               onToggleSelection={toggleNoteSelection}
               onDelete={handleDeleteNote}
-              onGenerate={detail.generateOutput}
-              templates={detail.templates}
               workspaceId={detail.workspaceId}
             />
           ))}

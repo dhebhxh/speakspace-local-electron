@@ -37,10 +37,18 @@ const result: TrashListResult = {
       noteCount: 3,
       matchedContainedNote: false,
     },
+    {
+      itemType: 'template',
+      id: 30,
+      name: 'Decision review',
+      trashedAt: '2026-08-19T08:00:00.000Z',
+      preview: 'Extract decisions and risks',
+      outputCount: 2,
+    },
   ],
   page: 1,
   pageSize: 30,
-  total: 2,
+  total: 3,
 };
 
 const trashApi = {
@@ -152,6 +160,41 @@ describe('TrashSettingsPanel', () => {
       }),
     );
   });
+
+  it('shows templates in the same Trash and warns about saved outputs', async () => {
+    trashApi.permanentlyDelete.mockResolvedValue({
+      itemType: 'template',
+      id: 30,
+      name: 'Decision review',
+      workspaceId: null,
+      noteCount: 0,
+    });
+    renderPanel();
+    const templateRow = (await screen.findByText('Decision review')).closest(
+      'article',
+    );
+
+    fireEvent.click(
+      within(templateRow as HTMLElement).getByRole('button', {
+        name: 'trash.action.permanentlyDelete',
+      }),
+    );
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('trash.confirm.template')).toBeVisible();
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: 'trash.action.permanentlyDelete',
+      }),
+    );
+    await waitFor(() =>
+      expect(trashApi.permanentlyDelete).toHaveBeenCalledWith({
+        id: 30,
+        itemType: 'template',
+      }),
+    );
+  });
+
   it('carries the onboarding anchor the tour points at', async () => {
     // 引导讲回收站时打光在这块面板上（见 onboarding/OnboardingSteps.ts）。
     // 锚点被顺手删掉不会报错，引导只会退化成一张飘在屏幕中央的卡片。

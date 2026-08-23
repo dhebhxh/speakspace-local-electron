@@ -23,6 +23,9 @@ class TrashIpcController {
     this.ipc.handle('Trash:moveConversation', (_event, id: unknown) =>
       this.service.moveConversation(id),
     );
+    this.ipc.handle('Trash:moveTemplate', (_event, id: unknown) =>
+      this.service.moveTemplate(id),
+    );
     this.ipc.handle('Trash:moveWorkspace', (_event, id: unknown) =>
       this.service.moveWorkspace(id),
     );

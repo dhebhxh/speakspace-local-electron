@@ -257,3 +257,62 @@ describe('未注册工具', () => {
     expect(failed).toBeDefined();
   });
 });
+
+describe('用户关联笔记上下文', () => {
+  it('首轮自动载入全部关联笔记，并且不开放全库搜索', async () => {
+    const readIds: number[] = [];
+    let searchCount = 0;
+    const readNote: AgentTool = {
+      schema: {
+        type: 'function',
+        function: {
+          name: 'read_note',
+          description: 'read note',
+          parameters: { type: 'object' },
+        },
+      } as Tool,
+      run: async (args) => {
+        const id = Number(args.note_id);
+        readIds.push(id);
+        return JSON.stringify({
+          id,
+          name: id === 7 ? '站会' : '银行材料',
+          transcript: id === 7 ? '明天站会可能迟到' : '需要打印营业执照',
+        });
+      },
+    };
+    const search = makeTool('search_notes', async () => {
+      searchCount += 1;
+      return '不应执行';
+    });
+    const { chat, seen } = scriptedChat([
+      {
+        role: 'assistant',
+        content: '一篇说站会，另一篇说银行材料。',
+      } as Message,
+    ]);
+
+    const result = await new AgentOrchestrator({
+      chat,
+      tools: [search, readNote],
+    }).run({
+      instruction: '说了什么',
+      workspaceId: null,
+      linkedNoteIds: [7, 9],
+      history: [],
+    });
+
+    expect(readIds).toEqual([7, 9]);
+    expect(searchCount).toBe(0);
+    expect(seen[0].tools.map((tool) => tool.function.name)).not.toContain(
+      'search_notes',
+    );
+    const firstMessages = seen[0].messages.map((message) =>
+      String(message.content),
+    );
+    expect(firstMessages.join('\n')).toContain('[LINKED NOTE CONTEXT]');
+    expect(firstMessages.join('\n')).toContain('明天站会可能迟到');
+    expect(firstMessages.join('\n')).toContain('需要打印营业执照');
+    expect(result.finalText).toContain('站会');
+  });
+});

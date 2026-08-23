@@ -98,4 +98,21 @@ describe('createAgentSearchNotesTool（混合检索）', () => {
     expect(result.match).toBe('none');
     expect(result.notes).toEqual([]);
   });
+
+  it('有关联笔记时过滤掉语义检索返回的范围外结果', async () => {
+    const notes = [
+      makeNote(1, '已关联笔记', '站会内容'),
+      makeNote(2, '范围外笔记', '银行内容'),
+    ];
+    const { tool } = buildTool(notes, [makeSemantic(2, 0.99)]);
+
+    const result = JSON.parse(
+      await tool.run(
+        { query: '银行' },
+        { workspaceId: null, linkedNoteIds: [1] },
+      ),
+    );
+
+    expect(result.notes.map((note: { id: number }) => note.id)).toEqual([1]);
+  });
 });

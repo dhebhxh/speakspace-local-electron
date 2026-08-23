@@ -1,6 +1,10 @@
 import Database from 'better-sqlite3';
 
 import { KnowledgeTemplate } from '@shared/entities/KnowledgeTemplate';
+import {
+  isScenarioTemplateDefinition,
+  type ScenarioTemplateDefinition,
+} from '@shared/types/KnowledgeGenerationTypes';
 import { Repository } from './Repository';
 import { DatabaseManager } from '../DatabaseManager';
 
@@ -14,22 +18,31 @@ export class KnowledgeTemplateRepository
     this.database = database;
   }
 
-  public create(name: string, prompt: string): number {
+  public create(
+    name: string,
+    prompt: string,
+    definition: ScenarioTemplateDefinition | null = null,
+    normalizedAt: Date | null = null,
+  ): number {
     const now = new Date();
 
     const statement = this.database.prepare(`
             INSERT INTO knowledge_templates (
                 name,
                 prompt,
+                scenario_definition,
+                normalized_at,
                 created_at,
                 updated_at
             )
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
         `);
 
     const result = statement.run(
       name,
       prompt,
+      definition ? JSON.stringify(definition) : null,
+      normalizedAt?.toISOString() ?? null,
       now.toISOString(),
       now.toISOString(),
     );
@@ -41,7 +54,7 @@ export class KnowledgeTemplateRepository
     const statement = this.database.prepare(`
             SELECT *
             FROM knowledge_templates
-            WHERE id = ?
+            WHERE id = ? AND trashed_at IS NULL
         `);
 
     const row = statement.get(id) as any;
@@ -57,6 +70,7 @@ export class KnowledgeTemplateRepository
     const statement = this.database.prepare(`
             SELECT *
             FROM knowledge_templates
+            WHERE trashed_at IS NULL
             ORDER BY created_at ASC
         `);
 
@@ -67,7 +81,13 @@ export class KnowledgeTemplateRepository
     );
   }
 
-  public update(id: number, name: string, prompt: string): boolean {
+  public update(
+    id: number,
+    name: string,
+    prompt: string,
+    definition: ScenarioTemplateDefinition | null = null,
+    normalizedAt: Date | null = null,
+  ): boolean {
     const now = new Date();
 
     const statement = this.database.prepare(`
@@ -75,30 +95,41 @@ export class KnowledgeTemplateRepository
             SET
                 name = ?,
                 prompt = ?,
+                scenario_definition = ?,
+                normalized_at = ?,
                 updated_at = ?
-            WHERE id = ?
+            WHERE id = ? AND trashed_at IS NULL
         `);
 
-    const result = statement.run(name, prompt, now.toISOString(), id);
+    const result = statement.run(
+      name,
+      prompt,
+      definition ? JSON.stringify(definition) : null,
+      normalizedAt?.toISOString() ?? null,
+      now.toISOString(),
+      id,
+    );
 
     return result.changes > 0;
   }
 
   public deleteById(id: number): boolean {
+    // Repository-level callers must remain recoverable. Only TrashService may
+    // physically delete a template after an explicit permanent-delete action.
     const statement = this.database.prepare(`
-            DELETE
-            FROM knowledge_templates
-            WHERE id = ?
+            UPDATE knowledge_templates
+            SET trashed_at = ?
+            WHERE id = ? AND trashed_at IS NULL
         `);
 
-    return statement.run(id).changes > 0;
+    return statement.run(new Date().toISOString(), id).changes > 0;
   }
 
   public existsById(id: number): boolean {
     const statement = this.database.prepare(`
             SELECT 1
             FROM knowledge_templates
-            WHERE id = ?
+            WHERE id = ? AND trashed_at IS NULL
             LIMIT 1
         `);
 
@@ -106,12 +137,23 @@ export class KnowledgeTemplateRepository
   }
 
   private static toKnowledgeTemplate(row: any): KnowledgeTemplate {
+    let definition: ScenarioTemplateDefinition | null = null;
+    try {
+      const parsed = row.scenario_definition
+        ? (JSON.parse(row.scenario_definition) as unknown)
+        : null;
+      definition = isScenarioTemplateDefinition(parsed) ? parsed : null;
+    } catch {
+      definition = null;
+    }
     return new KnowledgeTemplate(
       row.id,
       row.name,
       row.prompt,
       new Date(row.created_at),
       new Date(row.updated_at),
+      definition,
+      row.normalized_at ? new Date(row.normalized_at) : null,
     );
   }
 }

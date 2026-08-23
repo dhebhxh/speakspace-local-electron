@@ -46,7 +46,20 @@ describe('不限定工作区（workspaceId 为 null）时的行为', () => {
     expect(result.workspaceId).toBe(42);
   });
 
-  it('挂上的笔记只是额外线索：检索仍然覆盖全部笔记，命中之外的挂载笔记也会带上', async () => {
+  it('有关联笔记时拒绝读取范围外的笔记', async () => {
+    const notes = [makeNote(7, 42), makeNote(9, 77)];
+    const tool = createAgentReadNoteTool({
+      findAll: () => notes,
+      findAllByWorkspace: () => notes,
+      findById: (id: number) => notes.find((n) => n.getId() === id) ?? null,
+    });
+
+    await expect(
+      tool.run({ note_id: 9 }, { workspaceId: null, linkedNoteIds: [7] }),
+    ).rejects.toThrow('当前笔记范围');
+  });
+
+  it('挂上的笔记成为检索范围，不返回其他笔记', async () => {
     const notes = [
       makeNote(1, 42), // 关键词命中
       makeNote(9, 77), // 另一个工作区里被手动挂上的笔记
@@ -67,7 +80,7 @@ describe('不限定工作区（workspaceId 为 null）时的行为', () => {
       ),
     );
 
-    expect(result.notes.map((note: { id: number }) => note.id)).toEqual([9, 1]);
+    expect(result.notes.map((note: { id: number }) => note.id)).toEqual([9]);
     expect(result.notes[0].match).toBe('linked');
   });
 

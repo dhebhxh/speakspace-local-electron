@@ -143,7 +143,7 @@ export default function StudioPage() {
   // 这些控件只有工作台渲染出来才存在。
   const onboardingActive = useOnboardingActive();
 
-  // 智能体模式：开启后由本地 Agent 调用工具自行查找，而不是直接问挂上的笔记。
+  // 智能体模式：有关联笔记时直接使用它们；没有关联时才调用工具全库查找。
   const [agentMode, setAgentMode] = useState(false);
   // 智能体这一串问答落在哪个会话里，以及已经落过库的轮次。
   const agentConversationId = useRef<number | null>(null);
@@ -152,7 +152,6 @@ export default function StudioPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [aiTitle, setAiTitle] = useState<string | null>(null);
-  const [titlePending, setTitlePending] = useState(false);
   const [recordError, setRecordError] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [trashUndo, setTrashUndo] = useState<NoteTrashUndo | null>(null);
@@ -319,7 +318,7 @@ export default function StudioPage() {
 
   const askWithLinkedNotes = useCallback(
     (question: string) => {
-      // 智能体自己在全部笔记里检索，挂上的笔记只作为额外线索一起带过去。
+      // 挂上的笔记就是本轮明确上下文；没有挂笔记时智能体才自行全库检索。
       if (agentMode) return runAgent(question, linkedNoteIds);
 
       return page.ask(question, { noteIds: linkedNoteIds });
@@ -432,29 +431,26 @@ export default function StudioPage() {
     [page.notes, previewNoteId],
   );
 
-  // 复核弹窗的内容实时取自转录快照，转录与语义整理的结果会陆续流入弹窗。
+  // 复核弹窗直接展示完整转写，以及同一次 Structured Note 生成里的 Summary。
   const reviewRaw = useMemo(
     () => buildTranscriptText(transcriptionSnapshot),
     [transcriptionSnapshot],
   );
-  const reviewSummaries = useMemo(
-    () => transcriptionSnapshot.liveSummaries.map((summary) => summary.text),
-    [transcriptionSnapshot.liveSummaries],
-  );
+  const reviewSummary =
+    transcriptionSnapshot.structuredNoteDraft?.summary ?? '';
   const reviewProcessing =
     transcriptionSnapshot.livePendingCount > 0 ||
-    transcriptionSnapshot.summaryPendingCount > 0 ||
+    transcriptionSnapshot.structuredNotePending ||
     transcriptionSnapshot.requestPending;
 
   // 内容整理完成后，用本地模型根据内容自动生成笔记标题。
   // 失败或未启用 LLM 时保持时间戳默认名；用户手动改过标题则不会被覆盖。
   useEffect(() => {
     if (!reviewOpen || reviewProcessing || aiTitle !== null) return undefined;
-    const source = (reviewSummaries.join('\n') || reviewRaw).trim();
+    const source = (reviewSummary || reviewRaw).trim();
     if (!source) return undefined;
 
     let cancelled = false;
-    setTitlePending(true);
     window.electron.llm
       .chat(
         [
@@ -471,15 +467,12 @@ export default function StudioPage() {
         if (title) setAiTitle(title);
         return undefined;
       })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setTitlePending(false);
-      });
+      .catch(() => undefined);
 
     return () => {
       cancelled = true;
     };
-  }, [reviewOpen, reviewProcessing, aiTitle, reviewRaw, reviewSummaries, t]);
+  }, [reviewOpen, reviewProcessing, aiTitle, reviewRaw, reviewSummary, t]);
 
   const startRecording = useCallback(() => {
     setRecordError(null);
@@ -493,8 +486,8 @@ export default function StudioPage() {
       await engine.session.stop();
       // 先弹窗：停止录音后立刻让用户看到复核界面。
       openReview(false);
-      // 语义整理放到后台继续跑，结果通过实时快照回填到弹窗，避免阻塞弹窗打开。
-      engine.transcription.finalizeLiveSummary().catch(() => undefined);
+      // 完整 Structured Note 在后台生成，弹窗直接回填其中的 Summary。
+      engine.transcription.finalizeStructuredNote().catch(() => undefined);
     } catch (reason) {
       setRecordError(
         reason instanceof Error
@@ -617,7 +610,7 @@ export default function StudioPage() {
   const closeReview = useCallback(() => {
     setReviewOpen(false);
     setSaveError(null);
-    // 关窗＝放弃这一轮：主进程的转写任务要取消掉，在途的实时分段和语义整理
+    // 关窗＝放弃这一轮：主进程的转写任务要取消掉，在途转写和结构化生成
     // 也要作废。只 resetEngine 的话它们还在后台跑，新引擎会接着显示「转写中」，
     // 录音和上传按钮一直是灰的，用户没法重录。
     engine.transcription.abort().catch(() => undefined);
@@ -627,12 +620,18 @@ export default function StudioPage() {
 
   const saveAsNote = useCallback(
     async (selection: WorkspaceSaveSelection) => {
-      await engine.transcription.finalizeLiveSummary();
+      await engine.transcription.finalizeStructuredNote();
       const latest = engine.transcription.getSnapshot();
       const transcript = buildTranscriptText(latest);
-      const summaries = latest.liveSummaries.map((summary) => summary.text);
       if (!transcript) {
         setSaveError(t('studio.recording.noTranscript'));
+        return;
+      }
+      if (!latest.structuredNoteDraft) {
+        setSaveError(
+          latest.structuredNoteError ||
+            t('studio.recording.structuredNoteRequired'),
+        );
         return;
       }
 
@@ -668,8 +667,8 @@ export default function StudioPage() {
           workspaceId,
           name: selection.noteName,
           transcript,
-          summaries,
           audioRelativePath,
+          structuredNoteDraft: latest.structuredNoteDraft,
         })) as { noteId: number; workspaceId: number; name: string };
 
         // 刷新笔记库并把新笔记挂到对话上。
@@ -721,7 +720,7 @@ export default function StudioPage() {
       busy:
         snapshot.busy ||
         isTranscriptionFileBusy(transcriptionSnapshot, {
-          includeSummary: true,
+          includeStructuredNote: true,
         }),
       stopBusy: snapshot.busy,
       elapsedMs,
@@ -836,10 +835,10 @@ export default function StudioPage() {
             )
           }
           rawTranscript={reviewRaw}
-          summaries={reviewSummaries}
-          processing={reviewProcessing || titlePending}
+          summary={reviewSummary}
+          processing={reviewProcessing}
           saving={saving}
-          error={saveError}
+          error={saveError || transcriptionSnapshot.structuredNoteError}
           onSave={saveAsNote}
           onRerecord={reRecord}
           onClose={closeReview}

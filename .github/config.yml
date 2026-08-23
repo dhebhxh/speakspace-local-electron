@@ -1,6 +1,2 @@
-requiredHeaders:
-  - Prerequisites
-  - Expected Behavior
-  - Current Behavior
-  - Possible Solution
-  - Your Environment
+blank_issues_enabled: false
+contact_links: []

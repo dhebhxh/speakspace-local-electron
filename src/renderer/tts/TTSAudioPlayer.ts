@@ -6,7 +6,9 @@ export default class TTSAudioPlayer {
 
   private source: AudioBufferSourceNode | null = null;
 
-  public async play(audio: TTSAudioResult, onEnded: () => void): Promise<void> {
+  private resolvePlayback: (() => void) | null = null;
+
+  public async play(audio: TTSAudioResult): Promise<void> {
     this.stop();
     const context = new AudioContext();
     const channels = audio.channelData.map((channel) =>
@@ -29,16 +31,32 @@ export default class TTSAudioPlayer {
     const source = context.createBufferSource();
     source.buffer = buffer;
     source.connect(context.destination);
-    source.onended = () => {
-      this.source = null;
-      this.context = null;
-      context.close().catch(() => undefined);
-      onEnded();
-    };
     this.context = context;
     this.source = source;
     await context.resume();
-    source.start();
+    return new Promise<void>((resolve, reject) => {
+      this.resolvePlayback = resolve;
+      source.onended = () => {
+        if (this.source === source) {
+          this.source = null;
+          this.context = null;
+        }
+        const finish = this.resolvePlayback;
+        this.resolvePlayback = null;
+        context.close().catch(() => undefined);
+        finish?.();
+      };
+      try {
+        source.start();
+      } catch (error) {
+        source.onended = null;
+        this.source = null;
+        this.context = null;
+        this.resolvePlayback = null;
+        context.close().catch(() => undefined);
+        reject(error);
+      }
+    });
   }
 
   public stop(): void {
@@ -53,5 +71,8 @@ export default class TTSAudioPlayer {
     this.context?.close().catch(() => undefined);
     this.source = null;
     this.context = null;
+    const finish = this.resolvePlayback;
+    this.resolvePlayback = null;
+    finish?.();
   }
 }

@@ -3,7 +3,7 @@ import { AgentHistoryMessage, AgentRunRequest } from './AgentTypes';
 const MAX_INSTRUCTION_CHARACTERS = 4000;
 const MAX_HISTORY_MESSAGES = 12;
 const MAX_HISTORY_CHARACTERS = 4000;
-/** 挂上的笔记只是额外线索，多了会挤掉检索结果，所以限制条数。 */
+/** 挂上的笔记会作为本轮正文上下文载入，过多会挤占模型上下文。 */
 const MAX_LINKED_NOTES = 8;
 
 function normalizeWorkspaceId(value: unknown): number | null {
@@ -54,7 +54,7 @@ export default function normalizeAgentRequest(
   if (!instruction) {
     throw new Error('请输入任务内容 / Agent instruction is required');
   }
-  // workspaceId 为空表示不限定工作区：两个笔记工具都会退化为检索全部笔记。
+  // workspaceId 为空且没有关联笔记时表示不限定工作区。
   const workspaceId = normalizeWorkspaceId(request.workspaceId);
   return {
     instruction: instruction.slice(0, MAX_INSTRUCTION_CHARACTERS),

@@ -35,8 +35,9 @@
 }
 
 .trash-search-glyph {
+  display: grid;
   margin-right: 0.55rem;
-  font-size: var(--fs-lg);
+  place-items: center;
 }
 
 .trash-search input {
@@ -71,6 +72,7 @@
 
 .trash-filters {
   display: flex;
+  flex-wrap: wrap;
   flex: 0 0 auto;
   gap: 0.25rem;
   padding: 0.25rem;
@@ -184,6 +186,12 @@
   color: var(--warm);
   border-color: color-mix(in srgb, var(--warm) 28%, var(--border));
   background: var(--warm-soft);
+}
+
+.trash-item-glyph.is-template {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 28%, var(--border));
+  background: color-mix(in srgb, var(--success) 10%, var(--surface-soft));
 }
 
 .trash-item-content {
@@ -312,7 +320,6 @@
   color: var(--accent);
   border-radius: 50%;
   background: var(--accent-soft);
-  font-size: var(--fs-xl);
 }
 
 .trash-confirm-overlay {
@@ -346,8 +353,6 @@
   color: var(--danger);
   border-radius: 50%;
   background: color-mix(in srgb, var(--danger) 13%, transparent);
-  font-size: var(--fs-lg);
-  font-weight: 900;
 }
 
 .trash-confirm-dialog h3 {
@@ -419,7 +424,7 @@
 
   .trash-filters button,
   .trash-item-actions button {
-    flex: 1;
+    flex: 1 1 8rem;
   }
 
   .trash-item {

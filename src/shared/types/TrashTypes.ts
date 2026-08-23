@@ -1,4 +1,4 @@
-export type TrashItemType = 'note' | 'workspace' | 'conversation';
+export type TrashItemType = 'note' | 'workspace' | 'conversation' | 'template';
 
 export type TrashFilter = 'all' | TrashItemType;
 
@@ -42,10 +42,21 @@ export type TrashedConversationItem = {
   messageCount: number;
 };
 
+export type TrashedTemplateItem = {
+  itemType: 'template';
+  id: number;
+  name: string;
+  trashedAt: string;
+  preview: string;
+  /** 永久删除模板时会一并删除的历史生成结果数量。 */
+  outputCount: number;
+};
+
 export type TrashItem =
   | TrashedNoteItem
   | TrashedWorkspaceItem
-  | TrashedConversationItem;
+  | TrashedConversationItem
+  | TrashedTemplateItem;
 
 export type TrashListResult = {
   items: TrashItem[];

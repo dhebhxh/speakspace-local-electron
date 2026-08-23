@@ -3,21 +3,29 @@ import crypto from 'crypto';
 import type {
   CalendarIntent,
   StructuredNote,
+  StructuredNoteDraft,
   GenerationState,
   InsightItem,
   InsightTask,
   KnowledgeScenario,
   NoteKnowledgeBundle,
+  ScenarioTemplateDefinition,
+  ScenarioTemplateSelection,
   ScenarioKnowledge,
 } from '@shared/types/KnowledgeGenerationTypes';
 import { KNOWLEDGE_SCENARIOS } from '@shared/types/KnowledgeGenerationTypes';
+import { KnowledgeTemplateRepository } from '../database/repositories/KnowledgeTemplateRepository';
 import LocalChatService from '../llm/LocalChatService';
 import ollamaServerController from '../llm/OllamaRuntime';
 import { DatabaseManager } from '../database/DatabaseManager';
 import KnowledgeRepository from './KnowledgeRepository';
 import LocalLlmCoordinator from './LocalLlmCoordinator';
-import { SCENARIOS } from './KnowledgeScenarios';
 import {
+  getScenarioDefinition,
+  type KnowledgeOutputLanguage,
+} from './KnowledgeScenarios';
+import {
+  ensureStructuredSummary,
   isStructuredNoteActions,
   isStructuredNoteContent,
   parseStrictJson,
@@ -71,7 +79,7 @@ const calendarSchema = {
 const structuredNoteContentSchema = {
   type: 'object',
   properties: {
-    summary: { type: 'string' },
+    summary: { type: 'string', minLength: 1 },
     keyPoints: { type: 'array', items: { type: 'string' } },
   },
   required: ['summary', 'keyPoints'],
@@ -92,6 +100,7 @@ const structuredNoteActionsSchema = {
 export default class KnowledgeGenerationService {
   private readonly repository = new KnowledgeRepository();
   private readonly chat = new LocalChatService();
+  private readonly templates = new KnowledgeTemplateRepository();
   private readonly structuredNoteStates = new Map<number, GenerationState>();
   private readonly scenarioStates = new Map<number, GenerationState>();
   private readonly active = new Map<string, Promise<unknown>>();
@@ -113,16 +122,53 @@ export default class KnowledgeGenerationService {
       undefined,
     ) as Promise<StructuredNote>;
   }
+  generateStructuredNoteDraft(
+    transcript: string,
+  ): Promise<StructuredNoteDraft> {
+    const note = this.normalizeTranscript(transcript);
+    return coordinator.run(() =>
+      this.runStructuredNoteDraft(note, crypto.randomUUID()),
+    );
+  }
+  saveStructuredNoteDraft(
+    noteId: number,
+    draft: StructuredNoteDraft,
+  ): StructuredNote {
+    const previous = this.repository.getStructuredNote(noteId);
+    const now = new Date().toISOString();
+    const bindItem = (item: InsightItem): InsightItem => ({
+      ...item,
+      sourceNoteId: noteId,
+    });
+    const value: StructuredNote = {
+      ...draft,
+      noteId,
+      tasks: draft.tasks.map((task) => ({
+        ...bindItem(task),
+        actionItems: task.actionItems.map(bindItem),
+      })),
+      unassignedActionItems: draft.unassignedActionItems.map(bindItem),
+      calendarIntents: draft.calendarIntents.map((intent) => ({
+        ...intent,
+        sourceNoteId: noteId,
+      })),
+      createdAt: previous?.createdAt ?? draft.createdAt,
+      updatedAt: now,
+    };
+    this.repository.saveStructuredNote(value);
+    return value;
+  }
   generateScenario(
     noteId: number,
-    scenario: KnowledgeScenario,
+    rawSelection: ScenarioTemplateSelection | KnowledgeScenario,
+    rawLanguage: unknown = 'en',
   ): Promise<ScenarioKnowledge> {
-    if (!KNOWLEDGE_SCENARIOS.includes(scenario))
-      return Promise.reject(new Error('Unsupported knowledge scenario.'));
+    const selection = this.normalizeScenarioSelection(rawSelection);
     return this.generate(
       'scenario',
       noteId,
-      scenario,
+      selection,
+      rawLanguage === 'zh' ? 'zh' : 'en',
     ) as Promise<ScenarioKnowledge>;
   }
   toggleTask(
@@ -152,7 +198,8 @@ export default class KnowledgeGenerationService {
   private generate(
     kind: 'structured-note' | 'scenario',
     noteId: number,
-    scenario?: KnowledgeScenario,
+    template?: ScenarioTemplateSelection,
+    language: KnowledgeOutputLanguage = 'en',
   ): Promise<StructuredNote | ScenarioKnowledge> {
     const key = `${kind}:${noteId}`;
     const existing = this.active.get(key);
@@ -163,10 +210,13 @@ export default class KnowledgeGenerationService {
       kind === 'structured-note'
         ? this.structuredNoteStates
         : this.scenarioStates;
+    const scenario =
+      template?.source === 'builtin' ? template.scenario : undefined;
     states.set(noteId, {
       status: 'queued',
       requestId,
       scenario,
+      template,
       startedAt: Date.now(),
     });
     const promise = coordinator.run(async () => {
@@ -174,16 +224,18 @@ export default class KnowledgeGenerationService {
         status: 'generating',
         requestId,
         scenario,
+        template,
         startedAt: Date.now(),
       });
       const value =
         kind === 'structured-note'
           ? await this.runStructuredNote(noteId, requestId)
-          : await this.runScenario(noteId, scenario!, requestId);
+          : await this.runScenario(noteId, template!, requestId, language);
       states.set(noteId, {
         status: 'completed',
         requestId,
         scenario,
+        template,
         finishedAt: Date.now(),
       });
       return value;
@@ -195,6 +247,7 @@ export default class KnowledgeGenerationService {
           status: 'failed',
           requestId,
           scenario,
+          template,
           finishedAt: Date.now(),
           message: e instanceof Error ? e.message : 'Generation failed.',
         }),
@@ -208,14 +261,18 @@ export default class KnowledgeGenerationService {
       .prepare('SELECT transcript FROM notes WHERE id=? AND trashed_at IS NULL')
       .get(noteId) as { transcript: string } | undefined;
     if (!row) throw new Error('Note not found.');
-    const text = row.transcript.trim();
+    return this.normalizeTranscript(row.transcript, noteId);
+  }
+  private normalizeTranscript(raw: string, noteId?: number): string {
+    const text = String(raw ?? '').trim();
     if (!text) throw new Error('This note has no transcript to generate from.');
-    if (text.length > MAX_TRANSCRIPT_CHARS)
+    if (text.length > MAX_TRANSCRIPT_CHARS) {
       console.warn('[Knowledge] transcript truncated', {
         noteId,
         originalLength: text.length,
         usedLength: MAX_TRANSCRIPT_CHARS,
       });
+    }
     return text.slice(0, MAX_TRANSCRIPT_CHARS);
   }
   private async complete(
@@ -255,11 +312,18 @@ export default class KnowledgeGenerationService {
     requestId: string,
   ): Promise<StructuredNote> {
     const note = this.transcript(noteId);
+    const draft = await this.runStructuredNoteDraft(note, requestId);
+    return this.saveStructuredNoteDraft(noteId, draft);
+  }
+  private async runStructuredNoteDraft(
+    note: string,
+    requestId: string,
+  ): Promise<StructuredNoteDraft> {
     const system =
       'Use only NOTE evidence. Never add external knowledge or invent facts, people, decisions, dates, tasks, reminders, or events. Preserve uncertainty, attribution, and primary language. Empty unsupported categories must be []. Return only exact JSON; use null, never unknown/N/A.';
     const contentR = await this.complete(
       system,
-      `Extract summary and key points only. Exact JSON: {"summary":"","keyPoints":[]}. NOTE:\n---\n${note}\n---`,
+      `Extract summary and key points only. Summary must be a non-empty concise description whenever NOTE is non-empty. Greetings, repetitions, filler, and incomplete fragments still count as content; summarize them literally without inventing meaning. Exact JSON: {"summary":"non-empty summary","keyPoints":[]}. NOTE:\n---\n${note}\n---`,
       requestId,
       structuredNoteContentSchema,
     );
@@ -272,50 +336,48 @@ export default class KnowledgeGenerationService {
     const content = parseStrictJson(contentR.content, isStructuredNoteContent);
     const actions = parseStrictJson(actionsR.content, isStructuredNoteActions);
     const now = new Date();
-    const previous = this.repository.getStructuredNote(noteId);
     const modelId = actionsR.modelName;
     const tasks = actions.tasks.map((x, i) =>
-      this.task(x, noteId, `task-${i}`, now),
+      this.task(x, 0, `task-${i}`, now),
     );
     const unassigned = actions.unassignedActionItems.map((x, i) =>
-      this.item(x, noteId, `action-${i}`, now),
+      this.item(x, 0, `action-${i}`, now),
     );
     const calendarIntents: CalendarIntent[] = [
       ...actions.reminders.map((x, i) =>
-        this.calendar(x, 'reminder', noteId, `reminder-${i}`, now),
+        this.calendar(x, 'reminder', 0, `reminder-${i}`, now),
       ),
       ...actions.calendarIntents.map((x, i) =>
-        this.calendar(x, 'calendar', noteId, `calendar-${i}`, now),
+        this.calendar(x, 'calendar', 0, `calendar-${i}`, now),
       ),
     ];
-    const value: StructuredNote = {
-      noteId,
-      summary: content.summary.trim(),
+    return {
+      summary: ensureStructuredSummary(content.summary, note),
       keyPoints: content.keyPoints.map((x) => x.trim()).filter(Boolean),
       tasks,
       unassignedActionItems: unassigned,
       calendarIntents,
       modelId,
-      createdAt: previous?.createdAt ?? now.toISOString(),
+      createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
     };
-    this.repository.saveStructuredNote(value);
-    return value;
   }
   private async runScenario(
     noteId: number,
-    scenario: KnowledgeScenario,
+    selection: ScenarioTemplateSelection,
     requestId: string,
+    language: KnowledgeOutputLanguage,
   ): Promise<ScenarioKnowledge> {
     const note = this.transcript(noteId);
-    const d = SCENARIOS[scenario];
+    const resolved = this.resolveScenarioTemplate(selection, language);
+    const d = resolved.definition;
     const shape = Object.fromEntries(d.sections.map((s) => [s.key, []]));
     const guide = d.sections
       .map((s) => `- ${s.key} (${s.title}): ${s.instruction}`)
       .join('\n');
     const result = await this.complete(
       'Extract scenario-specific knowledge only. Do not recreate summary, general key points, tasks, action items, reminders, or calendar intents. Use only NOTE evidence; preserve uncertainty, attribution, and language. Each item must contain concrete information, not a label. Unsupported fields are []. Return only exact JSON.',
-      `Create ${d.name} knowledge. Exact JSON: {"sections":${JSON.stringify(shape)}}\n${guide}\nNOTE:\n---\n${note}\n---`,
+      `Create ${resolved.name} knowledge. Exact JSON: {"sections":${JSON.stringify(shape)}}\n${guide}\nNOTE:\n---\n${note}\n---`,
       requestId,
       {
         type: 'object',
@@ -352,7 +414,10 @@ export default class KnowledgeGenerationService {
     const previous = this.repository.getScenario(noteId);
     const value = {
       noteId,
-      scenario,
+      scenario: resolved.scenario,
+      templateId: resolved.templateId,
+      templateName: resolved.name,
+      templateSource: resolved.source,
       sections: d.sections.map((s) => ({
         key: s.key,
         title: s.title,
@@ -364,6 +429,67 @@ export default class KnowledgeGenerationService {
     };
     this.repository.saveScenario(value);
     return value;
+  }
+
+  private normalizeScenarioSelection(
+    value: ScenarioTemplateSelection | KnowledgeScenario,
+  ): ScenarioTemplateSelection {
+    if (typeof value === 'string') {
+      if (!KNOWLEDGE_SCENARIOS.includes(value)) {
+        throw new Error('Unsupported knowledge scenario.');
+      }
+      return { source: 'builtin', scenario: value };
+    }
+    if (
+      value?.source === 'builtin' &&
+      KNOWLEDGE_SCENARIOS.includes(value.scenario)
+    ) {
+      return value;
+    }
+    if (
+      value?.source === 'custom' &&
+      Number.isInteger(value.templateId) &&
+      value.templateId > 0
+    ) {
+      return value;
+    }
+    throw new Error('Invalid scenario template selection.');
+  }
+
+  private resolveScenarioTemplate(
+    selection: ScenarioTemplateSelection,
+    language: KnowledgeOutputLanguage,
+  ): {
+    source: 'builtin' | 'custom';
+    scenario: KnowledgeScenario | null;
+    templateId: number | null;
+    name: string;
+    definition: ScenarioTemplateDefinition;
+  } {
+    if (selection.source === 'builtin') {
+      const builtIn = getScenarioDefinition(selection.scenario, language);
+      return {
+        source: 'builtin',
+        scenario: selection.scenario,
+        templateId: null,
+        name: builtIn.name,
+        definition: {
+          description: builtIn.description,
+          sections: builtIn.sections,
+        },
+      };
+    }
+    const template = this.templates.findById(selection.templateId);
+    if (!template) {
+      throw new Error('Custom scenario template was not found.');
+    }
+    return {
+      source: 'custom',
+      scenario: null,
+      templateId: template.getId(),
+      name: template.getName(),
+      definition: template.getEffectiveDefinition(),
+    };
   }
   private resolve(
     raw: string | null,
@@ -463,3 +589,6 @@ export default class KnowledgeGenerationService {
     };
   }
 }
+
+/** 主进程内共享同一份生成状态，自动生成与工作空间面板不会重复启动任务。 */
+export const knowledgeGenerationService = new KnowledgeGenerationService();

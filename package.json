@@ -1,7 +1,7 @@
 {
   "name": "speakspace",
-  "productName": "SpeakSpace",
-  "description": "SpeakSpace — 本地优先的语音笔记与知识工作台 / Local-first voice notes and knowledge workspace",
+  "productName": "SpeakSpace Local",
+  "description": "SpeakSpace Local — 本地优先的语音笔记与知识工作台 / Local-first voice notes and knowledge workspace",
   "keywords": [
     "speakspace",
     "electron",
@@ -23,19 +23,20 @@
   },
   "license": "MIT",
   "author": {
-    "name": "SpeakSpace",
+    "name": "SpeakSpace Local",
     "url": "https://github.com/dhebhxh/speakspace-local-electron"
   },
   "main": "./.erb/dll/main.bundle.dev.js",
   "scripts": {
     "build": "concurrently \"npm run build:main\" \"npm run build:renderer\"",
+    "clean": "ts-node ./.erb/scripts/clean.js",
     "build:dll": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack --config ./.erb/configs/webpack.config.renderer.dev.dll.ts",
     "build:main": "cross-env NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack --config ./.erb/configs/webpack.config.main.prod.ts",
     "build:renderer": "cross-env NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack --config ./.erb/configs/webpack.config.renderer.prod.ts",
     "postinstall": "ts-node .erb/scripts/check-native-dep.js && electron-builder install-app-deps && node .erb/scripts/check-electron-binary.js && npm run build:dll",
     "lint": "cross-env NODE_ENV=development eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "cross-env NODE_ENV=development eslint . --ext .js,.jsx,.ts,.tsx --fix",
-    "package": "ts-node ./.erb/scripts/clean.js dist && npm run build && electron-builder build --publish never && node .erb/scripts/verify-signing.js && npm run build:dll",
+    "package": "npm run clean && npm run build && electron-builder build --config electron-builder.js --publish never && node .erb/scripts/verify-signing.js && npm run build:dll",
     "rebuild": "electron-rebuild --parallel --types prod,dev,optional --module-dir release/app",
     "prestart": "node .erb/scripts/check-electron-binary.js && cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack --config ./.erb/configs/webpack.config.main.dev.ts",
     "start": "ts-node ./.erb/scripts/start-dev.js",
@@ -47,7 +48,7 @@
     "test:trash:electron": "cross-env ELECTRON_RUN_AS_NODE=1 electron ./node_modules/jest/bin/jest.js --runInBand src/main/trash/__tests__/TrashService.test.ts",
     "check:electron": "node .erb/scripts/check-electron-binary.js",
     "check:audit": "npm audit --omit=dev --audit-level=high",
-    "package:release": "node .erb/scripts/check-release-signing.js && cross-env SPEAKSPACE_RELEASE=true ts-node ./.erb/scripts/clean.js dist && npm run build && cross-env SPEAKSPACE_RELEASE=true electron-builder build --publish never && cross-env SPEAKSPACE_RELEASE=true node .erb/scripts/verify-signing.js && npm run build:dll",
+    "package:release": "node .erb/scripts/check-release-signing.js && npm run clean && npm run build && cross-env SPEAKSPACE_RELEASE=true electron-builder build --config electron-builder.js --publish never && cross-env SPEAKSPACE_RELEASE=true node .erb/scripts/verify-signing.js && npm run build:dll",
     "check:signing": "node .erb/scripts/check-release-signing.js"
   },
   "browserslist": [
@@ -109,6 +110,7 @@
   "dependencies": {
     "@electron/notarize": "^3.0.0",
     "bootstrap": "^5.3.8",
+    "docx": "^9.7.1",
     "electron-debug": "^4.1.0",
     "electron-log": "^5.3.2",
     "electron-updater": "^6.8.9",

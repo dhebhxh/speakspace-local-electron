@@ -32,6 +32,7 @@ export class DatabaseManager {
     this.ensureNoteCategoryColumn();
     this.ensureConversationTrashColumn();
     this.ensureTodoPinnedColumn();
+    this.ensureKnowledgeTemplateScenarioColumns();
     this.ensureKnowledgeGenerationTables();
     this.cleanupOrphanedConversations();
   }
@@ -187,9 +188,15 @@ export class DatabaseManager {
 
                 prompt TEXT NOT NULL,
 
+                scenario_definition TEXT,
+
+                normalized_at TEXT,
+
                 created_at TEXT NOT NULL,
 
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+
+                trashed_at TEXT
             );
 
 
@@ -329,6 +336,33 @@ export class DatabaseManager {
         'ALTER TABLE workspaces ADD COLUMN last_opened_at TEXT',
       );
     }
+  }
+
+  /** 补齐旧版自定义模板缺少的规范化字段与回收站状态。 */
+  private ensureKnowledgeTemplateScenarioColumns(): void {
+    const columns = this.database
+      .prepare('PRAGMA table_info(knowledge_templates)')
+      .all() as Array<{ name: string }>;
+
+    if (!columns.some((column) => column.name === 'scenario_definition')) {
+      this.database.exec(
+        'ALTER TABLE knowledge_templates ADD COLUMN scenario_definition TEXT',
+      );
+    }
+    if (!columns.some((column) => column.name === 'normalized_at')) {
+      this.database.exec(
+        'ALTER TABLE knowledge_templates ADD COLUMN normalized_at TEXT',
+      );
+    }
+    if (!columns.some((column) => column.name === 'trashed_at')) {
+      this.database.exec(
+        'ALTER TABLE knowledge_templates ADD COLUMN trashed_at TEXT',
+      );
+    }
+    this.database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_knowledge_templates_trashed_at
+        ON knowledge_templates(trashed_at);
+    `);
   }
 
   /** 待办置顶是后加的：老库补上这一列，默认 0。 */

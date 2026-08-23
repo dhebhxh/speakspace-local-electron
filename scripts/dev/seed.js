@@ -2,7 +2,11 @@ const Database = require('better-sqlite3');
 const path = require('path');
 
 // 产品改名后 userData 目录跟着 productName 走。
-const dbPath = path.join(process.env.APPDATA, 'SpeakSpace', 'speakspace.db');
+const dbPath = path.join(
+  process.env.APPDATA,
+  'SpeakSpace Local',
+  'speakspace.db',
+);
 const db = new Database(dbPath);
 
 console.log('Opened DB:', dbPath);

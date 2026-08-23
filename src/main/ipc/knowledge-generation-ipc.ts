@@ -1,23 +1,43 @@
 import { ipcMain } from 'electron';
-import type { KnowledgeScenario } from '@shared/types/KnowledgeGenerationTypes';
-import KnowledgeGenerationService from '../knowledge/KnowledgeGenerationService';
+import type {
+  KnowledgeScenario,
+  ScenarioTemplateSelection,
+} from '@shared/types/KnowledgeGenerationTypes';
+import { knowledgeGenerationService } from '../knowledge/KnowledgeGenerationService';
 
-const service = new KnowledgeGenerationService();
 const id = (value: unknown) => {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0)
     throw new Error('Invalid note id.');
   return parsed;
 };
-ipcMain.handle('Knowledge:get', (_event, noteId) => service.get(id(noteId)));
+ipcMain.handle('Knowledge:get', (_event, noteId) =>
+  knowledgeGenerationService.get(id(noteId)),
+);
 ipcMain.handle('Knowledge:generateStructuredNote', (_event, noteId) =>
-  service.generateStructuredNote(id(noteId)),
+  knowledgeGenerationService.generateStructuredNote(id(noteId)),
+);
+ipcMain.handle('Knowledge:generateStructuredNoteDraft', (_event, transcript) =>
+  knowledgeGenerationService.generateStructuredNoteDraft(String(transcript)),
 );
 ipcMain.handle(
   'Knowledge:generateScenario',
-  (_event, noteId, scenario: KnowledgeScenario) =>
-    service.generateScenario(id(noteId), scenario),
+  (
+    _event,
+    noteId,
+    selection: ScenarioTemplateSelection | KnowledgeScenario,
+    language,
+  ) =>
+    knowledgeGenerationService.generateScenario(
+      id(noteId),
+      selection,
+      language,
+    ),
 );
 ipcMain.handle('Knowledge:toggleTask', (_event, noteId, taskId, completed) =>
-  service.toggleTask(id(noteId), String(taskId), completed === true),
+  knowledgeGenerationService.toggleTask(
+    id(noteId),
+    String(taskId),
+    completed === true,
+  ),
 );

@@ -7,13 +7,8 @@ import {
   WorkspaceController,
   WorkspaceItem,
 } from './WorkspaceController';
-import {
-  WorkspaceTemplate,
-  WorkspaceWorkflowController,
-} from './WorkspaceWorkflowController';
 
 const workspaceController = new WorkspaceController();
-const workflowController = new WorkspaceWorkflowController();
 
 /** 工作空间详情的数据读取与修改集中在 Hook，页面组件只负责排版。 */
 export default function useWorkspaceDetail() {
@@ -22,12 +17,10 @@ export default function useWorkspaceDetail() {
   const workspaceId = Number(rawWorkspaceId);
   const [workspace, setWorkspace] = useState<WorkspaceItem | null>(null);
   const [notes, setNotes] = useState<NoteItem[]>([]);
-  const [templates, setTemplates] = useState<WorkspaceTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [query, setQuery] = useState('');
-  const [generatingNoteId, setGeneratingNoteId] = useState<number | null>(null);
   const [selectedNoteIds, setSelectedNoteIds] = useState<number[]>([]);
 
   const toggleNoteSelection = useCallback((noteId: number) => {
@@ -48,16 +41,13 @@ export default function useWorkspaceDetail() {
     try {
       setLoading(true);
       setError('');
-      // 进入详情时先记录访问时间，再并行加载笔记与知识模板。
+      // 进入详情时记录访问时间，再读取当前空间的笔记。
       const openedWorkspace =
         await workspaceController.openWorkspace(workspaceId);
-      const [workspaceNotes, knowledgeTemplates] = await Promise.all([
-        workspaceController.getWorkspaceNotes(workspaceId),
-        workflowController.listTemplates(),
-      ]);
+      const workspaceNotes =
+        await workspaceController.getWorkspaceNotes(workspaceId);
       setWorkspace(openedWorkspace);
       setNotes(workspaceNotes);
-      setTemplates(knowledgeTemplates);
     } catch (reason) {
       setWorkspace(null);
       setError(WorkspaceController.getErrorMessage(reason, '读取工作空间失败'));
@@ -79,24 +69,6 @@ export default function useWorkspaceDetail() {
     );
     return workspaceNotes;
   }, [workspaceId]);
-
-  const generateOutput = useCallback(
-    async (noteId: number, templateId: number) => {
-      try {
-        setGeneratingNoteId(noteId);
-        setError('');
-        setStatus('');
-        await workflowController.generate(noteId, templateId);
-        setNotes(await workspaceController.getWorkspaceNotes(workspaceId));
-        setStatus('AI 知识输出已生成并保存在当前笔记中。');
-      } catch (reason) {
-        setError(WorkspaceController.getErrorMessage(reason, '生成失败'));
-      } finally {
-        setGeneratingNoteId(null);
-      }
-    },
-    [workspaceId],
-  );
 
   const createNote = useCallback(
     async (name: string, transcript: string): Promise<number> => {
@@ -189,17 +161,14 @@ export default function useWorkspaceDetail() {
   return {
     workspaceId,
     workspace,
-    templates,
     loading,
     error,
     status,
     query,
     setQuery,
-    generatingNoteId,
     selectedNoteIds,
     toggleNoteSelection,
     setSelectedNoteIds,
-    generateOutput,
     createNote,
     renameWorkspace,
     moveWorkspaceToTrash,

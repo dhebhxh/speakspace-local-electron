@@ -12,6 +12,8 @@ type StatusListener = (job: unknown) => void;
 let emitStatus: StatusListener = () => {};
 const cancel = jest.fn().mockResolvedValue(undefined);
 const start = jest.fn();
+const liveRun = jest.fn();
+const generateStructuredNoteDraft = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -24,7 +26,9 @@ beforeEach(() => {
       onPartial: () => () => {},
       start,
       cancel,
+      liveRun,
     },
+    knowledge: { generateStructuredNoteDraft },
   };
 });
 
@@ -87,7 +91,8 @@ describe('放弃这一轮采集', () => {
 
     expect(snapshot.job).toBeNull();
     expect(snapshot.livePendingCount).toBe(0);
-    expect(snapshot.summaryPendingCount).toBe(0);
+    expect(snapshot.structuredNotePending).toBe(false);
+    expect(snapshot.structuredNoteDraft).toBeNull();
     expect(snapshot.liveSegments).toEqual([]);
   });
 
@@ -118,5 +123,44 @@ describe('放弃这一轮采集', () => {
 
     await expect(controller.abort()).resolves.toBeUndefined();
     expect(controller.getSnapshot().job).toBeNull();
+  });
+});
+
+describe('完整转写后的 Structured Note', () => {
+  it('只把完整 transcript 交给 Structured Note 生成器并保留同一份草稿', async () => {
+    const controller = new TranscriptionController();
+    const draft = {
+      summary: '完整摘要',
+      keyPoints: ['要点'],
+      tasks: [],
+      unassignedActionItems: [],
+      calendarIntents: [],
+      modelId: 'local-model',
+      createdAt: '2026-08-22T10:00:00.000Z',
+      updatedAt: '2026-08-22T10:00:00.000Z',
+    };
+    liveRun.mockResolvedValue({
+      text: '完整转写内容',
+      engine: 'whisper',
+      modelName: 'Whisper',
+      elapsedMs: 10,
+    });
+    generateStructuredNoteDraft.mockResolvedValue(draft);
+
+    controller.resetLive('microphone');
+    controller.enqueueLiveChunk({
+      size: 1,
+      type: 'audio/webm',
+      arrayBuffer: async () => new ArrayBuffer(1),
+    } as Blob);
+    await Promise.all([
+      controller.finalizeStructuredNote(),
+      controller.finalizeStructuredNote(),
+    ]);
+    await controller.finalizeStructuredNote();
+
+    expect(generateStructuredNoteDraft).toHaveBeenCalledWith('完整转写内容');
+    expect(generateStructuredNoteDraft).toHaveBeenCalledTimes(1);
+    expect(controller.getSnapshot().structuredNoteDraft).toBe(draft);
   });
 });

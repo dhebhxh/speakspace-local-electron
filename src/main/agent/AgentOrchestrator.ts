@@ -19,6 +19,23 @@ import {
 } from './AgentTypes';
 
 const DEFAULT_MAX_STEPS = 6;
+const MAX_LINKED_CONTEXT_CHARACTERS = 8000;
+
+function truncateLinkedNoteResult(
+  value: string,
+  transcriptLimit: number,
+): string {
+  try {
+    const note = JSON.parse(value) as Record<string, unknown>;
+    const transcript = String(note.transcript ?? '');
+    if (transcript.length > transcriptLimit) {
+      note.transcript = `${transcript.slice(0, transcriptLimit)}…[truncated]`;
+    }
+    return JSON.stringify(note);
+  } catch {
+    return value.slice(0, transcriptLimit);
+  }
+}
 
 type AgentDependencies = {
   chat: AgentChat;
@@ -70,17 +87,26 @@ export default class AgentOrchestrator {
       workspaceId: request.workspaceId,
       linkedNoteIds: request.linkedNoteIds,
     };
+    const linkedContext = await this.loadLinkedNoteContext(context, signal);
     const messages: Message[] = [
       {
         role: 'system',
         content: this.systemPromptOverride ?? buildAgentSystemPrompt(context),
       },
+      ...(linkedContext
+        ? ([{ role: 'system', content: linkedContext }] as Message[])
+        : []),
       ...request.history,
       { role: 'user', content: request.instruction },
     ];
 
     const steps: AgentStep[] = [];
-    const schemas = Array.from(this.tools.values()).map((tool) => tool.schema);
+    const availableTools = new Map(this.tools);
+    // 用户已经指定笔记时，代码层直接移除全库搜索，避免小模型忽略提示词。
+    if (request.linkedNoteIds.length > 0) availableTools.delete('search_notes');
+    const schemas = Array.from(availableTools.values()).map(
+      (tool) => tool.schema,
+    );
     const previousCalls: string[] = [];
     let modelName = '';
 
@@ -142,7 +168,7 @@ export default class AgentOrchestrator {
 
       // eslint-disable-next-line no-await-in-loop
       const result = await runAgentTool(
-        this.tools.get(call.name),
+        availableTools.get(call.name),
         call.name,
         call.args,
         context,
@@ -162,5 +188,50 @@ export default class AgentOrchestrator {
     const step: AgentStep = { type: 'final', text: finalText, truncated: true };
     emitAgentStep(steps, step, onStep);
     return { finalText, modelName, steps, completed: false };
+  }
+
+  /**
+   * 手动关联是输入，不是一次需要模型自行决定的搜索动作。
+   * 在第一轮推理前把对应正文确定性载入，短指令也能直接指向这些内容。
+   */
+  private async loadLinkedNoteContext(
+    context: { workspaceId: number | null; linkedNoteIds: number[] },
+    signal?: AbortSignal,
+  ): Promise<string | null> {
+    if (context.linkedNoteIds.length === 0) return null;
+    const readNote = this.tools.get('read_note');
+    if (!readNote) return null;
+
+    const transcriptLimit = Math.max(
+      400,
+      Math.floor(MAX_LINKED_CONTEXT_CHARACTERS / context.linkedNoteIds.length) -
+        200,
+    );
+    const notes = await Promise.all(
+      context.linkedNoteIds.map(async (noteId) => {
+        try {
+          throwIfAgentAborted(signal);
+          const result = await readNote.run(
+            { note_id: noteId },
+            context,
+            signal,
+          );
+          throwIfAgentAborted(signal);
+          return truncateLinkedNoteResult(result, transcriptLimit);
+        } catch (error) {
+          throwIfAgentAborted(signal);
+          return JSON.stringify({
+            id: noteId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }),
+    );
+
+    return [
+      '[LINKED NOTE CONTEXT]',
+      'The user explicitly selected the notes below for this request. Answer from their contents directly. Do not ask the user to restate the context and do not search other notes.',
+      ...notes.map((note, index) => `Linked note ${index + 1}: ${note}`),
+    ].join('\n');
   }
 }

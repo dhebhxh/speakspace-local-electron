@@ -37,7 +37,6 @@ const PATH_TO_LABEL_KEY: Record<string, string> = {
   [RoutePath.ModelManagement]: 'sidebar.modelManagement',
   [RoutePath.Settings]: 'sidebar.settings',
   '/Agent': 'sidebar.agent',
-  '/Workflow': 'sidebar.workflow',
 };
 
 /** 返回目标对应的页面名翻译键；认不出来的路径返回 null，按钮就只写「返回」。 */

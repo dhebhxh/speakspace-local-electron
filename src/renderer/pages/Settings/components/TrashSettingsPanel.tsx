@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  CircleAlert,
+  FileText,
+  Folder,
+  LayoutTemplate,
+  MessageSquare,
+  Search,
+  Trash2,
+} from 'lucide-react';
 import type {
   TrashActionResult,
   TrashFilter,
@@ -21,7 +30,7 @@ type TrashNotice = {
   result: TrashActionResult;
 };
 
-/** Searchable, recoverable lifecycle UI for Notes and Workspaces. */
+/** Searchable lifecycle UI for all recoverable user-created content. */
 export default function TrashSettingsPanel({
   onCountChange,
 }: TrashSettingsPanelProps) {
@@ -149,11 +158,41 @@ export default function TrashSettingsPanel({
   const untitledKey = (itemType: TrashItem['itemType']) => {
     if (itemType === 'note') return 'trash.item.untitledNote';
     if (itemType === 'conversation') return 'trash.item.untitledConversation';
+    if (itemType === 'template') return 'trash.item.untitledTemplate';
     return 'trash.item.untitledWorkspace';
   };
 
   const displayName = (item: TrashItem) =>
     item.name || t(untitledKey(item.itemType));
+
+  const renderItemIcon = (itemType: TrashItem['itemType']) => {
+    if (itemType === 'note') return <FileText size={19} />;
+    if (itemType === 'conversation') return <MessageSquare size={19} />;
+    if (itemType === 'workspace') return <Folder size={19} />;
+    return <LayoutTemplate size={19} />;
+  };
+
+  const permanentDeleteDescription = (item: TrashItem) => {
+    if (item.itemType === 'workspace') {
+      return t('trash.confirm.workspace', {
+        count: item.noteCount,
+        name: displayName(item),
+      });
+    }
+    if (item.itemType === 'conversation') {
+      return t('trash.confirm.conversation', {
+        count: item.messageCount,
+        name: displayName(item),
+      });
+    }
+    if (item.itemType === 'template') {
+      return t('trash.confirm.template', {
+        count: item.outputCount,
+        name: displayName(item),
+      });
+    }
+    return t('trash.confirm.note', { name: displayName(item) });
+  };
 
   const formatDate = (value: string) => {
     const date = new Date(value);
@@ -219,6 +258,9 @@ export default function TrashSettingsPanel({
   };
 
   const hasMore = items.length < total;
+  const canViewRestored =
+    notice?.result.itemType === 'note' ||
+    notice?.result.itemType === 'workspace';
   const emptyFromSearch = Boolean(debouncedSearch) || filter !== 'all';
   const emptyTitleKey = emptyFromSearch
     ? 'trash.empty.searchTitle'
@@ -226,7 +268,13 @@ export default function TrashSettingsPanel({
   const emptyDescriptionKey = emptyFromSearch
     ? 'trash.empty.searchDesc'
     : 'trash.empty.desc';
-  const filters: TrashFilter[] = ['all', 'note', 'conversation', 'workspace'];
+  const filters: TrashFilter[] = [
+    'all',
+    'note',
+    'conversation',
+    'workspace',
+    'template',
+  ];
 
   return (
     <section
@@ -239,7 +287,7 @@ export default function TrashSettingsPanel({
           className="settings-panel-icon trash-settings-icon"
           aria-hidden="true"
         >
-          ♲
+          <Trash2 size={20} />
         </span>
         <div>
           <h2 id="trash-title">{t('trash.title')}</h2>
@@ -250,7 +298,7 @@ export default function TrashSettingsPanel({
       <div className="trash-settings-toolbar">
         <label className="trash-search" htmlFor="trash-search-input">
           <span className="trash-search-glyph" aria-hidden="true">
-            ⌕
+            <Search size={17} />
           </span>
           <span className="trash-visually-hidden">
             {t('trash.search.placeholder')}
@@ -315,7 +363,7 @@ export default function TrashSettingsPanel({
                     t(untitledKey(notice.result.itemType)),
                 })}
           </span>
-          {notice.kind === 'restored' && (
+          {notice.kind === 'restored' && canViewRestored && (
             <button onClick={() => viewRestored(notice.result)} type="button">
               {t('trash.action.view')}
             </button>
@@ -342,7 +390,7 @@ export default function TrashSettingsPanel({
       {!loading && items.length === 0 && (
         <div className="trash-settings-state">
           <span className="trash-empty-glyph" aria-hidden="true">
-            ♲
+            <Trash2 size={22} />
           </span>
           <strong>{t(emptyTitleKey)}</strong>
           <p>{t(emptyDescriptionKey)}</p>
@@ -360,8 +408,7 @@ export default function TrashSettingsPanel({
                   className={`trash-item-glyph is-${item.itemType}`}
                   aria-hidden="true"
                 >
-                  {/* N 笔记 / C 对话 / W 工作空间 */}
-                  {item.itemType.charAt(0).toUpperCase()}
+                  {renderItemIcon(item.itemType)}
                 </span>
                 <div className="trash-item-content">
                   <div className="trash-item-title-row">
@@ -398,6 +445,18 @@ export default function TrashSettingsPanel({
                         count: item.messageCount,
                       })}
                     </span>
+                  )}
+                  {item.itemType === 'template' && (
+                    <>
+                      <p className="trash-item-preview">
+                        {item.preview || t('trash.item.noTemplatePreview')}
+                      </p>
+                      <span className="trash-item-meta">
+                        {t('trash.item.outputCount', {
+                          count: item.outputCount,
+                        })}
+                      </span>
+                    </>
                   )}
                   <time className="trash-item-time" dateTime={item.trashedAt}>
                     {t('trash.item.trashedAt', {
@@ -462,18 +521,11 @@ export default function TrashSettingsPanel({
             role="dialog"
           >
             <span className="trash-confirm-glyph" aria-hidden="true">
-              !
+              <CircleAlert size={22} />
             </span>
             <h3 id="trash-confirm-title">{t('trash.confirm.title')}</h3>
             <p id="trash-confirm-description">
-              {confirmItem.itemType === 'workspace'
-                ? t('trash.confirm.workspace', {
-                    count: confirmItem.noteCount,
-                    name: displayName(confirmItem),
-                  })
-                : t('trash.confirm.note', {
-                    name: displayName(confirmItem),
-                  })}
+              {permanentDeleteDescription(confirmItem)}
             </p>
             <strong className="trash-confirm-warning">
               {t('trash.confirm.irreversible')}

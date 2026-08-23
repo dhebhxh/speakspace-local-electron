@@ -2,8 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import { app } from 'electron';
 
-/** 改名前应用使用的 userData 目录名（Electron React Boilerplate 默认值）。 */
-const LEGACY_DIRECTORY_NAMES = ['electron-react-boilerplate', 'ElectronReact'];
+/** 历次产品名对应的旧 userData 目录。 */
+const LEGACY_DIRECTORY_NAMES = [
+  'SpeakSpace',
+  'electron-react-boilerplate',
+  'ElectronReact',
+];
 
 /** 迁移完成后写入的标记，避免每次启动都重新扫描旧目录。 */
 const MARKER_FILE = '.userdata-migrated';
@@ -17,6 +21,7 @@ const MIGRATED_ENTRIES = [
   'blobs',
   'runtimes',
   'models',
+  'model-state',
   'output',
 ];
 
@@ -27,8 +32,8 @@ function copyIfMissing(source: string, target: string): boolean {
 }
 
 /**
- * 产品名从 ElectronReact 改成 SpeakSpace 后，userData 路径也跟着变了。
- * 老用户的数据库和运行时留在旧目录里，这里在主进程启动最早期做一次搬迁。
+ * 产品名变化会让 Electron 同步改变 userData 路径。老用户的数据库、模型和
+ * 设置仍在旧目录里，因此在主进程启动最早期做一次无损搬迁。
  *
  * 只复制不删除：旧目录原样保留，迁移出问题时用户的数据仍然在原处。
  * 必须在任何模块调用 app.getPath('userData') 之前执行。

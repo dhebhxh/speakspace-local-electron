@@ -1147,11 +1147,12 @@ html[data-theme='dark'] {
 .th-type, .td-type { width: 8rem; }
 
 /* 下拉要能探出单元格，所以这一格不裁剪；其余列仍靠 overflow 截断长文本。
+   这里仍须保持 sticky，否则类型表头会在列表滚动时被正文行顶走。
    选择器必须写成 .notes-table th.th-type：上面那条 .notes-table th 的
    overflow: hidden 权重是 0-1-1，单独一个 .th-type（0-1-0）压不过它，
    菜单会被裁在 30px 高的单元格里——看起来就是「点了没反应」。 */
 .notes-table th.th-type {
-  position: relative;
+  position: sticky;
   overflow: visible;
 }
 /* 12.5rem 是量出来的：最宽的一条是「🗓 2026-08-20 +90」，

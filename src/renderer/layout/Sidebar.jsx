@@ -122,7 +122,7 @@ export default function Sidebar({ collapsed, onToggle }) {
           <span className="sidebar-brand-mark">
             <SoundWave bars={4} size={14} />
           </span>
-          <span className="sidebar-wordmark-text">SpeakSpace</span>
+          <span className="sidebar-wordmark-text">SpeakSpace Local</span>
         </h2>
         <button
           type="button"
@@ -153,7 +153,12 @@ export default function Sidebar({ collapsed, onToggle }) {
               const label = t(`sidebar.${item.key}`);
               return (
                 <li key={item.to}>
-                  <NavLink to={item.to} end={item.end} title={label}>
+                  <NavLink
+                    to={item.to}
+                    end={item.end}
+                    title={label}
+                    aria-label={label}
+                  >
                     <span className="nav-icon">{ICONS[item.key]}</span>
                     <span className="nav-label">{label}</span>
                   </NavLink>

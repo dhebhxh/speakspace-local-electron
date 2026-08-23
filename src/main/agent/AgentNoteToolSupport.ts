@@ -32,7 +32,23 @@ export function listScopedAgentNotes(
   notes: AgentNoteSource,
   context: AgentContext,
 ): Note[] {
+  const linked = context.linkedNoteIds ?? [];
+  if (linked.length > 0) {
+    return linked
+      .map((id) => notes.findById(id))
+      .filter((note): note is Note => note !== null && note !== undefined);
+  }
   return context.workspaceId === null
     ? notes.findAll()
     : notes.findAllByWorkspace(context.workspaceId);
+}
+
+/** 有手动关联时以其为准；否则沿用工作空间 / 全库范围。 */
+export function isAgentNoteInScope(note: Note, context: AgentContext): boolean {
+  const linked = context.linkedNoteIds ?? [];
+  if (linked.length > 0) return linked.includes(note.getId());
+  return (
+    context.workspaceId === null ||
+    note.getWorkspaceId() === context.workspaceId
+  );
 }

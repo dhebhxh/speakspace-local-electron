@@ -11,10 +11,9 @@
 // 产品改名会改变 userData 路径，这一句必须排在所有会读 userData 的 import 之前。
 import './startup/migrate-userdata';
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, Menu } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
-import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 
 // speakspace-local ipc
@@ -111,10 +110,14 @@ const createWindow = async () => {
     return path.join(RESOURCES_PATH, ...paths);
   };
 
+  // 应用内已经提供完整导航，移除 Electron 默认的 File / View / Help 菜单。
+  Menu.setApplicationMenu(null);
+
   mainWindow = new BrowserWindow({
     show: false,
     width: 1024,
     height: 728,
+    autoHideMenuBar: true,
     icon: getAssetPath('icon.png'),
     webPreferences: {
       preload: app.isPackaged
@@ -161,9 +164,6 @@ const createWindow = async () => {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
-
-  const menuBuilder = new MenuBuilder(mainWindow);
-  menuBuilder.buildMenu();
 
   // Open urls in the user's browser
   mainWindow.webContents.setWindowOpenHandler((edata) => {

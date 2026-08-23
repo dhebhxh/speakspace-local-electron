@@ -55,8 +55,8 @@ function fuse(
 }
 
 /**
- * 用户手动挂上的笔记：无论检索是否命中都带上，并标成 linked，
- * 让模型知道这几条是人指定的重点，但检索本身仍然覆盖全部笔记。
+ * 用户手动挂上的笔记：无论检索是否命中都带上并标成 linked。
+ * 有关联笔记时，上游候选集和语义结果都会被限制在这些笔记内。
  */
 function listLinkedNotes(
   notes: AgentNoteSource,
@@ -160,6 +160,13 @@ export default function createAgentSearchNotesTool(
           context.workspaceId,
           SEMANTIC_TOP_K,
         );
+        // 手动关联存在时，即使语义索引返回全库结果，也不能越出用户范围。
+        if ((context.linkedNoteIds ?? []).length > 0) {
+          const scopedIds = new Set(candidates.map((note) => note.getId()));
+          semanticMatches = semanticMatches.filter((result) =>
+            scopedIds.has(result.id),
+          );
+        }
       } catch (error) {
         semanticError = error instanceof Error ? error.message : String(error);
       }

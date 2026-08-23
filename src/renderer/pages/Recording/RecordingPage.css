@@ -98,7 +98,8 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   background: var(--surface);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur))
+    saturate(var(--glass-saturate));
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   box-shadow:
     var(--shadow-lg),
@@ -372,6 +373,15 @@
   padding: 0.7rem 0.75rem;
   border-radius: 12px;
   background: var(--surface-soft);
+}
+
+.live-summary__result {
+  padding: 0.7rem 0.75rem;
+  border-radius: 12px;
+  background: var(--surface-soft);
+  color: var(--recording-text);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 /* 整理结果那一列现在是富文本容器，不再是 span。 */
@@ -667,7 +677,8 @@
 }
 
 @keyframes recording-pulse {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 32%, transparent);
   }
   50% {

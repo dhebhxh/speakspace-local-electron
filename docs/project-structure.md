@@ -6,6 +6,7 @@
 assets/            应用图标、entitlements
 config/            模型目录（llm-catalog.json / stt-catalog.json）
 docs/              文档
+  archive/         已完成阶段的历史方案与迁移记录
   changelog/       历次改动记录（原 log/）
   design/          UI 设计稿
   testing/         测试说明
@@ -14,8 +15,10 @@ scripts/           开发/验证脚本，不参与打包
   smoke/           冒烟脚本（npm run smoke:tts）
   dev/             本地数据库种子脚本
 src/               应用源码
-.erb/              electron-react-boilerplate 的构建配置与脚本
-release/           打包输出与 app 侧 package.json
+.erb/              Electron/Webpack 构建配置与脚本（沿用 ERB 目录名）
+release/app/       打包侧 package.json、原生依赖和生成后的应用代码
+release/build/     electron-builder 临时产物，可重新生成且不提交
+release/installers/ 本地验收后的安装包，不提交
 ```
 
 ## src/ 的三段划分
@@ -44,6 +47,8 @@ overrides）。之前渲染层有 32 处直接 import 主进程实现文件，�
 
 需要在两侧共用一个类型时：把它放进 `src/shared/types/`，主进程侧文件
 按需 re-export，这样主进程原有的 import 路径不用动。
+
+完整的修改、删除、国际化和验收约定见根目录 `AGENTS.md`。
 
 ## 路径别名
 

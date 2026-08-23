@@ -18,6 +18,26 @@ export type StructuredNoteActionsRaw = {
   reminders: StructuredNoteRawTime[];
   calendarIntents: StructuredNoteRawTime[];
 };
+const MAX_FALLBACK_SUMMARY_CHARS = 240;
+
+/** A non-empty transcript must always produce something useful in the Summary UI. */
+export function ensureStructuredSummary(
+  summary: string,
+  transcript: string,
+): string {
+  const generated = summary.trim();
+  if (generated) return generated;
+
+  const normalizedTranscript = transcript.replace(/\s+/gu, ' ').trim();
+  const characters = Array.from(normalizedTranscript);
+  if (characters.length <= MAX_FALLBACK_SUMMARY_CHARS)
+    return normalizedTranscript;
+  return `${characters
+    .slice(0, MAX_FALLBACK_SUMMARY_CHARS - 1)
+    .join('')
+    .trimEnd()}…`;
+}
+
 export function parseStrictJson<T>(
   raw: string,
   validate: (value: unknown) => value is T,

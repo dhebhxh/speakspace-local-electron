@@ -49,10 +49,19 @@ type WorkspaceTrashRow = {
   matched_contained_note: number;
 };
 
+type TemplateTrashRow = {
+  item_type: 'template';
+  id: number;
+  name: string;
+  trashed_at: string;
+  preview: string;
+  output_count: number;
+};
+
 /**
- * Owns the recoverable content lifecycle. Normal Workspace and Note services
- * only see active rows; this service is the sole boundary allowed to read or
- * mutate trashed rows and to perform irreversible deletion.
+ * Owns the recoverable content lifecycle. Normal content repositories only
+ * see active rows; this service is the sole boundary allowed to read or mutate
+ * trashed rows and to perform irreversible deletion.
  */
 export default class TrashService {
   private readonly database: Database.Database;
@@ -73,7 +82,7 @@ export default class TrashService {
     const items: TrashItem[] = [];
     let total = 0;
 
-    if (query.filter !== 'workspace') {
+    if (query.filter === 'all' || query.filter === 'note') {
       const searchClause = searchPattern
         ? `AND (
             COALESCE(notes.name, '') LIKE @searchPattern ESCAPE '\\'
@@ -120,7 +129,7 @@ export default class TrashService {
       );
     }
 
-    if (query.filter !== 'note') {
+    if (query.filter === 'all' || query.filter === 'workspace') {
       const workspaceNameMatches = searchPattern
         ? `workspaces.name LIKE @searchPattern ESCAPE '\\'`
         : '0';
@@ -176,14 +185,7 @@ export default class TrashService {
       );
     }
 
-    items.sort((left, right) => {
-      const timeDifference = right.trashedAt.localeCompare(left.trashedAt);
-      if (timeDifference !== 0) return timeDifference;
-      return right.id - left.id;
-    });
-
-    const offset = (query.page - 1) * query.pageSize;
-    if (query.filter !== 'note' && query.filter !== 'workspace') {
+    if (query.filter === 'all' || query.filter === 'conversation') {
       const searchClause = searchPattern
         ? `AND ai_conversations.name LIKE @searchPattern ESCAPE '\\'`
         : '';
@@ -220,6 +222,57 @@ export default class TrashService {
       );
     }
 
+    if (query.filter === 'all' || query.filter === 'template') {
+      const searchClause = searchPattern
+        ? `AND (
+            knowledge_templates.name LIKE @searchPattern ESCAPE '\\'
+            OR knowledge_templates.prompt LIKE @searchPattern ESCAPE '\\'
+          )`
+        : '';
+      const templateRows = this.database
+        .prepare(
+          `SELECT 'template' AS item_type, knowledge_templates.id,
+            knowledge_templates.name, knowledge_templates.trashed_at,
+            SUBSTR(REPLACE(REPLACE(knowledge_templates.prompt, CHAR(10), ' '), CHAR(13), ' '), 1, 180) AS preview,
+            (SELECT COUNT(*) FROM knowledge_outputs
+              WHERE knowledge_outputs.template_id = knowledge_templates.id) AS output_count
+          FROM knowledge_templates
+          WHERE knowledge_templates.trashed_at IS NOT NULL
+            ${searchClause}
+          ORDER BY knowledge_templates.trashed_at DESC,
+            knowledge_templates.id DESC
+          LIMIT @limit`,
+        )
+        .all(bindings) as TemplateTrashRow[];
+      const templateCount = this.database
+        .prepare(
+          `SELECT COUNT(*) AS count
+          FROM knowledge_templates
+          WHERE knowledge_templates.trashed_at IS NOT NULL
+            ${searchClause}`,
+        )
+        .get(bindings) as { count: number };
+      total += Number(templateCount.count);
+      items.push(
+        ...templateRows.map((row) => ({
+          itemType: 'template' as const,
+          id: row.id,
+          name: row.name,
+          trashedAt: row.trashed_at,
+          preview: row.preview,
+          outputCount: Number(row.output_count),
+        })),
+      );
+    }
+
+    items.sort((left, right) => {
+      const timeDifference = right.trashedAt.localeCompare(left.trashedAt);
+      if (timeDifference !== 0) return timeDifference;
+      return right.id - left.id;
+    });
+
+    const offset = (query.page - 1) * query.pageSize;
+
     return {
       items: items.slice(offset, offset + query.pageSize),
       total,
@@ -238,7 +291,13 @@ export default class TrashService {
             FROM notes
             JOIN workspaces ON workspaces.id = notes.workspace_id
             WHERE notes.trashed_at IS NOT NULL
-              AND workspaces.trashed_at IS NULL) AS count`,
+              AND workspaces.trashed_at IS NULL)
+          +
+          (SELECT COUNT(*) FROM ai_conversations
+            WHERE trashed_at IS NOT NULL)
+          +
+          (SELECT COUNT(*) FROM knowledge_templates
+            WHERE trashed_at IS NOT NULL) AS count`,
       )
       .get() as { count: number };
     return Number(row.count);
@@ -323,6 +382,7 @@ export default class TrashService {
     if (target.itemType === 'conversation') {
       return this.restoreConversation(target.id);
     }
+    if (target.itemType === 'template') return this.restoreTemplate(target.id);
     return this.restoreWorkspace(target.id);
   }
 
@@ -332,6 +392,9 @@ export default class TrashService {
       return this.permanentlyDeleteNote(target.id);
     if (target.itemType === 'conversation') {
       return this.permanentlyDeleteConversation(target.id);
+    }
+    if (target.itemType === 'template') {
+      return this.permanentlyDeleteTemplate(target.id);
     }
     return this.permanentlyDeleteWorkspace(target.id);
   }
@@ -360,6 +423,37 @@ export default class TrashService {
 
     return {
       itemType: 'conversation',
+      id,
+      name: row.name,
+      workspaceId: null,
+      noteCount: 0,
+    };
+  }
+
+  /** 模板移入回收站后不再出现在场景列表，但历史生成结果保持不变。 */
+  public moveTemplate(rawId: unknown): TrashActionResult {
+    const id = TrashService.normalizeId(rawId);
+    const row = this.database
+      .prepare(
+        `SELECT id, name FROM knowledge_templates
+        WHERE id = ? AND trashed_at IS NULL`,
+      )
+      .get(id) as { id: number; name: string } | undefined;
+    if (!row) {
+      throw new Error(
+        '知识模板不存在或已在回收站 / Template not found or already in Trash',
+      );
+    }
+
+    const result = this.database
+      .prepare('UPDATE knowledge_templates SET trashed_at = ? WHERE id = ?')
+      .run(new Date().toISOString(), id);
+    if (result.changes !== 1) {
+      throw new Error('无法移入回收站 / Could not move template to Trash');
+    }
+
+    return {
+      itemType: 'template',
       id,
       name: row.name,
       workspaceId: null,
@@ -410,6 +504,52 @@ export default class TrashService {
 
     return {
       itemType: 'conversation',
+      id,
+      name: row.name,
+      workspaceId: null,
+      noteCount: 0,
+    };
+  }
+
+  private restoreTemplate(id: number): TrashActionResult {
+    const row = this.database
+      .prepare(
+        `SELECT id, name FROM knowledge_templates
+        WHERE id = ? AND trashed_at IS NOT NULL`,
+      )
+      .get(id) as { id: number; name: string } | undefined;
+    if (!row) {
+      throw new Error('模板不在回收站 / Template is not in Trash');
+    }
+
+    this.database
+      .prepare('UPDATE knowledge_templates SET trashed_at = NULL WHERE id = ?')
+      .run(id);
+    return {
+      itemType: 'template',
+      id,
+      name: row.name,
+      workspaceId: null,
+      noteCount: 0,
+    };
+  }
+
+  private permanentlyDeleteTemplate(id: number): TrashActionResult {
+    const row = this.database
+      .prepare(
+        `SELECT id, name FROM knowledge_templates
+        WHERE id = ? AND trashed_at IS NOT NULL`,
+      )
+      .get(id) as { id: number; name: string } | undefined;
+    if (!row) {
+      throw new Error('模板不在回收站 / Template is not in Trash');
+    }
+
+    this.database
+      .prepare('DELETE FROM knowledge_templates WHERE id = ?')
+      .run(id);
+    return {
+      itemType: 'template',
       id,
       name: row.name,
       workspaceId: null,
@@ -591,7 +731,8 @@ export default class TrashService {
     if (
       candidate.itemType !== 'note' &&
       candidate.itemType !== 'workspace' &&
-      candidate.itemType !== 'conversation'
+      candidate.itemType !== 'conversation' &&
+      candidate.itemType !== 'template'
     ) {
       throw new Error('无效的条目类型 / Invalid item type');
     }
@@ -641,7 +782,8 @@ export default class TrashService {
       value === 'all' ||
       value === 'note' ||
       value === 'workspace' ||
-      value === 'conversation'
+      value === 'conversation' ||
+      value === 'template'
     );
   }
 

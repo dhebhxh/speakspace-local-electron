@@ -22,10 +22,9 @@ const IDLE: TranscriptionControllerSnapshot = {
   liveSegments: [],
   livePendingCount: 0,
   liveError: null,
-  liveSummaries: [],
-  summaryPendingCount: 0,
-  summaryError: null,
-  summaryMode: null,
+  structuredNoteDraft: null,
+  structuredNotePending: false,
+  structuredNoteError: null,
 };
 
 function snapshot(
@@ -81,16 +80,16 @@ describe('isTranscriptionFileBusy', () => {
     ).toBe(false);
   });
 
-  it('语义整理默认不算忙，录音页另有 summaryBusy 单独控制', () => {
-    expect(isTranscriptionFileBusy(snapshot({ summaryPendingCount: 1 }))).toBe(
-      false,
-    );
+  it('Structured Note 生成默认不影响普通转写忙碌状态', () => {
+    expect(
+      isTranscriptionFileBusy(snapshot({ structuredNotePending: true })),
+    ).toBe(false);
   });
 
-  it('includeSummary 打开后语义整理算忙（工作台入口用）', () => {
+  it('includeStructuredNote 打开后生成草稿算忙（工作台入口用）', () => {
     expect(
-      isTranscriptionFileBusy(snapshot({ summaryPendingCount: 1 }), {
-        includeSummary: true,
+      isTranscriptionFileBusy(snapshot({ structuredNotePending: true }), {
+        includeStructuredNote: true,
       }),
     ).toBe(true);
   });

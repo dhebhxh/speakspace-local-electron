@@ -1,19 +1,15 @@
 ---
-name: Question
-about: Ask a question.❓
-labels: 'question'
+name: 使用问题
+about: 询问 SpeakSpace Local 的安装、模型或使用方式
+labels: question
 ---
 
-## Summary
+## 问题
 
-<!-- What do you need help with? -->
+请说明你想完成什么、已经尝试了什么，以及目前卡在哪里。
 
-<!---
-❗️❗️ Also, please consider donating (https://opencollective.com/electron-react-boilerplate-594) ❗️❗️
+## 环境
 
-Donations will ensure the following:
-
-🔨 Long term maintenance of the project
-🛣 Progress on the roadmap
-🐛 Quick responses to bug reports and help requests
- -->
+- SpeakSpace Local 版本：
+- 操作系统及版本：
+- 相关模型：

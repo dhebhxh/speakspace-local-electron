@@ -88,4 +88,13 @@ describe('createAgentExtractTodosTool', () => {
     ).rejects.toThrow();
     expect(extractor.extractTodosForNote).not.toHaveBeenCalled();
   });
+
+  it('有关联笔记时拒绝给范围外的笔记提取待办', async () => {
+    const { tool, extractor } = buildTool();
+
+    await expect(
+      tool.run({ note_id: 7 }, { workspaceId: null, linkedNoteIds: [9] }),
+    ).rejects.toThrow('当前笔记范围');
+    expect(extractor.extractTodosForNote).not.toHaveBeenCalled();
+  });
 });

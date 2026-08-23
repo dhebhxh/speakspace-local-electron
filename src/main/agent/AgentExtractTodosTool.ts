@@ -1,5 +1,5 @@
 import type { TodoData } from '../database/repositories/TodoRepository';
-import { AgentNoteSource } from './AgentNoteToolSupport';
+import { AgentNoteSource, isAgentNoteInScope } from './AgentNoteToolSupport';
 import { throwIfAgentAborted } from './AgentRunSupport';
 import { AgentTool } from './AgentTypes';
 
@@ -29,7 +29,7 @@ export default function createAgentExtractTodosTool(
       function: {
         name: 'extract_todos',
         description:
-          "Extract action items from one saved note and save them to the user's to-do list. Use a real note id from search_notes when the user asks about tasks, action items, deadlines or reminders.",
+          "Extract action items from one user-linked note, or a real note id from search_notes when no notes were linked, and save them to the user's to-do list.",
         parameters: {
           type: 'object',
           required: ['note_id'],
@@ -44,13 +44,9 @@ export default function createAgentExtractTodosTool(
       if (!Number.isInteger(noteId) || noteId <= 0) {
         throw new Error('无效的笔记 ID / Invalid note id');
       }
-      // 与 read_note 同样的范围规则：限定了工作空间就不允许跨区提取。
       const note = notes.findById(noteId);
-      const outOfScope =
-        context.workspaceId !== null &&
-        note?.getWorkspaceId() !== context.workspaceId;
-      if (!note || outOfScope) {
-        throw new Error('当前工作空间中找不到该笔记 / Note not found');
+      if (!note || !isAgentNoteInScope(note, context)) {
+        throw new Error('当前笔记范围中找不到该笔记 / Note not found');
       }
 
       // 提取会调用本地模型并覆盖写待办表，是本工具唯一的副作用。

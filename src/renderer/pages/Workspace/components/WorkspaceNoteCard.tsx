@@ -9,7 +9,6 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { NoteItem, WorkspaceController } from '../WorkspaceController';
-import { WorkspaceTemplate } from '../WorkspaceWorkflowController';
 import KnowledgeOutputPanel from './KnowledgeOutputPanel';
 import WorkspaceAudioPlayer from './WorkspaceAudioPlayer';
 import MarkdownText from '../../../components/Markdown/MarkdownText';
@@ -19,24 +18,18 @@ import NoteInsightsPanel from './NoteInsightsPanel';
 type Props = {
   workspaceId: number;
   note: NoteItem;
-  templates: WorkspaceTemplate[];
-  generating: boolean;
   isSelected?: boolean;
   onToggleSelection?: (noteId: number) => void;
   onDelete: (noteId: number) => void;
-  onGenerate(noteId: number, templateId: number): Promise<void>;
 };
 
 /** 协调笔记音视频、转录、派生内容，对应展示保留为独立组件。 */
 export default function WorkspaceNoteCard({
   workspaceId,
   note,
-  templates,
-  generating,
   isSelected = false,
   onToggleSelection,
   onDelete,
-  onGenerate,
 }: Props) {
   const { t, i18n } = useTranslation();
   // 录音默认不占地方：点了标题行的「播放」才展开播放条。
@@ -49,12 +42,8 @@ export default function WorkspaceNoteCard({
   const handleExport = (format: 'word' | 'pdf') => {
     window.electron.export
       .note({
-        title: note.name || t('workspace.note.unnamed'),
-        transcript: note.transcript,
-        subnotes: note.subnotes.map((s) => ({
-          type: s.content_type,
-          content: s.content,
-        })),
+        workspaceId,
+        noteId: note.id,
         format,
       })
       .catch(console.error);
@@ -196,12 +185,7 @@ export default function WorkspaceNoteCard({
           </section>
         )}
 
-        <KnowledgeOutputPanel
-          generating={generating}
-          note={note}
-          onGenerate={onGenerate}
-          templates={templates}
-        />
+        <KnowledgeOutputPanel note={note} />
 
         <NoteInsightsPanel
           noteId={note.id}

@@ -27,6 +27,11 @@ jest.mock(
   }),
 );
 
+jest.mock('../renderer/pages/Workspace/components/NoteInsightsPanel', () => ({
+  __esModule: true,
+  default: () => <section data-testid="insights-panel" />,
+}));
+
 const baseNote: NoteItem = {
   id: 10,
   name: '去银行办对公账号所需材料',
@@ -42,14 +47,7 @@ const baseNote: NoteItem = {
 
 const renderCard = (note: NoteItem = baseNote, onDelete = jest.fn()) => {
   const view = render(
-    <WorkspaceNoteCard
-      workspaceId={1}
-      note={note}
-      templates={[]}
-      generating={false}
-      onDelete={onDelete}
-      onGenerate={async () => {}}
-    />,
+    <WorkspaceNoteCard workspaceId={1} note={note} onDelete={onDelete} />,
   );
   return { ...view, onDelete };
 };
@@ -80,6 +78,33 @@ describe('笔记卡片的标题行', () => {
     expect(
       container.querySelector('.workspace-note-tools .trash-can-button'),
     ).not.toBeNull();
+  });
+
+  it('导出时只传笔记身份，由主进程读取完整内容', () => {
+    const exportNote = jest.fn().mockResolvedValue(undefined);
+    const { electron } = window;
+    Object.defineProperty(window, 'electron', {
+      configurable: true,
+      value: new Proxy(electron, {
+        get(target, property, receiver) {
+          if (property === 'export') return { note: exportNote };
+          return Reflect.get(target, property, receiver);
+        },
+      }),
+    });
+    const { getByText } = renderCard();
+
+    fireEvent.click(getByText('workspace.note.exportWord'));
+
+    expect(exportNote).toHaveBeenCalledWith({
+      workspaceId: 1,
+      noteId: 10,
+      format: 'word',
+    });
+    Object.defineProperty(window, 'electron', {
+      configurable: true,
+      value: electron,
+    });
   });
 
   it('点删除会把这条笔记报上去', () => {

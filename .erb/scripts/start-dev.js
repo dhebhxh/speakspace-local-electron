@@ -111,7 +111,7 @@ async function resolvePort() {
   if (ours) {
     console.log(
       chalk.yellow(
-        `检测到端口 ${DEFAULT_PORT} 上已有 SpeakSpace 开发服务器，正在回收旧实例以保持单一服务…`,
+        `检测到端口 ${DEFAULT_PORT} 上已有 SpeakSpace Local 开发服务器，正在回收旧实例以保持单一服务…`,
       ),
     );
     killPids(pidsOnPort(DEFAULT_PORT));
@@ -133,7 +133,7 @@ async function resolvePort() {
 resolvePort()
   .then((port) => {
     process.env.PORT = String(port);
-    console.log(chalk.green.bold(`SpeakSpace 开发服务器端口：${port}`));
+    console.log(chalk.green.bold(`SpeakSpace Local 开发服务器端口：${port}`));
     const child = spawn('npm', ['run', 'start:renderer'], {
       shell: true,
       stdio: 'inherit',

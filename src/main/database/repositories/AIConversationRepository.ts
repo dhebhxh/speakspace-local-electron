@@ -47,7 +47,7 @@ export class AIConversationRepository implements Repository<AIConversation> {
     const statement = this.database.prepare(`
             SELECT *
             FROM ai_conversations
-            WHERE id = ?
+            WHERE id = ? AND trashed_at IS NULL
         `);
 
     const row = statement.get(id) as any;
@@ -79,7 +79,7 @@ export class AIConversationRepository implements Repository<AIConversation> {
             SET
                 name = ?,
                 updated_at = ?
-            WHERE id = ?
+            WHERE id = ? AND trashed_at IS NULL
         `);
 
     const result = statement.run(
@@ -93,12 +93,12 @@ export class AIConversationRepository implements Repository<AIConversation> {
 
   public deleteById(id: number): boolean {
     const statement = this.database.prepare(`
-            DELETE
-            FROM ai_conversations
-            WHERE id = ?
+            UPDATE ai_conversations
+            SET trashed_at = ?
+            WHERE id = ? AND trashed_at IS NULL
         `);
 
-    const result = statement.run(id);
+    const result = statement.run(new Date().toISOString(), id);
 
     return result.changes > 0;
   }
@@ -107,7 +107,7 @@ export class AIConversationRepository implements Repository<AIConversation> {
     const statement = this.database.prepare(`
             SELECT 1
             FROM ai_conversations
-            WHERE id = ?
+            WHERE id = ? AND trashed_at IS NULL
             LIMIT 1
         `);
 

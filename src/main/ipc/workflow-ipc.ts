@@ -3,12 +3,18 @@ import { ipcMain } from 'electron';
 import ollamaServerController from '../llm/OllamaRuntime';
 import StructuredNoteService from '../workflow/StructuredNoteService';
 import WorkflowService from '../workflow/WorkflowService';
+import TrashService from '../trash/TrashService';
 
 const workflowService = new WorkflowService();
 const structuredNoteService = new StructuredNoteService();
+const trashService = new TrashService();
 
 ipcMain.handle('Workflow:getKnowledgeTemplateList', () => {
   return workflowService.listTemplates();
+});
+
+ipcMain.handle('Workflow:getScenarioTemplateList', (_event, language) => {
+  return workflowService.listScenarioTemplates(language);
 });
 
 ipcMain.handle('Workflow:getKnowledgeTemplateById', (_event, id: number) => {
@@ -17,20 +23,24 @@ ipcMain.handle('Workflow:getKnowledgeTemplateById', (_event, id: number) => {
 
 ipcMain.handle(
   'Workflow:createKnowledgeTemplate',
-  (_event, name: string, prompt: string) => {
-    return workflowService.createTemplate(name, prompt);
+  async (_event, name: string, prompt: string, language) => {
+    await ollamaServerController.ensureRunning();
+    return workflowService.createTemplate(name, prompt, language);
   },
 );
 
 ipcMain.handle(
   'Workflow:updateKnowledgeTemplate',
-  (_event, id: number, name: string, prompt: string) => {
-    return workflowService.updateTemplate(id, name, prompt);
+  async (_event, id: number, name: string, prompt: string, language) => {
+    await ollamaServerController.ensureRunning();
+    return workflowService.updateTemplate(id, name, prompt, language);
   },
 );
 
 ipcMain.handle('Workflow:deleteKnowledgeTemplate', (_event, id: number) => {
-  return workflowService.deleteTemplate(id);
+  // Compatibility for older renderer bundles: deletion now always means
+  // moving the template into the shared Trash lifecycle.
+  return trashService.moveTemplate(id);
 });
 
 ipcMain.handle('Workflow:getKnowledgeOutputs', (_event, noteId: number) => {

@@ -58,13 +58,18 @@ describe('会话作用域层（L5）', () => {
     expect(prompt).toContain('workspace 42');
   });
 
-  it('挂上的笔记是额外线索，不缩小检索范围', () => {
+  it('挂上的笔记成为本轮明确范围', () => {
     const prompt = buildAgentSystemPrompt({
       workspaceId: null,
       linkedNoteIds: [7, 9],
     });
     expect(prompt).toContain('7, 9');
-    expect(prompt).toContain('they do not narrow the search');
+    expect(prompt).toContain('complete note scope');
+    expect(prompt).toContain('[LINKED NOTE CONTEXT]');
+    expect(prompt).toContain('do not search other notes');
+    expect(prompt).not.toContain(
+      'Search scope: ALL saved notes across every workspace',
+    );
   });
 
   it('没挂笔记时不留空行占位', () => {
@@ -72,7 +77,7 @@ describe('会话作用域层（L5）', () => {
       workspaceId: null,
       linkedNoteIds: [],
     });
-    expect(prompt).not.toContain('pinned note ids');
+    expect(prompt).not.toContain('explicitly selected note ids');
   });
 });
 

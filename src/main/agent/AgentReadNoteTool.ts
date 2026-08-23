@@ -1,4 +1,8 @@
-import { AgentNoteSource, previewNoteText } from './AgentNoteToolSupport';
+import {
+  AgentNoteSource,
+  isAgentNoteInScope,
+  previewNoteText,
+} from './AgentNoteToolSupport';
 import { AgentTool } from './AgentTypes';
 
 const MAX_READ_CHARACTERS = 2200;
@@ -13,7 +17,7 @@ export default function createAgentReadNoteTool(
       function: {
         name: 'read_note',
         description:
-          'Read one saved note by a real id returned by search_notes.',
+          'Read one user-linked note, or a real note id returned by search_notes when no notes were linked.',
         parameters: {
           type: 'object',
           required: ['note_id'],
@@ -28,13 +32,9 @@ export default function createAgentReadNoteTool(
       if (!Number.isInteger(noteId) || noteId <= 0) {
         throw new Error('无效的笔记 ID / Invalid note id');
       }
-      // 限定了工作空间就不允许跨区读取；未限定（null）时可读取任意笔记。
       const note = notes.findById(noteId);
-      const outOfScope =
-        context.workspaceId !== null &&
-        note?.getWorkspaceId() !== context.workspaceId;
-      if (!note || outOfScope) {
-        throw new Error('当前工作空间中找不到该笔记 / Note not found');
+      if (!note || !isAgentNoteInScope(note, context)) {
+        throw new Error('当前笔记范围中找不到该笔记 / Note not found');
       }
       return JSON.stringify({
         id: note.getId(),

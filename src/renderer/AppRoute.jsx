@@ -6,7 +6,6 @@ import WorkspacePage from './pages/Workspace/WorkspacePage';
 import WorkspaceHomePage from './pages/Workspace/WorkspaceHomePage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import StudioPage from './pages/Studio/StudioPage';
-import WorkflowPage from './pages/Workflow/WorkflowPage';
 import AgentPage from './pages/Agent/AgentPage';
 import { RoutePath } from './router/RouteManager';
 import StatsHud from './hud/StatsHud';
@@ -38,7 +37,6 @@ export default function AppRoute() {
           element={<WorkspaceHomePage directory limit={100} />}
         />
         <Route path="/Workspace/:workspaceId" element={<WorkspacePage />} />
-        <Route path="/Workflow" element={<WorkflowPage />} />
         <Route path="/ModelManagement" element={<ModelManagerPage />} />
         <Route path="/Settings" element={<SettingsPage />} />
         <Route path={RoutePath.Dashboard} element={<DashboardPage />} />

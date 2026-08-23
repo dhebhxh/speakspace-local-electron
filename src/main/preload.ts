@@ -8,6 +8,10 @@ import {
 } from 'electron';
 import type { TranscriptionSource } from '@shared/types/TranscriptionTypes';
 import type {
+  ScenarioTemplateSelection,
+  StructuredNoteDraft,
+} from '@shared/types/KnowledgeGenerationTypes';
+import type {
   TrashActionTarget,
   TrashListQuery,
 } from '@shared/types/TrashTypes';
@@ -132,24 +136,39 @@ const electronHandler = {
       return ipcRenderer.invoke('Workflow:getKnowledgeTemplateList');
     },
 
+    getScenarioTemplateList(language: 'zh' | 'en' = 'en') {
+      return ipcRenderer.invoke('Workflow:getScenarioTemplateList', language);
+    },
+
     getKnowledgeTemplateById(id: number) {
       return ipcRenderer.invoke('Workflow:getKnowledgeTemplateById', id);
     },
 
-    createKnowledgeTemplate(name: string, prompt: string) {
+    createKnowledgeTemplate(
+      name: string,
+      prompt: string,
+      language: 'zh' | 'en' = 'en',
+    ) {
       return ipcRenderer.invoke(
         'Workflow:createKnowledgeTemplate',
         name,
         prompt,
+        language,
       );
     },
 
-    updateKnowledgeTemplate(id: number, name: string, prompt: string) {
+    updateKnowledgeTemplate(
+      id: number,
+      name: string,
+      prompt: string,
+      language: 'zh' | 'en' = 'en',
+    ) {
       return ipcRenderer.invoke(
         'Workflow:updateKnowledgeTemplate',
         id,
         name,
         prompt,
+        language,
       );
     },
 
@@ -178,8 +197,23 @@ const electronHandler = {
     generateStructuredNote(noteId: number) {
       return ipcRenderer.invoke('Knowledge:generateStructuredNote', noteId);
     },
-    generateScenario(noteId: number, scenario: string) {
-      return ipcRenderer.invoke('Knowledge:generateScenario', noteId, scenario);
+    generateStructuredNoteDraft(transcript: string) {
+      return ipcRenderer.invoke(
+        'Knowledge:generateStructuredNoteDraft',
+        transcript,
+      );
+    },
+    generateScenario(
+      noteId: number,
+      selection: ScenarioTemplateSelection,
+      language: 'zh' | 'en' = 'en',
+    ) {
+      return ipcRenderer.invoke(
+        'Knowledge:generateScenario',
+        noteId,
+        selection,
+        language,
+      );
     },
     toggleTask(noteId: number, taskId: string, completed: boolean) {
       return ipcRenderer.invoke(
@@ -494,6 +528,7 @@ const electronHandler = {
       transcript: string;
       summaries?: string[];
       audioRelativePath?: string | null;
+      structuredNoteDraft?: StructuredNoteDraft | null;
     }) {
       return ipcRenderer.invoke('Workspace:saveTranscriptionNote', request);
     },
@@ -524,6 +559,9 @@ const electronHandler = {
     moveConversation(id: number) {
       return ipcRenderer.invoke('Trash:moveConversation', id);
     },
+    moveTemplate(id: number) {
+      return ipcRenderer.invoke('Trash:moveTemplate', id);
+    },
     moveWorkspace(id: number) {
       return ipcRenderer.invoke('Trash:moveWorkspace', id);
     },
@@ -538,9 +576,8 @@ const electronHandler = {
   // Export functionality
   export: {
     note(request: {
-      title: string;
-      transcript: string;
-      subnotes: { type: string; content: string }[];
+      workspaceId: number;
+      noteId: number;
       format: 'word' | 'pdf';
     }) {
       return ipcRenderer.invoke('Export:note', request);

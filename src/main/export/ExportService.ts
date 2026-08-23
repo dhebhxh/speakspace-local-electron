@@ -1,108 +1,120 @@
 import { BrowserWindow, dialog } from 'electron';
 import fs from 'fs/promises';
+import { Packer } from 'docx';
+import { SettingsService } from '../settings/SettingsService';
+import { buildNoteExportLayout } from './NoteExportContent';
+import type { NoteExportLayout, NoteExportRequest } from './NoteExportData';
+import {
+  buildNoteExportHtml,
+  buildPdfFooterTemplate,
+  buildPdfHeaderTemplate,
+} from './NoteExportHtml';
+import { NoteExportRepository } from './NoteExportRepository';
+import { buildNoteExportWordDocument } from './NoteExportWord';
 
-export type ExportRequest = {
-  title: string;
-  transcript: string;
-  subnotes: { type: string; content: string }[];
-  format: 'word' | 'pdf';
-};
+export type ExportRequest = NoteExportRequest;
 
-function escapeHtml(unsafe: string): string {
-  if (!unsafe) return '';
-  return unsafe
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+export function normalizeExportRequest(value: unknown): ExportRequest {
+  if (!value || typeof value !== 'object') {
+    throw new Error('无效的导出请求 / Invalid export request');
+  }
+  const candidate = value as Partial<ExportRequest>;
+  const workspaceId = Number(candidate.workspaceId);
+  const noteId = Number(candidate.noteId);
+  if (!Number.isInteger(workspaceId) || workspaceId <= 0) {
+    throw new Error('无效的工作空间 ID / Invalid workspace ID');
+  }
+  if (!Number.isInteger(noteId) || noteId <= 0) {
+    throw new Error('无效的笔记 ID / Invalid note ID');
+  }
+  if (candidate.format !== 'word' && candidate.format !== 'pdf') {
+    throw new Error('不支持的导出格式 / Unsupported export format');
+  }
+  return { workspaceId, noteId, format: candidate.format };
+}
+
+function safeFilename(title: string): string {
+  const cleaned = title
+    .replace(/[<>:"/\\|?*\p{Cc}]/gu, '_')
+    .replace(/[. ]+$/g, '')
+    .trim();
+  return (cleaned || 'SpeakSpace Local Note').slice(0, 120);
+}
+
+function exportDialogTitle(language: 'zh' | 'en', word: boolean): string {
+  if (language === 'zh') {
+    return word ? '导出完整 Word 文档' : '导出完整 PDF 文档';
+  }
+  return word
+    ? 'Export complete Word document'
+    : 'Export complete PDF document';
+}
+
+export async function writeWordExport(
+  layout: NoteExportLayout,
+  filePath: string,
+): Promise<void> {
+  const document = buildNoteExportWordDocument(layout);
+  const buffer = await Packer.toBuffer(document);
+  await fs.writeFile(filePath, buffer);
+}
+
+export async function writePdfExport(
+  layout: NoteExportLayout,
+  filePath: string,
+): Promise<void> {
+  const html = buildNoteExportHtml(layout);
+  const win = new BrowserWindow({
+    show: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      javascript: false,
+    },
+  });
+
+  try {
+    await win.loadURL(
+      `data:text/html;charset=utf-8,${encodeURIComponent(html)}`,
+    );
+    const pdfData = await win.webContents.printToPDF({
+      printBackground: true,
+      pageSize: 'Letter',
+      preferCSSPageSize: true,
+      displayHeaderFooter: true,
+      headerTemplate: buildPdfHeaderTemplate(layout.title),
+      footerTemplate: buildPdfFooterTemplate(layout.language),
+    });
+    await fs.writeFile(filePath, pdfData);
+  } finally {
+    win.destroy();
+  }
 }
 
 export class ExportService {
-  public static async exportNote(request: ExportRequest): Promise<void> {
-    const { title, transcript, subnotes, format } = request;
+  public static async exportNote(rawRequest: unknown): Promise<void> {
+    const request = normalizeExportRequest(rawRequest);
+    const data = new NoteExportRepository().getNote(
+      request.workspaceId,
+      request.noteId,
+    );
+    const { language } = new SettingsService().getSettings();
+    const layout = buildNoteExportLayout(data, language);
+    const name = safeFilename(data.title);
+    const word = request.format === 'word';
+    const { filePath } = await dialog.showSaveDialog({
+      title: exportDialogTitle(language, word),
+      defaultPath: `${name}.${word ? 'docx' : 'pdf'}`,
+      filters: [
+        word
+          ? { name: 'Word Document', extensions: ['docx'] }
+          : { name: 'PDF Document', extensions: ['pdf'] },
+      ],
+    });
+    if (!filePath) return;
 
-    // Build HTML representation
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html lang="zh-CN">
-      <head>
-        <meta charset="UTF-8">
-        <title>${escapeHtml(title)}</title>
-        <style>
-          body { font-family: "Microsoft YaHei", sans-serif; line-height: 1.6; color: #333; padding: 2rem; max-width: 800px; margin: 0 auto; }
-          h1 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-          h2 { color: #34495e; margin-top: 1.5rem; }
-          p { margin-bottom: 1rem; white-space: pre-wrap; }
-          .subnote { background: #f9f9f9; padding: 1rem; border-left: 4px solid #3498db; margin-bottom: 1rem; }
-          .subnote-title { font-weight: bold; color: #2980b9; margin-bottom: 0.5rem; }
-        </style>
-      </head>
-      <body>
-        <h1>${escapeHtml(title)}</h1>
-        ${subnotes
-          .map(
-            (sn) => `
-          <div class="subnote">
-            <div class="subnote-title">${escapeHtml(sn.type)}</div>
-            <p>${escapeHtml(sn.content)}</p>
-          </div>
-        `,
-          )
-          .join('')}
-        <h2>Transcript</h2>
-        <p>${escapeHtml(transcript)}</p>
-      </body>
-      </html>
-    `;
-
-    if (format === 'word') {
-      const { filePath } = await dialog.showSaveDialog({
-        title: '匯出為 Word / Export as Word',
-        defaultPath: `${title.replace(/[/\\]/g, '_')}.doc`,
-        filters: [{ name: 'Word Document', extensions: ['doc'] }],
-      });
-
-      if (filePath) {
-        // Saving HTML as .doc works well for basic Word opening
-        await fs.writeFile(filePath, htmlContent, 'utf-8');
-      }
-    } else if (format === 'pdf') {
-      const { filePath } = await dialog.showSaveDialog({
-        title: '匯出為 PDF / Export as PDF',
-        defaultPath: `${title.replace(/[/\\]/g, '_')}.pdf`,
-        filters: [{ name: 'PDF Document', extensions: ['pdf'] }],
-      });
-
-      if (filePath) {
-        // Render PDF using a hidden BrowserWindow
-        const win = new BrowserWindow({
-          show: false,
-          webPreferences: {
-            nodeIntegration: false,
-            contextIsolation: true,
-            sandbox: true,
-            javascript: false,
-          },
-        });
-
-        try {
-          await win.loadURL(
-            `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`,
-          );
-
-          const pdfData = await win.webContents.printToPDF({
-            printBackground: true,
-            pageSize: 'A4',
-          });
-
-          await fs.writeFile(filePath, pdfData);
-        } finally {
-          win.destroy();
-        }
-      }
-    } else {
-      throw new Error(`Unsupported format: ${format}`);
-    }
+    if (word) await writeWordExport(layout, filePath);
+    else await writePdfExport(layout, filePath);
   }
 }

@@ -6,6 +6,7 @@ import type {
   TranscriptionResult,
   TranscriptionSource,
 } from '@shared/types/TranscriptionTypes';
+import type { StructuredNoteDraft } from '@shared/types/KnowledgeGenerationTypes';
 
 export type LiveTranscriptSegment = {
   id: number;
@@ -14,12 +15,6 @@ export type LiveTranscriptSegment = {
   engine: TranscriptionResult['engine'];
   modelName: string;
   elapsedMs: number;
-};
-
-export type LiveSummarySegment = {
-  id: number;
-  text: string;
-  source: 'llm' | 'local';
 };
 
 export type TranscriptionInputMode = 'microphone' | 'file' | null;
@@ -39,10 +34,9 @@ export type TranscriptionControllerSnapshot = {
   liveSegments: LiveTranscriptSegment[];
   livePendingCount: number;
   liveError: string | null;
-  liveSummaries: LiveSummarySegment[];
-  summaryPendingCount: number;
-  summaryError: string | null;
-  summaryMode: 'llm' | 'local' | null;
+  structuredNoteDraft: StructuredNoteDraft | null;
+  structuredNotePending: boolean;
+  structuredNoteError: string | null;
 };
 
 /**
@@ -52,32 +46,24 @@ export type TranscriptionControllerSnapshot = {
  * 再触发一次：controller 是单实例，二次触发会 resetLive() 覆盖当前状态，
  * 旧 job 的事件随后与新状态交错，用户会看到错文件名或被静默丢弃的结果。
  *
- * includeSummary 把语义整理也算作忙碌。录音页另有 summaryBusy 单独控制
- * 相关按钮，工作台的入口没有对应开关，整理途中重置会丢掉已产出的摘要。
+ * includeStructuredNote 把结构化提取也算作忙碌。生成途中重置会丢掉尚未
+ * 保存的 Structured Note 草稿，所以工作台入口需要把它纳入忙碌状态。
  */
 export function isTranscriptionFileBusy(
   snapshot: TranscriptionControllerSnapshot,
-  options: { includeSummary?: boolean } = {},
+  options: { includeStructuredNote?: boolean } = {},
 ): boolean {
   return (
     snapshot.requestPending ||
     snapshot.job?.status === 'processing' ||
     snapshot.livePendingCount > 0 ||
     snapshot.languageDetectionPending ||
-    (options.includeSummary === true && snapshot.summaryPendingCount > 0)
+    (options.includeStructuredNote === true && snapshot.structuredNotePending)
   );
 }
 
 type TranscriptionListener = () => void;
 
-type LLMChatResult = {
-  content?: string;
-};
-
-const MIN_SUMMARY_CHUNKS = 2;
-const MAX_SUMMARY_CHUNKS = 5;
-const MAX_SUMMARY_CJK_CHARS = 180;
-const MAX_SUMMARY_LATIN_CHARS = 430;
 const AUTO_CONTINUE_LANGUAGE_CODES = new Set([
   'en',
   'zh',
@@ -93,42 +79,6 @@ const AUTO_CONTINUE_LANGUAGE_CODES = new Set([
   'hi',
 ]);
 const MIN_AUTO_LANGUAGE_CONFIDENCE = 0.65;
-
-const SEMANTIC_BOUNDARY_SYSTEM_PROMPT = [
-  'You segment a live speech transcript by meaning.',
-  'The input contains everything spoken since the previous summary.',
-  'Return exactly WAIT if the speaker is still continuing the same thought, sentence, explanation, list or instruction.',
-  'If a coherent idea has naturally finished, or the speaker clearly moves to another topic or action, return exactly one concise summary sentence in the same language as the transcript.',
-  'Ignore fillers, repetitions and false starts.',
-  'Do not create a summary for a fragment that is too short to carry a complete idea.',
-  'Do not add labels, bullets, quotes or explanations.',
-].join(' ');
-
-const FORCED_SUMMARY_SYSTEM_PROMPT = [
-  'Summarize the supplied live speech transcript as one concise sentence in the same language as the transcript.',
-  'Keep only the main completed idea and remove fillers, repetitions and false starts.',
-  'Do not add facts, labels, bullets, quotes or explanations.',
-].join(' ');
-
-function buildLocalSummary(rawText: string): string {
-  const normalized = rawText.replace(/\s+/g, ' ').trim();
-  if (!normalized) return '';
-
-  const withoutFillers = normalized
-    .replace(/^(?:啊|嗯|呃|额|那个|就是|然后|所以|好)+[，,。.!！?？\s]*/u, '')
-    .replace(/\b(?:um+|uh+|erm+|you know|like)\b[,.!?\s]*/giu, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const candidate = withoutFillers || normalized;
-  const isMostlyCjk = /[\u3400-\u9fff]/u.test(candidate);
-  const limit = isMostlyCjk ? 58 : 150;
-  const shortened =
-    candidate.length > limit
-      ? `${candidate.slice(0, Math.max(1, limit - 1)).trim()}…`
-      : candidate;
-
-  return isMostlyCjk ? `本段要点：${shortened}` : `Key point: ${shortened}`;
-}
 
 function isBlankTranscript(text: string): boolean {
   const normalized = text.trim();
@@ -148,56 +98,7 @@ function combinedText(segments: LiveTranscriptSegment[]): string {
     .trim();
 }
 
-function semanticTextLength(text: string): number {
-  return text.replace(/[\s，。！？、,.!?;；:：“”'"()（）[\]]/g, '').length;
-}
-
-function shouldConsiderSemanticBoundary(
-  segments: LiveTranscriptSegment[],
-): boolean {
-  if (segments.length < MIN_SUMMARY_CHUNKS) return false;
-  const text = combinedText(segments);
-  if (!text) return false;
-  const isCjk = /[\u3400-\u9fff]/u.test(text);
-  return semanticTextLength(text) >= (isCjk ? 24 : 70);
-}
-
-function shouldForceSemanticBoundary(
-  segments: LiveTranscriptSegment[],
-): boolean {
-  if (segments.length >= MAX_SUMMARY_CHUNKS) return true;
-  const text = combinedText(segments);
-  if (!text) return false;
-  const isCjk = /[\u3400-\u9fff]/u.test(text);
-  return (
-    semanticTextLength(text) >=
-    (isCjk ? MAX_SUMMARY_CJK_CHARS : MAX_SUMMARY_LATIN_CHARS)
-  );
-}
-
-function looksLikeLocalSemanticBoundary(
-  segments: LiveTranscriptSegment[],
-): boolean {
-  if (shouldForceSemanticBoundary(segments)) return true;
-  if (segments.length < 3) return false;
-
-  const text = combinedText(segments);
-  if (!text) return false;
-  const lastText = segments.at(-1)?.text.trim() ?? '';
-  const hasStrongEnding = /[。！？.!?][”’"')）\]]?$/u.test(lastText);
-  const looksLikeContinuation =
-    /(?:然后|但是|不过|所以|因为|如果|或者|以及|而且|并且|跟|和|就是|比如|例如|首先|其次|接下来|下一步|and|but|so|because|if|or|also|then|for example|first|second|next)\s*$/iu.test(
-      lastText,
-    );
-
-  return hasStrongEnding && !looksLikeContinuation;
-}
-
-function isWaitResponse(text: string): boolean {
-  return /^WAIT[\s.!。！]*$/iu.test(text.trim());
-}
-
-/** 连接 Renderer 与主进程转写任务，并管理录音中的短片段实时识别与语义分段总结。 */
+/** 连接 Renderer 与主进程转写任务，并在完整转写后生成 Structured Note 草稿。 */
 export default class TranscriptionController {
   private readonly listeners = new Set<TranscriptionListener>();
 
@@ -233,31 +134,19 @@ export default class TranscriptionController {
 
   private liveError: string | null = null;
 
-  private liveSummaries: LiveSummarySegment[] = [];
+  private structuredNoteDraft: StructuredNoteDraft | null = null;
 
-  private summaryPendingCount = 0;
+  private structuredNotePending = false;
 
-  private summaryError: string | null = null;
+  private structuredNoteError: string | null = null;
 
-  private summaryMode: 'llm' | 'local' | null = null;
-
-  private summaryBuffer: LiveTranscriptSegment[] = [];
-
-  private summarySequence = 0;
-
-  private summaryCheckScheduled = false;
-
-  private lastSummaryEvaluationTailId = -1;
+  private structuredNoteGeneration: Promise<void> | null = null;
 
   private liveGeneration = 0;
 
   private liveSequence = 0;
 
   private liveQueue: Promise<void> = Promise.resolve();
-
-  private summaryQueue: Promise<void> = Promise.resolve();
-
-  private llmSummaryAvailable: boolean | null = null;
 
   public constructor() {
     this.unsubscribeStatus = window.electron.transcription.onStatus((rawJob) =>
@@ -286,10 +175,9 @@ export default class TranscriptionController {
       liveSegments: this.liveSegments.map((segment) => ({ ...segment })),
       livePendingCount: this.livePendingCount,
       liveError: this.liveError,
-      liveSummaries: this.liveSummaries.map((summary) => ({ ...summary })),
-      summaryPendingCount: this.summaryPendingCount,
-      summaryError: this.summaryError,
-      summaryMode: this.summaryMode,
+      structuredNoteDraft: this.structuredNoteDraft,
+      structuredNotePending: this.structuredNotePending,
+      structuredNoteError: this.structuredNoteError,
     };
   }
 
@@ -333,15 +221,10 @@ export default class TranscriptionController {
     this.liveSegments = [];
     this.livePendingCount = 0;
     this.liveError = null;
-    this.liveSummaries = [];
-    this.summaryPendingCount = 0;
-    this.summaryError = null;
-    this.summaryMode = null;
-    this.summaryBuffer = [];
-    this.summarySequence = 0;
-    this.summaryCheckScheduled = false;
-    this.lastSummaryEvaluationTailId = -1;
-    this.llmSummaryAvailable = null;
+    this.structuredNoteDraft = null;
+    this.structuredNotePending = false;
+    this.structuredNoteError = null;
+    this.structuredNoteGeneration = null;
     this.notify();
   }
 
@@ -374,7 +257,6 @@ export default class TranscriptionController {
                 elapsedMs: result.elapsedMs,
               };
               this.liveSegments = [...this.liveSegments, segment];
-              this.addSegmentToSemanticBuffer(segment, generation);
             }
           } catch (error) {
             if (generation === this.liveGeneration) {
@@ -395,28 +277,51 @@ export default class TranscriptionController {
       });
   }
 
-  /** 停止录音后等待最后一个 STT 片段完成，并强制总结尚未形成自然断点的尾段。 */
-  public async finalizeLiveSummary(): Promise<void> {
-    const generation = this.liveGeneration;
-    await this.liveQueue.catch(() => undefined);
-    await this.summaryQueue.catch(() => undefined);
-
-    if (generation !== this.liveGeneration || this.summaryBuffer.length === 0) {
+  /** 等待完整转写，然后只生成一次供复核与保存共同使用的 Structured Note。 */
+  public async finalizeStructuredNote(): Promise<void> {
+    if (this.structuredNoteDraft) return;
+    if (this.structuredNoteGeneration) {
+      await this.structuredNoteGeneration;
       return;
     }
 
-    const snapshot = [...this.summaryBuffer];
-    this.summaryPendingCount = 1;
-    this.summaryError = null;
-    this.notify();
+    const generation = this.liveGeneration;
+    const task = (async () => {
+      await this.liveQueue.catch(() => undefined);
+      const transcript =
+        combinedText(this.liveSegments) || this.job?.result?.text?.trim() || '';
+      if (generation !== this.liveGeneration || !transcript) return;
 
-    try {
-      await this.evaluateSemanticBuffer(snapshot, generation, true);
-    } finally {
-      if (generation === this.liveGeneration) {
-        this.summaryPendingCount = 0;
-        this.notify();
+      this.structuredNotePending = true;
+      this.structuredNoteError = null;
+      this.notify();
+
+      try {
+        const draft =
+          await window.electron.knowledge.generateStructuredNoteDraft(
+            transcript,
+          );
+        if (generation === this.liveGeneration) {
+          this.structuredNoteDraft = draft as StructuredNoteDraft;
+        }
+      } catch (error: unknown) {
+        if (generation === this.liveGeneration) {
+          this.structuredNoteError =
+            error instanceof Error
+              ? error.message
+              : '结构化笔记生成失败 / Structured note generation failed';
+        }
+      } finally {
+        if (generation === this.liveGeneration) {
+          this.structuredNotePending = false;
+          this.notify();
+        }
       }
+    })();
+    this.structuredNoteGeneration = task;
+    await task;
+    if (this.structuredNoteGeneration === task) {
+      this.structuredNoteGeneration = null;
     }
   }
 
@@ -509,12 +414,12 @@ export default class TranscriptionController {
   /**
    * 彻底放弃当前这一轮采集。
    *
-   * 关掉复核窗时用：主进程那边的转写任务要真的取消掉，本地在途的实时分段和
-   * 语义整理也要作废，否则它们回来之后还会继续改状态，用户就一直不能重新录。
+   * 关掉复核窗时用：主进程那边的转写任务要真的取消掉，本地在途的实时转写和
+   * Structured Note 生成也要作废，否则回来后仍会修改已经放弃的这一轮状态。
    */
   public async abort(): Promise<void> {
     const { job } = this;
-    // 先 resetLive：liveGeneration 一变，在途的实时/整理回调回来就自动丢弃
+    // 先 resetLive：liveGeneration 一变，在途的转写/结构化回调回来就自动丢弃
     this.resetLive(null);
     if (!job || job.status !== 'processing') return;
     try {
@@ -540,137 +445,6 @@ export default class TranscriptionController {
         this.job?.id as string,
       )) as TranscriptionJob;
     });
-  }
-
-  private addSegmentToSemanticBuffer(
-    segment: LiveTranscriptSegment,
-    generation: number,
-  ): void {
-    if (isBlankTranscript(segment.text)) return;
-    this.summaryBuffer = [...this.summaryBuffer, segment];
-    this.scheduleSemanticSummaryCheck(generation);
-  }
-
-  private scheduleSemanticSummaryCheck(generation: number): void {
-    if (generation !== this.liveGeneration || this.summaryCheckScheduled)
-      return;
-    if (!shouldConsiderSemanticBoundary(this.summaryBuffer)) return;
-
-    const tailId = this.summaryBuffer.at(-1)?.id ?? -1;
-    if (tailId <= this.lastSummaryEvaluationTailId) return;
-
-    this.summaryCheckScheduled = true;
-    this.summaryPendingCount = 1;
-    this.summaryError = null;
-    this.notify();
-
-    this.summaryQueue = this.summaryQueue
-      .catch(() => undefined)
-      .then(async () => {
-        if (generation !== this.liveGeneration) return undefined;
-
-        const snapshot = [...this.summaryBuffer];
-        if (!shouldConsiderSemanticBoundary(snapshot)) return undefined;
-
-        const snapshotTailId = snapshot.at(-1)?.id ?? -1;
-        this.lastSummaryEvaluationTailId = snapshotTailId;
-        await this.evaluateSemanticBuffer(
-          snapshot,
-          generation,
-          shouldForceSemanticBoundary(snapshot),
-        );
-
-        return undefined;
-      })
-      .finally(() => {
-        if (generation === this.liveGeneration) {
-          this.summaryCheckScheduled = false;
-          this.summaryPendingCount = 0;
-          this.notify();
-
-          // 如果 LLM 判断期间又产生了新的转录片段，再对扩展后的语义缓冲区判断一次。
-          this.scheduleSemanticSummaryCheck(generation);
-        }
-      });
-  }
-
-  private async evaluateSemanticBuffer(
-    snapshot: LiveTranscriptSegment[],
-    generation: number,
-    forceSummary: boolean,
-  ): Promise<void> {
-    const text = combinedText(snapshot);
-    if (!text || generation !== this.liveGeneration) return;
-
-    let summaryText = '';
-    let source: LiveSummarySegment['source'] = 'local';
-    let shouldFlush = forceSummary;
-
-    if (this.llmSummaryAvailable !== false) {
-      try {
-        const result = (await window.electron.llm.chat(
-          [
-            {
-              role: 'system',
-              content: forceSummary
-                ? FORCED_SUMMARY_SYSTEM_PROMPT
-                : SEMANTIC_BOUNDARY_SYSTEM_PROMPT,
-            },
-            { role: 'user', content: text },
-          ],
-          { temperature: 0.1 },
-        )) as LLMChatResult;
-
-        const content = result.content?.trim() ?? '';
-        this.llmSummaryAvailable = true;
-
-        if (forceSummary) {
-          if (content && !isWaitResponse(content)) {
-            summaryText = content;
-            shouldFlush = true;
-            source = 'llm';
-          }
-        } else if (isWaitResponse(content) || !content) {
-          shouldFlush = false;
-        } else {
-          summaryText = content;
-          shouldFlush = true;
-          source = 'llm';
-        }
-      } catch {
-        this.llmSummaryAvailable = false;
-        this.summaryError =
-          '未启用本地 LLM，当前使用轻量语义分段；可在模型管理中启用 Ollama 获得更准确的语义断点判断。';
-      }
-    }
-
-    if (this.llmSummaryAvailable === false) {
-      shouldFlush = forceSummary || looksLikeLocalSemanticBoundary(snapshot);
-    }
-
-    if (!shouldFlush || generation !== this.liveGeneration) return;
-
-    if (!summaryText) {
-      summaryText = buildLocalSummary(text);
-      source = 'local';
-    }
-    if (!summaryText) return;
-
-    const snapshotTailId = snapshot.at(-1)?.id ?? -1;
-    this.summaryBuffer = this.summaryBuffer.filter(
-      (segment) => segment.id > snapshotTailId,
-    );
-    this.liveSummaries = [
-      ...this.liveSummaries,
-      {
-        id: this.summarySequence,
-        text: summaryText,
-        source,
-      },
-    ];
-    this.summarySequence += 1;
-    this.summaryMode = source;
-    this.notify();
   }
 
   private async start(source: TranscriptionSource): Promise<void> {
@@ -731,7 +505,6 @@ export default class TranscriptionController {
     };
     this.liveSequence += 1;
     this.liveSegments = [...this.liveSegments, liveSegment];
-    this.addSegmentToSemanticBuffer(liveSegment, this.liveGeneration);
     this.notify();
   }
 
@@ -788,7 +561,7 @@ export default class TranscriptionController {
     this.job = job;
     if (this.inputMode === 'file' && job.status === 'completed') {
       this.hydrateFileTranscriptFromFinalResult(job);
-      this.finalizeLiveSummary().catch(() => undefined);
+      this.finalizeStructuredNote().catch(() => undefined);
     }
     this.notify();
   }

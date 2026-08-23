@@ -27,6 +27,10 @@ export default class KnowledgeRepository {
     );
   }
   saveScenario(value: ScenarioKnowledge): void {
+    const scenarioKey =
+      value.templateSource === 'custom'
+        ? `custom:${value.templateId}`
+        : value.scenario;
     this.save(
       'scenario_knowledge',
       value.noteId,
@@ -34,7 +38,7 @@ export default class KnowledgeRepository {
       value.createdAt,
       value.updatedAt,
       value,
-      value.scenario,
+      scenarioKey,
     );
   }
   private read<T>(table: string, noteId: number): T | null {

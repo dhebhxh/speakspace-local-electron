@@ -31,7 +31,7 @@ const DB_PATH =
   process.env.SPEAKSPACE_DB ||
   path.join(
     process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'),
-    'SpeakSpace',
+    'SpeakSpace Local',
     'speakspace.db',
   );
 

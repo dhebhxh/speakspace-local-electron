@@ -1,44 +1,136 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  AskAINote,
-  AskAINoteDetail,
-  AskAISubnote,
-  formatAskAIDate,
-} from '../AskAITypes';
+import type {
+  NoteKnowledgeBundle,
+  StructuredNote,
+} from '@shared/types/KnowledgeGenerationTypes';
+import { AskAINote, formatAskAIDate } from '../AskAITypes';
 import MarkdownText from '../../../components/Markdown/MarkdownText';
 
 type AskAINotePreviewProps = {
   note: AskAINote | null;
 };
 
+function TextList({ items }: { items: string[] }) {
+  return (
+    <ul>
+      {items.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  );
+}
+
+function StructuredNoteBlock({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="ask-ai-structured-note__block">
+      <h3>{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function StructuredNotePreview({ value }: { value: StructuredNote }) {
+  const { t } = useTranslation();
+  const reminders = value.calendarIntents.filter(
+    (item) => item.kind === 'reminder',
+  );
+  const calendarIntents = value.calendarIntents.filter(
+    (item) => item.kind === 'calendar',
+  );
+
+  return (
+    <div className="ask-ai-structured-note">
+      <StructuredNoteBlock title={t('askAI.preview.summaryTitle')}>
+        <MarkdownText content={value.summary} />
+      </StructuredNoteBlock>
+
+      {value.keyPoints.length > 0 && (
+        <StructuredNoteBlock title={t('askAI.preview.keyPointsTitle')}>
+          <TextList items={value.keyPoints} />
+        </StructuredNoteBlock>
+      )}
+
+      {value.tasks.length > 0 && (
+        <StructuredNoteBlock title={t('askAI.preview.tasksTitle')}>
+          <ul className="ask-ai-structured-note__tasks">
+            {value.tasks.map((task) => (
+              <li key={task.id}>
+                <strong>{task.title}</strong>
+                {task.description && <span>{task.description}</span>}
+                {task.actionItems.length > 0 && (
+                  <TextList
+                    items={task.actionItems.map((item) => item.title)}
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        </StructuredNoteBlock>
+      )}
+
+      {value.unassignedActionItems.length > 0 && (
+        <StructuredNoteBlock title={t('askAI.preview.actionItemsTitle')}>
+          <TextList
+            items={value.unassignedActionItems.map((item) => item.title)}
+          />
+        </StructuredNoteBlock>
+      )}
+
+      {reminders.length > 0 && (
+        <StructuredNoteBlock title={t('askAI.preview.remindersTitle')}>
+          <TextList items={reminders.map((item) => item.title)} />
+        </StructuredNoteBlock>
+      )}
+
+      {calendarIntents.length > 0 && (
+        <StructuredNoteBlock title={t('askAI.preview.calendarTitle')}>
+          <TextList items={calendarIntents.map((item) => item.title)} />
+        </StructuredNoteBlock>
+      )}
+    </div>
+  );
+}
+
 export default function AskAINotePreview({ note }: AskAINotePreviewProps) {
   const { t } = useTranslation();
-  const [subnotes, setSubnotes] = useState<AskAISubnote[]>([]);
-  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [structuredNote, setStructuredNote] = useState<StructuredNote | null>(
+    null,
+  );
+  const [loadingStructuredNote, setLoadingStructuredNote] = useState(false);
   const noteId = note?.id ?? null;
 
-  // 摘要存在 subnotes 表里，列表接口不返回，打开预览时按笔记 id 单独取。
+  // 双击打开详情时读取保存好的 Structured Note，不再依赖旧 subnotes 摘要。
   useEffect(() => {
     if (noteId === null) {
-      setSubnotes([]);
+      setStructuredNote(null);
       return undefined;
     }
 
     let cancelled = false;
-    setLoadingSummary(true);
-    window.electron.askAI
-      .getNoteDetail(noteId)
-      .then((detail) => {
+    setStructuredNote(null);
+    setLoadingStructuredNote(true);
+    window.electron.knowledge
+      .get(noteId)
+      .then((bundle) => {
         if (cancelled) return null;
-        setSubnotes((detail as AskAINoteDetail | null)?.subnotes ?? []);
-        setLoadingSummary(false);
+        setStructuredNote(
+          (bundle as NoteKnowledgeBundle | null | undefined)?.structuredNote ??
+            null,
+        );
+        setLoadingStructuredNote(false);
         return null;
       })
       .catch(() => {
         if (cancelled) return;
-        setSubnotes([]);
-        setLoadingSummary(false);
+        setStructuredNote(null);
+        setLoadingStructuredNote(false);
       });
 
     return () => {
@@ -68,20 +160,13 @@ export default function AskAINotePreview({ note }: AskAINotePreviewProps) {
       </header>
 
       <section className="ask-ai-note-section">
-        <h2>{t('askAI.preview.summaryTitle')}</h2>
-        {subnotes.length > 0 ? (
-          subnotes.map((subnote) => (
-            <article className="ask-ai-note-summary" key={subnote.id}>
-              <h3>{subnote.contentType}</h3>
-              {/* 摘要 / 结构化子笔记来自模型，按富文本渲染。 */}
-              <MarkdownText content={subnote.content} />
-            </article>
-          ))
+        {structuredNote ? (
+          <StructuredNotePreview value={structuredNote} />
         ) : (
           <p className="ask-ai-note-empty">
-            {loadingSummary
-              ? t('askAI.preview.loadingSummary')
-              : t('askAI.preview.noSummary')}
+            {loadingStructuredNote
+              ? t('askAI.preview.loadingStructuredNote')
+              : t('askAI.preview.noStructuredNote')}
           </p>
         )}
       </section>

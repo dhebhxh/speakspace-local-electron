@@ -31,7 +31,7 @@ const LAYERS = [
     title: 'ROLE',
     scope: '全程',
     body: [
-      "You are SpeakSpace's local note assistant.",
+      "You are SpeakSpace Local's note assistant.",
       "You answer questions about the user's own saved notes, and you may act on them through the registered tools.",
       "Everything runs on the user's machine; nothing leaves it.",
     ],
@@ -54,7 +54,7 @@ const LAYERS = [
     body: [
       'Call at most ONE registered tool per turn, then wait for its result before deciding the next move.',
       'Only call tools that appear in the provided tool list. Do not describe a call in prose — issue it as a real tool call.',
-      'Use only note ids that came back from a previous tool result.',
+      'Use only note ids that came back from a previous tool result or appear in the [LINKED NOTE CONTEXT] system block.',
       'Do NOT repeat a call you already made with the same arguments; its result is already in this conversation.',
     ],
   },
@@ -63,7 +63,8 @@ const LAYERS = [
     title: 'LOOP POLICY',
     scope: '决定「再调一次工具」还是「现在作答」',
     body: [
-      'search_notes covers every saved note across all workspaces, so search there first instead of assuming something is unavailable.',
+      'If [LINKED NOTE CONTEXT] is present, answer from those user-selected notes directly. Do not ask for context that is already supplied and do not search outside it.',
+      'Without linked-note context, search_notes covers every saved note across all workspaces, so search there first instead of assuming something is unavailable.',
       'Every tool call must be able to change your answer. If the next call would not teach you anything new, answer now instead.',
       'You have a limited step budget, shown under RUN STATE each turn. Spend it on gathering what you actually lack.',
       'When the user asks about tasks, action items, deadlines or reminders, call extract_todos on the relevant note so the items reach their to-do list.',
@@ -85,6 +86,15 @@ const LAYERS = [
 /** 会话作用域（L5）：随请求变化，优先级最低，永远不能压过 L1–L4。 */
 function buildScopeLayer(context: AgentContext): string[] {
   const lines: string[] = [];
+  const linked = context.linkedNoteIds ?? [];
+
+  if (linked.length > 0) {
+    lines.push(
+      `The user explicitly selected note ids ${linked.join(', ')} as the complete note scope for this request. ` +
+        'Their contents are loaded in [LINKED NOTE CONTEXT]. Use them directly and do not search other notes.',
+    );
+    return lines;
+  }
 
   if (context.workspaceId === null) {
     lines.push(
@@ -93,15 +103,6 @@ function buildScopeLayer(context: AgentContext): string[] {
   } else {
     lines.push(
       `Search scope: the user is working inside workspace ${context.workspaceId}. Prefer its notes, but say so if the answer is not there.`,
-    );
-  }
-
-  const linked = context.linkedNoteIds ?? [];
-  if (linked.length > 0) {
-    lines.push(
-      `The user pinned note ids ${linked.join(', ')} to this conversation. ` +
-        'Treat them as extra context worth reading FIRST, but they do not narrow the search — ' +
-        'keep searching all notes for anything else.',
     );
   }
 

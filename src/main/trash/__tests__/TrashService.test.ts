@@ -69,6 +69,27 @@ function createDatabase(): Database.Database {
       FOREIGN KEY(conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE,
       FOREIGN KEY(note_id) REFERENCES notes(id) ON DELETE CASCADE
     );
+    CREATE TABLE knowledge_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      prompt TEXT NOT NULL,
+      scenario_definition TEXT,
+      normalized_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      trashed_at TEXT
+    );
+    CREATE TABLE knowledge_outputs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      note_id INTEGER NOT NULL,
+      template_id INTEGER NOT NULL,
+      content_type TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(note_id) REFERENCES notes(id) ON DELETE CASCADE,
+      FOREIGN KEY(template_id) REFERENCES knowledge_templates(id) ON DELETE CASCADE
+    );
   `);
   return database;
 }
@@ -108,6 +129,19 @@ function insertNote(
         FIRST_TIME,
         SECOND_TIME,
       ).lastInsertRowid,
+  );
+}
+
+function insertTemplate(database: Database.Database, name: string): number {
+  return Number(
+    database
+      .prepare(
+        `INSERT INTO knowledge_templates (
+          name, prompt, created_at, updated_at
+        ) VALUES (?, ?, ?, ?)`,
+      )
+      .run(name, 'Extract decisions and risks', FIRST_TIME, SECOND_TIME)
+      .lastInsertRowid,
   );
 }
 
@@ -367,6 +401,104 @@ describeWithNativeDatabase('TrashService', () => {
       database.prepare('SELECT 1 FROM notes WHERE id = ?').get(noteId),
     ).toBeDefined();
   });
+
+  it('keeps filters isolated and orders all item types by trashed time', () => {
+    const noteWorkspaceId = insertWorkspace(database, 'Notes');
+    const noteId = insertNote(database, noteWorkspaceId, 'Alpha', 'note');
+    const workspaceId = insertWorkspace(database, 'Workspace');
+    const templateId = insertTemplate(database, 'Review template');
+
+    service.moveNote(noteId);
+    service.moveWorkspace(workspaceId);
+    service.moveTemplate(templateId);
+
+    expect(service.list({ filter: 'note' }).items).toEqual([
+      expect.objectContaining({ itemType: 'note', id: noteId }),
+    ]);
+    expect(service.list({ filter: 'workspace' }).items).toEqual([
+      expect.objectContaining({ itemType: 'workspace', id: workspaceId }),
+    ]);
+    expect(service.list({ filter: 'template' }).items).toEqual([
+      expect.objectContaining({ itemType: 'template', id: templateId }),
+    ]);
+    expect(service.count()).toBe(3);
+  });
+});
+
+describeWithNativeDatabase('知识模板的回收站', () => {
+  let database: Database.Database;
+  let service: TrashService;
+  let noteId: number;
+
+  beforeEach(() => {
+    database = createDatabase();
+    service = new TrashService({ database });
+    const workspaceId = insertWorkspace(database, 'Meeting');
+    noteId = insertNote(database, workspaceId, 'Weekly sync', 'transcript');
+  });
+
+  afterEach(() => database.close());
+
+  it('移入回收站后保留模板和历史生成结果', () => {
+    const templateId = insertTemplate(database, 'Decision review');
+    database
+      .prepare(
+        `INSERT INTO knowledge_outputs (
+          note_id, template_id, content_type, content, created_at, updated_at
+        ) VALUES (?, ?, 'structured_note', 'saved output', ?, ?)`,
+      )
+      .run(noteId, templateId, FIRST_TIME, SECOND_TIME);
+
+    service.moveTemplate(templateId);
+
+    expect(service.list({ filter: 'template' }).items).toEqual([
+      expect.objectContaining({
+        itemType: 'template',
+        id: templateId,
+        outputCount: 1,
+      }),
+    ]);
+    expect(
+      database.prepare('SELECT COUNT(*) AS count FROM knowledge_outputs').get(),
+    ).toEqual({ count: 1 });
+  });
+
+  it('恢复后重新成为可用模板', () => {
+    const templateId = insertTemplate(database, 'Interview guide');
+    service.moveTemplate(templateId);
+
+    service.restore({ itemType: 'template', id: templateId });
+
+    expect(
+      database
+        .prepare('SELECT trashed_at FROM knowledge_templates WHERE id = ?')
+        .get(templateId),
+    ).toEqual({ trashed_at: null });
+    expect(service.list({ filter: 'template' }).items).toHaveLength(0);
+  });
+
+  it('只有从回收站彻底删除时才级联删除历史输出', () => {
+    const templateId = insertTemplate(database, 'Lecture outline');
+    database
+      .prepare(
+        `INSERT INTO knowledge_outputs (
+          note_id, template_id, content_type, content, created_at, updated_at
+        ) VALUES (?, ?, 'structured_note', 'saved output', ?, ?)`,
+      )
+      .run(noteId, templateId, FIRST_TIME, SECOND_TIME);
+    service.moveTemplate(templateId);
+
+    service.permanentlyDelete({ itemType: 'template', id: templateId });
+
+    expect(
+      database
+        .prepare('SELECT 1 FROM knowledge_templates WHERE id = ?')
+        .get(templateId),
+    ).toBeUndefined();
+    expect(
+      database.prepare('SELECT COUNT(*) AS count FROM knowledge_outputs').get(),
+    ).toEqual({ count: 0 });
+  });
 });
 
 describeWithNativeDatabase('对话的回收站', () => {
@@ -438,6 +570,7 @@ describeWithNativeDatabase('对话的回收站', () => {
       name: '关于银行材料',
       messageCount: 2,
     });
+    expect(service.count()).toBe(1);
   });
 
   it('按笔记 / 工作空间筛选时不会混进来', () => {

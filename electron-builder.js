@@ -13,9 +13,9 @@ const isReleaseBuild = process.env.SPEAKSPACE_RELEASE === 'true';
 const artifactSuffix = isReleaseBuild ? '' : '-internal-unsigned';
 
 module.exports = {
-  productName: 'SpeakSpace',
+  productName: 'SpeakSpace Local',
   appId: 'com.speakspace.app',
-  copyright: 'Copyright © 2026 SpeakSpace',
+  copyright: 'Copyright © 2026 SpeakSpace Local',
   artifactName: `\${productName}-\${version}${artifactSuffix}.\${ext}`,
   asar: true,
   afterSign: '.erb/scripts/notarize.js',

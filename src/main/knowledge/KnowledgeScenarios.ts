@@ -5,6 +5,7 @@ export type ScenarioDefinition = {
   description: string;
   sections: { key: string; title: string; instruction: string }[];
 };
+export type KnowledgeOutputLanguage = 'zh' | 'en';
 export const SCENARIOS: Record<KnowledgeScenario, ScenarioDefinition> = {
   meeting: {
     name: 'Meeting',
@@ -257,3 +258,98 @@ export const SCENARIOS: Record<KnowledgeScenario, ScenarioDefinition> = {
     ],
   },
 };
+
+const ZH_SCENARIO_COPY: Record<
+  KnowledgeScenario,
+  { name: string; description: string; sectionTitles: Record<string, string> }
+> = {
+  meeting: {
+    name: '会议',
+    description: '提取会议中的决策、共识、风险与未决问题。',
+    sectionTitles: {
+      discussionTopics: '讨论议题',
+      decisions: '决策',
+      agreements: '共识与一致意见',
+      disagreements: '分歧与权衡',
+      risks: '风险与问题',
+      openQuestions: '未决问题',
+    },
+  },
+  lecture: {
+    name: '讲座',
+    description: '提取教学内容中的概念、解释、示例与注意事项。',
+    sectionTitles: {
+      concepts: '概念与定义',
+      explanations: '解释与推理',
+      examples: '示例与应用',
+      relationships: '关系',
+      misunderstandings: '误解与注意事项',
+      openQuestions: '模糊或开放问题',
+    },
+  },
+  consultation: {
+    name: '咨询',
+    description: '提取关切、评估、建议、可选方案与限制条件。',
+    sectionTitles: {
+      situation: '情况与关切',
+      assessment: '评估',
+      advice: '建议与依据',
+      options: '选项与权衡',
+      constraints: '限制与警示',
+      uncertainties: '待澄清事项',
+    },
+  },
+  interview: {
+    name: '访谈',
+    description: '提取观点、行为、需求、动机、模式与代表性原话。',
+    sectionTitles: {
+      perspectives: '观点与看法',
+      behaviors: '行为与情境',
+      needs: '需求与痛点',
+      motivations: '动机与决策因素',
+      insights: '有依据的模式',
+      quotes: '代表性原话',
+    },
+  },
+  brainstorm: {
+    name: '头脑风暴',
+    description: '提取想法、替代方案、关联、判断标准与推进方向。',
+    sectionTitles: {
+      ideas: '想法',
+      alternatives: '替代方案与变体',
+      connections: '关联与主题',
+      evaluation: '优缺点与判断标准',
+      promisingDirections: '值得推进的方向',
+      openQuestions: '开放问题',
+    },
+  },
+  general: {
+    name: '通用',
+    description: '提取上下文、支撑细节、推理、细微差异与开放问题。',
+    sectionTitles: {
+      background: '背景与上下文',
+      details: '支撑细节',
+      relationships: '关系与推理',
+      perspectives: '观点与细微差异',
+      openQuestions: '开放问题与未知信息',
+    },
+  },
+};
+
+/** 内置模板的稳定 key 与提取规则保持不变，仅按应用语言替换可见文案。 */
+export function getScenarioDefinition(
+  scenario: KnowledgeScenario,
+  language: KnowledgeOutputLanguage = 'en',
+): ScenarioDefinition {
+  const definition = SCENARIOS[scenario];
+  if (language !== 'zh') return definition;
+  const copy = ZH_SCENARIO_COPY[scenario];
+  return {
+    name: copy.name,
+    description: copy.description,
+    sections: definition.sections.map((section) => ({
+      ...section,
+      title: copy.sectionTitles[section.key] ?? section.title,
+    })),
+  };
+}

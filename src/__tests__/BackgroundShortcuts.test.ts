@@ -232,7 +232,7 @@ describe('buildTrayMenuTemplate', () => {
 
     expect(labels[0]).toBe('显示主界面');
     expect(labels.some((label) => label.includes('Ctrl+Alt+D'))).toBe(true);
-    expect(labels[labels.length - 1]).toBe('退出 SpeakSpace');
+    expect(labels[labels.length - 1]).toBe('退出 SpeakSpace Local');
     // accelerator 字段不能用：Electron 会据此再注册一次本地快捷键
     expect(template.every((item) => item.accelerator === undefined)).toBe(true);
   });

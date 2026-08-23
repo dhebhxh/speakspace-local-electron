@@ -60,7 +60,7 @@
 
 /* ---------- 通用小控件（不依赖其它页面的 CSS） ---------- */
 
-.workspace-detail-page .ws-btn {
+:is(.workspace-detail-page, .workspace-template-manager-overlay) .ws-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
@@ -79,30 +79,34 @@
     color 150ms ease;
 }
 
-.workspace-detail-page .ws-btn:hover:not(:disabled) {
+:is(.workspace-detail-page, .workspace-template-manager-overlay)
+  .ws-btn:hover:not(:disabled) {
   transform: none;
   box-shadow: none;
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-strong));
 }
 
-.workspace-detail-page .ws-btn:disabled {
+:is(.workspace-detail-page, .workspace-template-manager-overlay)
+  .ws-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-.workspace-detail-page .ws-btn-primary {
+:is(.workspace-detail-page, .workspace-template-manager-overlay)
+  .ws-btn-primary {
   color: var(--accent-contrast);
   background: var(--accent);
   border-color: transparent;
 }
 
-.workspace-detail-page .ws-btn-primary:hover:not(:disabled) {
+:is(.workspace-detail-page, .workspace-template-manager-overlay)
+  .ws-btn-primary:hover:not(:disabled) {
   background: var(--accent-strong);
   border-color: transparent;
 }
 
-.workspace-detail-page .ws-btn-quiet {
+:is(.workspace-detail-page, .workspace-template-manager-overlay) .ws-btn-quiet {
   padding: 0.3rem 0.55rem;
   color: var(--muted);
   background: transparent;
@@ -110,14 +114,15 @@
   font-weight: 500;
 }
 
-.workspace-detail-page .ws-btn-quiet:hover:not(:disabled) {
+:is(.workspace-detail-page, .workspace-template-manager-overlay)
+  .ws-btn-quiet:hover:not(:disabled) {
   color: var(--text);
   background: var(--surface-soft);
   border-color: transparent;
 }
 
 /* 纯图标按钮：正方形，文字含义放在 title / aria-label 里 */
-.workspace-detail-page .ws-btn-icon {
+:is(.workspace-detail-page, .workspace-template-manager-overlay) .ws-btn-icon {
   justify-content: center;
   width: 2rem;
   padding: 0.35rem 0;
@@ -125,19 +130,22 @@
   line-height: 1;
 }
 
-.workspace-detail-page .ws-btn-danger:hover:not(:disabled) {
+:is(.workspace-detail-page, .workspace-template-manager-overlay)
+  .ws-btn-danger:hover:not(:disabled) {
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 12%, transparent);
   border-color: color-mix(in srgb, var(--danger) 38%, transparent);
 }
 
-.workspace-detail-page .ws-btn-danger-solid {
+:is(.workspace-detail-page, .workspace-template-manager-overlay)
+  .ws-btn-danger-solid {
   color: var(--danger-contrast);
   border-color: transparent;
   background: var(--danger);
 }
 
-.workspace-detail-page .ws-btn-danger-solid:hover:not(:disabled) {
+:is(.workspace-detail-page, .workspace-template-manager-overlay)
+  .ws-btn-danger-solid:hover:not(:disabled) {
   color: var(--danger-contrast);
   border-color: transparent;
   background: color-mix(in srgb, var(--danger) 88%, var(--text));
@@ -875,38 +883,583 @@
 }
 .workspace-scenario-picker {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.workspace-scenario-groups {
+  display: grid;
   gap: 0.5rem;
 }
-.workspace-scenario-picker > button {
+.workspace-scenario-group {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.workspace-scenario-group > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.75rem 0.8rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.workspace-scenario-group > summary::-webkit-details-marker {
+  display: none;
+}
+.workspace-scenario-group > summary:hover {
+  background: var(--surface-soft);
+}
+.workspace-scenario-group > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.workspace-scenario-group-copy {
+  display: grid;
+  gap: 0.16rem;
+  min-width: 0;
+}
+.workspace-scenario-group-copy > strong {
+  font-size: var(--fs-sm);
+}
+.workspace-scenario-group-copy > span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-scenario-group-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+}
+.workspace-scenario-group-meta > svg {
+  flex: none;
+  transition: transform 160ms ease-out;
+}
+.workspace-scenario-group[open] > summary .workspace-scenario-group-meta > svg {
+  transform: rotate(180deg);
+}
+.workspace-scenario-group-count {
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.workspace-scenario-group-content {
+  max-height: min(42vh, 360px);
+  overflow-y: auto;
+  padding: 0.6rem;
+  border-block-start: 1px solid var(--border);
+  overscroll-behavior: contain;
+  scrollbar-color: color-mix(in srgb, var(--accent) 35%, var(--border))
+    transparent;
+  scrollbar-width: thin;
+}
+.workspace-scenario-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+  gap: 0.5rem;
+}
+.workspace-scenario-options > button {
+  position: relative;
   text-align: left;
   display: grid;
-  gap: 0.2rem;
-  padding: 0.65rem;
+  align-content: start;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 0.75rem;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: transparent;
   color: inherit;
 }
-.workspace-scenario-picker > button.selected {
+.workspace-scenario-options > button:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+.workspace-scenario-options > button.selected {
   border-color: var(--accent);
   background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
-.workspace-scenario-picker > button span {
+.workspace-scenario-options > button > span:not(.workspace-template-source) {
+  display: -webkit-box;
+  overflow: hidden;
   font-size: 0.8rem;
   opacity: 0.7;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
-.workspace-scenario-picker > div {
-  grid-column: 1/-1;
+.workspace-scenario-options > button > small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-template-source {
+  justify-self: start;
+  width: max-content;
+  padding: 0.14rem 0.42rem;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  opacity: 1 !important;
+  text-transform: uppercase;
+}
+.workspace-template-source.is-custom {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--accent);
+}
+.workspace-scenario-empty {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+.workspace-scenario-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+.workspace-scenario-actions > :first-child {
+  margin-right: auto;
+}
+.scenario-template-form {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--ws-radius, 14px);
+  background: var(--surface);
+}
+.scenario-template-form label {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  font-weight: 700;
+}
+.scenario-template-form input,
+.scenario-template-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.72rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font: inherit;
+}
+.scenario-template-form textarea {
+  min-height: 180px;
+  resize: vertical;
+  line-height: 1.55;
+}
+.scenario-template-form-hint {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  line-height: 1.45;
+}
+.scenario-template-form-error,
+.workspace-template-manager-error,
+.workspace-template-manager-message {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.scenario-template-form-error,
+.workspace-template-manager-error {
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  color: var(--danger);
+}
+.workspace-template-manager-message {
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.scenario-template-form-actions {
+  display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
 }
+
+/* 模板管理通过 Portal 挂在 body：它不属于笔记滚动区，滚轮也不会再冒泡给列表。 */
+body.workspace-template-manager-open {
+  overflow: hidden;
+}
+
+body.workspace-template-manager-open .workspace-detail-body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.workspace-template-manager-overlay {
+  --ws-radius: 14px;
+  --ws-radius-sm: 9px;
+
+  z-index: 1200;
+  padding: clamp(0.75rem, 3vw, 2rem);
+  overscroll-behavior: contain;
+}
+.workspace-modal.workspace-template-manager {
+  width: min(960px, 100%);
+  height: min(82dvh, 760px);
+  max-height: calc(100dvh - 1.5rem);
+  overflow: hidden;
+}
+.workspace-template-manager-head {
+  align-items: flex-start;
+  padding: 1rem 1.1rem;
+}
+.workspace-template-manager-head > div:first-child {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.workspace-template-manager-head p {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.workspace-template-manager-head-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+}
+.workspace-template-manager-close {
+  width: 2.35rem;
+  padding-inline: 0;
+}
+.workspace-template-manager-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.85rem;
+}
+
+.workspace-template-manager-body > .scenario-template-form {
+  overflow-y: auto;
+}
+
+.workspace-template-manager-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.36fr) minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.workspace-template-library {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-inline-end: 1px solid var(--border);
+  background: var(--surface-soft);
+}
+
+.workspace-template-library-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem 0.65rem;
+  border-block-end: 1px solid var(--border);
+}
+
+.workspace-template-library-heading strong {
+  font-size: var(--fs-sm);
+}
+
+.workspace-template-library-heading span {
+  flex: none;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.workspace-template-library-list {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.45rem;
+}
+
+.workspace-template-library-list > button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.7rem 0.65rem;
+  color: var(--text);
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease;
+}
+
+.workspace-template-library-list > button:hover {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  background: var(--surface);
+  transform: none;
+  box-shadow: none;
+}
+
+.workspace-template-library-list > button.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
+  background: var(--surface);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.workspace-template-library-list > button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.workspace-template-library-list > button > svg {
+  color: var(--muted);
+}
+
+.workspace-template-library-item-copy {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.workspace-template-library-item-copy strong {
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-template-library-item-copy > span {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.workspace-template-detail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.workspace-template-detail-head {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.workspace-template-detail-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.workspace-template-detail-status > span:last-child {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.workspace-template-detail h3,
+.workspace-template-detail h4,
+.workspace-template-detail p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.workspace-template-detail h3 {
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  line-height: 1.2;
+}
+
+.workspace-template-detail-head > p {
+  max-width: 70ch;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.workspace-template-detail time {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.workspace-template-detail-sections {
+  display: grid;
+  gap: 0;
+  margin-top: 1.25rem;
+  border-block-start: 1px solid var(--border);
+}
+
+.workspace-template-detail-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0 0.55rem;
+}
+
+.workspace-template-detail-section-heading h4 {
+  font-size: var(--fs-sm);
+}
+
+.workspace-template-detail-section-heading span {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.workspace-template-detail-section-list {
+  display: grid;
+}
+
+.workspace-template-detail-section-list > div {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.7rem 0;
+  border-block-end: 1px solid var(--border);
+}
+
+.workspace-template-detail-section-list strong {
+  font-size: var(--fs-sm);
+}
+
+.workspace-template-detail-section-list p {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.workspace-template-legacy-note {
+  margin-top: 1rem !important;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.workspace-template-original-request {
+  margin-top: 0.85rem;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.workspace-template-original-request summary {
+  width: max-content;
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.workspace-template-original-request p {
+  margin-top: 0.55rem;
+  padding: 0.7rem 0.8rem;
+  border-inline-start: 1px solid var(--border);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.workspace-template-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: auto;
+  padding-top: 1.25rem;
+}
+
+.workspace-template-delete-confirm {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto auto;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 500px;
+}
+.workspace-template-delete-confirm > span {
+  color: var(--danger);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+.workspace-template-manager-empty {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  margin: auto;
+  padding: 2rem;
+  color: var(--muted);
+  text-align: left;
+}
+.workspace-template-manager-empty > strong {
+  color: var(--text);
+  font-size: var(--fs-lg);
+}
 .workspace-scenario-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: min(65%, 260px);
+  overflow: hidden;
   padding: 0.25rem 0.55rem;
   border-radius: 999px;
-  background: var(--accent-soft);
+  background: var(--surface-soft);
   font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-scenario-badge > span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.workspace-scenario-badge.is-custom {
+  background: var(--accent-soft);
 }
 .workspace-generation-state {
   display: flex;
@@ -930,6 +1483,26 @@
 
 /* ---------- 窄屏 ---------- */
 
+@media (max-width: 820px) {
+  .workspace-modal.workspace-template-manager {
+    height: min(92dvh, 820px);
+  }
+
+  .workspace-template-manager-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(145px, 32%) minmax(0, 1fr);
+  }
+
+  .workspace-template-library {
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--border);
+  }
+
+  .workspace-template-detail {
+    padding: 1rem;
+  }
+}
+
 @media (max-width: 700px) {
   .workspace-insights-panel {
     grid-template-columns: 1fr;
@@ -950,6 +1523,58 @@
   .workspace-section-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .workspace-scenario-group > summary {
+    gap: 0.5rem;
+    padding-inline: 0.65rem;
+  }
+
+  .workspace-scenario-group-count {
+    display: none;
+  }
+
+  .workspace-scenario-group-content {
+    max-height: min(46vh, 320px);
+  }
+
+  .workspace-scenario-actions > * {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .workspace-scenario-actions > :first-child {
+    flex-basis: 100%;
+    margin-right: 0;
+  }
+
+  .workspace-template-manager-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workspace-template-manager-head-actions {
+    width: 100%;
+  }
+
+  .workspace-template-manager-head-actions > :first-child:not(:last-child) {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .workspace-template-delete-confirm {
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    max-width: none;
+  }
+
+  .workspace-template-delete-confirm > span {
+    grid-column: 1 / -1;
+  }
+
+  .scenario-template-form-actions > button {
+    flex: 1 1 auto;
+    justify-content: center;
   }
 }
 .workspace-create-note-button {

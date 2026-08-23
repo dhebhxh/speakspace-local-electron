@@ -30,7 +30,8 @@ const EMPTY: StudioAgentState = {
 
 /**
  * 对话工作台里的智能体模式：复用主进程 Agent（搜索 / 读取笔记 / 提取待办），
- * 检索范围固定为全部笔记，运行过程以步骤流的形式回显，
+ * 没有关联笔记时可检索全部笔记；有关联笔记时直接以它们为本轮上下文。
+ * 运行过程以步骤流的形式回显，
  * 最终答案作为一轮对话追加到列表里。
  */
 export default function useStudioAgent() {
@@ -116,8 +117,8 @@ export default function useStudioAgent() {
         // 把已有的问答带上，保证多轮追问能延续上下文。
         const started = await controller.start({
           instruction,
-          // 助理模式一律不限定工作区：检索覆盖全部笔记，
-          // 手动挂上的笔记只作为额外线索传下去。
+          // 不挂笔记时可跨工作区检索；手动挂上后则由主进程把它们
+          // 作为本轮明确上下文载入，不再让模型自行猜测检索词。
           workspaceId: null,
           linkedNoteIds,
           history: state.turns.flatMap((turn) => [

@@ -28,10 +28,9 @@ export default function TranscriptionPanel(props: {
     liveSegments,
     livePendingCount,
     liveError,
-    liveSummaries,
-    summaryPendingCount,
-    summaryError,
-    summaryMode,
+    structuredNoteDraft,
+    structuredNotePending,
+    structuredNoteError,
   } = transcriptionSnapshot;
   const fileMode = inputMode === 'file';
   const streamedText = liveSegments
@@ -45,7 +44,7 @@ export default function TranscriptionPanel(props: {
   const showLive = fileMode
     ? Boolean(job) ||
       liveSegments.length > 0 ||
-      summaryPendingCount > 0 ||
+      structuredNotePending ||
       Boolean(liveError)
     : snapshot.state !== RecordingState.Idle &&
       (snapshot.state === RecordingState.Recording ||
@@ -73,14 +72,10 @@ export default function TranscriptionPanel(props: {
   }
 
   let summaryStatus = t('recording.panel.summaryStatus.waiting');
-  if (liveSummaries.length > 0)
+  if (structuredNoteDraft)
     summaryStatus = t('recording.panel.summaryStatus.updated');
-  if (summaryPendingCount > 0)
+  if (structuredNotePending)
     summaryStatus = t('recording.panel.summaryStatus.analyzing');
-  const summaryModeLabel =
-    summaryMode === 'llm'
-      ? t('recording.panel.summaryMode.ai')
-      : t('recording.panel.summaryMode.lightweight');
   let displayState: string = snapshot.state;
   let displayStatus = snapshot.statusMessage;
   if (fileMode && job) {
@@ -248,36 +243,24 @@ export default function TranscriptionPanel(props: {
               <header>
                 <div>
                   <strong>{t('recording.panel.liveSummaryTitle')}</strong>
-                  <span>
-                    {summaryMode
-                      ? `${summaryModeLabel}${t('recording.panel.liveSummaryModeAI')}`
-                      : t('recording.panel.liveSummaryModeLight')}
-                  </span>
+                  <span>{t('recording.panel.liveSummaryModeLight')}</span>
                 </div>
                 <span className="live-summary__status">{summaryStatus}</span>
               </header>
 
-              {summaryError && (
-                <p className="live-summary__notice">{summaryError}</p>
+              {structuredNoteError && (
+                <p className="live-summary__notice">{structuredNoteError}</p>
               )}
 
-              {liveSummaries.length > 0 ? (
-                <ol className="live-summary__segments">
-                  {liveSummaries.map((summary) => (
-                    <li key={summary.id}>
-                      <span>
-                        {t('recording.panel.segmentPrefix')}
-                        {summary.id + 1}
-                      </span>
-                      {/* 语义整理由本地模型生成，可能带标记；
-                          转录原文在上方另有区块，保持纯文本。 */}
-                      <MarkdownText content={summary.text} />
-                    </li>
-                  ))}
-                </ol>
+              {structuredNoteDraft ? (
+                <div className="live-summary__segments">
+                  <div className="live-summary__result">
+                    <MarkdownText content={structuredNoteDraft.summary} />
+                  </div>
+                </div>
               ) : (
                 <p className="live-summary__empty">
-                  {summaryPendingCount > 0
+                  {structuredNotePending
                     ? t('recording.panel.summaryEmpty.analyzing')
                     : t('recording.panel.summaryEmpty.waiting')}
                 </p>

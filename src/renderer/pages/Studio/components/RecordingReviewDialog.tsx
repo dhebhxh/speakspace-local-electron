@@ -10,8 +10,8 @@ type Props = {
   open: boolean;
   defaultNoteName: string;
   rawTranscript: string;
-  summaries: string[];
-  /** 转录/语义整理是否仍在后台进行（弹窗先开，内容随后填充）。 */
+  summary: string;
+  /** 转录、Structured Note 或标题是否仍在后台生成。 */
   processing: boolean;
   saving: boolean;
   error: string | null;
@@ -23,14 +23,14 @@ type Props = {
 const NEW_WORKSPACE_VALUE = '__new__';
 
 /**
- * 录音结束后的复核弹窗：并排展示「整理文本（语义总结）」与「原始转录」，
+ * 录音结束后的复核弹窗：并排展示 Structured Note 的 Summary 与原始转录，
  * 底部可保存为工作区笔记或重新录制。保存成功由父级负责把笔记挂到对话上。
  */
 export default function RecordingReviewDialog({
   open,
   defaultNoteName,
   rawTranscript,
-  summaries,
+  summary,
   processing,
   saving,
   error,
@@ -102,11 +102,9 @@ export default function RecordingReviewDialog({
 
   if (!open) return null;
 
-  const cleanedText = summaries.join('\n');
-
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (saving || loading) return;
+    if (saving || loading || processing) return;
     onSave({
       workspaceId: selectedWorkspaceId,
       newWorkspaceName: newWorkspaceName.trim(),
@@ -145,7 +143,7 @@ export default function RecordingReviewDialog({
               {/* 整理结果由模型产出，按富文本显示；
                   下面的转录原文是语音识别结果，保持纯文本。 */}
               <MarkdownText
-                content={cleanedText}
+                content={summary}
                 fallback={
                   <span className="studio-review-empty">
                     {processing
@@ -242,6 +240,7 @@ export default function RecordingReviewDialog({
             disabled={
               saving ||
               loading ||
+              processing ||
               !rawTranscript.trim() ||
               !noteName.trim() ||
               (workspaceValue === NEW_WORKSPACE_VALUE &&

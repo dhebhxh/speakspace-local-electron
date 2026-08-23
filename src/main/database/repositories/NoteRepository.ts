@@ -115,12 +115,12 @@ export class NoteRepository implements Repository<Note> {
 
   public deleteById(id: number): boolean {
     const statement = this.database.prepare(`
-            DELETE
-            FROM notes
-            WHERE id = ?
+            UPDATE notes
+            SET trashed_at = ?
+            WHERE id = ? AND trashed_at IS NULL
         `);
 
-    const result = statement.run(id);
+    const result = statement.run(new Date().toISOString(), id);
 
     return result.changes > 0;
   }

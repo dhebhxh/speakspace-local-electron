@@ -1,11 +1,11 @@
 {
   "name": "speakspace-app",
-  "productName": "SpeakSpace",
+  "productName": "SpeakSpace Local",
   "version": "4.6.0",
-  "description": "SpeakSpace desktop application package",
+  "description": "SpeakSpace Local desktop application package",
   "license": "MIT",
   "author": {
-    "name": "SpeakSpace",
+    "name": "SpeakSpace Local",
     "url": "https://github.com/dhebhxh/speakspace-local-electron"
   },
   "main": "./dist/main/main.js",

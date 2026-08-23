@@ -1,4 +1,6 @@
 import { ipcMain, IpcMain } from 'electron';
+import type { StructuredNoteDraft } from '@shared/types/KnowledgeGenerationTypes';
+import { knowledgeGenerationService } from '../knowledge/KnowledgeGenerationService';
 import { WorkspaceService } from '../workspace/WorkspaceService';
 
 /**
@@ -38,7 +40,35 @@ class WorkspaceIpcController {
     );
     this.ipc.handle(
       'Workspace:saveTranscriptionNote',
-      (_event, request: unknown) => this.service.saveTranscriptionNote(request),
+      (_event, request: unknown) => {
+        const draftCandidate =
+          typeof request === 'object' && request !== null
+            ? (request as { structuredNoteDraft?: unknown }).structuredNoteDraft
+            : null;
+        const structuredNoteDraft =
+          typeof draftCandidate === 'object' &&
+          draftCandidate !== null &&
+          typeof (draftCandidate as StructuredNoteDraft).summary === 'string' &&
+          Array.isArray((draftCandidate as StructuredNoteDraft).keyPoints) &&
+          Array.isArray((draftCandidate as StructuredNoteDraft).tasks) &&
+          Array.isArray(
+            (draftCandidate as StructuredNoteDraft).unassignedActionItems,
+          ) &&
+          Array.isArray((draftCandidate as StructuredNoteDraft).calendarIntents)
+            ? (draftCandidate as StructuredNoteDraft)
+            : null;
+        const result = this.service.saveTranscriptionNote(request);
+
+        if (structuredNoteDraft) {
+          // 模型提取已在保存前完成；这里只把草稿绑定到真实 noteId 并持久化。
+          knowledgeGenerationService.saveStructuredNoteDraft(
+            result.noteId,
+            structuredNoteDraft,
+          );
+        }
+
+        return result;
+      },
     );
     this.ipc.handle(
       'Workspace:getNoteAudio',

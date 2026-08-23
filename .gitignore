@@ -33,3 +33,11 @@ lint-results.json
 
 # Local-only domain glossary generated during design sessions
 /CONTEXT.md
+
+# Local coding-agent state
+/.claude/
+/.impeccable/
+
+# Local packaging cache and deliverables
+/release/.electron-builder-cache/
+/release/installers/

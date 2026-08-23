@@ -66,10 +66,22 @@ export class WorkspaceRepository implements Repository<Workspace> {
   }
 
   public deleteById(id: number): boolean {
-    const statement = this.database.prepare(
-      'DELETE FROM workspaces WHERE id = ?',
-    );
-    return statement.run(id).changes > 0;
+    const trashedAt = new Date().toISOString();
+    const moveToTrash = this.database.transaction(() => {
+      const result = this.database
+        .prepare(
+          `UPDATE workspaces SET trashed_at = ?
+          WHERE id = ? AND trashed_at IS NULL`,
+        )
+        .run(trashedAt, id);
+      if (result.changes === 1) {
+        this.database
+          .prepare('UPDATE notes SET trashed_at = ? WHERE workspace_id = ?')
+          .run(trashedAt, id);
+      }
+      return result.changes === 1;
+    });
+    return moveToTrash();
   }
 
   public existsById(id: number): boolean {

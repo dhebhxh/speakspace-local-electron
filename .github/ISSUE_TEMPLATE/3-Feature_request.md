@@ -1,15 +1,17 @@
 ---
-name: Feature request
-about: You want something added to the boilerplate. 🎉
-labels: 'enhancement'
+name: 功能建议
+about: 建议新的使用场景或能力
+labels: enhancement
 ---
 
-<!---
-❗️❗️ Also, please consider donating (https://opencollective.com/electron-react-boilerplate-594) ❗️❗️
+## 使用场景
 
-Donations will ensure the following:
+请描述现在遇到的问题，而不只是希望增加的按钮或页面。
 
-🔨 Long term maintenance of the project
-🛣 Progress on the roadmap
-🐛 Quick responses to bug reports and help requests
- -->
+## 期望结果
+
+请说明理想流程、输入和输出。
+
+## 可选方案
+
+如果已经考虑过其他做法，请一并说明。

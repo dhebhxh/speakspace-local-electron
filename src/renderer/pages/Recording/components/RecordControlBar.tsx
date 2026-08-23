@@ -112,7 +112,7 @@ export default function RecordControlBar(props: {
   const fileMode = transcriptionSnapshot.inputMode === 'file';
   const fileBusy = isTranscriptionFileBusy(transcriptionSnapshot);
   const transcriptText = buildTranscriptText(transcriptionSnapshot);
-  const summaryBusy = transcriptionSnapshot.summaryPendingCount > 0;
+  const structuredNoteBusy = transcriptionSnapshot.structuredNotePending;
   const fileReadyToSave =
     fileMode &&
     transcriptionSnapshot.job?.status === 'completed' &&
@@ -123,7 +123,7 @@ export default function RecordControlBar(props: {
       snapshot.state === RecordingState.Saved) &&
     Boolean(transcriptText);
   const canSaveToWorkspace =
-    (fileReadyToSave || microphoneReadyToSave) && !summaryBusy;
+    (fileReadyToSave || microphoneReadyToSave) && !structuredNoteBusy;
   const noteName = defaultNoteName(
     fileMode,
     transcriptionSnapshot.uploadedFileName,
@@ -139,7 +139,7 @@ export default function RecordControlBar(props: {
   };
   const stopAndFinalize = async () => {
     await session.stop();
-    await transcription.finalizeLiveSummary();
+    await transcription.finalizeStructuredNote();
   };
 
   const openWorkspaceSave = () => {
@@ -148,14 +148,18 @@ export default function RecordControlBar(props: {
   };
 
   const saveToWorkspace = async (selection: WorkspaceSaveSelection) => {
-    await transcription.finalizeLiveSummary();
+    await transcription.finalizeStructuredNote();
     const latestTranscription = transcription.getSnapshot();
     const latestTranscriptText = buildTranscriptText(latestTranscription);
-    const latestSummaryTexts = latestTranscription.liveSummaries.map(
-      (summary) => summary.text,
-    );
     if (!latestTranscriptText) {
       setWorkspaceSaveError(t('recording.control.noTranscriptToSave'));
+      return;
+    }
+    if (!latestTranscription.structuredNoteDraft) {
+      setWorkspaceSaveError(
+        latestTranscription.structuredNoteError ||
+          t('recording.control.structuredNoteRequired'),
+      );
       return;
     }
 
@@ -203,13 +207,13 @@ export default function RecordControlBar(props: {
         workspaceId,
         name: selection.noteName,
         transcript: latestTranscriptText,
-        summaries: latestSummaryTexts,
         audioRelativePath,
+        structuredNoteDraft: latestTranscription.structuredNoteDraft,
       });
 
-      // Trigger intelligent auto-segmentation in the background
-      window.electron.askAI
-        .autoSegmentNote(saveResult.noteId)
+      // Structured Note 已在保存前完成；这里只同步仪表盘使用的待办数据。
+      window.electron.dashboard
+        .extractTodosForNote(saveResult.noteId)
         .catch(console.error);
 
       setWorkspaceSaveSuccess(

@@ -249,7 +249,7 @@ ${note.getTranscript()}`;
         createConversationName(question),
       );
 
-    // 智能体自己检索，挂上的笔记只是线索，能对上就记为来源。
+    // 智能体有关联笔记时以它们为明确上下文；这里同步记为会话来源。
     const noteIds = (request.noteIds ?? []).filter(
       (id) => Number.isInteger(id) && id > 0,
     );

@@ -746,6 +746,9 @@ NotSigned。首次安装可能看到 Windows SmartScreen「未知发布者」，
   - README 以 SpeakSpace Local 为产品主体，同时保留并更新 Electron React
     Boilerplate、Electron、React、React Router、Webpack 和 React Fast
     Refresh 的工程说明。
+  - 对照 Ask AI 等旧分支恢复 README 顶部的视觉化徽章区域；徽章改为本仓库
+    Tests、CodeQL、MIT License，以及当前 Electron、React、TypeScript、
+    Webpack、Node.js、Windows NSIS 和 Local-first 信息，不再引用上游状态。
   - 合并当前产品能力、本地模型策略、仓库安装、开发启动、验证、桌面端打包、
     签名检查、项目目录和上游 Electron 文档入口。
   - CHANGELOG 改为 SpeakSpace Local 4.6.0 的正式摘要，并链接详细日志。

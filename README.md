@@ -10,6 +10,28 @@
   Local-first voice notes and knowledge workspace
 </p>
 
+<p align="center">
+  <a href="https://github.com/dhebhxh/speakspace-local-electron/actions/workflows/test.yml">
+    <img alt="Tests" src="https://github.com/dhebhxh/speakspace-local-electron/actions/workflows/test.yml/badge.svg" />
+  </a>
+  <a href="https://github.com/dhebhxh/speakspace-local-electron/actions/workflows/codeql-analysis.yml">
+    <img alt="CodeQL" src="https://github.com/dhebhxh/speakspace-local-electron/actions/workflows/codeql-analysis.yml/badge.svg" />
+  </a>
+  <a href="LICENSE">
+    <img alt="MIT License" src="https://img.shields.io/github/license/dhebhxh/speakspace-local-electron?style=flat-square" />
+  </a>
+</p>
+
+<p align="center">
+  <img alt="Local-first" src="https://img.shields.io/badge/Local--first-yes-0A8F6A?style=flat-square" />
+  <img alt="Electron 35.7.5" src="https://img.shields.io/badge/Electron-35.7.5-47848F?style=flat-square&amp;logo=electron&amp;logoColor=white" />
+  <img alt="React 19" src="https://img.shields.io/badge/React-19.0-61DAFB?style=flat-square&amp;logo=react&amp;logoColor=0B1F2A" />
+  <img alt="TypeScript 5.8" src="https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&amp;logo=typescript&amp;logoColor=white" />
+  <img alt="Webpack 5.98" src="https://img.shields.io/badge/Webpack-5.98-8DD6F9?style=flat-square&amp;logo=webpack&amp;logoColor=1C3C5C" />
+  <img alt="Node.js 22" src="https://img.shields.io/badge/Node.js-22-5FA04E?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white" />
+  <img alt="Windows NSIS installer" src="https://img.shields.io/badge/Windows%20installer-NSIS-0078D4?style=flat-square&amp;logo=windows11&amp;logoColor=white" />
+</p>
+
 SpeakSpace Local 是一个 Electron 桌面应用，将录音、转写、结构化笔记、场景知识、全文检索和本地 AI 对话整合在同一个工作台中。
 
 本项目基于 [Electron React Boilerplate](https://github.com/electron-react-boilerplate/electron-react-boilerplate) 构建，并使用 [Electron](https://www.electronjs.org/)、[React](https://react.dev/)、[React Router](https://reactrouter.com/)、[Webpack](https://webpack.js.org/) 和 [React Fast Refresh](https://www.npmjs.com/package/react-refresh)。开发、调试与桌面端打包流程继续沿用 Electron React Boilerplate 的工程体系。

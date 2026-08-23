@@ -24,7 +24,7 @@ Apple 对免费 Personal Team 的限制见 [Choosing a Membership](https://devel
    - `SpeakSpace-iOS-v1.0.0.ipa.sha256`
 
 本次已验证构建的下载页（在上游 PR 合并前由 YQ fork 托管）：
-<https://github.com/Yanqing797/speakspace-local-mobile/releases/tag/ios-v1.0.0>
+<https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.0.0>
 
 上游仓库合并后，维护者可以把同一 IPA 和校验文件镜像到
 `dhebhxh/speakspace-local-mobile` 的同名 Release；测试者应只使用本文件列出的

@@ -130,7 +130,7 @@ MeloTTS 与现有 Kokoro 现在都由 `sherpa-onnx-node` 的 `OfflineTts` 加载
 
 MOSS 现已通过 `onnxruntime-node 1.27.0` 在 Electron 主进程内运行，按官方 Apache-2.0 ONNX CPU 路径移植 fixed-sampling 推理，并使用 `@sctg/sentencepiece-js 1.3.3` 加载官方 tokenizer。它仅暴露官方内置音色，不接受参考音频或声音克隆输入。
 
-统一音频合约现在返回 1～2 个独立的 `Float32Array` 声道。[TTSAudioPlayer.ts](../src/renderer/tts/TTSAudioPlayer.ts) 按返回声道数创建 `AudioBuffer`，因此 MOSS 保留 48 kHz 双声道，Kokoro/MeloTTS 保持单声道。
+统一音频合约现在返回 1～2 个独立的 `Float32Array` 声道。[TTSAudioPlayer.ts](../../src/renderer/tts/TTSAudioPlayer.ts) 按返回声道数创建 `AudioBuffer`，因此 MOSS 保留 48 kHz 双声道，Kokoro/MeloTTS 保持单声道。
 
 ## 集成后端到端验证
 
@@ -181,16 +181,16 @@ MOSS 现已通过 `onnxruntime-node 1.27.0` 在 Electron 主进程内运行，�
 
 基准脚本：
 
-- [`tts-benchmark-sherpa.js`](../scripts/benchmark/tts-benchmark-sherpa.js)
-- [`tts-benchmark-moss.py`](../scripts/benchmark/tts-benchmark-moss.py)
-- [`tts-benchmark-asr.py`](../scripts/benchmark/tts-benchmark-asr.py)
-- [`tts-benchmark-inputs.json`](../scripts/benchmark/tts-benchmark-inputs.json)
+- [`tts-benchmark-sherpa.js`](../../scripts/benchmark/tts-benchmark-sherpa.js)
+- [`tts-benchmark-moss.py`](../../scripts/benchmark/tts-benchmark-moss.py)
+- [`tts-benchmark-asr.py`](../../scripts/benchmark/tts-benchmark-asr.py)
+- [`tts-benchmark-inputs.json`](../../scripts/benchmark/tts-benchmark-inputs.json)
 
 集成烟雾脚本与平台验收说明：
 
-- [`scripts/smoke/tts-model-smoke.ts`](../scripts/smoke/tts-model-smoke.ts)
-- [`docs/testing/tts-platform-builds.md`](testing/tts-platform-builds.md)
-- [`docs/testing/tts-windows-manual.md`](testing/tts-windows-manual.md)
+- [`scripts/smoke/tts-model-smoke.ts`](../../scripts/smoke/tts-model-smoke.ts)
+- [`docs/testing/tts-platform-builds.md`](./tts-platform-builds.md)
+- [`docs/testing/tts-windows-manual.md`](./tts-windows-manual.md)
 
 本轮原始 JSON、回转录文本和 WAV 位于：
 

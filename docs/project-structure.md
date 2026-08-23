@@ -6,9 +6,9 @@
 assets/            应用图标、entitlements
 config/            模型目录（llm-catalog.json / stt-catalog.json）
 docs/              文档
+  README.md         文档索引与归类规则
   archive/         已完成阶段的历史方案与迁移记录
   changelog/       历次改动记录（原 log/）
-  design/          UI 设计稿
   testing/         测试说明
 scripts/           开发/验证脚本，不参与打包
   benchmark/       TTS 基准测试脚本

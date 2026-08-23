@@ -853,6 +853,73 @@ NotSigned。首次安装可能看到 Windows SmartScreen「未知发布者」，
 
 
 ========================================================================
+第十一段  文档归整与 README 工程报告
+========================================================================
+
+------------------------------------------------------------------------
+32. 【审计】根目录和 docs 先证明用途，再移动或删除
+------------------------------------------------------------------------
+
+盘点结果：
+  - 根目录 README、CHANGELOG、AGENTS、LICENSE 都是标准项目入口，保留。
+  - CODE_OF_CONDUCT 移至 GitHub 同样识别的 .github/，减少根目录噪音；
+    移动前后正文逐行一致。
+  - TTS 基准报告从 docs 根目录归入 docs/testing/，正文保持不变，并修正
+    因目录层级变化产生的 8 个相对链接。
+  - 新增 docs/README.md，集中说明当前文档、历史资料和以后新增文件的
+    归类规则。
+  - 删除未被任何文件引用、且与当前 Electron 产品完全不符的旧蓝色 Web
+    管理台草图 docs/design/custom-actions-mockup.png。
+  - 删除孤立、繁体且已被详细开发日志覆盖的短版
+    docs/changelog/changelog-20260812.md。
+  - docs/design 清空后移除空目录；docs/project-structure.md 同步更新。
+
+明确保留：
+  - src/node_modules 是指向 release/app/node_modules 的 Junction，是打包侧
+    原生依赖入口，不是重复安装目录。
+  - .claude 下两个 worktree 共约 812 MiB，但都含大量未提交代码；没有
+    用户确认合并或放弃前不得删除。
+  - release/installers 中的最终安装包不属于本次清理范围。
+
+
+------------------------------------------------------------------------
+33. 【README】从产品简介扩展为工程入口与技术报告
+------------------------------------------------------------------------
+
+README 保留产品 Logo、Tests、CodeQL、MIT、版本和技术栈徽章，并新增：
+  - 功能版图与主要实现模块对照表；
+  - Renderer → preload → 18 个 IPC 模块 → 领域服务 / Repository →
+    userData 的进程架构图；
+  - 转写 → Structured Note Draft → 复核 → notes / structured_notes →
+    Scenario Knowledge / 搜索的单一流水线图；
+  - 12 张 SQLite 表的 ER 关系图和 userData 目录树；
+  - Agent 显式关联笔记、有界 6 步工具循环、重复调用短路和最终收尾的
+    时序图；
+  - 搜索与 Word/PDF 导出覆盖矩阵；
+  - 本地 STT / LLM / Embedding / TTS 技术栈；
+  - Apple M4 TTS 基准摘要、源码规模和最近质量门禁指标；
+  - 项目结构、开发命令、打包流程和完整文档导航。
+
+图表使用 GitHub 原生 Mermaid：2 个 flowchart、1 个 erDiagram、
+1 个 sequenceDiagram。这样图随 Markdown 版本管理，不引入额外二进制图稿。
+
+
+------------------------------------------------------------------------
+34. 【验证】文档清理后的完整门禁
+------------------------------------------------------------------------
+
+结果：
+  - 全仓 14 个 Markdown 文件的本地链接全部可解析；
+  - README 16 个代码围栏闭合，4 个 Mermaid 块均能识别到合法图类型；
+  - git diff --check 通过；
+  - npm exec tsc -- --noEmit 通过；
+  - npm run lint 通过：0 error、29 个既有 no-console warning；
+  - npm run build 通过；
+  - npm run check:audit：0 vulnerabilities；
+  - Jest：64 suites passed、3 skipped；535 tests passed、42 skipped。
+
+
+========================================================================
 遗留问题 / 后续注意
 ========================================================================
 
@@ -889,9 +956,12 @@ NotSigned。首次安装可能看到 Windows SmartScreen「未知发布者」，
 
 新增 —— 工程规范与文档：
     AGENTS.md
+    docs/README.md
     docs/changelog/2026-08-23-01.txt（本文件）
     docs/archive/legacy-merge-inventory.md（由原路径归档）
     docs/testing/task-extraction-cases.md（由 test_promt.txt 改名）
+    docs/testing/tts-model-benchmark-2026-08-13.md（由 docs 根目录归档）
+    .github/CODE_OF_CONDUCT.md（由根目录移动）
 
 新增 —— 结构化笔记 / 模板：
     src/main/workflow/KnowledgeTemplateNormalizer.ts
@@ -1002,6 +1072,10 @@ NotSigned。首次安装可能看到 Windows SmartScreen「未知发布者」，
     .github/config.yml
 
 删除：
+    CODE_OF_CONDUCT.md（移动到 .github/）
+    docs/2026-08-13-tts-model-benchmark.md（移动到 docs/testing/）
+    docs/changelog/changelog-20260812.md
+    docs/design/custom-actions-mockup.png
     assets/icon.svg
     src/main/menu.ts
     src/renderer/pages/Workflow/WorkflowPage.tsx / .css

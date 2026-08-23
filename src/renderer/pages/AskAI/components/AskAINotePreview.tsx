@@ -5,7 +5,10 @@ import type {
   StructuredNote,
 } from '@shared/types/KnowledgeGenerationTypes';
 import { AskAINote, formatAskAIDate } from '../AskAITypes';
-import MarkdownText from '../../../components/Markdown/MarkdownText';
+import MarkdownText, {
+  renderInline,
+} from '../../../components/Markdown/MarkdownText';
+import { parseInline } from '../../../components/Markdown/markdownAst';
 
 type AskAINotePreviewProps = {
   note: AskAINote | null;
@@ -154,7 +157,7 @@ export default function AskAINotePreview({ note }: AskAINotePreviewProps) {
       <header>
         <div>
           <span>{t('askAI.chat.scopeBtnNote')}</span>
-          <h1>{note.name}</h1>
+          <h1>{renderInline(parseInline(note.name), 'note-title')}</h1>
         </div>
         <time>{formatAskAIDate(note.updatedAt)}</time>
       </header>

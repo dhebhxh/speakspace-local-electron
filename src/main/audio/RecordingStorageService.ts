@@ -42,8 +42,7 @@ export type RecordingDiscardResult = {
 };
 
 /**
- * 保存 Renderer 录制的音频，并确保删除操作仅作用于未被笔记引用的受管录音。
- */
+ * 保�? Renderer 录制?�音频�?并确保�??��?作�?作用于未被�?记�??��??�管录音?? */
 export default class RecordingStorageService {
   private readonly blobStorage: BlobStorage;
 
@@ -55,6 +54,30 @@ export default class RecordingStorageService {
   ) {
     this.blobStorage = blobStorage;
     this.database = database;
+  }
+
+  public cleanupOrphanedRecordings(): number {
+    const allFiles = this.blobStorage.listAll('recordings');
+    let deletedCount = 0;
+    const oneHourAgoMs = Date.now() - 60 * 60 * 1000;
+
+    allFiles.forEach((relativeFile) => {
+      if (!relativeFile.startsWith('recordings/')) return;
+
+      const referenceCount = this.countNoteReferences(relativeFile);
+      if (referenceCount === 0) {
+        const absolutePath = this.blobStorage.resolveAbsolutePath(relativeFile);
+        if (fs.existsSync(absolutePath)) {
+          const stat = fs.statSync(absolutePath);
+          if (stat.mtimeMs < oneHourAgoMs) {
+            this.blobStorage.delete(relativeFile);
+            deletedCount += 1;
+          }
+        }
+      }
+    });
+
+    return deletedCount;
   }
 
   public async saveRecording(
@@ -83,19 +106,19 @@ export default class RecordingStorageService {
 
   public importRecordingFile(rawFilePath: unknown): SavedRecording {
     if (typeof rawFilePath !== 'string' || !rawFilePath.trim()) {
-      throw new Error('无效的音频文件路径 / Invalid audio file path');
+      throw new Error('?��??�音频�?件路�?/ Invalid audio file path');
     }
 
     const filePath = path.resolve(rawFilePath);
     const stat = fs.statSync(filePath);
     if (!stat.isFile() || stat.size <= 0 || stat.size > MAX_RECORDING_BYTES) {
-      throw new Error('音频文件大小无效 / Invalid audio file size');
+      throw new Error('?��??�件大�??��? / Invalid audio file size');
     }
 
     const extension = path.extname(filePath).slice(1).toLowerCase();
     const mimeType = RECORDING_MIME_TYPES_BY_EXTENSION[extension];
     if (!mimeType) {
-      throw new Error('不支持的音频格式 / Unsupported audio format');
+      throw new Error('不支?��??��??��? / Unsupported audio format');
     }
 
     const createdAt = new Date().toISOString();
@@ -151,25 +174,25 @@ export default class RecordingStorageService {
         rawData.byteLength,
       );
     } else {
-      throw new Error('无效的录音数据 / Invalid recording data');
+      throw new Error('无效的录音数据/ Invalid recording data');
     }
 
     if (bytes.byteLength === 0 || bytes.byteLength > MAX_RECORDING_BYTES) {
       throw new Error('录音数据大小无效 / Invalid recording size');
     }
 
-    // 复制 IPC 数据，避免调用方随后修改同一个 ArrayBuffer。
+    // 复制 IPC 数据，避免渲染方篡改原始 ArrayBuffer
     return Uint8Array.from(bytes);
   }
 
   private static normalizeMimeType(rawMimeType: unknown): string {
     if (typeof rawMimeType !== 'string') {
-      throw new Error('无效的录音格式 / Invalid recording format');
+      throw new Error('无效的录音格式/ Invalid recording format');
     }
 
     const mimeType = rawMimeType.toLowerCase().split(';')[0].trim();
     if (!RECORDING_EXTENSIONS[mimeType]) {
-      throw new Error('不支持的录音格式 / Unsupported recording format');
+      throw new Error('不支?��?录音?��? / Unsupported recording format');
     }
 
     return mimeType;
@@ -177,7 +200,7 @@ export default class RecordingStorageService {
 
   private static normalizeRecordingPath(rawRelativePath: unknown): string {
     if (typeof rawRelativePath !== 'string') {
-      throw new Error('无效的录音路径 / Invalid recording path');
+      throw new Error('?��??��??�路�?/ Invalid recording path');
     }
 
     const normalizedPath = rawRelativePath.replaceAll('\\', '/');
@@ -189,7 +212,7 @@ export default class RecordingStorageService {
       segments[1] === '.' ||
       segments[1] === '..'
     ) {
-      throw new Error('录音不在受管目录中 / Recording is not managed');
+      throw new Error('录音不在?�管?��?�?/ Recording is not managed');
     }
 
     return path.posix.join(segments[0], segments[1]);

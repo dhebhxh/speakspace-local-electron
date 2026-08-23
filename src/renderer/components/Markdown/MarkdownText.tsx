@@ -12,7 +12,10 @@ import './MarkdownText.css';
  * （见 tts/TTSContent.ts），复制则应保留 Markdown 源码。
  */
 
-function renderInline(nodes: InlineNode[], keyPrefix: string): React.ReactNode {
+export function renderInline(
+  nodes: InlineNode[],
+  keyPrefix: string,
+): React.ReactNode {
   return nodes.map((node, index) => {
     const key = `${keyPrefix}-${index}`;
     switch (node.type) {

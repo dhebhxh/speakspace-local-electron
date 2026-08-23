@@ -7,6 +7,7 @@ import OnboardingGuide from './onboarding/OnboardingGuide';
 import AmbientBackground from './components/AmbientBackground';
 import useBackgroundRequests from './background/useBackgroundRequests';
 import CloseConfirmDialog from './background/CloseConfirmDialog';
+import DailyReminderController from './reminders/DailyReminderController';
 
 /** 托盘 / 全局快捷键的动作在这里落地；必须在 Router 内部才能跳转。 */
 function BackgroundRequestBridge() {
@@ -37,6 +38,7 @@ export default function App() {
       <HashRouter>
         <BackgroundRequestBridge />
         <AppRoute />
+        <DailyReminderController />
         <OnboardingGuide />
       </HashRouter>
       {/* 关窗询问：任何页面下都可能触发，挂在最外层 */}

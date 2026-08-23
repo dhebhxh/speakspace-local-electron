@@ -4,6 +4,8 @@ import { AskAIConversation, AskAINote, formatAskAIDate } from '../AskAITypes';
 import { setNoteDragPayload } from '../AskAIDragPayload';
 import useLibrarySplit from '../useLibrarySplit';
 import TrashCanButton from '../../../components/TrashCanButton';
+import { renderInline } from '../../../components/Markdown/MarkdownText';
+import { parseInline } from '../../../components/Markdown/markdownAst';
 
 /**
  * 分隔条可以把「最近会话」拉高，原来固定只渲染 6 条会让多出来的空间是空的；
@@ -99,7 +101,9 @@ export default function AskAINotesPanel({
         onDoubleClick={() => onPreviewNote?.(note.id)}
         type="button"
       >
-        <strong>{note.name}</strong>
+        <strong className="ask-ai-note-title">
+          {renderInline(parseInline(note.name))}
+        </strong>
         <span>
           {note.transcriptPreview || t('askAI.notesPanel.noSummaryShort')}
         </span>

@@ -60,6 +60,32 @@ export class BlobStorage {
     return fs.existsSync(absolutePath);
   }
 
+  public listAll(relativeDirectory: string): string[] {
+    const absoluteDir = this.resolveAbsolutePath(relativeDirectory);
+    if (!fs.existsSync(absoluteDir)) {
+      return [];
+    }
+
+    const results: string[] = [];
+    const walk = (dir: string) => {
+      const list = fs.readdirSync(dir);
+      list.forEach((file) => {
+        const fullPath = path.join(dir, file);
+        const stat = fs.statSync(fullPath);
+        if (stat && stat.isDirectory()) {
+          walk(fullPath);
+        } else {
+          // Convert back to a path relative to the blob root
+          const pathFromRoot = path.relative(this.blobRootPath, fullPath);
+          results.push(pathFromRoot.split(path.sep).join('/'));
+        }
+      });
+    };
+
+    walk(absoluteDir);
+    return results;
+  }
+
   public resolveAbsolutePath(relativePath: string): string {
     if (!relativePath || path.isAbsolute(relativePath)) {
       throw new Error('无效的 Blob 相对路径 / Invalid blob relative path');

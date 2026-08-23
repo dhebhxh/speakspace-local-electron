@@ -11,7 +11,10 @@ import {
 import { NoteItem, WorkspaceController } from '../WorkspaceController';
 import KnowledgeOutputPanel from './KnowledgeOutputPanel';
 import WorkspaceAudioPlayer from './WorkspaceAudioPlayer';
-import MarkdownText from '../../../components/Markdown/MarkdownText';
+import MarkdownText, {
+  renderInline,
+} from '../../../components/Markdown/MarkdownText';
+import { parseInline } from '../../../components/Markdown/markdownAst';
 import TrashCanButton from '../../../components/TrashCanButton';
 import NoteInsightsPanel from './NoteInsightsPanel';
 
@@ -75,7 +78,11 @@ export default function WorkspaceNoteCard({
               {t('workspace.detail.pinnedLabel')}
             </span>
           ) : null}
-          <h2>{note.name || t('workspace.note.unnamed')}</h2>
+          <h2>
+            {note.name
+              ? renderInline(parseInline(note.name))
+              : t('workspace.note.unnamed')}
+          </h2>
         </div>
         <div className="workspace-note-tools">
           {hasAudio && (

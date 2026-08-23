@@ -39,6 +39,7 @@ import { setBackgroundController } from './ipc/background-ipc';
 import { BackgroundController } from './background/BackgroundController';
 import { TrayController } from './background/TrayController';
 import { SettingsService } from './settings/SettingsService';
+import { GarbageCollectionService } from './startup/GarbageCollectionService';
 
 class AppUpdater {
   constructor() {
@@ -205,6 +206,9 @@ if (gotSingleInstanceLock) {
     .whenReady()
     .then(() => {
       createWindow();
+      // Run background cleanup task
+      new GarbageCollectionService().runGarbageCollection();
+
       app.on('activate', () => {
         // On macOS it's common to re-create a window in the app when the
         // dock icon is clicked and there are no other windows open.

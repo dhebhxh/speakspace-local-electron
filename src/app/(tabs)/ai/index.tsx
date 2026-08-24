@@ -1,19 +1,26 @@
+import { UiText as Text } from "@/components/ui-text";
 import { Stack, type Href, useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
+import type { UiLanguage } from "@/localization/i18n";
+import { translateUiCopy } from "@/localization/ui-copy";
 
 export default function AiManagementScreen() {
   const theme = useTheme();
+  const { i18n } = useTranslation();
+  const language = (i18n.resolvedLanguage ?? "en") as UiLanguage;
+  const tr = (value: string) => translateUiCopy(value, language);
   const colors = Colors[theme.mode];
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: "AI Management" }} />
+      <Stack.Screen options={{ title: tr("AI Management") }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
@@ -30,7 +37,7 @@ export default function AiManagementScreen() {
         <View style={styles.modelLinks}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Manage speech-to-text models"
+            accessibilityLabel={tr("Manage speech-to-text models")}
             onPress={() => router.push("/ai/stt-models")}
             style={({ pressed }) => [
               styles.card,
@@ -52,7 +59,7 @@ export default function AiManagementScreen() {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Manage large language models"
+            accessibilityLabel={tr("Manage large language models")}
             onPress={() => router.push("/ai/llm-models" as Href)}
             style={({ pressed }) => [
               styles.card,
@@ -74,7 +81,7 @@ export default function AiManagementScreen() {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Manage text-to-speech models"
+            accessibilityLabel={tr("Manage text-to-speech models")}
             onPress={() => router.push("/ai/tts-models" as Href)}
             style={({ pressed }) => [
               styles.card,

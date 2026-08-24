@@ -1,9 +1,11 @@
+import { UiText as Text } from "@/components/ui-text";
 import { type Href, useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useSpeechPlayback } from "@/hooks/use-speech-playback";
 import { useTheme } from "@/hooks/use-theme";
+import { useUiCopyTranslation } from "@/hooks/use-ui-copy-translation";
 
 export function SpeechPlaybackButton({
   speechId,
@@ -15,15 +17,16 @@ export function SpeechPlaybackButton({
   text: string;
 }) {
   const colors = Colors[useTheme().mode];
+  const tr = useUiCopyTranslation();
   const router = useRouter();
   const { service, state } = useSpeechPlayback();
   const isActive = state.speechId === speechId;
   const disabled = !isActive && state.inferenceBusy;
-  const buttonLabel = isActive
+  const buttonLabel = tr(isActive
     ? state.phase === "error"
       ? "Try again"
       : "Stop"
-    : "Read aloud";
+    : "Read aloud");
 
   return (
     <View style={styles.wrapper}>

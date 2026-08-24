@@ -1,6 +1,8 @@
+import { UiTextInput as TextInput } from "@/components/ui-text-input";
+import { UiText as Text } from "@/components/ui-text";
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Keyboard, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Keyboard, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";

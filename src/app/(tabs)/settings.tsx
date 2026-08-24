@@ -1,5 +1,6 @@
+import { UiText as Text } from "@/components/ui-text";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme";

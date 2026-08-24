@@ -1,21 +1,12 @@
+import { UiAlert as Alert } from "@/localization/ui-alert";
+import { UiTextInput as TextInput } from "@/components/ui-text-input";
+import { UiText as Text } from "@/components/ui-text";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import * as Clipboard from "expo-clipboard";
 import { File, Paths } from "expo-file-system";
 import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View,  } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";

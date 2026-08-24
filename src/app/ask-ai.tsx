@@ -1,21 +1,10 @@
+import { UiTextInput as TextInput } from "@/components/ui-text-input";
+import { UiText as Text } from "@/components/ui-text";
 import { requestRecordingPermissionsAsync } from "expo-audio";
 import { Stack, type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Keyboard, KeyboardAvoidingView, Modal, NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StyleSheet, View,  } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";

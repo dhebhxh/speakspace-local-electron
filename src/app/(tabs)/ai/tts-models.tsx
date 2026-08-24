@@ -1,6 +1,8 @@
+import { UiAlert as Alert } from "@/localization/ui-alert";
+import { UiText as Text } from "@/components/ui-text";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
@@ -8,6 +10,7 @@ import { TtsModelCard, TtsModelCardStatus } from "@/components/tts-model-card";
 import { Colors, Spacing } from "@/constants/theme";
 import { TtsModel } from "@/domain/tts-model/tts-model";
 import { useTheme } from "@/hooks/use-theme";
+import { useUiCopyTranslation } from "@/hooks/use-ui-copy-translation";
 import { TtsModelDownloadProgress } from "@/services/tts-model-service";
 
 type ListState = { status: "loading" } | { status: "error"; message: string } |
@@ -17,6 +20,7 @@ const emptyRowState: RowState = { isBusy: false, isDownloading: false, progress:
 
 export default function TtsModelsScreen() {
   const colors = Colors[useTheme().mode];
+  const tr = useUiCopyTranslation();
   const insets = useSafeAreaInsets();
   const { ttsModelService } = appContainer;
   const catalog = ttsModelService.getCatalog();
@@ -72,7 +76,7 @@ export default function TtsModelsScreen() {
   ]);
 
   return <View style={[styles.screen, { backgroundColor: colors.background }]}>
-    <Stack.Screen options={{ title: "Text-to-Speech Models" }} />
+    <Stack.Screen options={{ title: tr("Text-to-Speech Models") }} />
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.content, { paddingBottom: Spacing.xxl + insets.bottom }]}>
       <View style={styles.heading}><Text style={[styles.subtitle, { color: colors.textMuted }]}>Download voices for private speech synthesis with sherpa-onnx on this device.</Text></View>
       {state.status === "error" && <Text style={[styles.error, { color: colors.danger }]}>{state.message}</Text>}
@@ -80,8 +84,8 @@ export default function TtsModelsScreen() {
         const installed = state.status === "success" ? state.installedById.get(entry.id) ?? null : null;
         const row = rowStates[entry.id] ?? emptyRowState;
         const status: TtsModelCardStatus = row.isDownloading ? "downloading" : installed ? installed.getIsActive() ? "active" : "installed" : "not-installed";
-        return <TtsModelCard key={entry.id} name={entry.name} description={entry.description} languages={entry.languages}
-          speakers={entry.speakers} sizeBytes={installed?.getSizeBytes() ?? entry.sizeBytes} status={status} progress={row.progress}
+        return <TtsModelCard key={entry.id} name={entry.name} description={tr(entry.description)} languages={entry.languages.map(tr)}
+          speakers={tr(entry.speakers)} sizeBytes={installed?.getSizeBytes() ?? entry.sizeBytes} status={status} progress={row.progress}
           isBusy={row.isBusy} errorMessage={row.error} onDownload={() => void download(entry.id)} onUse={() => void handleUse(entry.id)}
           onUninstall={() => confirmUninstall(entry.id, entry.name)} />;
       })}</View>

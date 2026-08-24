@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { UiText as Text } from "@/components/ui-text";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import { Note } from "@/domain/note/note";

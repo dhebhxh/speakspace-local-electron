@@ -633,7 +633,7 @@ xcodebuild \
 
 同一源码的签名 Release 通过自动 verifier 和 `codesign --verify --deep --strict`，再通过 Xcode 工具链覆盖安装到 iPhone 16 Pro Max。设备应用清单确认运行版本为 `1.3.0 (4)`，应用脱离 Metro 正常启动。覆盖安装后复制 SQLite 复检，schema 仍为 v10，完整性检查为 `ok`、外键检查无记录，并保留 4 Notes、2 Workspaces、1 个三 Note conversation、1 template、1 Knowledge result 和 3 Tasks，说明版本升级没有破坏本轮验收数据。
 
-发布质量门最终为 71 passed、0 failed；TypeScript、Expo Doctor 21/21、Expo 依赖版本检查和 Git diff 检查通过，Lint 为 0 error、16 warnings。安全审计没有 high/critical，仍有 12 个 Expo 工具链传递依赖的 moderate；强制修复会降级到 Expo 46，因此继续等待兼容的上游更新。上一稳定版 `ios-v1.2.0` 与对应 IPA 保留为回滚点，数据库迁移保持只向前升级，不通过卸载 App 回退本地数据。
+发布质量门最终为 71 passed、0 failed；TypeScript、Expo Doctor 21/21、Expo 依赖版本检查和 Git diff 检查通过，Lint 为 0 error、16 warnings。安全审计没有 high/critical，仍有 12 个 Expo 工具链传递依赖的 moderate；强制修复会把 `expo-splash-screen` 降到与 Expo SDK 57 不兼容的 55.x，因此继续等待兼容的上游更新。上一稳定版 `ios-v1.2.0` 与对应 IPA 保留为回滚点，数据库迁移保持只向前升级，不通过卸载 App 回退本地数据。
 
 > Evidence:
 > - Source: `app.json`, `package.json`, `CHANGELOG.md`, `docs/ios-release-v1.3.0-YQ.md`, `scripts/verify-ios-release.mjs`, `scripts/package-ios-sidestore.mjs`

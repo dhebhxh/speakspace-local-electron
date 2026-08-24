@@ -1,5 +1,5 @@
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { Stack, type Href, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Alert,
     InputAccessoryView,
@@ -20,9 +20,12 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 import { NoteCard } from "@/components/note-card";
+import { CategoryFilter, type CategoryFilterValue } from "@/components/category-filter";
+import { NoteSelectionToolbar } from "@/components/note-selection-toolbar";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import { ValidationError } from "@/errors/validation-error";
 import { useTheme } from "@/hooks/use-theme";
+import { useTrashUndo } from "@/providers/trash-undo-provider";
 
 type WorkspaceNotesState =
   | { status: "loading" }
@@ -46,6 +49,7 @@ export default function WorkspaceDetailScreen() {
   const colors = Colors[theme.mode];
   const insets = useSafeAreaInsets();
   const { workspaceService, noteService } = appContainer;
+  const { showTrashUndo } = useTrashUndo();
   const [state, setState] = useState<WorkspaceNotesState>({
     status: "loading",
   });
@@ -56,6 +60,26 @@ export default function WorkspaceDetailScreen() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [pinningNoteId, setPinningNoteId] = useState<string | null>(null);
+  const [category, setCategory] = useState<CategoryFilterValue>("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [frozenIds, setFrozenIds] = useState<string[] | null>(null);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [destinationWorkspaces, setDestinationWorkspaces] = useState<Awaited<ReturnType<typeof workspaceService.getWorkspaces>>>([]);
+
+  const categoryNotes = useMemo(
+    () => state.status === "success"
+      ? state.notes.filter((note) => category === "all" || note.getCategory() === category)
+      : [],
+    [category, state],
+  );
+  const visibleNotes = useMemo(
+    () => frozenIds === null ? categoryNotes : frozenIds.flatMap((id) => state.status === "success" ? state.notes.find((note) => note.getId() === id) ?? [] : []),
+    [categoryNotes, frozenIds, state],
+  );
+  const selectedNotes = useMemo(
+    () => visibleNotes.filter((note) => selectedIds.has(note.getId())),
+    [selectedIds, visibleNotes],
+  );
 
   const loadWorkspace = async () => {
     setState({ status: "loading" });
@@ -75,6 +99,7 @@ export default function WorkspaceDetailScreen() {
         workspace: loadedWorkspace,
         notes: loadedNotes,
       });
+      setDestinationWorkspaces(await workspaceService.getWorkspaces());
     } catch {
       setState({ status: "error", message: "Unable to load workspace." });
     }
@@ -85,6 +110,12 @@ export default function WorkspaceDetailScreen() {
       void loadWorkspace();
     }, [workspaceId]),
   );
+
+  useEffect(() => noteService.subscribeToCategoryChanges(() => {
+    void noteService.getNotesByWorkspace(workspaceId).then((notes) => {
+      setState((current) => current.status === "success" ? { ...current, notes } : current);
+    });
+  }), [noteService, workspaceId]);
 
   const createNote = async () => {
     setFormError(null);
@@ -142,17 +173,54 @@ export default function WorkspaceDetailScreen() {
     }
   };
 
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setFrozenIds(null);
+  };
+
+  const toggleSelected = (noteId: string) => {
+    if (frozenIds === null) setFrozenIds(categoryNotes.map((note) => note.getId()));
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(noteId)) next.delete(noteId); else next.add(noteId);
+      if (next.size === 0) setFrozenIds(null);
+      return next;
+    });
+  };
+
+  const runBatch = async (action: () => Promise<void>) => {
+    setBatchBusy(true);
+    try {
+      await action();
+      clearSelection();
+      await loadWorkspace();
+    } catch (error) {
+      Alert.alert("Unable to update selected notes", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setBatchBusy(false);
+    }
+  };
+
   const confirmDeleteWorkspace = () => {
     if (state.status !== "success") return;
     const count = state.notes.length;
     Alert.alert(
-      "Delete workspace?",
+      "Move workspace to Trash?",
       count > 0
-        ? `This permanently deletes the workspace and its ${count} ${count === 1 ? "note" : "notes"}, including related insights and AI context.`
-        : "This permanently deletes the workspace.",
-      [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => {
+        ? `Its ${count} ${count === 1 ? "note" : "notes"} will be hidden but kept until permanent deletion in Settings → Trash.`
+        : "You can restore it later from Settings → Trash.",
+      [{ text: "Cancel", style: "cancel" }, { text: "Move to Trash", style: "destructive", onPress: () => {
         void workspaceService.deleteWorkspace(workspaceId).then(
-          () => router.replace("/workspaces"),
+          () => {
+            showTrashUndo({
+              message: `${state.workspace.getName()} moved to Trash`,
+              undo: async () => {
+                await workspaceService.restoreWorkspace(workspaceId);
+                router.replace({ pathname: "/workspaces/[workspaceId]", params: { workspaceId } });
+              },
+            });
+            router.replace("/workspaces");
+          },
           () => Alert.alert("Unable to delete workspace", "Please try again."),
         );
       }}],
@@ -223,6 +291,38 @@ export default function WorkspaceDetailScreen() {
                 }}
               />
             </View>
+            <CategoryFilter value={category} onChange={setCategory} />
+            {frozenIds !== null && (
+              <NoteSelectionToolbar
+                selectedNotes={selectedNotes}
+                allVisibleSelected={selectedIds.size === visibleNotes.length}
+                workspaces={destinationWorkspaces}
+                busy={batchBusy}
+                onToggleAll={() => {
+                  if (selectedIds.size === visibleNotes.length) clearSelection();
+                  else setSelectedIds(new Set(visibleNotes.map((note) => note.getId())));
+                }}
+                onCancel={clearSelection}
+                onMove={(destinationId) => runBatch(() => noteService.moveNotes([...selectedIds], destinationId))}
+                onTrash={() => runBatch(async () => {
+                  const ids = [...selectedIds];
+                  await noteService.trashNotes(ids);
+                  showTrashUndo({
+                    message: `${ids.length} notes moved to Trash`,
+                    undo: async () => {
+                      await noteService.restoreNotes(ids);
+                      await loadWorkspace();
+                    },
+                  });
+                })}
+                onPin={(pinned) => runBatch(() => noteService.setNotesPinned([...selectedIds], pinned))}
+                onAskAi={() => {
+                  const noteIds = [...selectedIds].sort().join(",");
+                  clearSelection();
+                  router.push({ pathname: "/ask-ai", params: { noteIds } } as unknown as Href);
+                }}
+              />
+            )}
             {state.notes.length === 0 && (
               <EmptyState
                 title="No notes yet"
@@ -237,22 +337,21 @@ export default function WorkspaceDetailScreen() {
                 }
               />
             )}
-            {state.notes.length > 0 && (
+            {state.notes.length > 0 && visibleNotes.length === 0 && <EmptyState title="No notes in this category" />}
+            {visibleNotes.length > 0 && (
               <View style={styles.list}>
-                {state.notes.map((note) => (
+                {visibleNotes.map((note) => (
                   <NoteCard
                     key={note.getId()}
                     note={note}
                     isPinning={pinningNoteId === note.getId()}
-                    onPinPress={() =>
-                      void togglePinned(note.getId(), note.getIsPinned())
-                    }
-                    onPress={() =>
-                      router.push({
-                        pathname: "/notes/[noteId]",
-                        params: { noteId: note.getId() },
-                      })
-                    }
+                    onPinPress={frozenIds === null ? () => void togglePinned(note.getId(), note.getIsPinned()) : undefined}
+                    selectionMode={frozenIds !== null}
+                    selected={selectedIds.has(note.getId())}
+                    onLongPress={() => toggleSelected(note.getId())}
+                    onPress={() => frozenIds !== null
+                      ? toggleSelected(note.getId())
+                      : router.push({ pathname: "/notes/[noteId]", params: { noteId: note.getId() } })}
                   />
                 ))}
               </View>

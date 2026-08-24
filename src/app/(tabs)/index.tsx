@@ -1,5 +1,5 @@
 import { Link, type Href, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Calendar, type DateData } from "react-native-calendars";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,6 +11,7 @@ import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 import { NoteCard } from "@/components/note-card";
 import { HomeTaskList } from "@/components/home-task-list";
+import { CategoryFilter, type CategoryFilterValue } from "@/components/category-filter";
 import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import type { CoreCalendarIntent, CoreTask } from "@/domain/core-note-insight/core-note-insight";
 import type { Note } from "@/domain/note/note";
@@ -38,6 +39,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const [overview, setOverview] = useState<OverviewState>({ status: "loading" });
   const [noteFilter, setNoteFilter] = useState<NoteFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilterValue>("all");
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date().toISOString())!);
 
   const loadOverview = useCallback(async () => {
@@ -54,12 +56,20 @@ export default function HomeScreen() {
 
   useFocusEffect(useCallback(() => { void loadOverview(); }, [loadOverview]));
 
+  useEffect(
+    () => appContainer.noteService.subscribeToCategoryChanges(() => { void loadOverview(); }),
+    [loadOverview],
+  );
+
   const overviewData = useMemo(() => {
     if (overview.status !== "success") return null;
     const weekAgo = overview.loadedAt - 7 * 24 * 60 * 60 * 1000;
     const recentNotes = overview.notes.filter((note) => new Date(note.getCreatedAt()).getTime() >= weekAgo);
     const pendingNoteIds = new Set(overview.tasks.filter((task) => task.status === "pending").map((task) => task.sourceNoteId));
-    const filteredNotes = overview.notes.filter((note) => noteFilter === "pinned" ? note.getIsPinned() : noteFilter === "todos" ? pendingNoteIds.has(note.getId()) : true);
+    const filteredNotes = overview.notes.filter((note) =>
+      (noteFilter === "pinned" ? note.getIsPinned() : noteFilter === "todos" ? pendingNoteIds.has(note.getId()) : true) &&
+      (categoryFilter === "all" || note.getCategory() === categoryFilter),
+    );
     const calendarByDate = new Map<string, CoreCalendarIntent[]>();
     for (const intent of overview.calendarIntents) {
       const dateKey = toDateKey(intent.startsAt ?? intent.dueAt ?? intent.remindAt);
@@ -74,7 +84,7 @@ export default function HomeScreen() {
       recentNoteCount: recentNotes.length,
       calendarByDate,
     };
-  }, [noteFilter, overview]);
+  }, [categoryFilter, noteFilter, overview]);
 
   const markedDates = useMemo(() => {
     if (!overviewData) return {};
@@ -149,12 +159,17 @@ export default function HomeScreen() {
               await appContainer.coreNoteInsightService.setTaskCompleted(task.sourceNoteId, task.id, completed);
               await loadOverview();
             }}
+            onTaskPinnedChange={async (task, pinned) => {
+              await appContainer.coreNoteInsightService.setTaskPinned(task.sourceNoteId, task.id, pinned);
+              await loadOverview();
+            }}
           />
           <View style={styles.notesSection}>
             <View style={styles.notesHeading}>
               <Text style={[styles.calendarTitle, { color: colors.text }]}>Notes</Text>
               <Text style={[styles.notesCount, { color: colors.textMuted }]}>{overviewData.filteredNotes.length} shown</Text>
             </View>
+            <CategoryFilter value={categoryFilter} onChange={setCategoryFilter} />
             {overviewData.filteredNotes.length === 0
               ? <EmptyState title={noteFilter === "all" ? "No notes yet" : "No matching notes"} description={noteFilter === "todos" ? "Notes with unfinished Core Note tasks appear here." : undefined} />
               : <View style={styles.noteList}>{overviewData.filteredNotes.map((note) => <NoteCard key={note.getId()} note={note} onPress={() => router.push({ pathname: "/notes/[noteId]", params: { noteId: note.getId() } })} />)}</View>}

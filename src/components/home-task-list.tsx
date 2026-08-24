@@ -10,14 +10,17 @@ export function HomeTaskList({
   tasks,
   onOpenNote,
   onTaskCompletedChange,
+  onTaskPinnedChange,
 }: {
   tasks: readonly CoreTask[];
   onOpenNote: (noteId: string) => void;
   onTaskCompletedChange: (task: CoreTask, completed: boolean) => Promise<void>;
+  onTaskPinnedChange: (task: CoreTask, pinned: boolean) => Promise<void>;
 }) {
   const colors = Colors[useTheme().mode];
   const groups = useMemo(() => groupHomeTasks(tasks), [tasks]);
   const [completedExpanded, setCompletedExpanded] = useState(false);
+  const [completedLimit, setCompletedLimit] = useState(20);
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const pendingCount = groups.pending.reduce((sum, group) => sum + group.tasks.length, 0);
@@ -38,6 +41,21 @@ export function HomeTaskList({
       });
     }
   };
+
+  const togglePinned = async (task: CoreTask) => {
+    if (busyIds.has(task.id)) return;
+    setError(null);
+    setBusyIds((current) => new Set(current).add(task.id));
+    try { await onTaskPinnedChange(task, !task.isPinned); }
+    catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to pin this task."); }
+    finally { setBusyIds((current) => { const next = new Set(current); next.delete(task.id); return next; }); }
+  };
+
+  const latestCompletedBySeries = useMemo(() => {
+    const latest = new Map<string, number>();
+    for (const task of groups.completed) if (task.seriesKey) latest.set(task.seriesKey, Math.max(latest.get(task.seriesKey) ?? -1, task.occurrenceIndex ?? 0));
+    return latest;
+  }, [groups.completed]);
 
   return (
     <View style={styles.section}>
@@ -67,6 +85,8 @@ export function HomeTaskList({
                 divided={index > 0}
                 onOpenNote={onOpenNote}
                 onToggle={() => void toggle(task, true)}
+                onPin={() => void togglePinned(task)}
+                canToggle
               />
             ))}
           </View>
@@ -86,7 +106,7 @@ export function HomeTaskList({
           </Pressable>
           {completedExpanded && (
             <View style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              {groups.completed.map((task, index) => (
+              {groups.completed.slice(0, completedLimit).map((task, index) => (
                 <TaskRow
                   key={task.id}
                   task={task}
@@ -94,8 +114,15 @@ export function HomeTaskList({
                   divided={index > 0}
                   onOpenNote={onOpenNote}
                   onToggle={() => void toggle(task, false)}
+                  onPin={() => void togglePinned(task)}
+                  canToggle={!task.endedAt && (!task.seriesKey || latestCompletedBySeries.get(task.seriesKey) === (task.occurrenceIndex ?? 0))}
                 />
               ))}
+              {groups.completed.length > completedLimit && (
+                <Pressable accessibilityRole="button" onPress={() => setCompletedLimit((current) => current + 20)} style={({ pressed }) => [styles.showOlder, pressed && styles.pressed]}>
+                  <Text style={[styles.taskMeta, { color: colors.accent }]}>Show older</Text>
+                </Pressable>
+              )}
             </View>
           )}
         </View>
@@ -106,12 +133,14 @@ export function HomeTaskList({
   );
 }
 
-function TaskRow({ task, busy, divided, onOpenNote, onToggle }: {
+function TaskRow({ task, busy, divided, onOpenNote, onToggle, onPin, canToggle }: {
   task: CoreTask;
   busy: boolean;
   divided: boolean;
   onOpenNote: (noteId: string) => void;
   onToggle: () => void;
+  onPin: () => void;
+  canToggle: boolean;
 }) {
   const colors = Colors[useTheme().mode];
   const completed = task.status === "completed";
@@ -125,8 +154,8 @@ function TaskRow({ task, busy, divided, onOpenNote, onToggle }: {
       <Pressable
         accessibilityRole="checkbox"
         accessibilityLabel={`${completed ? "Mark incomplete" : "Mark complete"}: ${task.title}`}
-        accessibilityState={{ checked: completed, disabled: busy }}
-        disabled={busy}
+        accessibilityState={{ checked: completed, disabled: busy || !canToggle }}
+        disabled={busy || !canToggle}
         hitSlop={8}
         onPress={onToggle}
         style={({ pressed }) => [
@@ -150,6 +179,9 @@ function TaskRow({ task, busy, divided, onOpenNote, onToggle }: {
           </Text>
         )}
       </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={task.isPinned ? "Unpin task" : "Pin task"} disabled={busy} onPress={onPin} hitSlop={8} style={({ pressed }) => [styles.pin, pressed && styles.pressed]}>
+        <Text style={[styles.pinText, { color: colors.accent }]}>{task.isPinned ? "★" : "☆"}</Text>
+      </Pressable>
       <Text style={[styles.arrow, { color: colors.accent }]}>›</Text>
     </View>
   );
@@ -172,6 +204,8 @@ const styles = StyleSheet.create({
   taskMeta: { fontSize: 12, lineHeight: 17 },
   completedText: { textDecorationLine: "line-through" },
   arrow: { fontSize: 25, fontWeight: "500" },
+  pin: { alignItems: "center", justifyContent: "center", minHeight: 32, minWidth: 32 },
+  pinText: { fontSize: 20, fontWeight: "700" },
   completedHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: 32 },
   chevron: { fontSize: 18, fontWeight: "700" },
   empty: { borderCurve: "continuous", borderRadius: Radius.md, borderWidth: 1, gap: 3, padding: Spacing.md },
@@ -179,4 +213,5 @@ const styles = StyleSheet.create({
   emptyBody: { fontSize: 12, lineHeight: 17 },
   error: { fontSize: 13, lineHeight: 18 },
   pressed: { opacity: 0.68 },
+  showOlder: { alignItems: "center", borderTopWidth: StyleSheet.hairlineWidth, minHeight: 44, justifyContent: "center" },
 });

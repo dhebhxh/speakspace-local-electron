@@ -33,6 +33,16 @@ const MIN_RECOVERY_SPLIT_CHARACTERS = 240;
 const MAX_FALLBACK_SUMMARY_CHARS = 800;
 const MAX_FALLBACK_KEY_POINTS = 8;
 const MAX_FALLBACK_KEY_POINT_CHARS = 240;
+const TASK_RECURRENCE_ANNOTATION = /\((\d{4}-\d{2}-\d{2}),\s*REPEAT=(daily|weekdays|weekly|biweekly|monthly)\)/iu;
+
+function recurrenceEvidence(value: string): { firstDate: string; kind: string } | null {
+  const match = value.match(TASK_RECURRENCE_ANNOTATION);
+  return match ? { firstDate: match[1], kind: match[2] } : null;
+}
+
+function stripRecurrenceAnnotations(value: string): string {
+  return value.replace(new RegExp(TASK_RECURRENCE_ANNOTATION.source, "giu"), "").trim();
+}
 
 const object = (value: unknown): value is UnknownItem =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -303,6 +313,8 @@ const COMPLETED_FACT_EN = /\b(?:planned|reviewed|designed|prepared|tested|checke
 const COMPLETED_FACT_ZH = /(?:已经|已|完成了|测试了|检查了|审核了|准备了|设计了|开发了|提交了|验证了|测量了)/u;
 const TASK_EN = /\b(?:must|needs?\s+to|has\s+to|have\s+to|should|shall|responsible\s+for|assigned\s+to|please|to-?do|action\s+item|due\s+(?:by|on)|deadline|will\s+(?:finish|complete|prepare|submit|deliver|review|test|check|send|call|write|create|update|fix|implement|build|contact|confirm))\b/iu;
 const TASK_ZH = /(?:必须|需要|需在|应该|应当|负责|请|务必|待办|任务|截止|前完成|要在|将负责)/u;
+const RECURRING_TASK_ACTION_EN = /\b(?:send|review|check|prepare|submit|deliver|test|call|write|create|update|fix|implement|build|contact|confirm|publish|report|backup|sync|clean|pay|exercise|study|practice|record|inspect|monitor)\b/iu;
+const RECURRING_TASK_ACTION_ZH = /(?:发送|复习|覆核|审核|检查|准备|提交|交付|测试|打电话|致电|编写|写|创建|更新|修复|实现|构建|联系|确认|发布|汇报|备份|同步|清理|支付|锻炼|学习|练习|记录|巡检|监控)/u;
 const REMINDER_EN = /\b(?:remind(?:er|\s+me|\s+us)?|remember\s+to|notify|alert)\b/iu;
 const REMINDER_ZH = /(?:提醒|记得|通知|闹钟)/u;
 const STRONG_CALENDAR_EN = /\b(?:will\s+meet|will\s+be\s+held|is\s+scheduled|are\s+scheduled|takes?\s+place|starts?\s+at|ends?\s+at|booked\s+for|reserved\s+for)\b/iu;
@@ -322,6 +334,11 @@ function completedFact(clause: string): boolean {
 
 function hasTaskEvidence(clause: string): boolean {
   return Boolean(clause) && !completedFact(clause) && (TASK_EN.test(clause) || TASK_ZH.test(clause));
+}
+
+function hasRecurringTaskEvidence(clause: string): boolean {
+  return Boolean(clause) && !completedFact(clause) && recurrenceEvidence(clause) !== null &&
+    (RECURRING_TASK_ACTION_EN.test(clause) || RECURRING_TASK_ACTION_ZH.test(clause));
 }
 
 function hasReminderEvidence(clause: string): boolean {
@@ -346,7 +363,7 @@ function isNegatedIntent(clause: string): boolean {
 }
 
 function cleanEvidenceTitle(clause: string): string {
-  return truncateCharacters(clause.replace(/[.!?。！？;；]+$/u, "").trim(), 240);
+  return truncateCharacters(stripRecurrenceAnnotations(clause).replace(/[.!?。！？;；]+$/u, "").trim(), 240);
 }
 
 function hasTemporalEvidence(clause: string): boolean {
@@ -363,7 +380,7 @@ function explicitEvidenceCategory(
   if (!clause || completedFact(clause) || isNegatedIntent(clause)) return null;
   if (hasReminderEvidence(clause)) return "reminders";
   if (hasStrongCalendarEvidence(clause)) return "calendarIntents";
-  if (hasTaskEvidence(clause)) return "tasks";
+  if (hasTaskEvidence(clause) || hasRecurringTaskEvidence(clause)) return "tasks";
   if (hasCalendarEvidence(clause)) return "calendarIntents";
   return null;
 }
@@ -374,11 +391,13 @@ function deterministicIntentItem(
 ): UnknownItem {
   const title = cleanEvidenceTitle(clause);
   if (category === "tasks") {
+    const recurrence = recurrenceEvidence(clause);
     return {
       title,
       description: null,
       startsAtExpression: null,
-      dueAtExpression: hasTemporalEvidence(clause) ? clause : null,
+      dueAtExpression: recurrence ? recurrenceDueExpression(clause, recurrence) : (hasTemporalEvidence(clause) ? clause : null),
+      recurrence: recurrence?.kind ?? null,
       actionItems: [],
     };
   }
@@ -397,6 +416,11 @@ function deterministicIntentItem(
     allDay: !hasClockEvidence(clause),
     timezone: null,
   };
+}
+
+function recurrenceDueExpression(clause: string, recurrence: { firstDate: string; kind: string }): string {
+  const clock = clause.match(CLOCK_EN)?.[0] ?? clause.match(CLOCK_ZH)?.[0] ?? null;
+  return clock ? `${recurrence.firstDate} ${clock}` : recurrence.firstDate;
 }
 
 function addMissingExplicitEvidence(
@@ -439,12 +463,19 @@ export function sanitizeIntentOutput(value: unknown, transcript: string): Saniti
   const output = object(value) ? value : {};
   const tasks = items(output.tasks).flatMap((item) => {
     const clause = supportingClause(item, transcript);
-    if (!hasTaskEvidence(clause) || isNegatedIntent(clause)) return [];
+    const recurrence = recurrenceEvidence(clause);
+    if ((!hasTaskEvidence(clause) && !recurrence) || isNegatedIntent(clause)) return [];
     const actionItems = items(item.actionItems).flatMap((action) => {
       const actionClause = supportingClause(action, transcript);
       return hasTaskEvidence(actionClause) ? [groundedItem(action, actionClause)] : [];
     });
-    return [{ ...groundedItem(item, clause), actionItems }];
+    const grounded = groundedItem(item, clause);
+    return [{
+      ...grounded,
+      dueAtExpression: recurrence ? recurrenceDueExpression(clause, recurrence) : grounded.dueAtExpression,
+      recurrence: recurrence?.kind ?? null,
+      actionItems,
+    }];
   });
   const reminders = items(output.reminders).flatMap((item) => {
     const clause = supportingClause(item, transcript);

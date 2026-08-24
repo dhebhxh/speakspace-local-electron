@@ -2,12 +2,20 @@ import { initLlama, type LlamaContext, type RNLlamaOAICompatibleMessage } from "
 
 import { getKnowledgeScenarioDefinition } from "@/constants/knowledge-scenarios";
 import { KnowledgeDocument, type KnowledgeScenario, type KnowledgeSection } from "@/domain/knowledge/knowledge-document";
+import type { KnowledgeTemplate } from "@/domain/knowledge/knowledge-template";
 import { KnowledgeGenerationError } from "@/errors/knowledge-generation-error";
 import { KnowledgeDocumentRepository } from "@/repositories/knowledge-document-repository";
 import { LlmModelService } from "@/services/llm-model-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 
 type ModelOutput = { sections?: Record<string, unknown> };
+type GenerationDefinition = {
+  scenario: KnowledgeScenario;
+  name: string;
+  sections: readonly { key: string; title: string; instruction: string }[];
+  templateId: string | null;
+  templateName: string;
+};
 
 const MODEL_CONTEXT_SIZE = 6144;
 const MODEL_BATCH_SIZE = 128;
@@ -25,6 +33,14 @@ export class KnowledgeService {
 
   public getForNote(noteId: string): Promise<KnowledgeDocument | null> {
     return this.repository.findByNoteId(noteId);
+  }
+
+  public getHistoryForNote(noteId: string): Promise<KnowledgeDocument[]> {
+    return this.repository.findAllByNoteId(noteId);
+  }
+
+  public deleteResult(noteId: string, resultId: string): Promise<void> {
+    return this.repository.deleteResult(resultId, noteId);
   }
 
   public getGenerationState(noteId: string): KnowledgeGenerationState {
@@ -45,6 +61,28 @@ export class KnowledgeService {
   }
 
   public generate(noteId: string, transcript: string, scenario: KnowledgeScenario): Promise<KnowledgeDocument> {
+    const builtIn = getKnowledgeScenarioDefinition(scenario);
+    return this.startGeneration(noteId, transcript, {
+      scenario,
+      name: builtIn.name,
+      sections: builtIn.sections,
+      templateId: null,
+      templateName: builtIn.name,
+    });
+  }
+
+  public generateCustom(noteId: string, transcript: string, template: KnowledgeTemplate): Promise<KnowledgeDocument> {
+    return this.startGeneration(noteId, transcript, {
+      scenario: "general",
+      name: template.getName(),
+      sections: template.getSections(),
+      templateId: template.getId(),
+      templateName: template.getName(),
+    });
+  }
+
+  private startGeneration(noteId: string, transcript: string, definition: GenerationDefinition): Promise<KnowledgeDocument> {
+    const scenario = definition.scenario;
     const state = this.getGenerationState(noteId);
     const existing = this.activeGenerations.get(noteId);
     if (existing && (state.status === "queued" || state.status === "generating")) {
@@ -56,7 +94,7 @@ export class KnowledgeService {
     this.publish(noteId, { status: "queued", requestId, scenario, startedAt: Date.now() });
     const promise = this.coordinator.runExclusive("knowledge", async () => {
       this.publish(noteId, { status: "generating", requestId, scenario, startedAt: Date.now() });
-      return this.runGeneration(noteId, transcript, scenario, requestId);
+      return this.runGeneration(noteId, transcript, definition, requestId);
     });
     this.activeGenerations.set(noteId, promise);
     void promise.then(
@@ -72,7 +110,8 @@ export class KnowledgeService {
     return promise;
   }
 
-  private async runGeneration(noteId: string, transcript: string, scenario: KnowledgeScenario, requestId: string): Promise<KnowledgeDocument> {
+  private async runGeneration(noteId: string, transcript: string, definition: GenerationDefinition, requestId: string): Promise<KnowledgeDocument> {
+    const scenario = definition.scenario;
     const generationStartedAt = Date.now();
     const input = transcript.trim();
     if (!input) throw new KnowledgeGenerationError("empty-transcript", "This note has no transcript to organize yet.");
@@ -89,7 +128,6 @@ export class KnowledgeService {
       context = await initLlama({ model: modelFile.uri, n_ctx: MODEL_CONTEXT_SIZE, n_batch: MODEL_BATCH_SIZE });
       console.info("[Knowledge] Local model loaded", { requestId, modelId: model.getId(), durationMs: Date.now() - modelLoadStartedAt, contextSize: MODEL_CONTEXT_SIZE });
 
-      const definition = getKnowledgeScenarioDefinition(scenario);
       const sectionShape = Object.fromEntries(definition.sections.map((section) => [section.key, []]));
       const sectionProperties = Object.fromEntries(definition.sections.map((section) => [section.key, { type: "array", items: { type: "string" } }]));
       const sectionGuide = definition.sections.map((section) => `- ${section.key} (${section.title}): ${section.instruction}`).join("\n");
@@ -147,7 +185,7 @@ ${note}
       });
       const rawOutput = result.content || result.text;
       console.info("[Knowledge] Local completion finished", { requestId, modelId: model.getId(), durationMs: Date.now() - completionStartedAt, outputLength: rawOutput.length, nPredict: MAX_PREDICTED_TOKENS, temperature: 0 });
-      const document = this.toDocument(noteId, scenario, model.getId(), rawOutput, requestId);
+      const document = this.toDocument(noteId, definition, model.getId(), rawOutput, requestId);
       const itemCount = document.getSections().reduce((count, section) => count + section.items.length, 0);
       console.info("[Knowledge] Model output parsed", { requestId, sectionCount: document.getSections().length, itemCount });
       await this.repository.save(document);
@@ -179,7 +217,7 @@ ${note}
     return (await context.tokenize(formatted.prompt ?? "")).tokens.length;
   }
 
-  private toDocument(noteId: string, scenario: KnowledgeScenario, modelId: string, raw: string, requestId: string): KnowledgeDocument {
+  private toDocument(noteId: string, definition: GenerationDefinition, modelId: string, raw: string, requestId: string): KnowledgeDocument {
     let parsed: ModelOutput;
     try {
       const match = raw.match(/\{[\s\S]*\}/);
@@ -192,7 +230,6 @@ ${note}
       console.warn("[Knowledge] Model returned incomplete JSON", { requestId, hasSections: Boolean(parsed.sections && typeof parsed.sections === "object") });
       throw new KnowledgeGenerationError("invalid-output", "The local model returned an incomplete result. Please try again.");
     }
-    const definition = getKnowledgeScenarioDefinition(scenario);
     const sections: KnowledgeSection[] = definition.sections.map((section) => ({
       key: section.key,
       title: section.title,
@@ -202,7 +239,19 @@ ${note}
     }));
     const now = new Date().toISOString();
     // Keep the legacy database column empty for compatibility; scenario knowledge no longer owns a summary.
-    return new KnowledgeDocument(`knowledge-${Date.now()}-${Math.random().toString(36).slice(2)}`, noteId, scenario, "", sections, modelId, now, now);
+    return new KnowledgeDocument(
+      `knowledge-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      noteId,
+      definition.scenario,
+      "",
+      sections,
+      modelId,
+      now,
+      now,
+      definition.templateId,
+      definition.templateName,
+      false,
+    );
   }
 }
 

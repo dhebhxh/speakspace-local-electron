@@ -21,6 +21,10 @@ import { CoreNoteInsightRepository } from "@/repositories/core-note-insight-repo
 import { CoreNoteInsightService } from "@/services/core-note-insight-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 import { SpeechPlaybackService } from "@/services/speech-playback-service";
+import { NoteClassificationService } from "@/services/note-classification-service";
+import { TrashService } from "@/services/trash-service";
+import { KnowledgeTemplateRepository } from "@/repositories/knowledge-template-repository";
+import { KnowledgeTemplateService } from "@/services/knowledge-template-service";
 
 export class AppContainer {
   public readonly workspaceService: WorkspaceService;
@@ -34,6 +38,8 @@ export class AppContainer {
   public readonly aiConversationService: AiConversationService;
   public readonly llmInferenceService: LlmInferenceService;
   public readonly speechPlaybackService: SpeechPlaybackService;
+  public readonly trashService: TrashService;
+  public readonly knowledgeTemplateService: KnowledgeTemplateService;
 
   public constructor(databaseManager: DatabaseManager) {
     const workspaceRepository = new WorkspaceRepository(databaseManager);
@@ -42,6 +48,7 @@ export class AppContainer {
     const sttModelRepository = new SttModelRepository(databaseManager);
     const ttsModelRepository = new TtsModelRepository(databaseManager);
     const knowledgeDocumentRepository = new KnowledgeDocumentRepository(databaseManager);
+    const knowledgeTemplateRepository = new KnowledgeTemplateRepository(databaseManager);
     const coreNoteInsightRepository = new CoreNoteInsightRepository(databaseManager);
     const aiConversationRepository = new AiConversationRepository(databaseManager);
     const aiMessageRepository = new AiMessageRepository(databaseManager);
@@ -49,11 +56,26 @@ export class AppContainer {
       databaseManager,
     );
     const localLlmCoordinator = new LocalLlmCoordinator();
+    this.trashService = new TrashService(databaseManager);
 
-    this.workspaceService = new WorkspaceService(workspaceRepository, noteRepository);
-    this.noteService = new NoteService(noteRepository, workspaceRepository);
     this.llmModelService = new LlmModelService(llmModelRepository, localLlmCoordinator);
+    const noteClassificationService = new NoteClassificationService(
+      noteRepository,
+      this.llmModelService,
+      localLlmCoordinator,
+    );
+    this.workspaceService = new WorkspaceService(workspaceRepository, noteRepository);
+    this.noteService = new NoteService(
+      noteRepository,
+      workspaceRepository,
+      noteClassificationService,
+    );
     this.knowledgeService = new KnowledgeService(knowledgeDocumentRepository, this.llmModelService, localLlmCoordinator);
+    this.knowledgeTemplateService = new KnowledgeTemplateService(
+      knowledgeTemplateRepository,
+      this.llmModelService,
+      localLlmCoordinator,
+    );
     this.coreNoteInsightService = new CoreNoteInsightService(coreNoteInsightRepository, this.llmModelService, localLlmCoordinator);
     this.sttModelService = new SttModelService(sttModelRepository);
     this.ttsModelService = new TtsModelService(ttsModelRepository);

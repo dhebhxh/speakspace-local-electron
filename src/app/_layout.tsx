@@ -11,6 +11,7 @@ import { Colors } from "@/constants/theme";
 import { databaseConfig, initializeDatabase } from "@/database";
 import { useTheme } from "@/hooks/use-theme";
 import { ThemeProvider } from "@/providers/theme-provider";
+import { TrashUndoProvider } from "@/providers/trash-undo-provider";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -43,8 +44,9 @@ function ThemedRootLayout() {
       databaseName={databaseConfig.databaseName}
       onInit={initializeDatabase}
     >
-      <StatusBar style={theme.mode === "dark" ? "light" : "dark"} />
-      <Stack
+      <TrashUndoProvider>
+        <StatusBar style={theme.mode === "dark" ? "light" : "dark"} />
+        <Stack
         screenOptions={{
           contentStyle: { backgroundColor: colors.background },
           headerBackTitle: "Back",
@@ -58,8 +60,9 @@ function ThemedRootLayout() {
         <Stack.Screen name="ask-ai" options={{ title: "Ask AI" }} />
         <Stack.Screen name="transcription" options={{ title: "Transcription" }} />
         <Stack.Screen name="audio-transcription" options={{ title: "Transcribe audio file" }} />
-      </Stack>
-      <FloatingAskAiButton />
+        </Stack>
+        <FloatingAskAiButton />
+      </TrashUndoProvider>
     </SQLiteProvider>
   );
 }

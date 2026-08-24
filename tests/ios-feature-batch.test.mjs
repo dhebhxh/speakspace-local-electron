@@ -127,13 +127,14 @@ test("theme launch and speech pause keep their resolved state", async () => {
   assert.match(tabs, /name="settings"/);
 });
 
-test("Structured Note regeneration only carries exact completed task identities", async () => {
+test("Structured Note regeneration reconciles exact one-off and recurring identities", async () => {
   const repository = await readFile(
     new URL("../src/repositories/core-note-insight-repository.ts", import.meta.url),
     "utf8",
   );
 
   assert.match(repository, /status = 'completed'/);
-  assert.match(repository, /coreTaskIdentity\(task\.title, task\.due_at, task\.starts_at\)/);
-  assert.match(repository, /previousCompletedAt \? "completed" : task\.status/);
+  assert.match(repository, /coreTaskIdentity\(previous\.title, previous\.due_at, previous\.starts_at\)/);
+  assert.match(repository, /previous\.series_key === task\.seriesKey/);
+  assert.match(repository, /const taskId = matching\?\.id \?\? task\.id/);
 });

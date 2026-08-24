@@ -47,6 +47,7 @@ Rules:
 
 const MAX_CANDIDATES = 5;
 const MAX_CANDIDATES_WITH_TIE = 6;
+const MAX_OVERVIEW_CANDIDATES = 3;
 const COMMON_SENTENCE_STARTERS = new Set([
   "a",
   "an",
@@ -93,6 +94,7 @@ export type EvidenceExtractionPrompt = {
   decisionPrompts: EvidenceDecisionPrompt[];
   queryAnalysis: QueryAnalysis;
   followUp: FollowUpAnalysis;
+  evidenceCoveragePartial: boolean;
 };
 
 export type VerifiedEvidenceResult = {
@@ -248,17 +250,25 @@ export async function fitEvidenceExtractionMessagesToBudget(
     id,
     text,
   }));
+  // This legacy prompt snapshot is used only for budget accounting; evidence
+  // decisions retain their own complete targeted candidates below. Bounding
+  // the snapshot prevents a many-clause question from failing before its
+  // individually small answer prompts can run.
+  const budgetEvidenceChunks = selectedEvidenceChunks.slice(0, MAX_OVERVIEW_CANDIDATES);
   const firstDecision = decisionPrompts.at(0);
+  const evidenceCoveragePartial =
+    queryAnalysis.relation === "summary-or-overview" &&
+    selectedEvidenceChunks.length < allEvidenceChunks.length;
   return fitEvidenceMessagesToBudget(
     context,
     history,
     (trimmedHistory) =>
       buildEvidenceBudgetMessages(
-        selectedEvidenceChunks,
+        budgetEvidenceChunks,
         buildEvidenceExtractionContext(trimmedHistory),
       ),
     promptBudget,
-    selectedEvidenceChunks,
+    budgetEvidenceChunks,
     extractionContext,
     retrievalCandidates,
     selectedEvidenceCandidates,
@@ -268,6 +278,7 @@ export async function fitEvidenceExtractionMessagesToBudget(
     decisionPrompts,
     queryAnalysis,
     followUp,
+    evidenceCoveragePartial,
   );
 }
 
@@ -311,6 +322,7 @@ export async function fitVerifiedAnswerMessagesToBudget(
     decisionPrompts: [],
     queryAnalysis: analyzeQuery(currentQuestion),
     followUp: analyzeFollowUpNeed(currentQuestion),
+    evidenceCoveragePartial: false,
   };
 }
 
@@ -406,6 +418,7 @@ async function fitEvidenceMessagesToBudget(
     usesPreviousUser: false,
     reason: "none",
   },
+  evidenceCoveragePartial: boolean = false,
 ): Promise<EvidenceExtractionPrompt> {
   if (history.length === 0) {
     throw new InferenceError("Conversation history is empty.");
@@ -433,6 +446,7 @@ async function fitEvidenceMessagesToBudget(
         decisionPrompts,
         queryAnalysis,
         followUp,
+        evidenceCoveragePartial,
       };
     }
 
@@ -1157,7 +1171,7 @@ function rankEvidenceCandidates(
   const question = extractionContext.currentQuestion;
   const retrievalIntent = analyzeQuery(question).relation;
   if (retrievalIntent === "summary-or-overview") {
-    return evidenceChunks.map((chunk) => ({ ...chunk, score: 1 }));
+    return balancedOverviewCandidates(evidenceChunks).map((chunk) => ({ ...chunk, score: 1 }));
   }
 
   const followUp = analyzeFollowUpNeed(question);
@@ -1218,6 +1232,47 @@ function rankEvidenceCandidates(
   }
 
   return candidates;
+}
+
+function balancedOverviewCandidates(evidenceChunks: EvidenceChunk[]): EvidenceChunk[] {
+  if (evidenceChunks.length <= MAX_OVERVIEW_CANDIDATES) return evidenceChunks;
+  const groups = new Map<string, EvidenceChunk[]>();
+  for (const chunk of evidenceChunks) {
+    const noteKey = chunk.id.match(/^(N\d+)-E\d+$/u)?.[1] ?? "N1";
+    groups.set(noteKey, [...(groups.get(noteKey) ?? []), chunk]);
+  }
+
+  const orderedGroups = [...groups.entries()].sort(([left], [right]) =>
+    left.localeCompare(right, undefined, { numeric: true }),
+  );
+  const base = Math.floor(MAX_OVERVIEW_CANDIDATES / orderedGroups.length);
+  let remainder = MAX_OVERVIEW_CANDIDATES % orderedGroups.length;
+  const sampledGroups = orderedGroups.map(([, chunks]) => {
+    const allowance = Math.min(chunks.length, base + (remainder-- > 0 ? 1 : 0));
+    return evenlySampleChunks(chunks, allowance);
+  });
+  const result: EvidenceChunk[] = [];
+  for (let round = 0; result.length < MAX_OVERVIEW_CANDIDATES; round += 1) {
+    let added = false;
+    for (const group of sampledGroups) {
+      const candidate = group[round];
+      if (candidate) {
+        result.push(candidate);
+        added = true;
+      }
+    }
+    if (!added) break;
+  }
+  return result;
+}
+
+function evenlySampleChunks(chunks: EvidenceChunk[], count: number): EvidenceChunk[] {
+  if (count <= 0) return [];
+  if (count >= chunks.length) return chunks;
+  if (count === 1) return [chunks[0]];
+  return Array.from({ length: count }, (_, index) =>
+    chunks[Math.round(index * (chunks.length - 1) / (count - 1))],
+  ).filter((chunk): chunk is EvidenceChunk => Boolean(chunk));
 }
 
 function scoreEvidenceChunk(

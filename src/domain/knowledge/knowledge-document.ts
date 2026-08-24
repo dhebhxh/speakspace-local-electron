@@ -25,6 +25,9 @@ export class KnowledgeDocument {
     private readonly modelId: string,
     private readonly createdAt: string,
     private readonly updatedAt: string,
+    private readonly templateId: string | null = null,
+    private readonly templateName: string | null = null,
+    private readonly templateDeleted: boolean = false,
   ) {}
 
   public getId(): string { return this.id; }
@@ -35,4 +38,7 @@ export class KnowledgeDocument {
   public getModelId(): string { return this.modelId; }
   public getCreatedAt(): string { return this.createdAt; }
   public getUpdatedAt(): string { return this.updatedAt; }
+  public getTemplateId(): string | null { return this.templateId; }
+  public getTemplateName(): string { return this.templateName ?? this.scenario; }
+  public getTemplateDeleted(): boolean { return this.templateDeleted; }
 }

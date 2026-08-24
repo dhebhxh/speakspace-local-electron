@@ -25,16 +25,30 @@ test("selected transcript evidence cannot be vetoed by a separate answerability 
   assert.equal(status, "supported");
 });
 
-test("Ask AI restores the latest saved conversation for a note with an explicit new-chat escape hatch", async () => {
+test("broad multi-note Ask AI uses balanced best-effort evidence instead of a size refusal", async () => {
+  const [gate, inference] = await Promise.all([
+    readFile(new URL("../src/services/ask-ai-evidence-gate.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/services/llm-inference-service.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(gate, /MAX_OVERVIEW_CANDIDATES = 3/);
+  assert.match(gate, /balancedOverviewCandidates/);
+  assert.match(gate, /evidenceCoveragePartial/);
+  assert.match(inference, /extractionPrompt\.evidenceCoveragePartial/);
+  assert.match(inference, /基于所选笔记的尽力概括，可能未覆盖全部细节/);
+});
+
+test("Ask AI restores the latest exact source-set conversation with an explicit new-chat escape hatch", async () => {
   const [repository, service, screen] = await Promise.all([
     readFile(new URL("../src/repositories/ai-conversation-repository.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/services/ai-conversation-service.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/app/ask-ai.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(repository, /findLatestByNoteId/);
-  assert.match(service, /getResumeTargetForNote/);
-  assert.match(screen, /getResumeTargetForNote\(routeNoteId\)/);
+  assert.match(repository, /findLatestByExactNoteIds/);
+  assert.match(service, /getResumeTargetForNotes/);
+  assert.match(screen, /getResumeTargetForNotes\(selectedNotes\.map/);
+  assert.match(screen, /noteIds/);
   assert.match(screen, /mode:\s*"new"/);
 });
 

@@ -16,10 +16,17 @@ import {
 import { getLocalReferenceTime, resolveCoreNoteTime, type ResolvedCoreNoteTime } from "@/services/core-note-time";
 import { LlmModelService } from "@/services/llm-model-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import {
+  annotateTaskRecurrences,
+  normalizeTaskRecurrence,
+  recurrenceValue,
+  recurringSeriesKey,
+  stripTaskRecurrenceAnnotations,
+} from "@/services/task-recurrence";
 
 type OutputItem = { title?: unknown; description?: unknown; startsAtExpression?: unknown; dueAtExpression?: unknown };
 type OutputCalendar = OutputItem & { endsAtExpression?: unknown; remindAtExpression?: unknown; allDay?: unknown; timezone?: unknown };
-type OutputTask = OutputItem & { actionItems?: unknown };
+type OutputTask = OutputItem & { actionItems?: unknown; recurrence?: unknown };
 type ContentOutput = { summary?: unknown; keyPoints?: unknown };
 type IntentOutput = { tasks?: unknown; reminders?: unknown; calendarIntents?: unknown };
 
@@ -58,6 +65,11 @@ TASKS
 - An action verb alone does not imply a task.
 - actionItems may contain only distinct steps explicitly present in NOTE. Never invent a plan. Use [] when no separate steps were stated.
 - Do not duplicate a task title as an action item or create redundant parent/child wording.
+- For an explicitly recurring task, set recurrence to daily, weekdays, weekly,
+  biweekly, or monthly. Otherwise use null. Do not infer recurrence from one date.
+- Recurring phrases are pre-annotated as phrase(YYYY-MM-DD, REPEAT=kind).
+  Copy that date into dueAtExpression and kind into recurrence. Never invent a
+  recurrence without this annotation, and omit the annotation from the title.
 
 REMINDERS
 - Include only an explicit intent to remember or be notified, not something that merely seems worth remembering.
@@ -85,7 +97,7 @@ const calendarProperties = { title: { type: "string" }, description: nullableStr
 const intentSchema = {
   type: "object",
   properties: {
-    tasks: { type: "array", items: { type: "object", properties: { ...itemProperties, actionItems: { type: "array", items: { type: "object", properties: itemProperties, required: itemRequired, additionalProperties: false } } }, required: [...itemRequired, "actionItems"], additionalProperties: false } },
+    tasks: { type: "array", items: { type: "object", properties: { ...itemProperties, recurrence: nullableString, actionItems: { type: "array", items: { type: "object", properties: itemProperties, required: itemRequired, additionalProperties: false } } }, required: [...itemRequired, "recurrence", "actionItems"], additionalProperties: false } },
     reminders: { type: "array", items: { type: "object", properties: reminderProperties, required: ["title", "description", "remindAtExpression"], additionalProperties: false } },
     calendarIntents: { type: "array", items: { type: "object", properties: calendarProperties, required: ["title", "description", "startsAtExpression", "endsAtExpression", "allDay", "timezone"], additionalProperties: false } },
   },
@@ -110,6 +122,11 @@ export class CoreNoteInsightService {
 
   public async setTaskCompleted(noteId: string, taskId: string, completed: boolean): Promise<CoreNoteInsight> {
     await this.repository.setTaskCompleted(noteId, taskId, completed);
+    return this.getUpdatedInsight(noteId);
+  }
+
+  public async setTaskPinned(noteId: string, taskId: string, pinned: boolean): Promise<CoreNoteInsight> {
+    await this.repository.setTaskPinned(noteId, taskId, pinned);
     return this.getUpdatedInsight(noteId);
   }
 
@@ -182,7 +199,8 @@ export class CoreNoteInsightService {
       console.info("[CoreInsights] Local time reference captured", { requestId, referenceTime: reference.localIso, timezone: reference.timezone });
       const content = await this.generateContent(context, input, requestId);
       const timeContext = `${INTENT_PROMPT}\n\nREFERENCE TIME (device local clock; context only, do not copy it unless NOTE contains that time):\n${reference.localIso}\nDEVICE TIMEZONE:\n${reference.timezone}`;
-      const intents = await this.generateIntents(context, timeContext, input, requestId);
+      const annotatedIntentInput = annotateTaskRecurrences(input, reference.instant);
+      const intents = await this.generateIntents(context, timeContext, annotatedIntentInput, requestId);
       const insight = this.parse(noteId, model.getId(), content, intents, requestId, reference.instant, reference.localIso, reference.timezone);
       const calendars = insight.getCalendarIntents();
       console.info("[CoreInsights] Structured output parsed", { requestId, summaryLength: insight.getSummary().length, keyPointCount: insight.getKeyPoints().length, taskCount: insight.getTasks().length, actionItemCount: insight.getActionItems().length, reminderCount: calendars.filter((x) => x.kind === "reminder").length, calendarIntentCount: calendars.filter((x) => x.kind === "calendar").length });
@@ -377,9 +395,14 @@ export class CoreNoteInsightService {
     if (!value || typeof value !== "object") return [];
     const item = value as OutputTask;
     if (typeof item.title !== "string" || !item.title.trim() || !Array.isArray(item.actionItems)) return [];
-    const taskTitle = item.title.trim();
+    const taskTitle = stripTaskRecurrenceAnnotations(item.title).trim();
     const startsAt = resolveCoreNoteTime(item.startsAtExpression, reference);
     const dueAt = resolveCoreNoteTime(item.dueAtExpression, reference);
+    const recurrenceKind = normalizeTaskRecurrence(
+      item.recurrence,
+      `${taskTitle} ${this.optional(item.description) ?? ""} ${typeof item.startsAtExpression === "string" ? item.startsAtExpression : ""} ${typeof item.dueAtExpression === "string" ? item.dueAtExpression : ""}`,
+    );
+    const recurrenceParameter = recurrenceValue(recurrenceKind, dueAt?.normalized ?? startsAt?.normalized ?? null);
     const taskId = `${insightId}-task-${index}`;
     const seen = new Set<string>();
     const actionItems = item.actionItems.flatMap((action, position) => {
@@ -389,7 +412,16 @@ export class CoreNoteInsightService {
       seen.add(key);
       return result;
     }).map((action, position) => ({ ...action, position }));
-    return [{ id: taskId, title: taskTitle, description: this.optional(item.description), status: "pending", startsAt: startsAt?.normalized ?? null, dueAt: dueAt?.normalized ?? null, completedAt: null, sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: this.timeMetadata({ startsAt, dueAt }, referenceIso, deviceTimezone, { generatedBy: "local-llm" }), actionItems }];
+    return [{
+      id: taskId, title: taskTitle, description: this.optional(item.description), status: "pending",
+      startsAt: startsAt?.normalized ?? null, dueAt: dueAt?.normalized ?? null, completedAt: null,
+      sourceNoteId: noteId, externalSystem: null, externalId: null,
+      metadata: this.timeMetadata({ startsAt, dueAt }, referenceIso, deviceTimezone, { generatedBy: "local-llm" }),
+      actionItems, isPinned: false, pinnedAt: null, recurrenceKind,
+      recurrenceValue: recurrenceParameter,
+      seriesKey: recurrenceKind ? recurringSeriesKey(noteId, taskTitle, recurrenceKind, recurrenceParameter) : null,
+      occurrenceIndex: 0, isCurrent: true, endedAt: null,
+    }];
   }
 
   private toAction(value: unknown, noteId: string, taskId: string, position: number, reference: Date, referenceIso: string, deviceTimezone: string): CoreActionItem[] {

@@ -1,31 +1,43 @@
-import { Stack, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Keyboard, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Stack, type Href, useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, Keyboard, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
+import { CategoryFilter, type CategoryFilterValue } from "@/components/category-filter";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 import { NoteCard } from "@/components/note-card";
+import { NoteSelectionToolbar } from "@/components/note-selection-toolbar";
 import { Colors, Radius, Spacing } from "@/constants/theme";
-import type { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
+import { useTrashUndo } from "@/providers/trash-undo-provider";
+import type { NoteSearchResult } from "@/services/note-fuzzy-search";
 
 type SearchState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "success"; notes: Note[] };
+  | { status: "success"; results: NoteSearchResult[] };
 
 export default function NoteSearchScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = Colors[useTheme().mode];
+  const { showTrashUndo } = useTrashUndo();
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<CategoryFilterValue>("all");
   const [state, setState] = useState<SearchState>({ status: "idle" });
+  const [workspaces, setWorkspaces] = useState<Awaited<ReturnType<typeof appContainer.workspaceService.getWorkspaces>>>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [frozenResults, setFrozenResults] = useState<NoteSearchResult[] | null>(null);
+  const [batchBusy, setBatchBusy] = useState(false);
+
+  useEffect(() => { void appContainer.workspaceService.getWorkspaces().then(setWorkspaces); }, []);
 
   useEffect(() => {
+    if (frozenResults !== null) return;
     let active = true;
     const normalized = query.trim();
     if (normalized.length === 0) {
@@ -34,16 +46,56 @@ export default function NoteSearchScreen() {
     }
     setState({ status: "loading" });
     const timer = setTimeout(() => {
-      void appContainer.noteService.searchNotes(normalized).then(
-        (notes) => active && setState({ status: "success", notes }),
+      void appContainer.noteService.searchNoteResults(normalized).then(
+        (results) => active && setState({ status: "success", results }),
         () => active && setState({ status: "error", message: "Unable to search notes." }),
       );
     }, 200);
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [query]);
+    return () => { active = false; clearTimeout(timer); };
+  }, [frozenResults, query]);
+
+  useEffect(() => appContainer.noteService.subscribeToCategoryChanges(() => {
+    const normalized = query.trim();
+    if (!normalized || frozenResults !== null) return;
+    void appContainer.noteService.searchNoteResults(normalized).then((results) => {
+      setState({ status: "success", results });
+    });
+  }), [frozenResults, query]);
+
+  const filtered = useMemo(() => {
+    const results = frozenResults ?? (state.status === "success" ? state.results : []);
+    return results.filter((result) => category === "all" || result.note.getCategory() === category);
+  }, [category, frozenResults, state]);
+  const selectedNotes = useMemo(() => filtered.filter((result) => selectedIds.has(result.note.getId())).map((result) => result.note), [filtered, selectedIds]);
+
+  const clearSelection = () => { setSelectedIds(new Set()); setFrozenResults(null); };
+  const toggle = (id: string) => {
+    if (frozenResults === null && state.status === "success") setFrozenResults(filtered);
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.size === 0) setFrozenResults(null);
+      return next;
+    });
+  };
+  const runBatch = async (action: () => Promise<void>) => {
+    setBatchBusy(true);
+    try {
+      await action();
+      clearSelection();
+      const normalized = query.trim();
+      setState(normalized ? { status: "success", results: await appContainer.noteService.searchNoteResults(normalized) } : { status: "idle" });
+    } catch (error) {
+      Alert.alert("Unable to update selected notes", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setBatchBusy(false);
+    }
+  };
+
+  const openResult = (result: NoteSearchResult) => {
+    const section = result.source === "Knowledge" ? "knowledge" : result.source === "Structured Note" ? "insights" : "transcript";
+    router.push({ pathname: "/notes/[noteId]", params: { noteId: result.note.getId(), section, knowledgeResultId: result.knowledgeResultId } });
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -51,23 +103,67 @@ export default function NoteSearchScreen() {
       <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" onScrollBeginDrag={Keyboard.dismiss} contentContainerStyle={[styles.content, { paddingBottom: Spacing.xxl + insets.bottom }]}>
         <TextInput
           autoFocus
+          editable={frozenResults === null}
           accessibilityLabel="Search notes"
           value={query}
           onChangeText={setQuery}
-          placeholder="Search titles and transcripts"
+          placeholder="Search all note content"
           placeholderTextColor={colors.textMuted}
           returnKeyType="search"
           blurOnSubmit
           onSubmitEditing={Keyboard.dismiss}
           style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
         />
-        {state.status === "idle" && <EmptyState title="Search your notes" description="Enter a word or phrase from a title or transcript." />}
+        <CategoryFilter value={category} onChange={frozenResults === null ? setCategory : () => undefined} />
+        {frozenResults !== null && (
+          <NoteSelectionToolbar
+            selectedNotes={selectedNotes}
+            allVisibleSelected={selectedIds.size === filtered.length}
+            workspaces={workspaces}
+            busy={batchBusy}
+            onToggleAll={() => {
+              if (selectedIds.size === filtered.length) clearSelection();
+              else setSelectedIds(new Set(filtered.map((result) => result.note.getId())));
+            }}
+            onCancel={clearSelection}
+            onMove={(workspaceId) => runBatch(() => appContainer.noteService.moveNotes([...selectedIds], workspaceId))}
+            onTrash={() => runBatch(async () => {
+              const ids = [...selectedIds];
+              await appContainer.noteService.trashNotes(ids);
+              showTrashUndo({
+                message: `${ids.length} notes moved to Trash`,
+                undo: async () => {
+                  await appContainer.noteService.restoreNotes(ids);
+                  const normalized = query.trim();
+                  setState(normalized ? { status: "success", results: await appContainer.noteService.searchNoteResults(normalized) } : { status: "idle" });
+                },
+              });
+            })}
+            onPin={(pinned) => runBatch(() => appContainer.noteService.setNotesPinned([...selectedIds], pinned))}
+            onAskAi={() => {
+              const noteIds = [...selectedIds].sort().join(",");
+              clearSelection();
+              router.push({ pathname: "/ask-ai", params: { noteIds } } as unknown as Href);
+            }}
+          />
+        )}
+        {state.status === "idle" && <EmptyState title="Search your notes" description="Search titles, transcripts, categories, Structured Notes, and Knowledge results." />}
         {state.status === "loading" && <LoadingState />}
         {state.status === "error" && <ErrorState message={state.message} onRetry={() => setQuery((value) => `${value} `)} />}
-        {state.status === "success" && state.notes.length === 0 && <EmptyState title="No notes found" description={`No title or transcript matches “${query.trim()}”.`} />}
-        {state.status === "success" && state.notes.length > 0 && <View style={styles.list}>
-          <Text style={[styles.count, { color: colors.textMuted }]}>{state.notes.length} {state.notes.length === 1 ? "result" : "results"}</Text>
-          {state.notes.map((note) => <NoteCard key={note.getId()} note={note} onPress={() => router.push({ pathname: "/notes/[noteId]", params: { noteId: note.getId() } })} />)}
+        {state.status === "success" && filtered.length === 0 && <EmptyState title="No notes found" description={`No active note matches “${query.trim()}”.`} />}
+        {filtered.length > 0 && <View style={styles.list}>
+          <Text style={[styles.count, { color: colors.textMuted }]}>{filtered.length} {filtered.length === 1 ? "result" : "results"}</Text>
+          {filtered.map((result) => (
+            <NoteCard
+              key={result.note.getId()}
+              note={result.note}
+              match={{ source: result.source, excerpt: result.excerpt, query: query.trim() }}
+              selectionMode={frozenResults !== null}
+              selected={selectedIds.has(result.note.getId())}
+              onLongPress={() => toggle(result.note.getId())}
+              onPress={() => frozenResults !== null ? toggle(result.note.getId()) : openResult(result)}
+            />
+          ))}
         </View>}
       </ScrollView>
     </View>

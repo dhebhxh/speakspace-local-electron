@@ -1,4 +1,10 @@
-export type LocalLlmOperation = "core-insights" | "knowledge" | "ask-ai" | "model-management";
+export type LocalLlmOperation =
+  | "core-insights"
+  | "knowledge"
+  | "knowledge-template"
+  | "note-classification"
+  | "ask-ai"
+  | "model-management";
 export type LocalInferenceOperation = LocalLlmOperation | "transcription";
 
 export type LocalInferenceSnapshot = {

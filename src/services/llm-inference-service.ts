@@ -157,6 +157,7 @@ export class LlmInferenceService {
 
   private async runGeneration(conversationId: string, callbacks: GenerateCallbacks): Promise<GenerateResult> {
       await this.aiConversationService.getConversationOrThrow(conversationId);
+      await this.aiConversationService.assertCanGenerate(conversationId);
       if (this.generationAborted) {
         throw new InferenceError("Generation was stopped.");
       }
@@ -219,15 +220,10 @@ export class LlmInferenceService {
       );
       this.logEvidenceDecision(extractionPrompt, resolvedDecisions);
 
-      const unsupportedDecision = resolvedDecisions.find(
-        ({ result }) =>
-          result.status !== "supported" ||
-          result.verifiedEvidence.length === 0,
+      const usableDecisions = resolvedDecisions.filter(
+        ({ result }) => result.status === "supported" && result.verifiedEvidence.length > 0,
       );
-      if (
-        resolvedDecisions.length === 0 ||
-        unsupportedDecision !== undefined
-      ) {
+      if (usableDecisions.length === 0) {
         if (this.generationAborted) {
           throw new InferenceError("Generation was stopped.");
         }
@@ -248,17 +244,28 @@ export class LlmInferenceService {
         extractionPrompt.questionKind === "multi-part"
           ? await this.generateMultiPartAnswer(
               context,
-              resolvedDecisions,
+              usableDecisions,
               callbacks,
             )
           : await this.generateSingleAnswer(
               context,
               currentQuestion,
-              resolvedDecisions[0],
+              usableDecisions[0],
               callbacks,
             );
 
-      const assistantText = finalResult.assistantText;
+      const hasUnsupportedParts = usableDecisions.length < resolvedDecisions.length;
+      const qualification = extractionPrompt.evidenceCoveragePartial
+        ? (/\p{Script=Han}/u.test(currentQuestion)
+            ? "\n\n以上为基于所选笔记的尽力概括，可能未覆盖全部细节。"
+            : "\n\nThis is a best-effort overview of the selected notes and may not cover every detail.")
+        : hasUnsupportedParts
+          ? (/\p{Script=Han}/u.test(currentQuestion)
+              ? "\n\n部分内容在所选笔记中没有找到足够依据。"
+              : "\n\nSome parts were not supported by the selected notes.")
+          : "";
+      const assistantText = `${finalResult.assistantText}${qualification}`.trim();
+      if (qualification) callbacks.onToken(qualification);
 
       if (this.generationAborted) {
         throw new InferenceError("Generation was stopped.");

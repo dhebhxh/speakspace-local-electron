@@ -33,6 +33,7 @@ import { Colors, Radius, Spacing } from "@/constants/theme";
 import type { AiMessage } from "@/domain/ai-message/ai-message";
 import type { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
+import { useTrashUndo } from "@/providers/trash-undo-provider";
 import type { AiConversationHistoryItem } from "@/services/ai-conversation-service";
 import type { LlmGenerationSnapshot } from "@/services/llm-inference-service";
 import { formatDate } from "@/utils/format-date";
@@ -43,11 +44,12 @@ type ScreenState =
   | {
       status: "ready";
       transcriptNotes: Note[];
-      selectedNote: Note | null;
+      selectedNotes: Note[];
       messages: AiMessage[];
       conversationId: string | null;
       hasActiveModel: boolean;
       activeModelFileExists: boolean;
+      sourcesAvailable: boolean;
     };
 
 type VoiceStatus = "idle" | "starting" | "recording" | "finishing";
@@ -61,6 +63,10 @@ function noteTitle(note: Note | null): string {
   return note?.getName()?.trim() || "Untitled transcript";
 }
 
+function contextLabel(notes: readonly Note[]): string {
+  return `${notes.length} selected ${notes.length === 1 ? "transcript" : "transcripts"}`;
+}
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong.";
 }
@@ -70,8 +76,10 @@ export default function AskAiScreen() {
     conversationId?: string;
     mode?: string;
     noteId?: string;
+    noteIds?: string;
   }>();
   const router = useRouter();
+  const { showTrashUndo } = useTrashUndo();
   const theme = useTheme();
   const colors = Colors[theme.mode];
   const insets = useSafeAreaInsets();
@@ -115,6 +123,11 @@ export default function AskAiScreen() {
   const routeConversationId = firstParam(params.conversationId);
   const routeMode = firstParam(params.mode);
   const routeNoteId = firstParam(params.noteId);
+  const routeNoteIds = useMemo(() => {
+    const value = firstParam(params.noteIds);
+    const ids = value ? value.split(",") : routeNoteId ? [routeNoteId] : [];
+    return [...new Set(ids.map((id) => id.trim()).filter(Boolean))].sort();
+  }, [params.noteIds, routeNoteId]);
   const isPersisted = state.status === "ready" && state.conversationId !== null;
   const isServiceGeneratingCurrentConversation =
     generationSnapshot.status === "running" &&
@@ -158,31 +171,36 @@ export default function AskAiScreen() {
 
       if (routeConversationId !== null) {
         await aiConversationService.getConversationOrThrow(routeConversationId);
-        const [messages, linkedNotes] = await Promise.all([
+        const [messages, linkedNotes, sourcesAvailable] = await Promise.all([
           aiConversationService.getCanonicalMessages(routeConversationId),
           aiConversationService.getLinkedNotes(routeConversationId),
+          aiConversationService.canGenerate(routeConversationId),
         ]);
 
         setState({
           status: "ready",
           transcriptNotes,
-          selectedNote: linkedNotes[0] ?? null,
+          selectedNotes: linkedNotes,
           messages,
           conversationId: routeConversationId,
           hasActiveModel,
           activeModelFileExists,
+          sourcesAvailable,
         });
         return;
       }
 
-      const selectedNote =
-        transcriptNotes.find((note) => note.getId() === routeNoteId) ??
-        transcriptNotes[0] ??
-        null;
+      const selectedNotes = routeNoteIds.length > 0
+        ? routeNoteIds.flatMap((id) => transcriptNotes.find((note) => note.getId() === id) ?? [])
+        : transcriptNotes.slice(0, 1);
+      if (routeNoteIds.length > 3) throw new Error("Select up to 3 notes.");
+      if (routeNoteIds.length > 0 && selectedNotes.length !== routeNoteIds.length) {
+        throw new Error("One or more selected notes are unavailable.");
+      }
 
       const resumeTarget =
-        routeMode !== "new" && routeNoteId !== null
-          ? await aiConversationService.getResumeTargetForNote(routeNoteId)
+        routeMode !== "new" && selectedNotes.length > 0
+          ? await aiConversationService.getResumeTargetForNotes(selectedNotes.map((note) => note.getId()))
           : null;
       if (resumeTarget !== null) {
         const resumeConversationId = resumeTarget.getId();
@@ -191,11 +209,12 @@ export default function AskAiScreen() {
         setState({
           status: "ready",
           transcriptNotes,
-          selectedNote,
+          selectedNotes,
           messages,
           conversationId: resumeConversationId,
           hasActiveModel,
           activeModelFileExists,
+          sourcesAvailable: true,
         });
         return;
       }
@@ -203,11 +222,12 @@ export default function AskAiScreen() {
       setState({
         status: "ready",
         transcriptNotes,
-        selectedNote,
+        selectedNotes,
         messages: [],
         conversationId: null,
         hasActiveModel,
         activeModelFileExists,
+        sourcesAvailable: true,
       });
     } catch (error) {
       setState({ status: "error", message: errorMessage(error) });
@@ -216,7 +236,7 @@ export default function AskAiScreen() {
 
   useEffect(() => {
     void load();
-  }, [routeConversationId, routeMode, routeNoteId]);
+  }, [routeConversationId, routeMode, routeNoteId, params.noteIds]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -345,8 +365,13 @@ export default function AskAiScreen() {
       return;
     }
 
-    if (state.selectedNote === null && state.conversationId === null) {
-      setNotice("Select a transcript before asking.");
+    if (state.selectedNotes.length === 0 && state.conversationId === null) {
+      setNotice("Select at least one transcript before asking.");
+      return;
+    }
+
+    if (!state.sourcesAvailable) {
+      setNotice("Restore all source notes and workspaces before asking another question.");
       return;
     }
 
@@ -363,7 +388,7 @@ export default function AskAiScreen() {
       const sendResult =
         state.conversationId === null
           ? await aiConversationService.sendUserMessage({
-              noteId: state.selectedNote!.getId(),
+              noteIds: state.selectedNotes.map((note) => note.getId()),
               content,
             })
           : await aiConversationService.sendUserMessage({
@@ -414,6 +439,7 @@ export default function AskAiScreen() {
       state.status !== "ready" ||
       state.conversationId === null ||
       !hasUnansweredUserMessage ||
+      !state.sourcesAvailable ||
       isBusy ||
       retryInFlightRef.current ||
       generationInFlightRef.current
@@ -509,12 +535,30 @@ export default function AskAiScreen() {
     } as unknown as Href);
   };
 
+  const trashHistoryItem = async (item: AiConversationHistoryItem) => {
+    const id = item.conversation.getId();
+    try {
+      await appContainer.trashService.trashConversation(id);
+      setHistory((current) => current.filter((entry) => entry.conversation.getId() !== id));
+      showTrashUndo({
+        message: `${item.conversation.getName()} moved to Trash`,
+        undo: async () => {
+          await appContainer.trashService.restore("conversation", id);
+          setHistory(await aiConversationService.getConversationHistory());
+        },
+      });
+    } catch (error) {
+      setHistoryError(errorMessage(error));
+    }
+  };
+
   const startNewConversation = () => {
-    const noteId =
-      state.status === "ready" ? state.selectedNote?.getId() : undefined;
+    const noteIds = state.status === "ready"
+      ? state.selectedNotes.map((note) => note.getId()).join(",")
+      : "";
     router.replace({
       pathname: "/ask-ai",
-      params: noteId === undefined ? { mode: "new" } : { noteId, mode: "new" },
+      params: noteIds ? { noteIds, mode: "new" } : { mode: "new" },
     } as unknown as Href);
   };
 
@@ -626,7 +670,7 @@ export default function AskAiScreen() {
                 </Text>
                 <Text style={[styles.title, { color: colors.text }]}>Ask AI</Text>
                 <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-                  Ask about your transcripts. Answers are based only on the selected transcript.
+                  Ask about up to three transcripts. Answers use only the selected note content.
                 </Text>
                 <View style={styles.headerActions}>
                   <AppButton
@@ -642,7 +686,7 @@ export default function AskAiScreen() {
                 </View>
               </View>
 
-              {state.transcriptNotes.length === 0 ? (
+              {state.transcriptNotes.length === 0 && !isPersisted ? (
                 <EmptyState
                   title="You don't have any transcripts yet."
                   action={
@@ -664,7 +708,7 @@ export default function AskAiScreen() {
                       Based on
                     </Text>
                     <Text style={[styles.contextTitle, { color: colors.text }]}>
-                      {noteTitle(state.selectedNote)}
+                      {contextLabel(state.selectedNotes)}
                     </Text>
                     {isPersisted && (
                       <Text style={[styles.locked, { color: colors.textMuted }]}>
@@ -687,7 +731,7 @@ export default function AskAiScreen() {
                     <AppButton
                       label="New"
                       variant="secondary"
-                      disabled={isBusy}
+                      disabled={isBusy || !state.sourcesAvailable}
                       onPress={startNewConversation}
                     />
                   )}
@@ -711,6 +755,11 @@ export default function AskAiScreen() {
                   />
                 </View>
               )}
+              {!state.sourcesAvailable && (
+                <View style={[styles.notice, { backgroundColor: colors.accentSoft, borderColor: colors.border }]}>
+                  <Text style={[styles.noticeText, { color: colors.text }]}>Restore all source notes and workspaces to continue this conversation. Saved messages remain readable.</Text>
+                </View>
+              )}
 
               {notice !== null && (
                 <Text selectable style={[styles.errorText, { color: colors.danger }]}>
@@ -732,12 +781,12 @@ export default function AskAiScreen() {
                     <AppButton
                       label="New conversation"
                       variant="secondary"
-                      disabled={voiceStatus !== "idle"}
+                      disabled={voiceStatus !== "idle" || !state.sourcesAvailable}
                       onPress={startNewConversation}
                     />
                     <AppButton
                       label="Retry"
-                      disabled={voiceStatus !== "idle" || modelNotice !== null}
+                      disabled={voiceStatus !== "idle" || modelNotice !== null || !state.sourcesAvailable}
                       onPress={() => void retryLastUserMessage()}
                     />
                   </View>
@@ -882,8 +931,8 @@ export default function AskAiScreen() {
             >
               <TextInput
                 multiline
-                editable={!isBusy && !hasUnansweredUserMessage}
-                placeholder="Ask about this transcript..."
+                editable={!isBusy && !hasUnansweredUserMessage && state.sourcesAvailable}
+                placeholder="Ask about the selected transcripts..."
                 placeholderTextColor={colors.textMuted}
                 value={input}
                 onChangeText={setInput}
@@ -907,7 +956,8 @@ export default function AskAiScreen() {
                       voiceStatus !== "idle" ||
                       hasUnansweredUserMessage ||
                       state.transcriptNotes.length === 0 ||
-                      modelNotice !== null
+                      modelNotice !== null ||
+                      !state.sourcesAvailable
                     }
                     onPress={() => void startVoice()}
                   />
@@ -919,7 +969,8 @@ export default function AskAiScreen() {
                     hasUnansweredUserMessage ||
                     input.trim().length === 0 ||
                     state.transcriptNotes.length === 0 ||
-                    modelNotice !== null
+                    modelNotice !== null ||
+                    !state.sourcesAvailable
                   }
                   onPress={() => void sendMessage(input)}
                 />
@@ -932,7 +983,7 @@ export default function AskAiScreen() {
             >
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>
-                  Choose transcript
+                  Choose up to 3 transcripts
                 </Text>
                 <Pressable onPress={() => setPickerVisible(false)}>
                   <Text style={[styles.close, { color: colors.textMuted }]}>
@@ -941,18 +992,22 @@ export default function AskAiScreen() {
                 </Pressable>
               </View>
               {state.transcriptNotes.map((note) => {
-                const selected = note.getId() === state.selectedNote?.getId();
+                const selected = state.selectedNotes.some((item) => item.getId() === note.getId());
                 return (
                   <Pressable
                     key={note.getId()}
                     accessibilityRole="button"
+                    accessibilityState={{ selected }}
                     onPress={() => {
                       setState((previous) =>
-                        previous.status === "ready"
-                          ? { ...previous, selectedNote: note }
-                          : previous,
+                        previous.status !== "ready"
+                          ? previous
+                          : selected
+                            ? { ...previous, selectedNotes: previous.selectedNotes.filter((item) => item.getId() !== note.getId()) }
+                            : previous.selectedNotes.length < 3
+                              ? { ...previous, selectedNotes: [...previous.selectedNotes, note] }
+                              : previous,
                       );
-                      setPickerVisible(false);
                     }}
                     style={[
                       styles.pickRow,
@@ -973,6 +1028,11 @@ export default function AskAiScreen() {
                   </Pressable>
                 );
               })}
+              <AppButton
+                label="Done"
+                disabled={state.selectedNotes.length === 0}
+                onPress={() => setPickerVisible(false)}
+              />
             </SafeAreaModal>
 
             <SafeAreaModal
@@ -1012,9 +1072,6 @@ export default function AskAiScreen() {
                   <Text style={[styles.pickTitle, { color: colors.text }]}>
                     {item.conversation.getName()}
                   </Text>
-                  <Text style={[styles.pickMeta, { color: colors.textMuted }]}>
-                    Based on {noteTitle(item.linkedNotes[0] ?? null)}
-                  </Text>
                   {item.latestMessage !== null && (
                     <Text
                       numberOfLines={2}
@@ -1023,6 +1080,17 @@ export default function AskAiScreen() {
                       {item.latestMessage.getContent()}
                     </Text>
                   )}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Move ${item.conversation.getName()} to Trash`}
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      void trashHistoryItem(item);
+                    }}
+                    style={({ pressed }) => [styles.historyTrash, pressed && styles.pressed]}
+                  >
+                    <Text style={[styles.pickMeta, { color: colors.danger }]}>Move to Trash</Text>
+                  </Pressable>
                 </Pressable>
               ))}
             </SafeAreaModal>
@@ -1121,4 +1189,6 @@ const styles = StyleSheet.create({
   },
   pickTitle: { fontSize: 16, fontWeight: "800" },
   pickMeta: { fontSize: 13, lineHeight: 18 },
+  historyTrash: { alignSelf: "flex-start", paddingVertical: Spacing.xs },
+  pressed: { opacity: 0.7 },
 });

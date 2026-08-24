@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SymbolView } from "expo-symbols";
+import { type Href, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme";
@@ -22,6 +24,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<ThemePreference | null>(null);
+  const router = useRouter();
 
   const choose = async (preference: ThemePreference) => {
     if (saving !== null || preference === theme.preference) return;
@@ -83,6 +86,25 @@ export default function SettingsScreen() {
       </View>
 
       {error && <Text selectable style={[styles.error, { color: colors.danger }]}>{error}</Text>}
+
+      <View style={styles.heading}>
+        <Text style={[styles.title, styles.sectionTitle, { color: colors.text }]}>Data</Text>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open Trash"
+        onPress={() => router.push("/trash" as Href)}
+        style={({ pressed }) => [styles.trashCard, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
+      >
+        <View style={[styles.trashIcon, { backgroundColor: colors.surfaceMuted }]}>
+          <SymbolView name="trash" size={22} tintColor={colors.text} />
+        </View>
+        <View style={styles.optionCopy}>
+          <Text style={[styles.optionLabel, { color: colors.text }]}>Trash</Text>
+          <Text style={[styles.optionDetail, { color: colors.textMuted }]}>Restore or permanently delete removed items.</Text>
+        </View>
+        <Text style={[styles.chevron, { color: colors.accent }]}>›</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -102,4 +124,8 @@ const styles = StyleSheet.create({
   radioDot: { borderRadius: 6, height: 12, width: 12 },
   error: { fontSize: 13, lineHeight: 18 },
   pressed: { opacity: 0.72 },
+  sectionTitle: { fontSize: 24, lineHeight: 30 },
+  trashCard: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.lg, borderWidth: 1, boxShadow: Shadows.card, flexDirection: "row", gap: Spacing.md, minHeight: 78, padding: Spacing.md },
+  trashIcon: { alignItems: "center", borderRadius: Radius.sm, height: 42, justifyContent: "center", width: 42 },
+  chevron: { fontSize: 28, lineHeight: 28 },
 });

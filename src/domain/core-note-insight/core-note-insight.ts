@@ -29,6 +29,14 @@ export type CoreTask = {
   externalId: string | null;
   metadata: Record<string, unknown>;
   actionItems: CoreActionItem[];
+  isPinned?: boolean;
+  pinnedAt?: string | null;
+  recurrenceKind?: import("@/services/task-recurrence").TaskRecurrenceKind | null;
+  recurrenceValue?: string | null;
+  seriesKey?: string | null;
+  occurrenceIndex?: number;
+  isCurrent?: boolean;
+  endedAt?: string | null;
 };
 
 export type CoreCalendarIntentKind = "reminder" | "calendar";

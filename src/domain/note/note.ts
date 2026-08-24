@@ -1,3 +1,5 @@
+import type { NoteCategory } from "@/constants/note-categories";
+
 export class Note {
   private readonly id: string;
   private workspaceId: string;
@@ -8,6 +10,8 @@ export class Note {
   private pinnedAt: string | null;
   private readonly createdAt: string;
   private updatedAt: string;
+  private category: NoteCategory;
+  private readonly trashedAt: string | null;
 
   public constructor(
     id: string,
@@ -19,6 +23,8 @@ export class Note {
     pinnedAt: string | null,
     createdAt: string,
     updatedAt: string,
+    category: NoteCategory = "uncategorized",
+    trashedAt: string | null = null,
   ) {
     this.id = id;
     this.workspaceId = workspaceId;
@@ -29,6 +35,8 @@ export class Note {
     this.pinnedAt = pinnedAt;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
+    this.category = category;
+    this.trashedAt = trashedAt;
   }
 
   public getId(): string {
@@ -67,6 +75,14 @@ export class Note {
     return this.updatedAt;
   }
 
+  public getCategory(): NoteCategory {
+    return this.category;
+  }
+
+  public getTrashedAt(): string | null {
+    return this.trashedAt;
+  }
+
   public rename(name: string | null): void {
     this.name = name;
     this.updatedAt = new Date().toISOString();
@@ -79,6 +95,11 @@ export class Note {
 
   public updateTranscript(transcript: string): void {
     this.transcript = transcript;
+    this.updatedAt = new Date().toISOString();
+  }
+
+  public setCategory(category: NoteCategory): void {
+    this.category = category;
     this.updatedAt = new Date().toISOString();
   }
 

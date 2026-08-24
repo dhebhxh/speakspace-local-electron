@@ -13,6 +13,7 @@ import {
   splitIntentTranscript,
 } from "../src/services/core-note-insight-generation-policy.ts";
 import { resolveCoreNoteTime } from "../src/services/core-note-time.ts";
+import { annotateTaskRecurrences } from "../src/services/task-recurrence.ts";
 
 const emptyIntents = () => ({ tasks: [], reminders: [], calendarIntents: [] });
 const parseExtractedJson = (raw) => {
@@ -177,6 +178,22 @@ test("high-confidence explicit intents are recovered when the small model return
   assert.match(recovered.reminders[0].title, /Maya/u);
   assert.equal(recovered.calendarIntents.length, 1);
   assert.match(recovered.calendarIntents[0].title, /Lab 3/u);
+});
+
+test("explicit recurring actions survive when the small model omits them", () => {
+  const reference = new Date("2026-08-24T08:00:00+01:00");
+  const transcript = annotateTaskRecurrences(
+    "Every Monday at 9 AM send the project status report. Every weekday review bug reports.",
+    reference,
+  );
+  const recovered = sanitizeIntentOutput(emptyIntents(), transcript);
+
+  assert.equal(recovered.tasks.length, 2);
+  assert.equal(recovered.tasks[0].recurrence, "weekly");
+  assert.match(recovered.tasks[0].dueAtExpression, /^2026-08-31 9 AM$/u);
+  assert.match(resolveCoreNoteTime(recovered.tasks[0].dueAtExpression, reference)?.normalized ?? "", /^2026-08-31T09:00:00/u);
+  assert.equal(recovered.tasks[1].recurrence, "weekdays");
+  assert.equal(recovered.tasks[1].dueAtExpression, "2026-08-24");
 });
 
 test("negated intents are not recreated by deterministic coverage", () => {

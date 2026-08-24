@@ -1,11 +1,11 @@
 import type { LlamaContext, RNLlamaOAICompatibleMessage } from "llama.rn";
 
-import { TRANSCRIPT_TOO_LONG_ERROR } from "@/constants/ask-ai-grounding-policy";
-import { ASK_AI_PROMPT_BUDGET } from "@/constants/ask-ai-inference-config";
-import { InferenceError } from "@/errors/inference-error";
+import { TRANSCRIPT_TOO_LONG_ERROR } from "../constants/ask-ai-grounding-policy.ts";
+import { ASK_AI_PROMPT_BUDGET } from "../constants/ask-ai-inference-config.ts";
+import { InferenceError } from "../errors/inference-error.ts";
 
-import { buildGroundedCompletionMessages } from "./ask-ai-grounded-messages";
-import type { TranscriptContextBlock } from "./ask-ai-grounded-messages";
+import { buildGroundedCompletionMessages } from "./ask-ai-grounded-messages.ts";
+import type { TranscriptContextBlock } from "./ask-ai-grounded-messages.ts";
 
 type FitMessagesResult = {
   messages: RNLlamaOAICompatibleMessage[];
@@ -34,7 +34,7 @@ export async function countFormattedPromptTokens(
 export async function fitGroundedMessagesToBudget(
   context: LlamaContext,
   transcriptBlocks: TranscriptContextBlock[],
-  history: Array<{ role: string; content: string }>,
+  history: { role: string; content: string }[],
   promptBudget: number = ASK_AI_PROMPT_BUDGET,
 ): Promise<FitMessagesResult> {
   if (history.length === 0) {
@@ -65,8 +65,8 @@ export async function fitGroundedMessagesToBudget(
 }
 
 function trimOldestConversationTurn(
-  history: Array<{ role: string; content: string }>,
-): Array<{ role: string; content: string }> {
+  history: { role: string; content: string }[],
+): { role: string; content: string }[] {
   if (history.length <= 1) {
     return history;
   }

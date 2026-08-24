@@ -6,15 +6,18 @@ import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useSpeechPlayback } from "@/hooks/use-speech-playback";
 import { useTheme } from "@/hooks/use-theme";
 import { useUiCopyTranslation } from "@/hooks/use-ui-copy-translation";
+import type { TtsLanguageCode } from "@/services/tts-language";
 
 export function SpeechPlaybackButton({
   speechId,
   label,
   text,
+  requestedLanguage,
 }: {
   speechId: string;
   label: string;
   text: string;
+  requestedLanguage?: TtsLanguageCode;
 }) {
   const colors = Colors[useTheme().mode];
   const tr = useUiCopyTranslation();
@@ -36,7 +39,7 @@ export function SpeechPlaybackButton({
           accessibilityLabel={`${buttonLabel}: ${label}`}
           accessibilityState={{ disabled }}
           disabled={disabled}
-          onPress={() => void service.speak({ id: speechId, label, text })}
+          onPress={() => void service.speak({ id: speechId, label, text, requestedLanguage })}
           style={({ pressed }) => [
             styles.button,
             { backgroundColor: colors.accentSoft, borderColor: colors.border },

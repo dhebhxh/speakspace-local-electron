@@ -47,6 +47,17 @@ test("local inference stays FIFO while the first request clears speech playback"
   assert.deepEqual(order, ["first", "second"]);
 });
 
+test("Ask AI and translation keep their shared native context warm", async () => {
+  const coordinator = new localInference.LocalLlmCoordinator();
+  let releases = 0;
+  coordinator.registerIdleCleanup("shared-llm", async () => { releases += 1; }, ["ask-ai", "translation"]);
+  await coordinator.runExclusive("ask-ai", async () => undefined);
+  await coordinator.runExclusive("translation", async () => undefined);
+  assert.equal(releases, 0);
+  await coordinator.runExclusive("knowledge", async () => undefined);
+  assert.equal(releases, 1);
+});
+
 test("TTS model paths survive an iOS sandbox container UUID change", () => {
   const oldPath = "/old-container/Documents/sherpa-onnx/models/tts/model/model";
   const currentDocuments = "file:///new-container/Documents/";

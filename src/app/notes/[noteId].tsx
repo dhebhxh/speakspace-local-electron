@@ -5,7 +5,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import * as Clipboard from "expo-clipboard";
 import { File, Paths } from "expo-file-system";
 import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View,  } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -14,16 +14,18 @@ import { AppButton } from "@/components/app-button";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 import { SpeechPlaybackButton } from "@/components/speech-playback-button";
+import type { UiLanguage } from "@/localization/i18n";
+import { normalizeTtsLanguage } from "@/services/tts-language";
 import {
   KNOWLEDGE_SCENARIO_DEFINITIONS,
   getKnowledgeScenarioDefinition,
 } from "@/constants/knowledge-scenarios";
 import { Colors, Radius, Spacing } from "@/constants/theme";
-import type {
+import {
   KnowledgeDocument,
   KnowledgeScenario,
 } from "@/domain/knowledge/knowledge-document";
-import type {
+import {
   CoreNoteInsight,
   CoreTask,
 } from "@/domain/core-note-insight/core-note-insight";
@@ -31,6 +33,9 @@ import { CoreNoteInsightGenerationError } from "@/errors/core-note-insight-gener
 import { KnowledgeGenerationError } from "@/errors/knowledge-generation-error";
 import { useTheme } from "@/hooks/use-theme";
 import { formatDate } from "@/utils/format-date";
+import type { NoteTranslation, NoteTranslationPayload, NoteTranslationSection } from "@/domain/note-translation/note-translation";
+import { useNoteTranslationCopy } from "@/hooks/use-note-translation-copy";
+import type { NoteTranslationCopy } from "@/localization/note-translation-copy";
 
 type NoteDetailState =
   | { status: "loading" }
@@ -43,6 +48,7 @@ type NoteDetailState =
       workspaceName: string | null;
       knowledge: KnowledgeDocument | null;
       coreInsights: CoreNoteInsight | null;
+      translation: NoteTranslation | null;
     };
 
 type GenerationState =
@@ -56,6 +62,11 @@ type CoreInsightGenerationState =
   | { status: "queued" | "generating" }
   | { status: "error"; message: string };
 
+type TranslationState =
+  | { status: "idle" }
+  | { status: "translating"; requestId?: string; section: NoteTranslationSection | null; targetLanguage: string; partialPayload?: NoteTranslationPayload }
+  | { status: "error"; section: NoteTranslationSection; message: string };
+
 type NoteSection = "transcript" | "insights" | "knowledge";
 type InsightSectionKey = "summary" | "key-points" | "tasks" | "reminders" | "calendar";
 
@@ -63,9 +74,10 @@ export default function NoteDetailScreen() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
   const theme = useTheme();
   const colors = Colors[theme.mode];
-  const { noteService, workspaceService, knowledgeService, coreNoteInsightService } = appContainer;
+  const { noteService, workspaceService, knowledgeService, coreNoteInsightService, noteTranslationService } = appContainer;
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { language: translationLanguage, copy: translationCopy } = useNoteTranslationCopy();
   const [state, setState] = useState<NoteDetailState>({
     status: "loading",
   });
@@ -80,6 +92,8 @@ export default function NoteDetailScreen() {
   const [coreGeneration, setCoreGeneration] = useState<CoreInsightGenerationState>({ status: "idle" });
   const [coreItemError, setCoreItemError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<NoteSection>("transcript");
+  const [translationState, setTranslationState] = useState<TranslationState>({ status: "idle" });
+  const firstRenderedTranslationRequest = useRef<string | null>(null);
   const audioRelativePath =
     state.status === "success" ? state.note.getAudioRelativePath() : null;
   const audioUri = audioRelativePath
@@ -99,7 +113,7 @@ export default function NoteDetailScreen() {
         return;
       }
 
-      const [workspace, knowledge, coreInsights] = await Promise.all([
+      const [workspace, knowledge, coreInsights, translation] = await Promise.all([
         workspaceService
           .getWorkspace(loadedNote.getWorkspaceId())
           .catch((error) => {
@@ -123,6 +137,10 @@ export default function NoteDetailScreen() {
           console.warn("[NoteDetail] Saved core insights could not be loaded", { noteId: loadedNote.getId(), error });
           return null;
         }),
+        noteTranslationService.getForNote(loadedNote.getId()).catch((error) => {
+          console.warn("[NoteDetail] Saved translation could not be loaded", { noteId: loadedNote.getId(), error });
+          return null;
+        }),
       ]);
       setState({
         status: "success",
@@ -130,6 +148,7 @@ export default function NoteDetailScreen() {
         workspaceName: workspace?.getName() ?? null,
         knowledge,
         coreInsights,
+        translation,
       });
     } catch (error) {
       console.error("[NoteDetail] Unable to load note", { noteId, error });
@@ -178,6 +197,29 @@ export default function NoteDetailScreen() {
       });
     }
   }), [knowledgeService, noteId]);
+
+  useEffect(() => noteTranslationService.subscribe((operation) => {
+    if (operation.status === "translating") {
+      setTranslationState({ status: "translating", requestId: operation.requestId, section: operation.noteId === noteId ? operation.section : null, targetLanguage: operation.targetLanguage, partialPayload: operation.noteId === noteId ? operation.partialPayload : undefined });
+      return;
+    }
+    if (operation.status === "failed" && operation.noteId === noteId) {
+      setTranslationState({ status: "error", section: operation.section, message: translationCopy.genericError });
+      return;
+    }
+    setTranslationState({ status: "idle" });
+    if (operation.status === "completed" && operation.noteId === noteId) {
+      void noteTranslationService.getForNote(noteId).then((translation) => {
+        setState((current) => current.status === "success" ? { ...current, translation } : current);
+      });
+    }
+  }), [noteId, noteTranslationService, translationCopy.genericError]);
+
+  useEffect(() => {
+    if (translationState.status !== "translating" || !translationState.requestId || !translationState.partialPayload || firstRenderedTranslationRequest.current === translationState.requestId) return;
+    firstRenderedTranslationRequest.current = translationState.requestId;
+    console.info("[Translation] First token rendered", { requestId: translationState.requestId, noteId, section: translationState.section });
+  }, [noteId, translationState]);
 
   const generateKnowledge = async (scenario: KnowledgeScenario) => {
     if (state.status !== "success") return;
@@ -300,6 +342,42 @@ export default function NoteDetailScreen() {
     }
   };
 
+  const translateSection = async (section: NoteTranslationSection) => {
+    if (state.status !== "success" || translationState.status === "translating") return;
+    setTranslationState({ status: "translating", section, targetLanguage: translationCopy.languageName });
+    try {
+      const translation = await noteTranslationService.translate(
+        state.note.getId(), section, translationLanguage, translationCopy.languageName, state.note.getTranscript(), state.coreInsights, state.knowledge,
+      );
+      setState((current) => current.status === "success" ? { ...current, translation } : current);
+      setTranslationState({ status: "idle" });
+    } catch (error) {
+      console.warn("[NoteDetail] Section translation failed", { section, error });
+      setTranslationState({ status: "error", section, message: translationCopy.genericError });
+    }
+  };
+
+  const restoreOriginal = async (section: NoteTranslationSection) => {
+    if (state.status !== "success") return;
+    try {
+      const translation = await noteTranslationService.restoreOriginal(state.note.getId(), section);
+      setState((current) => current.status === "success" ? { ...current, translation } : current);
+      setTranslationState({ status: "idle" });
+    } catch (error) {
+      console.warn("[NoteDetail] Original section restore failed", { section, error });
+      setTranslationState({ status: "error", section, message: translationCopy.restoreError });
+    }
+  };
+
+  const savedTranslation = state.status === "success" ? state.translation : null;
+  const liveSection = translationState.status === "translating" ? translationState.section : null;
+  const livePayload = translationState.status === "translating" ? translationState.partialPayload : undefined;
+  const transcriptTranslated = savedTranslation?.isSectionActive("transcript") ?? false;
+  const insightsTranslated = savedTranslation?.isSectionActive("insights") ?? false;
+  const knowledgeTranslated = savedTranslation?.isSectionActive("knowledge") ?? false;
+  const displayInsight = state.status === "success" ? translateCoreInsight(state.coreInsights, liveSection === "insights" ? livePayload?.strings : insightsTranslated ? savedTranslation?.getPayload().strings : undefined) : null;
+  const displayKnowledge = state.status === "success" ? translateKnowledge(state.knowledge, liveSection === "knowledge" ? livePayload?.strings : knowledgeTranslated ? savedTranslation?.getPayload().strings : undefined) : null;
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <Stack.Screen
@@ -406,8 +484,9 @@ export default function NoteDetailScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Transcript
               </Text>
+              <TranslationControl section="transcript" translated={transcriptTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} />
               <Text style={[styles.body, { color: colors.text }]}>
-                {state.note.getTranscript()}
+                {liveSection === "transcript" && livePayload?.transcript ? livePayload.transcript : transcriptTranslated ? savedTranslation?.getPayload().transcript : state.note.getTranscript()}
               </Text>
             </View>}
             {activeSection === "insights" && <View style={[styles.knowledgeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -415,6 +494,7 @@ export default function NoteDetailScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Structured Note</Text>
                 <Text style={[styles.supportingText, { color: colors.textMuted }]}>Summary, key points, tasks, reminders, and calendar events.</Text>
               </View>
+              {state.coreInsights && <TranslationControl section="insights" translated={insightsTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} />}
               {coreGeneration.status === "generating" || coreGeneration.status === "queued" ? (
                 <View style={[styles.generationStatus, { backgroundColor: colors.surfaceMuted }]}>
                   <ActivityIndicator color={colors.accent} />
@@ -425,8 +505,9 @@ export default function NoteDetailScreen() {
                 </View>
               ) : (
                 <>
-                  {state.coreInsights && <CoreInsightResult
-                    insight={state.coreInsights}
+                  {displayInsight && <CoreInsightResult
+                    insight={displayInsight}
+                    requestedLanguage={insightsTranslated ? normalizeTtsLanguage(savedTranslation?.getPayload().languageCode ?? savedTranslation?.getTargetLanguage()) ?? translationLanguage : undefined}
                     textColor={colors.text}
                     mutedColor={colors.textMuted}
                     borderColor={colors.border}
@@ -480,6 +561,7 @@ export default function NoteDetailScreen() {
                   </View>
                 )}
               </View>
+              {state.knowledge && <TranslationControl section="knowledge" translated={knowledgeTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} />}
 
               {generation.status === "generating" || generation.status === "queued" ? (
                 <View
@@ -580,10 +662,11 @@ export default function NoteDetailScreen() {
                     />
                   </View>
                 </View>
-              ) : state.knowledge ? (
+              ) : displayKnowledge ? (
                 <View style={styles.document}>
                   <KnowledgeResult
-                    document={state.knowledge}
+                    document={displayKnowledge}
+                    requestedLanguage={knowledgeTranslated ? normalizeTtsLanguage(savedTranslation?.getPayload().languageCode ?? savedTranslation?.getTargetLanguage()) ?? translationLanguage : undefined}
                     textColor={colors.text}
                     mutedColor={colors.textMuted}
                     borderColor={colors.border}
@@ -635,8 +718,9 @@ export default function NoteDetailScreen() {
   );
 }
 
-function CoreInsightResult({ insight, textColor, mutedColor, borderColor, accentColor, surfaceMutedColor, onTaskCompletedChange }: {
+function CoreInsightResult({ insight, requestedLanguage, textColor, mutedColor, borderColor, accentColor, surfaceMutedColor, onTaskCompletedChange }: {
   insight: CoreNoteInsight;
+  requestedLanguage?: UiLanguage;
   textColor: string;
   mutedColor: string;
   borderColor: string;
@@ -656,6 +740,7 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor, accent
         speechId={`structured-note:${insight.getId()}:${insight.getUpdatedAt()}`}
         label="Structured Note"
         text={formatCoreInsightsAsSpeech(insight)}
+        requestedLanguage={requestedLanguage}
       />
       <InsightTabs activeSection={activeSection} onChange={setActiveSection} accentColor={accentColor} borderColor={borderColor} mutedColor={mutedColor} surfaceMutedColor={surfaceMutedColor} />
       {activeSection === "summary" && <InsightSection title="Summary" borderColor={borderColor} textColor={textColor} first>
@@ -981,11 +1066,13 @@ function EmptyInsight({ text, color }: { text: string; color: string }) {
 
 function KnowledgeResult({
   document,
+  requestedLanguage,
   textColor,
   mutedColor,
   borderColor,
 }: {
   document: KnowledgeDocument;
+  requestedLanguage?: UiLanguage;
   textColor: string;
   mutedColor: string;
   borderColor: string;
@@ -1001,6 +1088,7 @@ function KnowledgeResult({
           document.getSummary(),
           ...visibleSections.flatMap((section) => [section.title, ...section.items]),
         ].filter(Boolean).join(". ")}
+        requestedLanguage={requestedLanguage}
       />
       {visibleSections.length === 0 && (
         <Text selectable style={[styles.emptyInsight, { color: mutedColor }]}>No supported scenario-specific information was found in this note.</Text>
@@ -1039,10 +1127,85 @@ function KnowledgeResult({
   );
 }
 
+function TranslationControl({ section, translated, targetLanguage, state, copy, dangerColor, mutedColor, onTranslate, onRestore }: {
+  section: NoteTranslationSection;
+  translated: boolean;
+  targetLanguage: string;
+  state: TranslationState;
+  copy: NoteTranslationCopy;
+  dangerColor: string;
+  mutedColor: string;
+  onTranslate: (section: NoteTranslationSection) => Promise<void>;
+  onRestore: (section: NoteTranslationSection) => Promise<void>;
+}) {
+  const translating = state.status === "translating" && state.section === section;
+  const error = state.status === "error" && state.section === section ? state.message : null;
+  return (
+    <View style={styles.translationControl}>
+      <Text selectable style={[styles.supportingText, { color: mutedColor }]}>
+        {translated ? copy.translatedInto(targetLanguage) : copy.translateInto(copy.languageName)}
+      </Text>
+      <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{copy.localHint}</Text>
+      <AppButton
+        label={translated ? copy.restore : translating ? copy.translating : copy.translate}
+        variant="secondary"
+        disabled={state.status === "translating"}
+        onPress={() => translated ? void onRestore(section) : void onTranslate(section)}
+      />
+      {error && <Text selectable style={[styles.errorText, { color: dangerColor }]}>{error}</Text>}
+    </View>
+  );
+}
+
+function translateCoreInsight(insight: CoreNoteInsight | null, strings?: Record<string, string>): CoreNoteInsight | null {
+  if (!insight || !strings) return insight;
+  const text = (key: string, original: string) => strings[key] ?? original;
+  const tasks = insight.getTasks().map((task, taskIndex) => ({
+    ...task,
+    title: text(`insight.task.${taskIndex}.title`, task.title),
+    description: task.description ? text(`insight.task.${taskIndex}.description`, task.description) : null,
+    actionItems: task.actionItems.map((item, itemIndex) => ({
+      ...item,
+      title: text(`insight.task.${taskIndex}.action.${itemIndex}.title`, item.title),
+      description: item.description ? text(`insight.task.${taskIndex}.action.${itemIndex}.description`, item.description) : null,
+    })),
+  }));
+  const unassigned = insight.getUnassignedActionItems().map((item, index) => ({
+    ...item,
+    title: text(`insight.action.${index}.title`, item.title),
+    description: item.description ? text(`insight.action.${index}.description`, item.description) : null,
+  }));
+  const calendars = insight.getCalendarIntents().map((item, index) => ({
+    ...item,
+    title: text(`insight.calendar.${index}.title`, item.title),
+    description: item.description ? text(`insight.calendar.${index}.description`, item.description) : null,
+  }));
+  return new CoreNoteInsight(
+    insight.getId(), insight.getNoteId(), text("insight.summary", insight.getSummary()),
+    insight.getKeyPoints().map((item, index) => text(`insight.keyPoint.${index}`, item)),
+    tasks, unassigned, calendars, insight.getModelId(), insight.getCreatedAt(), insight.getUpdatedAt(),
+  );
+}
+
+function translateKnowledge(document: KnowledgeDocument | null, strings?: Record<string, string>): KnowledgeDocument | null {
+  if (!document || !strings) return document;
+  const text = (key: string, original: string) => strings[key] ?? original;
+  return new KnowledgeDocument(
+    document.getId(), document.getNoteId(), document.getScenario(), text("knowledge.summary", document.getSummary()),
+    document.getSections().map((section, sectionIndex) => ({
+      ...section,
+      title: text(`knowledge.section.${sectionIndex}.title`, section.title),
+      items: section.items.map((item, itemIndex) => text(`knowledge.section.${sectionIndex}.item.${itemIndex}`, item)),
+    })),
+    document.getModelId(), document.getCreatedAt(), document.getUpdatedAt(),
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { gap: Spacing.lg, padding: Spacing.lg },
   header: { gap: Spacing.md },
+  translationControl: { gap: Spacing.xs },
   headerUtilityRow: { alignItems: "center", flexDirection: "row", gap: Spacing.md, justifyContent: "space-between" },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 36, fontWeight: "800", lineHeight: 42 },

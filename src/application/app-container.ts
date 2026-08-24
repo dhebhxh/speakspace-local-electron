@@ -21,6 +21,9 @@ import { CoreNoteInsightRepository } from "@/repositories/core-note-insight-repo
 import { CoreNoteInsightService } from "@/services/core-note-insight-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 import { SpeechPlaybackService } from "@/services/speech-playback-service";
+import { NoteTranslationRepository } from "@/repositories/note-translation-repository";
+import { NoteTranslationService } from "@/services/note-translation-service";
+import { SharedLlmContextService } from "@/services/shared-llm-context-service";
 
 export class AppContainer {
   public readonly workspaceService: WorkspaceService;
@@ -34,6 +37,7 @@ export class AppContainer {
   public readonly aiConversationService: AiConversationService;
   public readonly llmInferenceService: LlmInferenceService;
   public readonly speechPlaybackService: SpeechPlaybackService;
+  public readonly noteTranslationService: NoteTranslationService;
 
   public constructor(databaseManager: DatabaseManager) {
     const workspaceRepository = new WorkspaceRepository(databaseManager);
@@ -49,10 +53,13 @@ export class AppContainer {
       databaseManager,
     );
     const localLlmCoordinator = new LocalLlmCoordinator();
+    const sharedLlmContextService = new SharedLlmContextService(localLlmCoordinator);
+    const noteTranslationRepository = new NoteTranslationRepository(databaseManager);
 
     this.workspaceService = new WorkspaceService(workspaceRepository, noteRepository);
     this.noteService = new NoteService(noteRepository, workspaceRepository);
     this.llmModelService = new LlmModelService(llmModelRepository, localLlmCoordinator);
+    this.noteTranslationService = new NoteTranslationService(noteTranslationRepository, this.llmModelService, localLlmCoordinator, sharedLlmContextService);
     this.knowledgeService = new KnowledgeService(knowledgeDocumentRepository, this.llmModelService, localLlmCoordinator);
     this.coreNoteInsightService = new CoreNoteInsightService(coreNoteInsightRepository, this.llmModelService, localLlmCoordinator);
     this.sttModelService = new SttModelService(sttModelRepository);
@@ -69,6 +76,7 @@ export class AppContainer {
       this.llmModelService,
       this.aiConversationService,
       localLlmCoordinator,
+      sharedLlmContextService,
     );
   }
 }

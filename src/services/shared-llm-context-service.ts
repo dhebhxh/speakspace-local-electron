@@ -1,0 +1,52 @@
+import { initLlama, type LlamaContext } from "llama.rn";
+
+import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+
+const SHARED_CONTEXT_SIZE = 4096;
+const GPU_LAYERS = 99;
+
+export type PreparedLlmContext = {
+  context: LlamaContext;
+  contextPrepareMs: number;
+  reused: boolean;
+};
+
+/** Owns the single native context shared by short-lived Ask AI and translation work. */
+export class SharedLlmContextService {
+  private context: LlamaContext | null = null;
+  private modelId: string | null = null;
+
+  public constructor(coordinator: LocalLlmCoordinator) {
+    coordinator.registerIdleCleanup("shared-llm", () => this.release(), ["ask-ai", "translation"]);
+  }
+
+  public getLoadedModelId(): string | null { return this.modelId; }
+  public getContext(): LlamaContext | null { return this.context; }
+
+  public async prepare(modelId: string, modelUri: string): Promise<PreparedLlmContext> {
+    const startedAt = Date.now();
+    if (this.context && this.modelId === modelId) {
+      const contextPrepareMs = Date.now() - startedAt;
+      console.info("[SharedLlama] Context reuse", { modelId, contextSize: SHARED_CONTEXT_SIZE, contextPrepareMs });
+      return { context: this.context, contextPrepareMs, reused: true };
+    }
+    await this.release();
+    console.info("[SharedLlama] Context create started", { modelId, contextSize: SHARED_CONTEXT_SIZE });
+    this.context = await initLlama({ model: modelUri, n_ctx: SHARED_CONTEXT_SIZE, n_batch: 512, n_gpu_layers: GPU_LAYERS, use_mmap: true });
+    this.modelId = modelId;
+    const contextPrepareMs = Date.now() - startedAt;
+    console.info("[SharedLlama] Context create completed", { modelId, contextSize: SHARED_CONTEXT_SIZE, contextPrepareMs });
+    return { context: this.context, contextPrepareMs, reused: false };
+  }
+
+  public async release(): Promise<void> {
+    const context = this.context;
+    const modelId = this.modelId;
+    this.context = null;
+    this.modelId = null;
+    if (!context) return;
+    const startedAt = Date.now();
+    await context.release().catch((error) => console.warn("[SharedLlama] Context release failed", { modelId, error }));
+    console.info("[SharedLlama] Context released", { modelId, durationMs: Date.now() - startedAt });
+  }
+}

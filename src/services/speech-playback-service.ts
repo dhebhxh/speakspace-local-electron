@@ -3,16 +3,18 @@ import { createStreamingTTS, type StreamingTtsEngine, type TtsStreamController, 
 
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 import { TtsModelService } from "@/services/tts-model-service";
+import { detectTtsLanguage, type TtsLanguageCode } from "@/services/tts-language";
 
-export type SpeechPlaybackErrorCode = "missing-model" | "busy" | "playback";
+export type SpeechPlaybackErrorCode = "missing-model" | "unsupported-language" | "busy" | "playback";
 export type SpeechPlaybackPhase = "idle" | "preparing" | "playing" | "error";
 export type SpeechPlaybackState = { phase: SpeechPlaybackPhase; speechId: string | null; label: string | null; message: string | null; errorCode: SpeechPlaybackErrorCode | null; inferenceBusy: boolean };
-export type SpeechRequest = { id: string; label: string; text: string };
+export type SpeechRequest = { id: string; label: string; text: string; requestedLanguage?: TtsLanguageCode };
 
 type SpeechSession = {
   id: string;
   label: string;
   text: string;
+  requestedLanguage: TtsLanguageCode;
   engine: StreamingTtsEngine | null;
   controller: TtsStreamController | null;
   writeChain: Promise<void>;
@@ -36,6 +38,8 @@ export class SpeechPlaybackService {
   private session: SpeechSession | null = null;
   private lifecycleChain: Promise<void> = Promise.resolve();
   private initialized = false;
+  private cachedEngine: StreamingTtsEngine | null = null;
+  private cachedEngineKey: string | null = null;
 
   public constructor(private readonly ttsModelService: TtsModelService, private readonly coordinator: LocalLlmCoordinator) {
     this.coordinator.registerSpeechPlaybackStopper(() => this.stop());
@@ -74,7 +78,7 @@ export class SpeechPlaybackService {
       resolveStreamEnded = resolve;
     });
     const session: SpeechSession = {
-      id: request.id, label: request.label, text, engine: null, controller: null,
+      id: request.id, label: request.label, text, requestedLanguage: request.requestedLanguage ?? detectTtsLanguage(text), engine: null, controller: null,
       writeChain: Promise.resolve(), playbackStartedAt: null, totalSamples: 0,
       sampleRate: null, completionTimer: null, interruptPromise: null,
       streamStarted: false, streamEnded, resolveStreamEnded,
@@ -110,11 +114,26 @@ export class SpeechPlaybackService {
         await this.failStartingSession(session, "missing-model", "Download and activate a TTS model first.");
         return;
       }
-      const engine = await createStreamingTTS({
-        modelPath: { type: "file", path: this.ttsModelService.resolveModelPath(model) },
-        modelType: model.getModelType() as TTSModelType,
-        numThreads: 2,
-      });
+      const languageConfiguration = await this.ttsModelService.resolveLanguage(model, session.requestedLanguage);
+      if (!this.isCurrent(session)) return;
+      if (languageConfiguration === null) {
+        await this.failStartingSession(session, "unsupported-language", "当前 TTS 模型不支持该语言的朗读");
+        return;
+      }
+      const engineKey = `${model.getId()}:${languageConfiguration.lexiconLanguage ?? "single-language"}`;
+      let engine = this.cachedEngine;
+      if (engine === null || this.cachedEngineKey !== engineKey) {
+        this.cachedEngine = null;
+        this.cachedEngineKey = null;
+        if (engine !== null) await engine.destroy().catch(() => undefined);
+        engine = await createStreamingTTS({
+          modelPath: { type: "file", path: this.ttsModelService.resolveModelPath(model) },
+          modelType: model.getModelType() as TTSModelType,
+          numThreads: 2,
+        });
+        this.cachedEngine = engine;
+        this.cachedEngineKey = engineKey;
+      }
       session.engine = engine;
       if (!this.isCurrent(session)) return;
       const sampleRate = await engine.getSampleRate();
@@ -236,7 +255,7 @@ export class SpeechPlaybackService {
       await session.writeChain.catch(() => undefined);
       session.controller?.unsubscribe();
       session.controller = null;
-      await engine.destroy().catch(() => undefined);
+      if (engine !== this.cachedEngine) await engine.destroy().catch(() => undefined);
     }
   }
 

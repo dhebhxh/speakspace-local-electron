@@ -1,5 +1,6 @@
-export type LocalLlmOperation = "core-insights" | "knowledge" | "ask-ai" | "model-management";
+export type LocalLlmOperation = "core-insights" | "knowledge" | "ask-ai" | "translation" | "model-management";
 export type LocalInferenceOperation = LocalLlmOperation | "transcription";
+type IdleResourceOwner = LocalInferenceOperation | "shared-llm";
 
 export type LocalInferenceSnapshot = {
   activeOperation: LocalInferenceOperation | null;
@@ -14,7 +15,7 @@ export type LocalInferenceSnapshot = {
 export class LocalLlmCoordinator {
   private tail: Promise<void> = Promise.resolve();
   private activeOperation: LocalInferenceOperation | null = null;
-  private readonly idleCleanups = new Map<LocalInferenceOperation, () => Promise<void>>();
+  private readonly idleCleanups = new Map<IdleResourceOwner, { cleanup: () => Promise<void>; compatibleOperations: ReadonlySet<LocalInferenceOperation> }>();
   private readonly listeners = new Set<(snapshot: LocalInferenceSnapshot) => void>();
   private stopSpeechPlayback: (() => Promise<void>) | null = null;
   private nextJobId = 1;
@@ -45,8 +46,8 @@ export class LocalLlmCoordinator {
     };
   }
 
-  public registerIdleCleanup(operation: LocalInferenceOperation, cleanup: () => Promise<void>): void {
-    this.idleCleanups.set(operation, cleanup);
+  public registerIdleCleanup(owner: IdleResourceOwner, cleanup: () => Promise<void>, compatibleOperations: readonly LocalInferenceOperation[] = [owner as LocalInferenceOperation]): void {
+    this.idleCleanups.set(owner, { cleanup, compatibleOperations: new Set(compatibleOperations) });
   }
 
   public async runExclusive<T>(
@@ -86,11 +87,11 @@ export class LocalLlmCoordinator {
     console.info("[LocalInference] Operation acquired execution slot", { jobId, operation, waitDurationMs: Date.now() - queuedAt, pendingCount: this.pendingCount });
     const executionStartedAt = Date.now();
     try {
-      for (const [owner, cleanup] of this.idleCleanups) {
-        if (owner !== operation) {
+      for (const [owner, resource] of this.idleCleanups) {
+        if (!resource.compatibleOperations.has(operation)) {
           const cleanupStartedAt = Date.now();
           console.info("[LocalInference] Releasing idle resources", { jobId, operation, resourceOwner: owner });
-          await cleanup();
+          await resource.cleanup();
           console.info("[LocalInference] Idle resources released", { jobId, operation, resourceOwner: owner, durationMs: Date.now() - cleanupStartedAt });
         }
       }

@@ -7,7 +7,7 @@ import {
   type TtsModelMeta,
 } from "react-native-sherpa-onnx/download";
 import { detectTtsModel } from "react-native-sherpa-onnx/tts";
-import { File, Paths } from "expo-file-system";
+import { Directory, File, Paths } from "expo-file-system";
 
 import { TTS_MODEL_CATALOG, TtsModelCatalogEntry } from "@/constants/tts-model-catalog";
 import { TtsModel } from "@/domain/tts-model/tts-model";
@@ -16,6 +16,7 @@ import { ValidationError } from "@/errors/validation-error";
 import { TtsModelRepository } from "@/repositories/tts-model-repository";
 import { resolveDocumentPath, toDocumentRelativePath } from "@/services/sandbox-document-path";
 import { ensureStorageAvailable } from "@/services/storage-safety-service";
+import { selectLexiconLanguage, type TtsLanguageCode } from "@/services/tts-language";
 
 export type TtsModelDownloadProgress = {
   bytesWritten: number;
@@ -31,6 +32,7 @@ type ActiveDownload = {
 
 export class TtsModelService {
   private readonly activeDownloads = new Map<string, ActiveDownload>();
+  private readonly configuredLexicons = new Map<string, string>();
 
   public constructor(private readonly repository: TtsModelRepository) {}
 
@@ -182,6 +184,64 @@ export class TtsModelService {
 
   public resolveModelPath(model: TtsModel): string {
     return resolveDocumentPath(model.getFilePath(), Paths.document.uri);
+  }
+
+  public async resolveLanguage(model: TtsModel, requestedLanguage: TtsLanguageCode): Promise<{ language: TtsLanguageCode; lexiconLanguage: string | null } | null> {
+    const entry = this.getCatalogEntry(model.getId());
+    if (!entry.languages.includes(requestedLanguage)) return null;
+    const detection = await detectTtsModel({ type: "file", path: this.resolveModelPath(model) });
+    const candidates = detection.lexiconLanguageCandidates ?? [];
+    if (candidates.length === 0) return { language: requestedLanguage, lexiconLanguage: null };
+    const lexiconLanguage = selectLexiconLanguage(requestedLanguage, candidates);
+    if (!lexiconLanguage) return null;
+    await this.activateLexicon(this.resolveModelPath(model), lexiconLanguage);
+    return { language: requestedLanguage, lexiconLanguage };
+  }
+
+  /**
+   * sherpa-onnx 0.4.3 initializes from lexicon.txt and does not expose a
+   * lexicon-language argument. Select the already-detected model lexicon before
+   * initialization, preserving the archive's default for later restoration.
+   */
+  private async activateLexicon(modelPath: string, lexiconLanguage: string): Promise<void> {
+    if (this.configuredLexicons.get(modelPath) === lexiconLanguage) return;
+    const modelUri = modelPath.startsWith("file://") ? modelPath : `file://${modelPath}`;
+    const root = new Directory(modelUri);
+    const namedLexicon = lexiconLanguage === "default"
+      ? null
+      : this.findModelFile(root, `lexicon-${lexiconLanguage}.txt`);
+    let defaultLexicon = this.findModelFile(root, "lexicon.txt");
+    const lexiconDirectory = namedLexicon?.parentDirectory ?? defaultLexicon?.parentDirectory;
+    if (!lexiconDirectory) throw new ValidationError("The selected TTS model lexicon is missing.");
+
+    const generatedMarker = new File(lexiconDirectory, ".speakspace-generated-lexicon");
+    const backup = new File(lexiconDirectory, ".speakspace-default-lexicon.backup");
+    if (defaultLexicon?.exists && !generatedMarker.exists && !backup.exists) {
+      backup.create();
+      backup.write(await defaultLexicon.bytes());
+    }
+
+    const selected = lexiconLanguage === "default" ? backup : namedLexicon;
+    if (!selected?.exists) throw new ValidationError("The selected TTS model language configuration is missing.");
+    if (!defaultLexicon) {
+      defaultLexicon = new File(lexiconDirectory, "lexicon.txt");
+      defaultLexicon.create();
+      generatedMarker.create();
+      generatedMarker.write("managed by SpeakSpace");
+    }
+    defaultLexicon.write(await selected.bytes());
+    this.configuredLexicons.set(modelPath, lexiconLanguage);
+  }
+
+  private findModelFile(directory: Directory, name: string): File | null {
+    const expected = name.toLocaleLowerCase();
+    for (const entry of directory.list()) {
+      if (entry instanceof Directory) {
+        const nested = this.findModelFile(entry, name);
+        if (nested) return nested;
+      } else if (entry.name.toLocaleLowerCase() === expected) return entry;
+    }
+    return null;
   }
 
   private getCatalogEntry(id: string): TtsModelCatalogEntry {

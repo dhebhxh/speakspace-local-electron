@@ -190,7 +190,7 @@ export default function SttModelsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: "STT Models" }} />
+      <Stack.Screen options={{ title: "Speech-to-Text Models" }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[

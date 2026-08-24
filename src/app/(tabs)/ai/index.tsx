@@ -30,28 +30,6 @@ export default function AiManagementScreen() {
         <View style={styles.modelLinks}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Manage text-to-speech models"
-            onPress={() => router.push("/ai/tts-models" as Href)}
-            style={({ pressed }) => [
-              styles.card,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              pressed && styles.pressed,
-            ]}
-          >
-            <View style={styles.cardText}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>TTS Models</Text>
-              <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>
-                Local voices for private, on-device speech synthesis.
-              </Text>
-            </View>
-            <View style={styles.cardAction}>
-              <Text style={[styles.actionLabel, { color: colors.accent }]}>Manage</Text>
-              <Text style={[styles.chevron, { color: colors.accent }]}>›</Text>
-            </View>
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
             accessibilityLabel="Manage speech-to-text models"
             onPress={() => router.push("/ai/stt-models")}
             style={({ pressed }) => [
@@ -61,7 +39,7 @@ export default function AiManagementScreen() {
             ]}
           >
             <View style={styles.cardText}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>STT Models</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Speech-to-Text Models</Text>
               <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>
                 Speech recognition models for local transcription.
               </Text>
@@ -74,7 +52,7 @@ export default function AiManagementScreen() {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Manage local language models"
+            accessibilityLabel="Manage large language models"
             onPress={() => router.push("/ai/llm-models" as Href)}
             style={({ pressed }) => [
               styles.card,
@@ -83,9 +61,31 @@ export default function AiManagementScreen() {
             ]}
           >
             <View style={styles.cardText}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>LLM Models</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Large Language Models</Text>
               <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>
                 Language models for private, on-device AI features.
+              </Text>
+            </View>
+            <View style={styles.cardAction}>
+              <Text style={[styles.actionLabel, { color: colors.accent }]}>Manage</Text>
+              <Text style={[styles.chevron, { color: colors.accent }]}>›</Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Manage text-to-speech models"
+            onPress={() => router.push("/ai/tts-models" as Href)}
+            style={({ pressed }) => [
+              styles.card,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <View style={styles.cardText}>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Text-to-Speech Models</Text>
+              <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>
+                Local voices for private, on-device speech synthesis.
               </Text>
             </View>
             <View style={styles.cardAction}>

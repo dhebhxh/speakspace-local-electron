@@ -72,7 +72,7 @@ export default function TtsModelsScreen() {
   ]);
 
   return <View style={[styles.screen, { backgroundColor: colors.background }]}>
-    <Stack.Screen options={{ title: "TTS Models" }} />
+    <Stack.Screen options={{ title: "Text-to-Speech Models" }} />
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.content, { paddingBottom: Spacing.xxl + insets.bottom }]}>
       <View style={styles.heading}><Text style={[styles.subtitle, { color: colors.textMuted }]}>Download voices for private speech synthesis with sherpa-onnx on this device.</Text></View>
       {state.status === "error" && <Text style={[styles.error, { color: colors.danger }]}>{state.message}</Text>}

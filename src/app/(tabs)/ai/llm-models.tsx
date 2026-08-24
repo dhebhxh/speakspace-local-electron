@@ -150,7 +150,7 @@ export default function LlmModelsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: "LLM Models" }} />
+      <Stack.Screen options={{ title: "Large Language Models" }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[

@@ -535,7 +535,7 @@ export default function AskAiScreen() {
                     onPress={() => void loadHistory()}
                   />
                   <AppButton
-                    label="LLM Models"
+                    label="Large Language Models"
                     variant="quiet"
                     onPress={() => router.push("/ai/llm-models" as Href)}
                   />

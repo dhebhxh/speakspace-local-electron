@@ -64,7 +64,7 @@ export function SpeechPlaybackButton({
               onPress={() => router.push("/ai/tts-models" as Href)}
               style={({ pressed }) => pressed && styles.pressed}
             >
-              <Text style={[styles.modelsLink, { color: colors.accent }]}>Open TTS Models</Text>
+              <Text style={[styles.modelsLink, { color: colors.accent }]}>Open Text-to-Speech Models</Text>
             </Pressable>
           )}
         </View>

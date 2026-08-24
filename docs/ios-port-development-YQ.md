@@ -625,6 +625,21 @@ xcodebuild \
 
 这些限制是针对毕设演示、iPhone 内存和开发周期做出的明确取舍，不是隐藏的未完成状态。后续若扩大范围，应优先从真实用户测试中确认搜索召回、三 Note 上限和固定 recurrence 是否确实成为阻塞，再决定是否增加索引或编辑器复杂度。
 
+### 11.10 iOS v1.3.0 稳定版封版
+
+桌面核心功能对齐完成后，应用版本提升为 `1.3.0`，iOS build number 提升为 `4`。本次沿用项目既有的双产物流程：公开 SideStore IPA 来自中性、未签名的 iPhoneOS Release；Xcode 真机包使用同一源码和同一 Bundle ID 由本机 Personal Team 签名。`ios/` 继续由 Expo Prebuild 生成并被 Git 忽略，个人证书、Team ID、provisioning profile、DerivedData 和 Xcode 测试附件均不进入仓库。
+
+发布前从干净 Expo Prebuild 重新安装 123 个 CocoaPods 依赖，Xcode 完整构建 139-target dependency graph 并返回 `BUILD SUCCEEDED`。自动 Release verifier 确认包内版本 `1.3.0 (4)`、最低 iOS 16.4、`UIDeviceFamily = [1]`、arm64 和 4,588,301-byte 离线 JavaScript bundle。打包器递归移除签名材料后生成 `SpeakSpace-iOS-v1.3.0.ipa`，大小 33,867,585 bytes，SHA-256 为 `7088d98be6f2cffe8328b01b7dc1d2e2ca6be0541a9bdd0784ba18a8f464e3f5`；ZIP 完整性、独立校验和复算和 archive entry 扫描全部通过。
+
+同一源码的签名 Release 通过自动 verifier 和 `codesign --verify --deep --strict`，再通过 Xcode 工具链覆盖安装到 iPhone 16 Pro Max。设备应用清单确认运行版本为 `1.3.0 (4)`，应用脱离 Metro 正常启动。覆盖安装后复制 SQLite 复检，schema 仍为 v10，完整性检查为 `ok`、外键检查无记录，并保留 4 Notes、2 Workspaces、1 个三 Note conversation、1 template、1 Knowledge result 和 3 Tasks，说明版本升级没有破坏本轮验收数据。
+
+发布质量门最终为 71 passed、0 failed；TypeScript、Expo Doctor 21/21、Expo 依赖版本检查和 Git diff 检查通过，Lint 为 0 error、16 warnings。安全审计没有 high/critical，仍有 12 个 Expo 工具链传递依赖的 moderate；强制修复会降级到 Expo 46，因此继续等待兼容的上游更新。上一稳定版 `ios-v1.2.0` 与对应 IPA 保留为回滚点，数据库迁移保持只向前升级，不通过卸载 App 回退本地数据。
+
+> Evidence:
+> - Source: `app.json`, `package.json`, `CHANGELOG.md`, `docs/ios-release-v1.3.0-YQ.md`, `scripts/verify-ios-release.mjs`, `scripts/package-ios-sidestore.mjs`
+> - Method: 版本一致性检查、干净 Prebuild、未签名 Release 全量构建、包内 metadata/架构检查、IPA 签名材料扫描和 SHA-256 复算、签名 Release 覆盖安装与设备数据库复检
+> - Confidence: High；外部 Windows + SideStore 安装与七天刷新仍由组员补充验收
+
 ## 十二、参考资料
 
 - Expo SDK 57 app config：<https://docs.expo.dev/versions/v57.0.0/config/app/>

@@ -2,7 +2,7 @@
 
 ## 发布定位
 
-`ios-v1.2.0` 是当前 iPhone 稳定顶版，基于团队仓库 `main` 封版。它不发布到 App Store；组员可在 Mac 上使用 Xcode 覆盖安装，也可在 Windows 上使用 SideStore 和自己的 Apple Account 对公开 IPA 重新签名。
+`ios-v1.2.0` 是上一版 iPhone 稳定版，基于团队仓库 `main` 封版。当前稳定顶版见 `ios-v1.3.0`；本记录保留用于回滚审计。它不发布到 App Store；组员可在 Mac 上使用 Xcode 覆盖安装，也可在 Windows 上使用 SideStore 和自己的 Apple Account 对公开 IPA 重新签名。
 
 本版重点修复 Ask AI 根据当前笔记回答、会话持久化、Structured Note 可读结果，以及编辑弹窗与 iPhone 状态栏冲突。Android 不在本次验收范围内。
 

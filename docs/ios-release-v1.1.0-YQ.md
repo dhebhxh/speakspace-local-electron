@@ -2,7 +2,7 @@
 
 ## 发布定位
 
-`ios-v1.1.0` 是上一版 iPhone 稳定版，基于已合入团队仓库 `main` 的主题、Task 和本地 TTS 功能封版。当前稳定顶版见 `ios-v1.2.0`；本记录保留用于回滚审计。它不发布到 App Store；团队成员使用 SideStore 和自己的 Apple Account 对 IPA 重新签名。
+`ios-v1.1.0` 是历史 iPhone 稳定版，基于已合入团队仓库 `main` 的主题、Task 和本地 TTS 功能封版。当前稳定顶版见 `ios-v1.3.0`；本记录保留用于回滚审计。它不发布到 App Store；团队成员使用 SideStore 和自己的 Apple Account 对 IPA 重新签名。
 
 ## 本版功能
 

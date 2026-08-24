@@ -2,6 +2,30 @@
 
 本文件记录 SpeakSpace Local Mobile 面向组内测试的稳定版本。iOS 安装包不发布到 App Store，二进制资产附在团队仓库对应的 GitHub Release 中。
 
+## [1.3.0] - 2026-08-24
+
+### Added
+
+- Settings 新增统一 Trash，覆盖 Note、Workspace、Ask AI conversation 和自定义 Knowledge template，并支持恢复与永久删除。
+- Home、Workspace 和 Search 新增长按多选，可批量移动、移入 Trash、置顶和取消置顶。
+- Ask AI 支持同时选择最多三篇 Note，自定义 Knowledge template 支持结构草稿、编辑和不可变生成历史。
+- Note 保存后自动分类并允许手动修改；搜索使用本地关键词与有限错拼匹配，不需要下载 Embedding 模型。
+- Task 支持置顶，以及 daily、weekdays、weekly、biweekly 和 monthly 五种滚动周期。
+
+### Changed
+
+- 多 Note Ask AI 按 Note 均衡分配上下文，内容较长时优先给出有边界的 best-effort answer；聊天界面不显示来源列表。
+- 删除流程由立即删除改为 soft delete；永久删除在事务内处理关联数据，再清理音频文件。
+- Expo SDK 57 依赖对齐到官方推荐 patch，并重新同步 CocoaPods 和真机 Release 构建。
+
+### Fixed
+
+- 修复批量操作部分成功时可能留下不一致状态的问题，整批操作现在在同一 SQLite 事务内提交或回滚。
+- 修复单 Note 与多 Note 会话可能错误恢复到不同来源集合的问题。
+- 修复周期 Task 完成后重复生成、遗漏工作日跳转或恢复到错误 occurrence 的边界情况。
+
+发布记录：[SpeakSpace iOS v1.3.0](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.3.0)
+
 ## [1.2.0] - 2026-08-24
 
 ### Added

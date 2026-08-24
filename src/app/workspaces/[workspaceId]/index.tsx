@@ -4,9 +4,6 @@ import {
     Alert,
     InputAccessoryView,
     Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -18,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
+import { SafeAreaModal } from "@/components/safe-area-modal";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
@@ -263,117 +261,92 @@ export default function WorkspaceDetailScreen() {
         )}
       </ScrollView>
 
-      <Modal
-        animationType="slide"
-        transparent
+      <SafeAreaModal
+        androidKeyboardBehavior="height"
         visible={isModalVisible}
         onRequestClose={() => setIsModalVisible(false)}
       >
-        <KeyboardAvoidingView
-          behavior={process.env.EXPO_OS === "ios" ? "padding" : "height"}
-          style={styles.modalBackdrop}
-        >
-          <ScrollView
-            style={styles.modalScroll}
-            contentContainerStyle={[
-              styles.modal,
-              {
-                backgroundColor: colors.surface,
-                paddingBottom: Spacing.lg + insets.bottom,
-              },
-            ]}
-            keyboardDismissMode={
-              Platform.OS === "ios" ? "interactive" : "on-drag"
-            }
-            keyboardShouldPersistTaps="handled"
+        <View style={styles.modalHeader}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>
+            {modalMode === "rename" ? "Rename workspace" : "New note"}
+          </Text>
+          <Pressable
+            hitSlop={10}
+            onPress={() => {
+              Keyboard.dismiss();
+              setIsModalVisible(false);
+            }}
+            accessibilityLabel="Close"
           >
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>
-                {modalMode === "rename" ? "Rename workspace" : "New note"}
-              </Text>
+            <Text style={[styles.close, { color: colors.textMuted }]}>Close</Text>
+          </Pressable>
+        </View>
+        <Text style={[styles.label, { color: colors.textMuted }]}>
+          {modalMode === "rename" ? "Workspace name" : "Title (optional)"}
+        </Text>
+        <TextInput
+          placeholder={modalMode === "rename" ? "Workspace name" : "e.g. Team meeting"}
+          placeholderTextColor={colors.textMuted}
+          value={noteName}
+          onChangeText={setNoteName}
+          style={[
+            styles.input,
+            { borderColor: colors.border, color: colors.text },
+          ]}
+        />
+        {modalMode === "create-note" && <>
+          <Text style={[styles.label, { color: colors.textMuted }]}>Transcript</Text>
+          <TextInput
+            multiline
+            inputAccessoryViewID={TRANSCRIPT_INPUT_ACCESSORY_ID}
+            placeholder="Write the note transcript..."
+            placeholderTextColor={colors.textMuted}
+            textAlignVertical="top"
+            value={transcript}
+            onChangeText={setTranscript}
+            style={[
+              styles.input,
+              styles.transcriptInput,
+              { borderColor: colors.border, color: colors.text },
+            ]}
+          />
+        </>}
+        {formError && (
+          <Text style={[styles.formError, { color: colors.danger }]}>{formError}</Text>
+        )}
+        <AppButton
+          label={isSaving ? "Saving..." : modalMode === "rename" ? "Save name" : "Create note"}
+          disabled={isSaving}
+          onPress={() => void (modalMode === "rename" ? renameWorkspace() : createNote())}
+        />
+        {process.env.EXPO_OS === "ios" && modalMode === "create-note" && (
+          <InputAccessoryView nativeID={TRANSCRIPT_INPUT_ACCESSORY_ID}>
+            <View
+              style={[
+                styles.inputAccessory,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
               <Pressable
-                hitSlop={10}
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setIsModalVisible(false);
-                }}
-                accessibilityLabel="Close"
+                onPress={Keyboard.dismiss}
+                accessibilityRole="button"
               >
-                <Text style={[styles.close, { color: colors.textMuted }]}>
-                  Close
+                <Text
+                  style={[
+                    styles.inputAccessoryAction,
+                    { color: colors.accent },
+                  ]}
+                >
+                  Done
                 </Text>
               </Pressable>
             </View>
-            <Text style={[styles.label, { color: colors.textMuted }]}>
-              {modalMode === "rename" ? "Workspace name" : "Title (optional)"}
-            </Text>
-            <TextInput
-              placeholder={modalMode === "rename" ? "Workspace name" : "e.g. Team meeting"}
-              placeholderTextColor={colors.textMuted}
-              value={noteName}
-              onChangeText={setNoteName}
-              style={[
-                styles.input,
-                { borderColor: colors.border, color: colors.text },
-              ]}
-            />
-            {modalMode === "create-note" && <><Text style={[styles.label, { color: colors.textMuted }]}>
-              Transcript
-            </Text>
-            <TextInput
-              multiline
-              inputAccessoryViewID={TRANSCRIPT_INPUT_ACCESSORY_ID}
-              placeholder="Write the note transcript..."
-              placeholderTextColor={colors.textMuted}
-              textAlignVertical="top"
-              value={transcript}
-              onChangeText={setTranscript}
-              style={[
-                styles.input,
-                styles.transcriptInput,
-                { borderColor: colors.border, color: colors.text },
-              ]}
-            /></>}
-            {formError && (
-              <Text style={[styles.formError, { color: colors.danger }]}>
-                {formError}
-              </Text>
-            )}
-            <AppButton
-              label={isSaving ? "Saving..." : modalMode === "rename" ? "Save name" : "Create note"}
-              disabled={isSaving}
-              onPress={() => void (modalMode === "rename" ? renameWorkspace() : createNote())}
-            />
-          </ScrollView>
-          {process.env.EXPO_OS === "ios" && (
-            <InputAccessoryView nativeID={TRANSCRIPT_INPUT_ACCESSORY_ID}>
-              <View
-                style={[
-                  styles.inputAccessory,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
-                <Pressable
-                  onPress={Keyboard.dismiss}
-                  accessibilityRole="button"
-                >
-                  <Text
-                    style={[
-                      styles.inputAccessoryAction,
-                      { color: colors.accent },
-                    ]}
-                  >
-                    Done
-                  </Text>
-                </Pressable>
-              </View>
-            </InputAccessoryView>
-          )}
-        </KeyboardAvoidingView>
-      </Modal>
+          </InputAccessoryView>
+        )}
+      </SafeAreaModal>
     </View>
   );
 }
@@ -397,18 +370,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 24, fontWeight: "800" },
   list: { gap: Spacing.md },
-  modalBackdrop: {
-    backgroundColor: "rgba(0, 0, 0, 0.36)",
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  modal: {
-    borderTopLeftRadius: Radius.lg,
-    borderTopRightRadius: Radius.lg,
-    gap: Spacing.md,
-    padding: Spacing.lg,
-  },
-  modalScroll: { maxHeight: "92%" },
   inputAccessory: {
     alignItems: "flex-end",
     borderTopWidth: StyleSheet.hairlineWidth,

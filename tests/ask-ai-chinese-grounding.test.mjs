@@ -64,3 +64,26 @@ test("a transcript overview cannot silently drop recorded dates", () => {
     [],
   );
 });
+
+test("Chinese Ask AI recognizes common factual intents", () => {
+  assert.equal(
+    typeof evidenceText.detectChineseRetrievalIntent,
+    "function",
+  );
+  assert.equal(evidenceText.detectChineseRetrievalIntent("谁负责 iOS 开发？"), "responsibility");
+  assert.equal(evidenceText.detectChineseRetrievalIntent("小王要干什么？"), "capability-or-action");
+  assert.equal(evidenceText.detectChineseRetrievalIntent("小王在做什么？"), "capability-or-action");
+  assert.equal(evidenceText.detectChineseRetrievalIntent("项目什么时候完成？"), "time-or-date");
+  assert.equal(evidenceText.detectChineseRetrievalIntent("为什么选择本地模型？"), "reason-or-cause");
+  assert.equal(evidenceText.detectChineseRetrievalIntent("需要完成多少个任务？"), "quantity");
+  assert.equal(evidenceText.detectChineseRetrievalIntent("谁开发了这个应用？"), "creator-or-authorship");
+  assert.equal(evidenceText.detectChineseQuestionKind("是否需要下载模型？"), "yes-no");
+});
+
+test("Chinese Ask AI recognizes grounded follow-up references", () => {
+  assert.equal(typeof evidenceText.detectChineseFollowUpReason, "function");
+  assert.equal(evidenceText.detectChineseFollowUpReason("他什么时候完成？"), "pronoun");
+  assert.equal(evidenceText.detectChineseFollowUpReason("这个呢？"), "demonstrative");
+  assert.equal(evidenceText.detectChineseFollowUpReason("然后呢？"), "ellipsis");
+  assert.equal(evidenceText.detectChineseFollowUpReason("项目由小王负责吗？"), null);
+});

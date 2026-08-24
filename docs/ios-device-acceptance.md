@@ -119,6 +119,38 @@ Do not use the expected text as an inference prompt.
 | Two-hour limit automatically finishes the recording | | |
 | Screen remains awake while active foreground recording runs | | |
 
+## v1.2.0 targeted regression supplement
+
+This supplement records the 2026-08-24 regression work for the Ask AI,
+Structured Note, and editor-modal fixes. It does not mark the unfilled audio,
+long-recording, or external SideStore rows above as passed.
+
+| Field | Result |
+| --- | --- |
+| Test date | 2026-08-24 |
+| App version | `1.2.0 (3)` |
+| Device | iPhone 16 Pro Max, iOS 27.0 |
+| Bundle identifier | `com.dhebhxh.speakspacelocalmobile` |
+| Install method | Xcode-signed Release, same-bundle-ID overwrite |
+| Test data | 3 fresh local notes; Chinese grounding, ordinary English prose, dense English intents |
+
+| Targeted gate | Result | Evidence or notes |
+| --- | --- | --- |
+| Ask AI answers supported Chinese responsibility and date questions | PASS | Direct transcript evidence and bilingual automated regression; the device samples remain available for manual acceptance |
+| Ask AI rejects unsupported questions without inventing facts | PASS | Negative and cross-subject automated cases |
+| Ask AI waiting state and conversation restore | PASS | Queued/generating UI and SQLite repository/service tests |
+| Structured Note ordinary and multi-intent inputs | PASS | 2 true-device tests in the ordinary/multi result bundle |
+| Structured Note dense output recovery | PASS | 1 true-device dense-input test; output-limit and recursive recovery unit coverage |
+| Structured Note cleanup and semantic filtering | PASS | 1 true-device cleanup test; completed/negated/noise filtering unit coverage |
+| Move note and all blocking editor modals respect the iOS safe area | PASS | Shared `SafeAreaModal`, modal inventory regression test, physical-device layout check |
+| Signed Release verifier and strict code-sign verification | PASS | iPhone-only, arm64, minimum iOS 16.4, embedded JS bundle, valid signature |
+| Overwrite install preserves local model and notes | PASS | Device still contains Qwen model and exactly 3 fresh test notes |
+| App launches without Metro and remains running | PASS | `devicectl` launch and process-list confirmation |
+| Copied SQLite database integrity | PASS | `PRAGMA integrity_check` returned `ok` |
+
+Local `.xcresult` bundles are intentionally not committed. The release record
+and reproducible source/test commands remain in the repository.
+
 ## Final decision
 
 The iPhone migration passes only when every required row above passes, both

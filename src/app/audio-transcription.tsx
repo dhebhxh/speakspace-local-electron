@@ -3,9 +3,6 @@ import { File } from "expo-file-system";
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
+import { SafeAreaModal } from "@/components/safe-area-modal";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import type { Workspace } from "@/domain/workspace/workspace";
 import { validateImportedAudio } from "@/domain/audio-import/audio-import";
@@ -284,25 +282,21 @@ export default function AudioTranscriptionScreen() {
         {error !== null && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
       </ScrollView>
 
-      <Modal visible={showSave} animationType="slide" transparent onRequestClose={() => setShowSave(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalBackdrop}>
-          <ScrollView contentContainerStyle={[styles.modal, { backgroundColor: colors.surface, paddingBottom: Spacing.lg + insets.bottom }]} keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"} keyboardShouldPersistTaps="handled">
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Save transcription</Text>
-            <Text style={[styles.label, { color: colors.textMuted }]}>Note name</Text>
-            <TextInput value={noteName} onChangeText={setNoteName} placeholder="e.g. Interview recording" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
-            <Text style={[styles.label, { color: colors.textMuted }]}>Workspace</Text>
-            <View style={styles.workspaceList}>
-              {workspaces.map((workspace) => {
-                const active = workspace.getId() === selectedWorkspaceId;
-                return <Pressable key={workspace.getId()} onPress={() => setSelectedWorkspaceId(workspace.getId())} style={[styles.workspace, { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accentSoft : colors.background }]}><Text style={{ color: colors.text, fontWeight: active ? "800" : "500" }}>{workspace.getName()}</Text></Pressable>;
-              })}
-            </View>
-            {error !== null && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
-            <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0} onPress={() => void save()} />
-            <AppButton label="Cancel" variant="quiet" disabled={isSaving} onPress={() => setShowSave(false)} />
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Modal>
+      <SafeAreaModal visible={showSave} onRequestClose={() => setShowSave(false)}>
+        <Text style={[styles.modalTitle, { color: colors.text }]}>Save transcription</Text>
+        <Text style={[styles.label, { color: colors.textMuted }]}>Note name</Text>
+        <TextInput value={noteName} onChangeText={setNoteName} placeholder="e.g. Interview recording" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
+        <Text style={[styles.label, { color: colors.textMuted }]}>Workspace</Text>
+        <View style={styles.workspaceList}>
+          {workspaces.map((workspace) => {
+            const active = workspace.getId() === selectedWorkspaceId;
+            return <Pressable key={workspace.getId()} onPress={() => setSelectedWorkspaceId(workspace.getId())} style={[styles.workspace, { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accentSoft : colors.background }]}><Text style={{ color: colors.text, fontWeight: active ? "800" : "500" }}>{workspace.getName()}</Text></Pressable>;
+          })}
+        </View>
+        {error !== null && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
+        <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0} onPress={() => void save()} />
+        <AppButton label="Cancel" variant="quiet" disabled={isSaving} onPress={() => setShowSave(false)} />
+      </SafeAreaModal>
     </View>
   );
 }
@@ -323,8 +317,6 @@ const styles = StyleSheet.create({
   status: { fontSize: 14, fontWeight: "800" },
   body: { fontSize: 18, lineHeight: 29 },
   actions: { gap: Spacing.sm },
-  modalBackdrop: { backgroundColor: "rgba(0,0,0,0.36)", flex: 1, justifyContent: "flex-end" },
-  modal: { borderTopLeftRadius: Radius.lg, borderTopRightRadius: Radius.lg, gap: Spacing.md, padding: Spacing.lg },
   modalTitle: { fontSize: 24, fontWeight: "800" },
   label: { fontSize: 14, fontWeight: "700" },
   input: { borderRadius: Radius.sm, borderWidth: 1, fontSize: 16, minHeight: 48, paddingHorizontal: Spacing.md },

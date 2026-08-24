@@ -86,11 +86,14 @@ function findWeekday(value: string): number | null {
   return null;
 }
 function parseExplicitDate(value: string): Date | null {
-  const match = value.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/) ?? value.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
+  const numeric = value.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/) ?? value.match(/(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日/);
+  const english = value.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})\b/);
+  if (!numeric && !english) return null;
+  const year = Number(numeric?.[1] ?? english?.[3]);
+  const month = numeric
+    ? Number(numeric[2])
+    : ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"].indexOf(english![2]) + 1;
+  const day = Number(numeric?.[3] ?? english?.[1]);
   const date = new Date(year, month - 1, day);
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
 }
@@ -100,6 +103,10 @@ function parseClockTime(value: string): { hour: number; minute: number } | null 
     let hour = Number(english[1]) % 12;
     if (english[3] === "pm") hour += 12;
     return { hour, minute: Number(english[2] ?? 0) };
+  }
+  const twentyFourHour = value.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  if (twentyFourHour) {
+    return { hour: Number(twentyFourHour[1]), minute: Number(twentyFourHour[2]) };
   }
   const chinese = value.match(/(上午|早上|中午|下午|晚上)?\s*(\d{1,2}|[一二三四五六七八九十]+)\s*[点时](?:\s*(\d{1,2})\s*分?)?/);
   if (!chinese) return null;

@@ -1,11 +1,11 @@
 import { requestRecordingPermissionsAsync } from "expo-audio";
 import { Stack, type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
+import { useHeaderHeight } from "expo-router/react-navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
-  Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
@@ -23,6 +23,7 @@ import { AppButton } from "@/components/app-button";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
+import { SafeAreaModal } from "@/components/safe-area-modal";
 import { SpeechPlaybackButton } from "@/components/speech-playback-button";
 import {
   NO_ACTIVE_LLM_ERROR,
@@ -33,6 +34,7 @@ import type { AiMessage } from "@/domain/ai-message/ai-message";
 import type { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
 import type { AiConversationHistoryItem } from "@/services/ai-conversation-service";
+import type { LlmGenerationSnapshot } from "@/services/llm-inference-service";
 import { formatDate } from "@/utils/format-date";
 
 type ScreenState =
@@ -66,6 +68,7 @@ function errorMessage(error: unknown): string {
 export default function AskAiScreen() {
   const params = useLocalSearchParams<{
     conversationId?: string;
+    mode?: string;
     noteId?: string;
   }>();
   const router = useRouter();
@@ -83,7 +86,11 @@ export default function AskAiScreen() {
   const [state, setState] = useState<ScreenState>({ status: "loading" });
   const [input, setInput] = useState("");
   const [streamingText, setStreamingText] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isLocallyGenerating, setIsLocallyGenerating] = useState(false);
+  const [generationSnapshot, setGenerationSnapshot] =
+    useState<LlmGenerationSnapshot>(() =>
+      llmInferenceService.getGenerationSnapshot(),
+    );
   const [notice, setNotice] = useState<string | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [historyVisible, setHistoryVisible] = useState(false);
@@ -93,6 +100,12 @@ export default function AskAiScreen() {
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>("idle");
   const [voiceText, setVoiceText] = useState("");
   const scrollViewRef = useRef<ScrollView | null>(null);
+  const isMountedRef = useRef(true);
+  const observedGenerationConversationRef = useRef<string | null>(
+    generationSnapshot.status === "running"
+      ? generationSnapshot.conversationId
+      : null,
+  );
   const generationInFlightRef = useRef(false);
   const retryInFlightRef = useRef(false);
   const sendInFlightRef = useRef(false);
@@ -100,9 +113,18 @@ export default function AskAiScreen() {
     useState(true);
 
   const routeConversationId = firstParam(params.conversationId);
+  const routeMode = firstParam(params.mode);
   const routeNoteId = firstParam(params.noteId);
   const isPersisted = state.status === "ready" && state.conversationId !== null;
-  const isBusy = isGenerating || voiceStatus !== "idle";
+  const isServiceGeneratingCurrentConversation =
+    generationSnapshot.status === "running" &&
+    state.status === "ready" &&
+    state.conversationId === generationSnapshot.conversationId;
+  const isGenerating =
+    isLocallyGenerating || isServiceGeneratingCurrentConversation;
+  const isAnyGenerationActive =
+    isLocallyGenerating || generationSnapshot.status === "running";
+  const isBusy = isAnyGenerationActive || voiceStatus !== "idle";
   const latestMessage =
     state.status === "ready" ? (state.messages.at(-1) ?? null) : null;
   const hasUnansweredUserMessage =
@@ -158,6 +180,26 @@ export default function AskAiScreen() {
         transcriptNotes[0] ??
         null;
 
+      const resumeTarget =
+        routeMode !== "new" && routeNoteId !== null
+          ? await aiConversationService.getResumeTargetForNote(routeNoteId)
+          : null;
+      if (resumeTarget !== null) {
+        const resumeConversationId = resumeTarget.getId();
+        const messages =
+          await aiConversationService.getCanonicalMessages(resumeConversationId);
+        setState({
+          status: "ready",
+          transcriptNotes,
+          selectedNote,
+          messages,
+          conversationId: resumeConversationId,
+          hasActiveModel,
+          activeModelFileExists,
+        });
+        return;
+      }
+
       setState({
         status: "ready",
         transcriptNotes,
@@ -174,7 +216,43 @@ export default function AskAiScreen() {
 
   useEffect(() => {
     void load();
-  }, [routeConversationId, routeNoteId]);
+  }, [routeConversationId, routeMode, routeNoteId]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(
+    () =>
+      llmInferenceService.subscribeToGeneration((snapshot) => {
+        const completedConversationId =
+          snapshot.status === "idle"
+            ? observedGenerationConversationRef.current
+            : null;
+        observedGenerationConversationRef.current =
+          snapshot.status === "running" ? snapshot.conversationId : null;
+        setGenerationSnapshot(snapshot);
+
+        if (completedConversationId !== null) {
+          void aiConversationService
+            .getCanonicalMessages(completedConversationId)
+            .then((messages) => {
+              if (!isMountedRef.current) return;
+              setState((previous) =>
+                previous.status === "ready" &&
+                previous.conversationId === completedConversationId
+                  ? { ...previous, messages }
+                  : previous,
+              );
+            })
+            .catch(() => undefined);
+        }
+      }),
+    [aiConversationService, llmInferenceService],
+  );
 
   useEffect(
     () => () => {
@@ -205,6 +283,7 @@ export default function AskAiScreen() {
     const messages = await aiConversationService.getCanonicalMessages(
       conversationId,
     );
+    if (!isMountedRef.current) return;
     setState((previous) =>
       previous.status === "ready" && previous.conversationId === conversationId
         ? { ...previous, messages }
@@ -213,12 +292,12 @@ export default function AskAiScreen() {
   };
 
   const claimGeneration = (): boolean => {
-    if (generationInFlightRef.current) {
+    if (generationInFlightRef.current || llmInferenceService.getIsGenerating()) {
       return false;
     }
 
     generationInFlightRef.current = true;
-    setIsGenerating(true);
+    setIsLocallyGenerating(true);
     return true;
   };
 
@@ -228,24 +307,28 @@ export default function AskAiScreen() {
 
     try {
       await llmInferenceService.generate(conversationId, {
-        onToken: (tokenText) =>
-          setStreamingText((previous) => previous + tokenText),
+        onToken: (tokenText) => {
+          if (!isMountedRef.current) return;
+          setStreamingText((previous) => previous + tokenText);
+        },
       });
-      setStreamingText("");
+      if (isMountedRef.current) setStreamingText("");
       await refreshMessages(conversationId);
-      setNotice(null);
+      if (isMountedRef.current) setNotice(null);
     } catch (error) {
       const message = errorMessage(error);
-      setNotice(
-        message === TRANSCRIPT_TOO_LONG_ERROR
-          ? TRANSCRIPT_TOO_LONG_ERROR
-          : message,
-      );
-      setStreamingText("");
+      if (isMountedRef.current) {
+        setNotice(
+          message === TRANSCRIPT_TOO_LONG_ERROR
+            ? TRANSCRIPT_TOO_LONG_ERROR
+            : message,
+        );
+        setStreamingText("");
+      }
       await refreshMessages(conversationId).catch(() => undefined);
     } finally {
       generationInFlightRef.current = false;
-      setIsGenerating(false);
+      if (isMountedRef.current) setIsLocallyGenerating(false);
     }
   };
 
@@ -289,32 +372,35 @@ export default function AskAiScreen() {
             });
 
       generationConversationId = sendResult.conversationId;
-      setInput("");
-      setState((previous) =>
-        previous.status === "ready"
-          ? {
-              ...previous,
-              conversationId: sendResult.conversationId,
-              messages: sendResult.messages,
-            }
-          : previous,
-      );
-
-      await generateForConversation(sendResult.conversationId);
-
-      if (createdNewConversation) {
+      if (isMountedRef.current) {
+        setInput("");
+        setState((previous) =>
+          previous.status === "ready"
+            ? {
+                ...previous,
+                conversationId: sendResult.conversationId,
+                messages: sendResult.messages,
+              }
+            : previous,
+        );
+      }
+      if (createdNewConversation && isMountedRef.current) {
         router.setParams({ conversationId: sendResult.conversationId });
       }
+
+      await generateForConversation(sendResult.conversationId);
     } catch (error) {
       generationInFlightRef.current = false;
-      setIsGenerating(false);
+      if (isMountedRef.current) setIsLocallyGenerating(false);
       const message = errorMessage(error);
-      setNotice(
-        message === TRANSCRIPT_TOO_LONG_ERROR
-          ? TRANSCRIPT_TOO_LONG_ERROR
-          : message,
-      );
-      setStreamingText("");
+      if (isMountedRef.current) {
+        setNotice(
+          message === TRANSCRIPT_TOO_LONG_ERROR
+            ? TRANSCRIPT_TOO_LONG_ERROR
+            : message,
+        );
+        setStreamingText("");
+      }
       if (generationConversationId !== null) {
         await refreshMessages(generationConversationId).catch(() => undefined);
       }
@@ -348,6 +434,7 @@ export default function AskAiScreen() {
       const canonicalLastMessage = canonicalMessages.at(-1) ?? null;
 
       if (canonicalLastMessage?.getRole() === "assistant") {
+        if (!isMountedRef.current) return;
         setStreamingText("");
         setNotice(null);
         setState((previous) =>
@@ -357,38 +444,42 @@ export default function AskAiScreen() {
             : previous,
         );
         generationInFlightRef.current = false;
-        setIsGenerating(false);
+        setIsLocallyGenerating(false);
         return;
       }
 
       if (canonicalLastMessage?.getRole() !== "user") {
         generationInFlightRef.current = false;
-        setIsGenerating(false);
+        if (isMountedRef.current) setIsLocallyGenerating(false);
         await refreshMessages(state.conversationId).catch(() => undefined);
         return;
       }
 
-      setState((previous) =>
-        previous.status === "ready" &&
-        previous.conversationId === state.conversationId
-          ? { ...previous, messages: canonicalMessages }
-          : previous,
-      );
+      if (isMountedRef.current) {
+        setState((previous) =>
+          previous.status === "ready" &&
+          previous.conversationId === state.conversationId
+            ? { ...previous, messages: canonicalMessages }
+            : previous,
+        );
+      }
       handedOffToGeneration = true;
       await generateForConversation(state.conversationId);
     } catch (error) {
       const message = errorMessage(error);
-      setNotice(
-        message === TRANSCRIPT_TOO_LONG_ERROR
-          ? TRANSCRIPT_TOO_LONG_ERROR
-          : message,
-      );
-      setStreamingText("");
+      if (isMountedRef.current) {
+        setNotice(
+          message === TRANSCRIPT_TOO_LONG_ERROR
+            ? TRANSCRIPT_TOO_LONG_ERROR
+            : message,
+        );
+        setStreamingText("");
+      }
       await refreshMessages(state.conversationId).catch(() => undefined);
     } finally {
       if (!handedOffToGeneration) {
         generationInFlightRef.current = false;
-        setIsGenerating(false);
+        if (isMountedRef.current) setIsLocallyGenerating(false);
       }
       retryInFlightRef.current = false;
     }
@@ -418,6 +509,15 @@ export default function AskAiScreen() {
     } as unknown as Href);
   };
 
+  const startNewConversation = () => {
+    const noteId =
+      state.status === "ready" ? state.selectedNote?.getId() : undefined;
+    router.replace({
+      pathname: "/ask-ai",
+      params: noteId === undefined ? { mode: "new" } : { noteId, mode: "new" },
+    } as unknown as Href);
+  };
+
   const handleMessageScroll = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
   ) => {
@@ -428,7 +528,7 @@ export default function AskAiScreen() {
   };
 
   const startVoice = async () => {
-    if (isGenerating || voiceStatus !== "idle") return;
+    if (isAnyGenerationActive || voiceStatus !== "idle") return;
     Keyboard.dismiss();
     setVoiceStatus("starting");
     setVoiceText("");
@@ -588,7 +688,7 @@ export default function AskAiScreen() {
                       label="New"
                       variant="secondary"
                       disabled={isBusy}
-                      onPress={() => router.replace("/ask-ai" as Href)}
+                      onPress={startNewConversation}
                     />
                   )}
                 </View>
@@ -633,7 +733,7 @@ export default function AskAiScreen() {
                       label="New conversation"
                       variant="secondary"
                       disabled={voiceStatus !== "idle"}
-                      onPress={() => router.replace("/ask-ai" as Href)}
+                      onPress={startNewConversation}
                     />
                     <AppButton
                       label="Retry"
@@ -645,11 +745,15 @@ export default function AskAiScreen() {
               )}
 
               <View style={styles.messages}>
-                {visibleMessages.length === 0 && streamingText.length === 0 && (
-                  <Text style={[styles.placeholder, { color: colors.textMuted }]}>
-                    Start with a question about the selected transcript.
-                  </Text>
-                )}
+                {visibleMessages.length === 0 &&
+                  streamingText.length === 0 &&
+                  !isGenerating && (
+                    <Text
+                      style={[styles.placeholder, { color: colors.textMuted }]}
+                    >
+                      Start with a question about the selected transcript.
+                    </Text>
+                  )}
                 {visibleMessages.map((message) => (
                   <View
                     key={message.getId()}
@@ -698,6 +802,28 @@ export default function AskAiScreen() {
                   >
                     <Text selectable style={[styles.messageText, { color: colors.text }]}>
                       {streamingText}
+                    </Text>
+                  </View>
+                )}
+                {isGenerating && streamingText.length === 0 && (
+                  <View
+                    accessibilityLiveRegion="polite"
+                    accessibilityRole="progressbar"
+                    style={[
+                      styles.messageBubble,
+                      styles.assistantBubble,
+                      styles.workingBubble,
+                      { backgroundColor: colors.surface, borderColor: colors.border },
+                    ]}
+                  >
+                    <ActivityIndicator
+                      accessibilityLabel="AI is working"
+                      color={colors.accent}
+                    />
+                    <Text
+                      style={[styles.workingText, { color: colors.textMuted }]}
+                    >
+                      AI is working…
                     </Text>
                   </View>
                 )}
@@ -800,140 +926,106 @@ export default function AskAiScreen() {
               </View>
             </View>
 
-            <Modal
+            <SafeAreaModal
               visible={pickerVisible}
-              animationType="slide"
-              transparent
               onRequestClose={() => setPickerVisible(false)}
             >
-              <View style={styles.modalBackdrop}>
-                <ScrollView
-                  contentInsetAdjustmentBehavior="automatic"
-                  keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-                  keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={[
-                    styles.modal,
-                    {
-                      backgroundColor: colors.surface,
-                      paddingBottom: Spacing.lg + insets.bottom,
-                    },
-                  ]}
-                >
-                  <View style={styles.modalHeader}>
-                    <Text style={[styles.modalTitle, { color: colors.text }]}>
-                      Choose transcript
-                    </Text>
-                    <Pressable onPress={() => setPickerVisible(false)}>
-                      <Text style={[styles.close, { color: colors.textMuted }]}>
-                        Close
-                      </Text>
-                    </Pressable>
-                  </View>
-                  {state.transcriptNotes.map((note) => {
-                    const selected = note.getId() === state.selectedNote?.getId();
-                    return (
-                      <Pressable
-                        key={note.getId()}
-                        accessibilityRole="button"
-                        onPress={() => {
-                          setState((previous) =>
-                            previous.status === "ready"
-                              ? { ...previous, selectedNote: note }
-                              : previous,
-                          );
-                          setPickerVisible(false);
-                        }}
-                        style={[
-                          styles.pickRow,
-                          {
-                            backgroundColor: selected
-                              ? colors.accentSoft
-                              : colors.background,
-                            borderColor: selected ? colors.accent : colors.border,
-                          },
-                        ]}
-                      >
-                        <Text style={[styles.pickTitle, { color: colors.text }]}>
-                          {noteTitle(note)}
-                        </Text>
-                        <Text style={[styles.pickMeta, { color: colors.textMuted }]}>
-                          {formatDate(note.getUpdatedAt())}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
+                  Choose transcript
+                </Text>
+                <Pressable onPress={() => setPickerVisible(false)}>
+                  <Text style={[styles.close, { color: colors.textMuted }]}>
+                    Close
+                  </Text>
+                </Pressable>
               </View>
-            </Modal>
+              {state.transcriptNotes.map((note) => {
+                const selected = note.getId() === state.selectedNote?.getId();
+                return (
+                  <Pressable
+                    key={note.getId()}
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setState((previous) =>
+                        previous.status === "ready"
+                          ? { ...previous, selectedNote: note }
+                          : previous,
+                      );
+                      setPickerVisible(false);
+                    }}
+                    style={[
+                      styles.pickRow,
+                      {
+                        backgroundColor: selected
+                          ? colors.accentSoft
+                          : colors.background,
+                        borderColor: selected ? colors.accent : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.pickTitle, { color: colors.text }]}>
+                      {noteTitle(note)}
+                    </Text>
+                    <Text style={[styles.pickMeta, { color: colors.textMuted }]}>
+                      {formatDate(note.getUpdatedAt())}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </SafeAreaModal>
 
-            <Modal
+            <SafeAreaModal
               visible={historyVisible}
-              animationType="slide"
-              transparent
               onRequestClose={() => setHistoryVisible(false)}
             >
-              <View style={styles.modalBackdrop}>
-                <ScrollView
-                  contentInsetAdjustmentBehavior="automatic"
-                  keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-                  keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={[
-                    styles.modal,
-                    {
-                      backgroundColor: colors.surface,
-                      paddingBottom: Spacing.lg + insets.bottom,
-                    },
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
+                  AI History
+                </Text>
+                <Pressable onPress={() => setHistoryVisible(false)}>
+                  <Text style={[styles.close, { color: colors.textMuted }]}>
+                    Close
+                  </Text>
+                </Pressable>
+              </View>
+              {historyError !== null && (
+                <Text style={[styles.errorText, { color: colors.danger }]}>
+                  {historyError}
+                </Text>
+              )}
+              {history.length === 0 && historyError === null && (
+                <Text style={[styles.placeholder, { color: colors.textMuted }]}>
+                  No Ask AI conversations yet.
+                </Text>
+              )}
+              {history.map((item) => (
+                <Pressable
+                  key={item.conversation.getId()}
+                  accessibilityRole="button"
+                  onPress={() => openHistoryItem(item.conversation.getId())}
+                  style={[
+                    styles.pickRow,
+                    { backgroundColor: colors.background, borderColor: colors.border },
                   ]}
                 >
-                  <View style={styles.modalHeader}>
-                    <Text style={[styles.modalTitle, { color: colors.text }]}>
-                      AI History
-                    </Text>
-                    <Pressable onPress={() => setHistoryVisible(false)}>
-                      <Text style={[styles.close, { color: colors.textMuted }]}>
-                        Close
-                      </Text>
-                    </Pressable>
-                  </View>
-                  {historyError !== null && (
-                    <Text style={[styles.errorText, { color: colors.danger }]}>
-                      {historyError}
-                    </Text>
-                  )}
-                  {history.length === 0 && historyError === null && (
-                    <Text style={[styles.placeholder, { color: colors.textMuted }]}>
-                      No Ask AI conversations yet.
-                    </Text>
-                  )}
-                  {history.map((item) => (
-                    <Pressable
-                      key={item.conversation.getId()}
-                      accessibilityRole="button"
-                      onPress={() => openHistoryItem(item.conversation.getId())}
-                      style={[
-                        styles.pickRow,
-                        { backgroundColor: colors.background, borderColor: colors.border },
-                      ]}
+                  <Text style={[styles.pickTitle, { color: colors.text }]}>
+                    {item.conversation.getName()}
+                  </Text>
+                  <Text style={[styles.pickMeta, { color: colors.textMuted }]}>
+                    Based on {noteTitle(item.linkedNotes[0] ?? null)}
+                  </Text>
+                  {item.latestMessage !== null && (
+                    <Text
+                      numberOfLines={2}
+                      style={[styles.pickMeta, { color: colors.textMuted }]}
                     >
-                      <Text style={[styles.pickTitle, { color: colors.text }]}>
-                        {item.conversation.getName()}
-                      </Text>
-                      <Text style={[styles.pickMeta, { color: colors.textMuted }]}>
-                        Based on {noteTitle(item.linkedNotes[0] ?? null)}
-                      </Text>
-                      {item.latestMessage !== null && (
-                        <Text
-                          numberOfLines={2}
-                          style={[styles.pickMeta, { color: colors.textMuted }]}
-                        >
-                          {item.latestMessage.getContent()}
-                        </Text>
-                      )}
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
-            </Modal>
+                      {item.latestMessage.getContent()}
+                    </Text>
+                  )}
+                </Pressable>
+              ))}
+            </SafeAreaModal>
           </View>
         </KeyboardAvoidingView>
       )}
@@ -986,6 +1078,8 @@ const styles = StyleSheet.create({
   userBubble: { alignSelf: "flex-end" },
   assistantBubble: { alignSelf: "flex-start" },
   messageText: { fontSize: 16, lineHeight: 24 },
+  workingBubble: { alignItems: "center", flexDirection: "row", gap: Spacing.sm },
+  workingText: { fontSize: 14, fontWeight: "700" },
   voicePanel: {
     borderRadius: Radius.md,
     borderWidth: 1,
@@ -1011,18 +1105,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: Spacing.sm,
     justifyContent: "flex-end",
-  },
-  modalBackdrop: {
-    backgroundColor: "rgba(0,0,0,0.36)",
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  modal: {
-    borderTopLeftRadius: Radius.lg,
-    borderTopRightRadius: Radius.lg,
-    gap: Spacing.md,
-    maxHeight: "82%",
-    padding: Spacing.lg,
   },
   modalHeader: {
     alignItems: "center",

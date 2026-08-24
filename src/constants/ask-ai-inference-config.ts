@@ -11,6 +11,9 @@ export const ASK_AI_CONFIGURED_N_CTX = 2048;
 /** Tokens reserved for assistant generation (maps to completion n_predict). */
 export const ASK_AI_GENERATION_RESERVE = 512;
 
+/** Hard wall-clock deadline for one queued + running Ask AI turn. */
+export const ASK_AI_GENERATION_DEADLINE_MS = 90_000;
+
 /** Buffer for chat-template and special-token overhead. */
 export const ASK_AI_SAFETY_MARGIN = 64;
 

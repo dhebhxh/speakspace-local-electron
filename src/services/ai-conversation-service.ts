@@ -61,6 +61,16 @@ export class AiConversationService {
     return items;
   }
 
+  public async getResumeTargetForNote(
+    noteId: string,
+  ): Promise<AiConversation | null> {
+    const normalizedNoteId = noteId.trim();
+    if (normalizedNoteId.length === 0) {
+      throw new ValidationError("Note id cannot be empty.");
+    }
+    return this.conversationRepository.findLatestByNoteId(normalizedNoteId);
+  }
+
   public async getConversationOrThrow(id: string): Promise<AiConversation> {
     const conversation = await this.conversationRepository.findById(id);
     if (conversation === null) {

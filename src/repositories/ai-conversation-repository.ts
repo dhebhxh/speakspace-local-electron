@@ -45,6 +45,34 @@ export class AiConversationRepository {
     }
   }
 
+  public async findLatestByNoteId(
+    noteId: string,
+  ): Promise<AiConversation | null> {
+    try {
+      const row = await this.databaseManager
+        .getDatabase()
+        .getFirstAsync<AiConversationRow>(
+          `SELECT c.id, c.name, c.created_at, c.updated_at
+           FROM ai_conversations c
+           INNER JOIN conversation_contexts cc
+             ON cc.conversation_id = c.id
+           WHERE cc.note_id = ?
+             AND EXISTS (
+               SELECT 1 FROM ai_messages m WHERE m.conversation_id = c.id
+             )
+           ORDER BY c.updated_at DESC, c.id DESC
+           LIMIT 1`,
+          noteId,
+        );
+      return row ? this.mapRowToEntity(row) : null;
+    } catch (error) {
+      throw this.toDatabaseError(
+        "Unable to load the latest conversation for this note.",
+        error,
+      );
+    }
+  }
+
   public async create(conversation: AiConversation): Promise<void> {
     try {
       await this.databaseManager.getDatabase().runAsync(

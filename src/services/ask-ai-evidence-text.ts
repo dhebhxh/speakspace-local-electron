@@ -63,6 +63,38 @@ const CJK_STOPWORDS = new Set([
   "什么",
 ]);
 
+const GENERIC_CONTEXT_TOKENS = new Set([
+  "app",
+  "application",
+  "note",
+  "project",
+  "recording",
+  "team",
+  "transcript",
+]);
+
+const CJK_DIRECT_EVIDENCE_QUESTION_NOISE =
+  /(?:当前所选|发生了什么|发生什么|是干什么的|是做什么的|能做什么|可以做什么|能够做什么|要干什么|要做什么|在干什么|在做什么|有什么用|什么时候|什么时间|截止日期|负责人|谁负责|由谁|谁来|是什么|是谁|叫什么|干什么|做什么|干啥|做啥|为什么|哪一天|可不可以|有没有|是不是|请问|所选|为何|怎么|如何|哪里|哪儿|何处|哪天|何时|多少|几个|负责|开发|截止|日期|时间|发生|用途|目的|位置|名称|名字|标题|原因|数量|总数|用来|用于|保存|存储|笔记|转录|转写|记录|录音|内容|里面|里边|这个|那个|这些|那些|一下|什么|谁|哪位|何人|是否|能否|的)/g;
+
+export type ChineseRetrievalIntent =
+  | "name-or-identity"
+  | "purpose-or-utility"
+  | "time-or-date"
+  | "responsibility"
+  | "capability-or-action"
+  | "creator-or-authorship"
+  | "reason-or-cause"
+  | "command-or-procedure"
+  | "location"
+  | "quantity"
+  | "summary-or-overview";
+
+export type ChineseFollowUpReason =
+  | "pronoun"
+  | "ellipsis"
+  | "demonstrative"
+  | "referential-phrase";
+
 export function tokenizeMeaningful(text: string): string[] {
   const tokens: string[] = [];
 
@@ -91,6 +123,71 @@ export function normalizeForSearch(text: string): string {
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+export function hasDirectEvidenceTokenCoverage(
+  question: string,
+  evidence: string[],
+): boolean {
+  if (evidence.length === 0) {
+    return false;
+  }
+
+  const questionAnchors = extractDirectEvidenceQuestionAnchors(question);
+  if (questionAnchors.length === 0) {
+    return false;
+  }
+
+  const combinedEvidence = evidence.join(" ");
+  const compactEvidence = normalizeForSearch(combinedEvidence).replace(
+    /\s+/g,
+    "",
+  );
+  const evidenceTokens = new Set(tokenizeMeaningful(combinedEvidence));
+
+  return questionAnchors.every((anchor) =>
+    CJK_CHARACTER_PATTERN.test(anchor) || /\d+年/.test(anchor)
+      ? compactEvidence.includes(anchor)
+      : evidenceTokens.has(anchor),
+  );
+}
+
+export function hasUnmatchedDirectEvidenceAnchor(
+  question: string,
+  evidence: string[],
+): boolean {
+  const questionAnchors = extractDirectEvidenceQuestionAnchors(question);
+  return (
+    questionAnchors.length > 0 &&
+    !hasDirectEvidenceTokenCoverage(question, evidence)
+  );
+}
+
+function extractDirectEvidenceQuestionAnchors(question: string): string[] {
+  const normalizedQuestion = normalizeForSearch(question);
+  const asciiAnchors = tokenizeMeaningful(normalizedQuestion).filter(
+    (token) =>
+      /^[a-z0-9]+$/.test(token) &&
+      !GENERIC_CONTEXT_TOKENS.has(token),
+  );
+
+  if (!CJK_CHARACTER_PATTERN.test(normalizedQuestion)) {
+    return asciiAnchors;
+  }
+
+  const compactQuestion = normalizedQuestion.replace(/\s+/g, "");
+  const anchorText = compactQuestion.replace(
+    CJK_DIRECT_EVIDENCE_QUESTION_NOISE,
+    " ",
+  );
+  const cjkAnchors = anchorText.match(
+    /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]{2,}/g,
+  ) ?? [];
+  const dateAnchors = anchorText.match(
+    /\d{1,4}年(?:\d{1,2}月)?(?:\d{1,2}[日号])?/g,
+  ) ?? [];
+
+  return [...new Set([...asciiAnchors, ...cjkAnchors, ...dateAnchors])];
 }
 
 function tokenizeCjkRun(run: string): string[] {
@@ -139,6 +236,103 @@ export function isTranscriptOverviewQuestion(question: string): boolean {
     /\b(?:give|provide)\b.*\b(?:overview|summary)\b/.test(
       normalizedQuestion,
     )
+  );
+}
+
+export function detectChineseRetrievalIntent(
+  question: string,
+): ChineseRetrievalIntent | null {
+  const compactQuestion = normalizeForSearch(question).replace(/\s+/g, "");
+  if (!CJK_CHARACTER_PATTERN.test(compactQuestion)) {
+    return null;
+  }
+  if (isTranscriptOverviewQuestion(question)) {
+    return "summary-or-overview";
+  }
+  if (/(?:多少|几(?:个|项|人|次|条|份)?|数量|总数)/.test(compactQuestion)) {
+    return "quantity";
+  }
+  if (/(?:为什么|为何|原因|怎么会|因为什么)/.test(compactQuestion)) {
+    return "reason-or-cause";
+  }
+  if (/(?:哪里|哪儿|何处|位置|存储在哪|保存在哪|放在哪)/.test(compactQuestion)) {
+    return "location";
+  }
+  if (/(?:什么时候|何时|哪天|日期|时间|截止|期限|多久)/.test(compactQuestion)) {
+    return "time-or-date";
+  }
+  if (/(?:谁负责|负责人|由谁|分配给谁|指派给谁|谁来(?:完成|处理|开发))/.test(compactQuestion)) {
+    return "responsibility";
+  }
+  if (/(?:谁|哪位|何人).*(?:创建|开发|设计|编写|发明|制作)/.test(compactQuestion)) {
+    return "creator-or-authorship";
+  }
+  if (/(?:叫什么|名称|名字|标题|名为)/.test(compactQuestion)) {
+    return "name-or-identity";
+  }
+  if (/(?:怎么|如何).*(?:操作|使用|运行|执行|输入|设置|安装|打开|保存|步骤|命令)/.test(compactQuestion)) {
+    return "command-or-procedure";
+  }
+  if (/(?:能做什么|可以做什么|能够做什么|(?:要|在)?(?:干|做)(?:什么|啥)|能否|是否可以|支不支持)/.test(compactQuestion)) {
+    return "capability-or-action";
+  }
+  if (/(?:用途|目的|用来|用于|为了什么|有什么用)/.test(compactQuestion)) {
+    return "purpose-or-utility";
+  }
+  return null;
+}
+
+export function detectChineseFollowUpReason(
+  question: string,
+): ChineseFollowUpReason | null {
+  const compactQuestion = normalizeForSearch(question).replace(/\s+/g, "");
+  if (!CJK_CHARACTER_PATTERN.test(compactQuestion)) {
+    return null;
+  }
+  if (/[他她它](?:们)?(?:是|的|在|会|要|有|负责|什么|哪|何|怎|为|时)/.test(compactQuestion)) {
+    return "pronoun";
+  }
+  if (/(?:这个|那个|这些|那些|这件事|那件事|前者|后者)/.test(compactQuestion)) {
+    return "demonstrative";
+  }
+  if (/(?:同一个|上一个|前一个|之前的|刚才的|第一个|第二个|那个日期|那个人|那个项目)/.test(compactQuestion)) {
+    return "referential-phrase";
+  }
+  if (/^(?:然后|还有|另外|接着|再说|那|那么)/.test(compactQuestion)) {
+    return "ellipsis";
+  }
+  return null;
+}
+
+export function detectChineseQuestionKind(
+  question: string,
+): "yes-no" | "value" | "reason" | null {
+  const compactQuestion = normalizeForSearch(question).replace(/\s+/g, "");
+  if (!CJK_CHARACTER_PATTERN.test(compactQuestion)) {
+    return null;
+  }
+  if (/(?:为什么|为何|原因)/.test(compactQuestion)) {
+    return "reason";
+  }
+  if (
+    /(?:吗|呢)[？?]?$/.test(compactQuestion) ||
+    /^(?:是否|能否|有没有|是不是|可不可以)/.test(compactQuestion)
+  ) {
+    return "yes-no";
+  }
+  if (/(?:谁|什么|哪|何时|多少|几个|怎么|如何)/.test(compactQuestion)) {
+    return "value";
+  }
+  return null;
+}
+
+export function isChineseMultiPartQuestion(question: string): boolean {
+  const compactQuestion = normalizeForSearch(question).replace(/\s+/g, "");
+  return (
+    CJK_CHARACTER_PATTERN.test(compactQuestion) &&
+    (/(?:以及|并且|同时|分别)/.test(compactQuestion) ||
+      question.includes("；") ||
+      (question.match(/[？?]/g)?.length ?? 0) > 1)
   );
 }
 

@@ -10,9 +10,6 @@ import {
   ActivityIndicator,
   AppState,
   Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,6 +22,7 @@ import { addAudioInterruptionListener } from "../../modules/audio-session-events
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
+import { SafeAreaModal } from "@/components/safe-area-modal";
 import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import type { Workspace } from "@/domain/workspace/workspace";
 import { useTheme } from "@/hooks/use-theme";
@@ -310,70 +308,39 @@ export default function TranscriptionScreen() {
         </View>
       </ScrollView>
 
-      <Modal
+      <SafeAreaModal
+        androidPresentation="center"
         visible={finished !== null}
-        animationType="slide"
-        transparent
         onRequestClose={confirmDiscardFinishedSession}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.modalBackdrop}
-        >
-          <ScrollView
-            contentInsetAdjustmentBehavior="never"
-            contentContainerStyle={[
-              styles.modalViewport,
-              {
-                paddingBottom: Spacing.lg + insets.bottom,
-                paddingTop: Spacing.lg + insets.top,
-              },
-            ]}
-            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+        <View style={styles.modalHeader}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Save transcription</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Discard recording"
+            disabled={isSaving}
+            hitSlop={10}
+            onPress={confirmDiscardFinishedSession}
           >
-            <View
-              accessibilityViewIsModal
-              style={[
-                styles.modal,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Save transcription</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Discard recording"
-                  disabled={isSaving}
-                  hitSlop={10}
-                  onPress={confirmDiscardFinishedSession}
-                >
-                  <Text style={[styles.discardLabel, { color: colors.danger }]}>Discard</Text>
-                </Pressable>
-              </View>
-              <Text style={[styles.label, { color: colors.textMuted }]}>Note name</Text>
-              <TextInput autoFocus value={noteName} onChangeText={setNoteName} placeholder="e.g. Weekly planning" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
-              <Text style={[styles.label, { color: colors.textMuted }]}>Workspace</Text>
-              <View style={styles.workspaceList}>
-                {workspaces.map((workspace) => {
-                  const selected = workspace.getId() === selectedWorkspaceId;
-                  return (
-                    <Pressable key={workspace.getId()} onPress={() => setSelectedWorkspaceId(workspace.getId())} style={[styles.workspace, { borderColor: selected ? colors.accent : colors.border, backgroundColor: selected ? colors.accentSoft : colors.background }]}>
-                      <Text style={{ color: colors.text, fontWeight: selected ? "800" : "500" }}>{workspace.getName()}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {error && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
-              <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0} onPress={() => void save()} />
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Modal>
+            <Text style={[styles.discardLabel, { color: colors.danger }]}>Discard</Text>
+          </Pressable>
+        </View>
+        <Text style={[styles.label, { color: colors.textMuted }]}>Note name</Text>
+        <TextInput value={noteName} onChangeText={setNoteName} placeholder="e.g. Weekly planning" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
+        <Text style={[styles.label, { color: colors.textMuted }]}>Workspace</Text>
+        <View style={styles.workspaceList}>
+          {workspaces.map((workspace) => {
+            const selected = workspace.getId() === selectedWorkspaceId;
+            return (
+              <Pressable key={workspace.getId()} onPress={() => setSelectedWorkspaceId(workspace.getId())} style={[styles.workspace, { borderColor: selected ? colors.accent : colors.border, backgroundColor: selected ? colors.accentSoft : colors.background }]}>
+                <Text style={{ color: colors.text, fontWeight: selected ? "800" : "500" }}>{workspace.getName()}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {error && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
+        <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0} onPress={() => void save()} />
+      </SafeAreaModal>
     </View>
   );
 }
@@ -405,9 +372,6 @@ const styles = StyleSheet.create({
   finishButton: { alignItems: "center", borderRadius: Radius.md, borderWidth: 1, justifyContent: "center", minHeight: 46, paddingHorizontal: Spacing.md },
   finishLabel: { fontSize: 14, fontWeight: "800" },
   controlPressed: { opacity: 0.72, transform: [{ scale: 0.98 }] },
-  modalBackdrop: { backgroundColor: "rgba(0,0,0,0.36)", flex: 1 },
-  modalViewport: { flexGrow: 1, justifyContent: "center", paddingHorizontal: Spacing.lg },
-  modal: { alignSelf: "center", borderCurve: "continuous", borderRadius: Radius.lg, borderWidth: 1, boxShadow: Shadows.raised, gap: Spacing.md, maxWidth: 560, padding: Spacing.lg, width: "100%" },
   modalHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   modalTitle: { fontSize: 24, fontWeight: "800" },
   discardLabel: { fontSize: 14, fontWeight: "800" },

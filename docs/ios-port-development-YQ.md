@@ -376,7 +376,60 @@ TTS 模型页面原本只有下载、激活和模型检测，没有生成音频�
 
 封版真机复核使用连接的 iPhone 16 Pro Max（iOS 27.0）：个人签名 Release 通过 `verify-ios-release --require-signed` 和 `codesign --verify --deep --strict`，随后以相同 Bundle ID 覆盖安装。设备应用清单显示版本 `1.1.0`、build `2`，`devicectl` 冷启动成功，复查时新进程仍在运行；未卸载应用，也未主动清除已有容器数据。功能批次在版本封板前已经完成主题、Task、TTS 合成及暂停/续播的 XCUITest 真机验收，本次复核用于确认最终版本元数据、签名产物、安装和脱离 Metro 启动链路。
 
-## 十、参考资料
+## 十、2026-08-24 Ask AI、编辑弹窗与 Structured Note 稳定化
+
+### 10.1 Ask AI 根因与修复
+
+用户提供的失败样本中，当前笔记明明包含“小王负责 iOS 开发”和项目日期，助手仍返回“当前所选笔记没有足够的信息”。排查确认问题不在笔记选择：页面展示的 Based on 标题和传入 transcript 一致，误判来自回答链路在本地模型完成后又执行了一次过严的可回答性判断。中文短问题、口语化“干什么”、名字与职责的组合容易被第二次判断拒绝，使模型已经找到的证据无法进入最终回复。
+
+本轮把当前锁定笔记的 transcript 继续作为唯一事实边界，但将“是否存在证据”和“如何组织回答”拆开：证据层补充中英文人物、职责、日期、截止时间和指代匹配；决策层优先返回经过 transcript 校验的直接证据，不再让一个独立的模型式否决步骤覆盖确定性证据。LLM 仍只负责在已验证证据范围内组织自然语言，证据为空时才返回信息不足。
+
+同时保留 `2048` context、`512` generation reserve 和 90 秒硬截止。这里没有单纯无限提高 token：Ask AI 的典型回答很短，继续增大输出预算会让 1.5B 本地模型变慢并增加 iPhone 内存压力，不能解决错误的证据门控。页面在 queued 和 generating 阶段显示 spinner；问题、回复、当前 Note context 和会话状态写入 SQLite，离开页面后可以恢复，New 会显式创建新的 context-locked 会话。
+
+> Evidence:
+> - Source: `src/services/ask-ai-evidence-gate.ts`, `src/services/ask-ai-evidence-decision.ts`, `src/services/ask-ai-evidence-text.ts`, `src/services/llm-inference-service.ts`, `src/services/ai-conversation-service.ts`, `src/repositories/ai-conversation-repository.ts`, `src/app/ask-ai.tsx`
+> - Method: 中英文职责、日期、截止时间、反事实问题、会话恢复和 90 秒 deadline 自动测试；iPhone 保留重新准备的中英文笔记供最终人工验收
+> - Confidence: High
+
+### 10.2 全局安全区域编辑弹窗
+
+旧页面各自直接使用 React Native `Modal`，有的按底部 sheet 布局，有的依赖固定 padding。iOS 状态栏、刘海、安全区和键盘高度变化时，Move note 等短弹窗可能从屏幕最上方开始绘制，覆盖时间和状态图标。逐页增加 top margin 不能防止以后新增页面再次出现同类问题。
+
+新增 `SafeAreaModal` 作为应用唯一的阻塞式编辑弹窗入口。iOS 一律在“当前可见安全区域”内垂直和水平居中，顶部和底部 padding 由 `useSafeAreaInsets()` 计算；内容过高时内部滚动，键盘出现时通过 `KeyboardAvoidingView` 调整。Android 仍可由页面选择 center 或 sheet，但不属于本轮验收范围。Workspace 新建/重命名、Note 新建/重命名/移动、Ask AI history/model picker、音频保存和转写结束弹窗已经统一迁移。回归测试会扫描这些页面，禁止再次绕过组件直接引入 `Modal`。
+
+> Evidence:
+> - Source: `src/components/safe-area-modal.tsx`, `src/app/workspaces/index.tsx`, `src/app/workspaces/[workspaceId]/index.tsx`, `src/app/notes/[noteId].tsx`, `src/app/ask-ai.tsx`, `src/app/audio-transcription.tsx`, `src/app/transcription.tsx`
+> - Method: 静态回归测试覆盖所有编辑入口和 Move note；iPhone 真机检查状态栏安全区、居中位置、长内容滚动和键盘避让
+> - Confidence: High
+
+### 10.3 Structured Note 截断根因与恢复策略
+
+Insights 页面出现 `The local model returned an unreadable result` 时，设备日志显示模型正好碰到旧的 `1152` completion 上限，JSON 在数组中途停止，解析器收到的并不是完整对象。只把上限调大可以降低单个样本的失败率，但较长笔记仍可能再次触顶，而且会增加生成时间和峰值内存，因此本轮同时调整输出预算和输入形态。
+
+内容和 intent 的常规输出预算提高为 `1536` tokens，恢复模式为 `2304`，总 context 为 `6144`。生成器读取 `stopped_limit`、`context_full`、`truncated`、`tokens_predicted` 和 `stopped_eos`，只有找到闭合的首个 JSON object 才解析。Intent transcript 最多按 6 个子句、1100 个字符分批；某批触顶或 JSON 无效时先使用最小 JSON 的扩大预算重试，再二分证据窗口。模型最终仍失败时，摘要和显式任务、提醒、日程使用 transcript 驱动的确定性降级，不再让整个 Structured Note 空白。合并前还会清除无 transcript 支持、已完成或否定表达产生的伪待办，并补齐模型漏掉的明确 intent。
+
+日期层补充英文月份、`14:30` 等 24 小时制、相对小时和更多中英文表达；所有推断同时记录设备本地 reference time 和 timezone，避免把运行当天日期误当成笔记事实。
+
+> Evidence:
+> - Source: `src/services/core-note-insight-service.ts`, `src/services/core-note-insight-generation-policy.ts`, `src/services/core-note-time.ts`
+> - Method: 输出上限信号、闭合 JSON、16 子句分批合并、递归重试、确定性 fallback、中英文时间和普通叙述不生成假任务的自动测试；iPhone 上分别执行普通、密集和清理用例
+> - Confidence: High
+
+### 10.4 真机定向验收与数据状态
+
+Reference iPhone 为 iPhone 16 Pro Max（iOS 27.0）。Ask AI 和 Structured Note 修复阶段保留了 3 篇全新的测试笔记：`YQ Fresh Chinese Demo`、`YQ Fresh Coffee Notes` 和 `YQ Fresh Harbor Plan`，覆盖中文职责/日期、英文普通叙述以及英文任务/提醒/日程。Structured Note 真机结果文件分别记录 2 个普通与多项用例、1 个密集用例和 1 个清理用例通过；Ask AI 最终的中英文直接证据分支由自动回归覆盖，3 篇笔记继续保留给用户做发布后人工验收。这些结果不冒充完整录音和 SideStore 验收矩阵。
+
+封版后使用相同 Bundle ID 覆盖安装签名的 `1.2.0 (3)` Release。`devicectl` 确认设备仅保留主应用，没有 XCUITest Runner；应用脱离 Metro 启动且进程存活。覆盖安装没有删除本地 Qwen 2.5 1.5B Q4_K_M 模型或 3 篇测试笔记，复制出的 `speakspace.db` 执行 `PRAGMA integrity_check` 返回 `ok`。
+
+### 10.5 iOS v1.2.0 稳定版封版
+
+应用版本提升为 `1.2.0`，iOS build number 提升为 `3`。公开 SideStore IPA 来自中性、未签名的完整 iPhoneOS Release，真机安装包来自同一源码的个人开发签名 Release；公开资产不包含个人证书、Team ID、provisioning profile 或原始 `_CodeSignature`。
+
+发布资产 `SpeakSpace-iOS-v1.2.0.ipa` 大小为 33,781,462 bytes，SHA-256 为 `e56c2ed5b4cf643cb515eb4d1cf1b51ee44a82eb068a8b1bae6bd083588e6061`。包内版本为 `1.2.0 (3)`，最低 iOS 16.4、设备族仅 iPhone、架构仅 arm64，离线 JavaScript bundle 为 4,390,559 bytes。ZIP 完整性检查通过，旧 `ios-v1.1.0` Release 保留为回滚包。
+
+最终质量门为 60 passed、0 failed；`tsc --noEmit`、quiet Lint、`git diff --check` 均通过，Expo Doctor 为 21/21。`npm audit --omit=dev --audit-level=high` 没有 high 或 critical 漏洞，但保留 12 个来自 Expo CLI/Xcode 工具链间接依赖 `uuid` 的 moderate 公告；npm 提议的全量修复会把 Expo 57 降级到 Expo 46，因此没有执行 `npm audit fix --force`。这些公告不来自应用运行时新增代码，后续随 Expo SDK 兼容更新处理。
+
+## 十一、参考资料
 
 - Expo SDK 57 app config：<https://docs.expo.dev/versions/v57.0.0/config/app/>
 - Expo dynamic app config：<https://docs.expo.dev/workflow/configuration/>
@@ -393,8 +446,9 @@ TTS 模型页面原本只有下载、激活和模型检测，没有生成音频�
 | 实时/文件转写 | `src/services/transcription-service.ts` |
 | STT/LLM/TTS 下载 | `src/services/stt-model-service.ts`, `src/services/llm-model-service.ts`, `src/services/tts-model-service.ts` |
 | 存储保护 | `src/services/storage-safety-service.ts` |
-| 中文 Ask AI | `src/services/ask-ai-evidence-text.ts`, `src/services/ask-ai-evidence-gate.ts` |
-| iPhone UI | `src/app/(tabs)/_layout.tsx`, `src/app/transcription.tsx`, `src/app/workspaces/index.tsx` |
+| 中英文 Ask AI 与持久化 | `src/services/ask-ai-evidence-text.ts`, `src/services/ask-ai-evidence-gate.ts`, `src/services/ask-ai-evidence-decision.ts`, `src/services/ai-conversation-service.ts` |
+| Structured Note 恢复策略 | `src/services/core-note-insight-service.ts`, `src/services/core-note-insight-generation-policy.ts`, `src/services/core-note-time.ts` |
+| iPhone UI 与安全区域弹窗 | `src/components/safe-area-modal.tsx`, `src/app/(tabs)/_layout.tsx`, `src/app/transcription.tsx`, `src/app/workspaces/index.tsx` |
 | Release 验证 | `scripts/verify-ios-release.mjs` |
 | SideStore 打包 | `scripts/package-ios-sidestore.mjs` |
 | 自动测试 | `tests/*.test.mjs` |

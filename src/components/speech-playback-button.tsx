@@ -20,15 +20,9 @@ export function SpeechPlaybackButton({
   const isActive = state.speechId === speechId;
   const disabled = !isActive && state.inferenceBusy;
   const buttonLabel = isActive
-    ? state.phase === "playing"
-      ? "Pause"
-      : state.phase === "paused"
-        ? "Resume"
-        : state.phase === "preparing"
-          ? "Pause"
-          : state.phase === "error"
-            ? "Try again"
-            : "Read aloud"
+    ? state.phase === "error"
+      ? "Try again"
+      : "Stop"
     : "Read aloud";
 
   return (
@@ -47,7 +41,7 @@ export function SpeechPlaybackButton({
             pressed && styles.pressed,
           ]}
         >
-          <Text style={[styles.glyph, { color: colors.accent }]}>{state.phase === "playing" && isActive ? "Ⅱ" : "▶"}</Text>
+          <Text style={[styles.glyph, { color: colors.accent }]}>{isActive && state.phase !== "error" ? "■" : "▶"}</Text>
           <Text style={[styles.label, { color: colors.accent }]}>{buttonLabel}</Text>
         </Pressable>
         {isActive && state.phase !== "idle" && state.phase !== "error" && (

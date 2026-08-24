@@ -109,7 +109,7 @@ test("Home groups only generated pending tasks and keeps completed separate", ()
   assert.deepEqual(grouped.completed.map((task) => task.id), ["done"]);
 });
 
-test("theme launch and speech pause keep their resolved state", async () => {
+test("theme launch and speech stop keep their resolved state", async () => {
   const [themeProvider, rootLayout, speechService, tabs] = await Promise.all([
     readFile(new URL("../src/providers/theme-provider.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/app/_layout.tsx", import.meta.url), "utf8"),
@@ -120,9 +120,9 @@ test("theme launch and speech pause keep their resolved state", async () => {
   assert.match(themeProvider, /Storage\.getItemSync\(THEME_PREFERENCE_KEY\)/);
   assert.match(themeProvider, /return "light"/);
   assert.match(rootLayout, /SplashScreen\.preventAutoHideAsync\(\)/);
-  assert.match(rootLayout, /pauseForBackground\(\)/);
-  assert.match(speechService, /session\.player\?\.pause\(\)/);
-  assert.match(speechService, /session\.player\.play\(\)/);
+  assert.match(rootLayout, /stopForBackground\(\)/);
+  assert.match(speechService, /cancelSpeechStream\(\)/);
+  assert.match(speechService, /stopPcmPlayer\(\)/);
   assert.doesNotMatch(tabs, /name="dashboard"/);
   assert.match(tabs, /name="settings"/);
 });

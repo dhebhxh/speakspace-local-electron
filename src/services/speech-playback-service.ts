@@ -1,168 +1,147 @@
-import {
-  createAudioPlayer,
-  setAudioModeAsync,
-  type AudioPlayer,
-  type AudioStatus,
-} from "expo-audio";
-import { Directory, File, Paths } from "expo-file-system";
-import {
-  createTTS,
-  saveAudioToFile,
-  type TtsEngine,
-  type TTSModelType,
-} from "react-native-sherpa-onnx/tts";
+import { setAudioModeAsync } from "expo-audio";
+import { createStreamingTTS, type StreamingTtsEngine, type TtsStreamController, type TTSModelType } from "react-native-sherpa-onnx/tts";
 
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
-import { splitSpeechText } from "@/services/speech-text-chunks";
 import { TtsModelService } from "@/services/tts-model-service";
 
 export type SpeechPlaybackErrorCode = "missing-model" | "busy" | "playback";
-export type SpeechPlaybackPhase = "idle" | "preparing" | "playing" | "paused" | "error";
-
-export type SpeechPlaybackState = {
-  phase: SpeechPlaybackPhase;
-  speechId: string | null;
-  label: string | null;
-  message: string | null;
-  errorCode: SpeechPlaybackErrorCode | null;
-  inferenceBusy: boolean;
-};
-
-export type SpeechRequest = {
-  id: string;
-  label: string;
-  text: string;
-};
-
-type Subscription = { remove: () => void };
+export type SpeechPlaybackPhase = "idle" | "preparing" | "playing" | "error";
+export type SpeechPlaybackState = { phase: SpeechPlaybackPhase; speechId: string | null; label: string | null; message: string | null; errorCode: SpeechPlaybackErrorCode | null; inferenceBusy: boolean };
+export type SpeechRequest = { id: string; label: string; text: string };
 
 type SpeechSession = {
   id: string;
   label: string;
-  chunks: string[];
-  cacheDirectory: Directory;
-  engine: TtsEngine | null;
-  player: AudioPlayer | null;
-  playerSubscription: Subscription | null;
-  generatedFiles: Map<number, File>;
-  currentChunkIndex: number;
-  nextSynthesisIndex: number;
-  synthesisPromise: Promise<void> | null;
+  text: string;
+  engine: StreamingTtsEngine | null;
+  controller: TtsStreamController | null;
+  writeChain: Promise<void>;
+  playbackStartedAt: number | null;
+  totalSamples: number;
+  sampleRate: number | null;
+  completionTimer: ReturnType<typeof setTimeout> | null;
+  interruptPromise: Promise<void> | null;
+  streamStarted: boolean;
+  streamEnded: Promise<void>;
+  resolveStreamEnded: () => void;
   cancelled: boolean;
-  paused: boolean;
+  cleaned: boolean;
 };
 
-const CACHE_DIRECTORY_NAME = "speech-playback";
-const initialState: SpeechPlaybackState = {
-  phase: "idle",
-  speechId: null,
-  label: null,
-  message: null,
-  errorCode: null,
-  inferenceBusy: false,
-};
+const initialState: SpeechPlaybackState = { phase: "idle", speechId: null, label: null, message: null, errorCode: null, inferenceBusy: false };
 
 export class SpeechPlaybackService {
   private readonly listeners = new Set<() => void>();
   private state: SpeechPlaybackState = initialState;
   private session: SpeechSession | null = null;
+  private lifecycleChain: Promise<void> = Promise.resolve();
   private initialized = false;
 
-  public constructor(
-    private readonly ttsModelService: TtsModelService,
-    private readonly coordinator: LocalLlmCoordinator,
-  ) {
+  public constructor(private readonly ttsModelService: TtsModelService, private readonly coordinator: LocalLlmCoordinator) {
     this.coordinator.registerSpeechPlaybackStopper(() => this.stop());
     this.coordinator.subscribe(() => {
       const inferenceBusy = this.coordinator.isBusy();
-      if (inferenceBusy !== this.state.inferenceBusy) {
-        this.setState({ ...this.state, inferenceBusy });
-      }
+      if (inferenceBusy !== this.state.inferenceBusy) this.setState({ ...this.state, inferenceBusy });
     });
   }
 
   public getSnapshot = (): SpeechPlaybackState => this.state;
-
   public subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
-
   public initialize(): void {
     if (this.initialized) return;
     this.initialized = true;
-    this.clearStartupCache();
   }
 
-  public async speak(request: SpeechRequest): Promise<void> {
+  public speak(request: SpeechRequest): Promise<void> {
     const text = request.text.trim();
     if (!text) {
       this.setError(request.id, request.label, "playback", "There is no text to read aloud.");
-      return;
+      return Promise.resolve();
     }
-
-    if (this.session?.id === request.id) {
-      if (this.state.phase === "paused") await this.resume();
-      else await this.pause();
-      return;
-    }
-
+    // An active button is a stop button. The next press starts again from the beginning.
+    if (this.session?.id === request.id) return this.stop();
     if (this.coordinator.isBusy()) {
       this.setError(request.id, request.label, "busy", "Wait for the current local AI or transcription operation to finish.");
-      return;
+      return Promise.resolve();
     }
 
     const previous = this.detachSession();
-
-    const cacheDirectory = new Directory(Paths.cache, CACHE_DIRECTORY_NAME, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-    cacheDirectory.create({ idempotent: true, intermediates: true });
+    let resolveStreamEnded: () => void = () => {};
+    const streamEnded = new Promise<void>((resolve) => {
+      resolveStreamEnded = resolve;
+    });
     const session: SpeechSession = {
-      id: request.id,
-      label: request.label,
-      chunks: splitSpeechText(text),
-      cacheDirectory,
-      engine: null,
-      player: null,
-      playerSubscription: null,
-      generatedFiles: new Map(),
-      currentChunkIndex: 0,
-      nextSynthesisIndex: 0,
-      synthesisPromise: null,
-      cancelled: false,
-      paused: false,
+      id: request.id, label: request.label, text, engine: null, controller: null,
+      writeChain: Promise.resolve(), playbackStartedAt: null, totalSamples: 0,
+      sampleRate: null, completionTimer: null, interruptPromise: null,
+      streamStarted: false, streamEnded, resolveStreamEnded,
+      cancelled: false, cleaned: false,
     };
     this.session = session;
     this.setSessionState(session, "preparing", "Preparing speech…");
-
-    try {
+    return this.enqueueLifecycle(async () => {
       if (previous) await this.cleanupSession(previous);
-      if (!this.isCurrent(session)) return;
-      await setAudioModeAsync({
-        allowsRecording: false,
-        interruptionMode: "doNotMix",
-        playsInSilentMode: true,
-        shouldPlayInBackground: false,
-      });
-      const model = await this.ttsModelService.getActiveModel();
-      if (!this.isCurrent(session)) return;
-      if (model === null) {
-        await this.failSession(session, "missing-model", "Download and activate a TTS model first.");
-        return;
-      }
-
-      session.engine = await createTTS({
-        modelPath: { type: "file", path: this.ttsModelService.resolveModelPath(model) },
-        modelType: model.getModelType() as TTSModelType,
-        numThreads: 2,
-      });
       if (!this.isCurrent(session)) {
         await this.cleanupSession(session);
         return;
       }
-      this.ensureSynthesis(session);
+      await this.startSession(session);
+    });
+  }
+
+  public stop(): Promise<void> {
+    const session = this.detachSession();
+    this.setState({ ...initialState, inferenceBusy: this.coordinator.isBusy() });
+    if (!session) return this.lifecycleChain;
+    return this.enqueueLifecycle(() => this.cleanupSession(session));
+  }
+
+  public stopForBackground(): void { void this.stop(); }
+
+  private async startSession(session: SpeechSession): Promise<void> {
+    try {
+      await setAudioModeAsync({ allowsRecording: false, interruptionMode: "doNotMix", playsInSilentMode: true, shouldPlayInBackground: false });
+      const model = await this.ttsModelService.getActiveModel();
+      if (!this.isCurrent(session)) return;
+      if (model === null) {
+        await this.failStartingSession(session, "missing-model", "Download and activate a TTS model first.");
+        return;
+      }
+      const engine = await createStreamingTTS({
+        modelPath: { type: "file", path: this.ttsModelService.resolveModelPath(model) },
+        modelType: model.getModelType() as TTSModelType,
+        numThreads: 2,
+      });
+      session.engine = engine;
+      if (!this.isCurrent(session)) return;
+      const sampleRate = await engine.getSampleRate();
+      if (!this.isCurrent(session)) return;
+      session.sampleRate = sampleRate;
+      await engine.startPcmPlayer(sampleRate, 1);
+      if (!this.isCurrent(session)) return;
+      session.streamStarted = true;
+      session.controller = await engine.generateSpeechStream(session.text, { sid: 0, speed: 1 }, {
+        onChunk: (chunk) => this.handleStreamChunk(session, chunk.samples, chunk.sampleRate),
+        onEnd: (event) => {
+          session.resolveStreamEnded();
+          if (!event.cancelled) void this.handleStreamEnd(session);
+        },
+        onError: (event) => {
+          session.resolveStreamEnded();
+          void this.failSession(session, "playback", event.message);
+        },
+      });
+      // Stop may land during the library's listener-registration yield, before
+      // native generation actually starts. Re-issue cancellation once startup
+      // has crossed that boundary so a cancelled session cannot keep inferring.
+      if (!this.isCurrent(session)) session.interruptPromise = this.interruptEngine(engine);
     } catch (error) {
+      session.resolveStreamEnded();
       if (this.isCurrent(session)) {
-        await this.failSession(
+        await this.failStartingSession(
           session,
           "playback",
           error instanceof Error ? error.message : "Unable to start speech playback.",
@@ -171,133 +150,58 @@ export class SpeechPlaybackService {
     }
   }
 
-  public async pause(): Promise<void> {
-    const session = this.session;
-    if (!session || session.cancelled || session.paused) return;
-    session.paused = true;
-    session.player?.pause();
-    this.setSessionState(session, "paused", "Paused");
-  }
-
-  public async resume(): Promise<void> {
-    const session = this.session;
-    if (!session || session.cancelled || !session.paused) return;
-    if (this.coordinator.isBusy()) {
-      this.setSessionState(session, "paused", "Wait for the current local operation to finish.", "busy");
-      return;
-    }
-    session.paused = false;
-    if (session.player !== null) {
-      session.player.play();
+  private handleStreamChunk(session: SpeechSession, samples: number[], sampleRate: number): void {
+    if (!this.isCurrent(session) || samples.length === 0 || session.engine === null) return;
+    session.sampleRate = sampleRate;
+    session.totalSamples += samples.length;
+    if (session.playbackStartedAt === null) {
+      session.playbackStartedAt = Date.now();
       this.setSessionState(session, "playing", "Playing");
-      return;
     }
-    this.setSessionState(session, "preparing", "Preparing speech…");
-    this.startPlaybackIfReady(session);
-    this.ensureSynthesis(session);
-  }
-
-  public async stop(): Promise<void> {
-    const session = this.detachSession();
-    if (!session) return;
-    this.setState({ ...initialState, inferenceBusy: this.coordinator.isBusy() });
-    await this.cleanupSession(session);
-  }
-
-  public pauseForBackground(): void {
-    if (this.state.phase === "playing" || this.state.phase === "preparing") {
-      void this.pause();
-    }
-  }
-
-  private ensureSynthesis(session: SpeechSession): void {
-    if (!this.isCurrent(session) || session.paused || session.synthesisPromise !== null || session.engine === null) return;
-    session.synthesisPromise = this.pumpSynthesis(session).finally(() => {
-      session.synthesisPromise = null;
+    const engine = session.engine;
+    session.writeChain = session.writeChain.then(async () => {
+      if (this.isCurrent(session)) await engine.writePcmChunk(samples);
+    }).catch((error) => {
+      if (this.isCurrent(session)) void this.failSession(session, "playback", error instanceof Error ? error.message : "Speech playback failed.");
     });
   }
 
-  private async pumpSynthesis(session: SpeechSession): Promise<void> {
-    while (
-      this.isCurrent(session) &&
-      !session.paused &&
-      session.engine !== null &&
-      session.nextSynthesisIndex < session.chunks.length
-    ) {
-      const index = session.nextSynthesisIndex;
-      try {
-        const audio = await session.engine.generateSpeech(session.chunks[index], { sid: 0, speed: 1 });
-        if (session.cancelled) return;
-        const file = new File(session.cacheDirectory, `chunk-${index}.wav`);
-        const nativePath = decodeURI(file.uri.replace(/^file:\/\//, ""));
-        await saveAudioToFile(audio, nativePath);
-        if (session.cancelled) return;
-        session.generatedFiles.set(index, file);
-        session.nextSynthesisIndex += 1;
-        this.startPlaybackIfReady(session);
-      } catch (error) {
-        if (this.isCurrent(session)) {
-          void this.failSession(
-            session,
-            "playback",
-            error instanceof Error ? error.message : "Speech synthesis failed.",
-          );
-        }
-        return;
-      }
-    }
-  }
-
-  private startPlaybackIfReady(session: SpeechSession): void {
-    if (!this.isCurrent(session) || session.paused || session.player !== null) return;
-    if (session.currentChunkIndex >= session.chunks.length) {
-      void this.completeSession(session);
-      return;
-    }
-    const file = session.generatedFiles.get(session.currentChunkIndex);
-    if (!file?.exists) return;
-
-    const player = createAudioPlayer(file.uri, { updateInterval: 100 });
-    session.player = player;
-    session.playerSubscription = player.addListener("playbackStatusUpdate", (status) =>
-      this.handlePlaybackStatus(session, player, status),
-    );
-    player.play();
-    this.setSessionState(session, "playing", "Playing");
-  }
-
-  private handlePlaybackStatus(session: SpeechSession, player: AudioPlayer, status: AudioStatus): void {
-    if (!this.isCurrent(session) || session.player !== player) return;
-    if (status.error) {
-      void this.failSession(session, "playback", status.error);
-      return;
-    }
-    if (!status.didJustFinish) return;
-
-    session.playerSubscription?.remove();
-    session.playerSubscription = null;
-    player.release();
-    session.player = null;
-    session.currentChunkIndex += 1;
-    if (session.currentChunkIndex >= session.chunks.length) {
-      void this.completeSession(session);
-      return;
-    }
-    this.setSessionState(session, "preparing", "Preparing the next part…");
-    this.startPlaybackIfReady(session);
-    this.ensureSynthesis(session);
-  }
-
-  private async completeSession(session: SpeechSession): Promise<void> {
+  private async handleStreamEnd(session: SpeechSession): Promise<void> {
+    await session.writeChain.catch(() => undefined);
     if (!this.isCurrent(session)) return;
+    // iOS queues PCM buffers, so retain the engine until the queued audio has drained.
+    const durationMs = session.sampleRate ? (session.totalSamples / session.sampleRate) * 1000 : 0;
+    const elapsedMs = session.playbackStartedAt === null ? 0 : Date.now() - session.playbackStartedAt;
+    session.completionTimer = setTimeout(() => {
+      session.completionTimer = null;
+      void this.completeSession(session);
+    }, Math.max(0, durationMs - elapsedMs + 100));
+  }
+
+  private completeSession(session: SpeechSession): Promise<void> {
+    if (!this.isCurrent(session)) return Promise.resolve();
     this.session = null;
+    session.cancelled = true;
     this.setState({ ...initialState, inferenceBusy: this.coordinator.isBusy() });
-    await this.cleanupSession(session);
+    return this.enqueueLifecycle(() => this.cleanupSession(session));
   }
 
-  private async failSession(session: SpeechSession, code: SpeechPlaybackErrorCode, message: string): Promise<void> {
+  private failSession(session: SpeechSession, code: SpeechPlaybackErrorCode, message: string): Promise<void> {
+    if (!this.isCurrent(session)) return Promise.resolve();
+    this.session = null;
+    session.cancelled = true;
+    this.setError(session.id, session.label, code, message);
+    return this.enqueueLifecycle(() => this.cleanupSession(session));
+  }
+
+  private async failStartingSession(
+    session: SpeechSession,
+    code: SpeechPlaybackErrorCode,
+    message: string,
+  ): Promise<void> {
     if (!this.isCurrent(session)) return;
     this.session = null;
+    session.cancelled = true;
     this.setError(session.id, session.label, code, message);
     await this.cleanupSession(session);
   }
@@ -307,78 +211,62 @@ export class SpeechPlaybackService {
     if (session) {
       this.session = null;
       session.cancelled = true;
-      session.paused = true;
-      session.player?.pause();
+      if (session.completionTimer !== null) clearTimeout(session.completionTimer);
+      session.completionTimer = null;
+      // Start one immediate native stop chain. Cleanup awaits this same promise
+      // instead of issuing overlapping stop/release calls.
+      session.interruptPromise = this.interruptSession(session);
     }
     return session;
   }
 
   private async cleanupSession(session: SpeechSession): Promise<void> {
+    if (session.cleaned) return;
+    session.cleaned = true;
     session.cancelled = true;
-    session.paused = true;
-    session.playerSubscription?.remove();
-    session.playerSubscription = null;
-    if (session.player) {
-      session.player.pause();
-      session.player.release();
-      session.player = null;
-    }
-    const synthesis = session.synthesisPromise;
-    if (synthesis) await synthesis.catch(() => undefined);
+    if (session.completionTimer !== null) clearTimeout(session.completionTimer);
+    session.completionTimer = null;
     const engine = session.engine;
     session.engine = null;
-    await engine?.destroy().catch(() => undefined);
-    try {
-      if (session.cacheDirectory.exists) session.cacheDirectory.delete();
-    } catch (error) {
-      console.warn("[SpeechPlayback] Unable to clear temporary speech audio.", { error });
+    if (engine !== null) {
+      await (session.interruptPromise ?? this.interruptEngine(engine));
+      // Native generation owns callbacks into the TTS engine. Destroying before
+      // onEnd is a use-after-free even if cancelSpeechStream() has resolved.
+      if (session.streamStarted) await session.streamEnded;
+      await session.writeChain.catch(() => undefined);
+      session.controller?.unsubscribe();
+      session.controller = null;
+      await engine.destroy().catch(() => undefined);
     }
   }
 
-  private isCurrent(session: SpeechSession): boolean {
-    return this.session === session && !session.cancelled;
+  private interruptSession(session: SpeechSession): Promise<void> {
+    const engine = session.engine;
+    return engine === null ? Promise.resolve() : this.interruptEngine(engine);
   }
 
-  private setSessionState(
-    session: SpeechSession,
-    phase: SpeechPlaybackPhase,
-    message: string,
-    errorCode: SpeechPlaybackErrorCode | null = null,
-  ): void {
+  private async interruptEngine(engine: StreamingTtsEngine): Promise<void> {
+    // Stop audible output first, then cancel inference. Both calls are serialized
+    // to avoid racing the native PCM player against itself.
+    await engine.stopPcmPlayer().catch(() => undefined);
+    await engine.cancelSpeechStream().catch(() => undefined);
+  }
+
+  private enqueueLifecycle(operation: () => Promise<void>): Promise<void> {
+    const result = this.lifecycleChain.then(operation, operation);
+    this.lifecycleChain = result.catch(() => undefined);
+    return result;
+  }
+  private isCurrent(session: SpeechSession): boolean { return this.session === session && !session.cancelled; }
+  private setSessionState(session: SpeechSession, phase: SpeechPlaybackPhase, message: string, errorCode: SpeechPlaybackErrorCode | null = null): void {
     if (!this.isCurrent(session)) return;
-    this.setState({
-      phase,
-      speechId: session.id,
-      label: session.label,
-      message,
-      errorCode,
-      inferenceBusy: this.coordinator.isBusy(),
-    });
+    this.setState({ phase, speechId: session.id, label: session.label, message, errorCode, inferenceBusy: this.coordinator.isBusy() });
   }
-
   private setError(id: string, label: string, code: SpeechPlaybackErrorCode, message: string): void {
-    this.setState({
-      phase: "error",
-      speechId: id,
-      label,
-      message,
-      errorCode: code,
-      inferenceBusy: this.coordinator.isBusy(),
-    });
+    this.setState({ phase: "error", speechId: id, label, message, errorCode: code, inferenceBusy: this.coordinator.isBusy() });
   }
-
   private setState(state: SpeechPlaybackState): void {
     this.state = state;
     this.listeners.forEach((listener) => listener());
-  }
-
-  private clearStartupCache(): void {
-    try {
-      const directory = new Directory(Paths.cache, CACHE_DIRECTORY_NAME);
-      if (directory.exists) directory.delete();
-      directory.create({ idempotent: true, intermediates: true });
-    } catch (error) {
-      console.warn("[SpeechPlayback] Unable to clear startup speech cache.", { error });
-    }
   }
 }

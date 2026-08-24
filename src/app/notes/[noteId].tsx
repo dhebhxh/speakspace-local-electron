@@ -150,6 +150,10 @@ export default function NoteDetailScreen() {
     void loadNote();
   }, [noteId]);
 
+  useEffect(() => () => {
+    void appContainer.speechPlaybackService.stop();
+  }, [noteId]);
+
   useEffect(() => coreNoteInsightService.subscribeToGeneration(noteId, (generationState) => {
     if (generationState.status === "queued" || generationState.status === "generating") {
       setCoreGeneration({ status: generationState.status });

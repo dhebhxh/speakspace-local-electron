@@ -29,7 +29,7 @@ function ThemedRootLayout() {
   useEffect(() => {
     appContainer.speechPlaybackService.initialize();
     const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState !== "active") appContainer.speechPlaybackService.pauseForBackground();
+      if (nextState !== "active") appContainer.speechPlaybackService.stopForBackground();
     });
     void SplashScreen.hideAsync();
     return () => subscription.remove();

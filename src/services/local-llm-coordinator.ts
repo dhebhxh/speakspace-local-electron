@@ -110,6 +110,9 @@ export class LocalLlmCoordinator {
     } finally {
       item.interrupt = null;
       this.active = null;
+      if (item.snapshot.operation === "tts") {
+        console.info("[TTS_TIMING]", JSON.stringify({ event: "scheduler-slot-released", taskId: item.snapshot.id, timestamp: Date.now() }));
+      }
       this.publish();
       void this.drain();
     }

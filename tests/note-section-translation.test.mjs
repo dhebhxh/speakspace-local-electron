@@ -21,7 +21,7 @@ test("note detail exposes independent persisted translation controls", async () 
   assert.match(service, /partialPayload:/);
   assert.match(service, /data\.accumulated_text/);
   assert.match(service, /translationTokenBudget/);
-  assert.match(service, /context\.clearCache\(false\)/);
+  assert.match(service, /sharedContext\.activateCache/);
   assert.match(service, /sharedContext\.prepare/);
   assert.match(service, /First token received/);
   assert.match(screen, /First token rendered/);

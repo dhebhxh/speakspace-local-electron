@@ -76,7 +76,7 @@ export class NoteTranslationService {
     try {
       const prepared = await this.sharedContext.prepare(model.getId(), modelFile.uri);
       console.info("[Translation] Context prepared", { requestId, modelId: model.getId(), contextPrepareMs: prepared.contextPrepareMs, contextReused: prepared.reused });
-      await prepared.context.clearCache(false);
+      await this.sharedContext.activateCache(`translation:${requestId}:0`);
       const previous = await this.repository.findByNoteId(noteId);
       const sameLanguage = previous?.getTargetLanguage() === targetLanguage;
       const currentSources = new Map([
@@ -95,7 +95,9 @@ export class NoteTranslationService {
       };
       const metrics: GenerationMetrics[] = [];
       for (const [index, input] of inputs.entries()) {
-        if (index > 0) await prepared.context.clearCache(false);
+        if (index > 0) {
+          await this.sharedContext.activateCache(`translation:${requestId}:${index}`);
+        }
         metrics.push(await this.streamField(prepared.context, requestId, noteId, section, targetLocale, targetLanguage, input, payload));
       }
 

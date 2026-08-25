@@ -1,9 +1,9 @@
 import { UiTextInput as TextInput } from "@/components/ui-text-input";
 import { UiText as Text } from "@/components/ui-text";
 import { requestRecordingPermissionsAsync } from "expo-audio";
-import { Stack, type Href, useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, type Href, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Modal, NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StyleSheet, View,  } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -164,6 +164,32 @@ export default function AskAiScreen() {
   useEffect(() => {
     void load();
   }, [routeConversationId, routeNoteId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void llmModelService.getActiveModel().then((activeModel) => {
+        if (!active) return;
+        const hasActiveModel = activeModel !== null;
+        const activeModelFileExists =
+          activeModel === null || llmModelService.resolveModelFile(activeModel).exists;
+        setState((previous) =>
+          previous.status === "ready"
+            ? {
+                ...previous,
+                hasActiveModel,
+                activeModelFileExists,
+              }
+            : previous,
+        );
+      }).catch((error) => {
+        if (active) setNotice(errorMessage(error));
+      });
+      return () => {
+        active = false;
+      };
+    }, [llmModelService]),
+  );
 
   useEffect(
     () => () => {
@@ -776,15 +802,24 @@ export default function AskAiScreen() {
                   />
                 )}
                 <AppButton
-                  label={isGenerating ? "Sending..." : "Send"}
+                  label={
+                    isGenerating
+                      ? "Sending..."
+                      : hasUnansweredUserMessage
+                        ? "Retry"
+                        : "Send"
+                  }
                   disabled={
                     isBusy ||
-                    hasUnansweredUserMessage ||
-                    input.trim().length === 0 ||
                     state.transcriptNotes.length === 0 ||
-                    modelNotice !== null
+                    modelNotice !== null ||
+                    (!hasUnansweredUserMessage && input.trim().length === 0)
                   }
-                  onPress={() => void sendMessage(input)}
+                  onPress={() =>
+                    void (hasUnansweredUserMessage
+                      ? retryLastUserMessage()
+                      : sendMessage(input))
+                  }
                 />
               </View>
             </View>

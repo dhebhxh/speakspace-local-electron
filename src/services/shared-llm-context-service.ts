@@ -11,10 +11,16 @@ export type PreparedLlmContext = {
   reused: boolean;
 };
 
+export type ActivatedLlmCache = {
+  reused: boolean;
+  clearMs: number;
+};
+
 /** Owns the single native context shared by short-lived Ask AI and translation work. */
 export class SharedLlmContextService {
   private context: LlamaContext | null = null;
   private modelId: string | null = null;
+  private cacheIdentity: string | null = null;
 
   public constructor(coordinator: LocalLlmCoordinator) {
     coordinator.registerIdleCleanup("shared-llm", () => this.release(), ["ask-ai", "translation"]);
@@ -34,9 +40,35 @@ export class SharedLlmContextService {
     console.info("[SharedLlama] Context create started", { modelId, contextSize: SHARED_CONTEXT_SIZE });
     this.context = await initLlama({ model: modelUri, n_ctx: SHARED_CONTEXT_SIZE, n_batch: 512, n_gpu_layers: GPU_LAYERS, use_mmap: true });
     this.modelId = modelId;
+    this.cacheIdentity = null;
     const contextPrepareMs = Date.now() - startedAt;
     console.info("[SharedLlama] Context create completed", { modelId, contextSize: SHARED_CONTEXT_SIZE, contextPrepareMs });
     return { context: this.context, contextPrepareMs, reused: false };
+  }
+
+  /**
+   * Keeps the live KV cache only when the caller proves it owns the same
+   * logical prompt stream. A different conversation or operation starts from
+   * a clean cache, while llama.rn can prefix-match consecutive turns owned by
+   * the same identity.
+   */
+  public async activateCache(identity: string): Promise<ActivatedLlmCache> {
+    if (!this.context) throw new Error("Llama context is not initialized.");
+    if (this.cacheIdentity === identity) return { reused: true, clearMs: 0 };
+
+    const startedAt = Date.now();
+    try {
+      await this.context.clearCache(false);
+    } catch (error) {
+      this.cacheIdentity = null;
+      throw error;
+    }
+    this.cacheIdentity = identity;
+    return { reused: false, clearMs: Date.now() - startedAt };
+  }
+
+  public invalidateCacheIdentity(): void {
+    this.cacheIdentity = null;
   }
 
   public async release(): Promise<void> {
@@ -44,6 +76,7 @@ export class SharedLlmContextService {
     const modelId = this.modelId;
     this.context = null;
     this.modelId = null;
+    this.cacheIdentity = null;
     if (!context) return;
     const startedAt = Date.now();
     await context.release().catch((error) => console.warn("[SharedLlama] Context release failed", { modelId, error }));

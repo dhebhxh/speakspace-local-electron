@@ -17,6 +17,7 @@ import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 import { SharedLlmContextService } from "@/services/shared-llm-context-service";
 
 import { notesToTranscriptBlocks } from "./ask-ai-grounded-messages";
+import { buildAskAiCacheIdentity } from "./ask-ai-cache-identity";
 import { AiConversationService } from "./ai-conversation-service";
 import { fitGroundedMessagesToBudget } from "./llm-context-budget";
 
@@ -78,13 +79,18 @@ export class LlmInferenceService {
   ): Promise<GenerateResult> {
     await this.aiConversationService.getConversationOrThrow(conversationId);
     await this.ensureContextForActiveModel();
-    await this.prepareConversationSwitch(conversationId);
-
     const linkedNotes =
       await this.aiConversationService.getLinkedNotes(conversationId);
     if (linkedNotes.length === 0) {
       throw new InferenceError(NO_TRANSCRIPT_CONTEXT_ERROR);
     }
+
+    const transcriptBlocks = notesToTranscriptBlocks(linkedNotes);
+    const cacheActivationStartedAt = Date.now();
+    const cache = await this.activateConversationCache(
+      buildAskAiCacheIdentity(conversationId, transcriptBlocks),
+    );
+    this.activeConversationId = conversationId;
 
     const canonicalMessages =
       await this.aiConversationService.getCanonicalMessages(conversationId);
@@ -102,7 +108,7 @@ export class LlmInferenceService {
     const context = this.getContextOrThrow();
     const prompt = await fitGroundedMessagesToBudget(
       context,
-      notesToTranscriptBlocks(linkedNotes),
+      transcriptBlocks,
       history,
     );
 
@@ -110,6 +116,8 @@ export class LlmInferenceService {
       throw new InferenceError("Generation was stopped.");
     }
 
+    const completionStartedAt = Date.now();
+    let firstTokenAt: number | null = null;
     let streamedText = "";
     const completionResult = await context.completion(
       {
@@ -122,6 +130,7 @@ export class LlmInferenceService {
       },
       (data) => {
         if (this.generationAborted || data.token.length === 0) return;
+        if (firstTokenAt === null) firstTokenAt = Date.now();
         streamedText += data.token;
         callbacks.onToken(data.token);
       },
@@ -150,6 +159,16 @@ export class LlmInferenceService {
         transcriptCount: linkedNotes.length,
         historyTrimmed: prompt.historyTrimmed,
         promptTokenCount: prompt.promptTokenCount,
+        budgetTokenizationPasses: prompt.tokenizationPasses,
+        cacheReused: cache.reused,
+        cacheActivationMs: Date.now() - cacheActivationStartedAt,
+        cacheClearMs: cache.clearMs,
+        nativeCachedTokens: completionResult.tokens_cached,
+        nativeCachedPromptTokens: completionResult.timings?.cache_n,
+        nativePromptTokens: completionResult.timings?.prompt_n,
+        nativePromptPrefillMs: completionResult.timings?.prompt_ms,
+        timeToFirstTokenMs:
+          firstTokenAt === null ? null : firstTokenAt - completionStartedAt,
       });
     }
 
@@ -203,17 +222,10 @@ export class LlmInferenceService {
     });
   }
 
-  private async prepareConversationSwitch(
-    conversationId: string,
-  ): Promise<void> {
-    await this.clearCacheOrFailClosed();
-    this.activeConversationId = conversationId;
-  }
-
-  private async clearCacheOrFailClosed(): Promise<void> {
-    const context = this.getContextOrThrow();
+  private async activateConversationCache(identity: string) {
     try {
-      await context.clearCache(false);
+      const activated = await this.sharedContext.activateCache(identity);
+      return activated;
     } catch {
       await this.sharedContext.release();
       this.activeConversationId = null;

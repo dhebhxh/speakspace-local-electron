@@ -15,19 +15,13 @@ import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme
 import type { CoreCalendarIntent, CoreTask } from "@/domain/core-note-insight/core-note-insight";
 import type { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
+import { groupHomeCalendarItems, toLocalDateKey } from "@/services/home-calendar-items";
 
 type OverviewState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "success"; notes: Note[]; tasks: CoreTask[]; calendarIntents: CoreCalendarIntent[]; loadedAt: number };
 type NoteFilter = "all" | "pinned" | "todos";
-
-function toDateKey(value: string | null): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
 
 const formatNumber = (value: number) => new Intl.NumberFormat("en-GB").format(value);
 
@@ -38,7 +32,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const [overview, setOverview] = useState<OverviewState>({ status: "loading" });
   const [noteFilter, setNoteFilter] = useState<NoteFilter>("all");
-  const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date().toISOString())!);
+  const [selectedDate, setSelectedDate] = useState(() => toLocalDateKey(new Date().toISOString())!);
 
   const loadOverview = useCallback(async () => {
     try {
@@ -60,11 +54,7 @@ export default function HomeScreen() {
     const recentNotes = overview.notes.filter((note) => new Date(note.getCreatedAt()).getTime() >= weekAgo);
     const pendingNoteIds = new Set(overview.tasks.filter((task) => task.status === "pending").map((task) => task.sourceNoteId));
     const filteredNotes = overview.notes.filter((note) => noteFilter === "pinned" ? note.getIsPinned() : noteFilter === "todos" ? pendingNoteIds.has(note.getId()) : true);
-    const calendarByDate = new Map<string, CoreCalendarIntent[]>();
-    for (const intent of overview.calendarIntents) {
-      const dateKey = toDateKey(intent.startsAt ?? intent.dueAt ?? intent.remindAt);
-      if (dateKey) calendarByDate.set(dateKey, [...(calendarByDate.get(dateKey) ?? []), intent]);
-    }
+    const calendarByDate = groupHomeCalendarItems(overview.tasks, overview.calendarIntents, overview.notes);
     return {
       pinnedCount: overview.notes.filter((note) => note.getIsPinned()).length,
       pendingCount: overview.tasks.filter((task) => task.status === "pending").length,
@@ -167,7 +157,7 @@ export default function HomeScreen() {
                 <Text style={[styles.agendaDate, { color: colors.text }]}>{selectedDate}</Text>
                 {selectedEvents.length === 0
                   ? <Text style={[styles.agendaEmpty, { color: colors.textMuted }]}>No calendar items for this date.</Text>
-                  : selectedEvents.map((event) => <Link key={event.id} href={{ pathname: "/notes/[noteId]", params: { noteId: event.sourceNoteId } }} asChild><Pressable accessibilityRole="button" style={({ pressed }) => [styles.eventRow, { backgroundColor: colors.surfaceMuted }, pressed && styles.pressed]}><View style={[styles.eventDot, { backgroundColor: colors.accent }]} /><View style={styles.eventCopy}><Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text><Text style={[styles.eventKind, { color: colors.textMuted }]}>{event.kind === "reminder" ? "Reminder" : "Calendar event"}</Text></View></Pressable></Link>)}
+                  : selectedEvents.map((event) => <Link key={`${event.kind}-${event.id}`} href={{ pathname: "/notes/[noteId]", params: { noteId: event.sourceNoteId } }} asChild><Pressable accessibilityRole="button" style={({ pressed }) => [styles.eventRow, { backgroundColor: colors.surfaceMuted }, pressed && styles.pressed]}><View style={[styles.eventDot, { backgroundColor: event.kind === "task" ? colors.danger : colors.accent }]} /><View style={styles.eventCopy}><Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text><Text style={[styles.eventKind, { color: colors.textMuted }]}>{event.kind === "task" ? "To-do" : event.kind === "reminder" ? "Reminder" : "Calendar event"}</Text></View></Pressable></Link>)}
               </View>
             </View>
           </View>

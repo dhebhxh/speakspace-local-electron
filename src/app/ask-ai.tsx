@@ -3,6 +3,7 @@ import { Stack, type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useHeaderHeight } from "expo-router/build/react-navigation/elements";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -33,6 +34,7 @@ import type { AiMessage } from "@/domain/ai-message/ai-message";
 import type { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
 import type { AiConversationHistoryItem } from "@/services/ai-conversation-service";
+import type { GenerateStage } from "@/services/llm-inference-service";
 import { formatDate } from "@/utils/format-date";
 
 type ScreenState =
@@ -67,6 +69,7 @@ export default function AskAiScreen() {
   const params = useLocalSearchParams<{
     conversationId?: string;
     noteId?: string;
+    newConversation?: string;
   }>();
   const router = useRouter();
   const theme = useTheme();
@@ -84,6 +87,7 @@ export default function AskAiScreen() {
   const [input, setInput] = useState("");
   const [streamingText, setStreamingText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStage, setGenerationStage] = useState<GenerateStage | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [historyVisible, setHistoryVisible] = useState(false);
@@ -101,6 +105,7 @@ export default function AskAiScreen() {
 
   const routeConversationId = firstParam(params.conversationId);
   const routeNoteId = firstParam(params.noteId);
+  const routeStartsNewConversation = firstParam(params.newConversation) === "1";
   const isPersisted = state.status === "ready" && state.conversationId !== null;
   const isBusy = isGenerating || voiceStatus !== "idle";
   const latestMessage =
@@ -134,11 +139,21 @@ export default function AskAiScreen() {
       const activeModelFileExists =
         activeModel === null || llmModelService.resolveModelFile(activeModel).exists;
 
-      if (routeConversationId !== null) {
-        await aiConversationService.getConversationOrThrow(routeConversationId);
+      let conversationIdToLoad = routeConversationId;
+      if (
+        conversationIdToLoad === null &&
+        routeNoteId === null &&
+        !routeStartsNewConversation
+      ) {
+        conversationIdToLoad = (await aiConversationService.getConversationHistory())
+          .at(0)?.conversation.getId() ?? null;
+      }
+
+      if (conversationIdToLoad !== null) {
+        await aiConversationService.getConversationOrThrow(conversationIdToLoad);
         const [messages, linkedNotes] = await Promise.all([
-          aiConversationService.getCanonicalMessages(routeConversationId),
-          aiConversationService.getLinkedNotes(routeConversationId),
+          aiConversationService.getCanonicalMessages(conversationIdToLoad),
+          aiConversationService.getLinkedNotes(conversationIdToLoad),
         ]);
 
         setState({
@@ -146,7 +161,7 @@ export default function AskAiScreen() {
           transcriptNotes,
           selectedNote: linkedNotes[0] ?? null,
           messages,
-          conversationId: routeConversationId,
+          conversationId: conversationIdToLoad,
           hasActiveModel,
           activeModelFileExists,
         });
@@ -174,7 +189,7 @@ export default function AskAiScreen() {
 
   useEffect(() => {
     void load();
-  }, [routeConversationId, routeNoteId]);
+  }, [routeConversationId, routeNoteId, routeStartsNewConversation]);
 
   useEffect(
     () => () => {
@@ -225,11 +240,13 @@ export default function AskAiScreen() {
   const generateForConversation = async (conversationId: string) => {
     setNotice(null);
     setStreamingText("");
+    setGenerationStage("preparing");
 
     try {
       await llmInferenceService.generate(conversationId, {
         onToken: (tokenText) =>
           setStreamingText((previous) => previous + tokenText),
+        onStatus: setGenerationStage,
       });
       setStreamingText("");
       await refreshMessages(conversationId);
@@ -246,6 +263,7 @@ export default function AskAiScreen() {
     } finally {
       generationInFlightRef.current = false;
       setIsGenerating(false);
+      setGenerationStage(null);
     }
   };
 
@@ -308,6 +326,7 @@ export default function AskAiScreen() {
     } catch (error) {
       generationInFlightRef.current = false;
       setIsGenerating(false);
+      setGenerationStage(null);
       const message = errorMessage(error);
       setNotice(
         message === TRANSCRIPT_TOO_LONG_ERROR
@@ -358,12 +377,14 @@ export default function AskAiScreen() {
         );
         generationInFlightRef.current = false;
         setIsGenerating(false);
+        setGenerationStage(null);
         return;
       }
 
       if (canonicalLastMessage?.getRole() !== "user") {
         generationInFlightRef.current = false;
         setIsGenerating(false);
+        setGenerationStage(null);
         await refreshMessages(state.conversationId).catch(() => undefined);
         return;
       }
@@ -389,6 +410,7 @@ export default function AskAiScreen() {
       if (!handedOffToGeneration) {
         generationInFlightRef.current = false;
         setIsGenerating(false);
+        setGenerationStage(null);
       }
       retryInFlightRef.current = false;
     }
@@ -415,6 +437,13 @@ export default function AskAiScreen() {
     router.replace({
       pathname: "/ask-ai",
       params: { conversationId },
+    } as unknown as Href);
+  };
+
+  const startNewConversation = () => {
+    router.replace({
+      pathname: "/ask-ai",
+      params: { newConversation: "1" },
     } as unknown as Href);
   };
 
@@ -588,7 +617,7 @@ export default function AskAiScreen() {
                       label="New"
                       variant="secondary"
                       disabled={isBusy}
-                      onPress={() => router.replace("/ask-ai" as Href)}
+                      onPress={startNewConversation}
                     />
                   )}
                 </View>
@@ -633,7 +662,7 @@ export default function AskAiScreen() {
                       label="New conversation"
                       variant="secondary"
                       disabled={voiceStatus !== "idle"}
-                      onPress={() => router.replace("/ask-ai" as Href)}
+                      onPress={startNewConversation}
                     />
                     <AppButton
                       label="Retry"
@@ -698,6 +727,27 @@ export default function AskAiScreen() {
                   >
                     <Text selectable style={[styles.messageText, { color: colors.text }]}>
                       {streamingText}
+                    </Text>
+                  </View>
+                )}
+                {isGenerating && streamingText.length === 0 && (
+                  <View
+                    style={[
+                      styles.messageBubble,
+                      styles.assistantBubble,
+                      styles.generationBubble,
+                      { backgroundColor: colors.surface, borderColor: colors.border },
+                    ]}
+                  >
+                    <ActivityIndicator color={colors.accent} />
+                    <Text style={[styles.generationText, { color: colors.textMuted }]}>
+                      {generationStage === "preparing"
+                        ? "Loading the local model…"
+                        : generationStage === "retrieving"
+                          ? "Finding the relevant note passages…"
+                          : generationStage === "validating"
+                            ? "Checking the answer against the note…"
+                            : "Writing a grounded answer…"}
                     </Text>
                   </View>
                 )}
@@ -986,6 +1036,8 @@ const styles = StyleSheet.create({
   userBubble: { alignSelf: "flex-end" },
   assistantBubble: { alignSelf: "flex-start" },
   messageText: { fontSize: 16, lineHeight: 24 },
+  generationBubble: { alignItems: "center", flexDirection: "row", gap: Spacing.sm },
+  generationText: { flex: 1, fontSize: 14, lineHeight: 20 },
   voicePanel: {
     borderRadius: Radius.md,
     borderWidth: 1,

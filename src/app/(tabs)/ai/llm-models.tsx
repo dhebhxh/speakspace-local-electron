@@ -160,7 +160,7 @@ export default function LlmModelsScreen() {
       >
         <View style={styles.heading}>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            Download GGUF models for fully local language inference on this device.
+            中文 Insight、Knowledge 與 Ask AI 建議使用 Qwen2.5 1.5B；模型與推論皆保留在此裝置。
           </Text>
         </View>
         {state.status === "error" && (
@@ -182,6 +182,7 @@ export default function LlmModelsScreen() {
                 key={entry.id}
                 name={entry.name}
                 description={entry.description}
+                recommendedForChinese={entry.recommendedForChinese === true}
                 format={entry.format}
                 quantization={entry.quantization}
                 sizeBytes={installed?.getSizeBytes() ?? entry.sizeBytes}

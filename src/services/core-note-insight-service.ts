@@ -6,6 +6,8 @@ import { CoreNoteInsightRepository } from "@/repositories/core-note-insight-repo
 import { getLocalReferenceTime, resolveCoreNoteTime, type ResolvedCoreNoteTime } from "@/services/core-note-time";
 import { LlmModelService } from "@/services/llm-model-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { extractDeterministicShortInsight } from "@/services/short-grounded-extraction";
+import { shouldUseSparseGroundedFallback } from "@/services/sparse-grounded-fallback";
 
 type OutputItem = { title?: unknown; description?: unknown; startsAtExpression?: unknown; dueAtExpression?: unknown };
 type OutputCalendar = OutputItem & { endsAtExpression?: unknown; remindAtExpression?: unknown; allDay?: unknown; timezone?: unknown };
@@ -13,11 +15,13 @@ type OutputTask = OutputItem & { actionItems?: unknown };
 type ContentOutput = { summary?: unknown; keyPoints?: unknown };
 type IntentOutput = { tasks?: unknown; reminders?: unknown; calendarIntents?: unknown };
 
-const CONTEXT_SIZE = 6144;
-const BATCH_SIZE = 128;
-const CONTENT_TOKENS = 1408;
-const INTENT_TOKENS = 1152;
-const SAFETY_TOKENS = 192;
+const CONTEXT_SIZE = 4096;
+const BATCH_SIZE = 256;
+const CONTENT_TOKENS = 320;
+const INTENT_TOKENS = 448;
+const SAFETY_TOKENS = 128;
+const GENERATION_TIMEOUT_MS = 120_000;
+const GPU_LAYERS = 99;
 const EMPTY_VALUE_STRINGS = new Set(["null", "unknown", "undefined", "none", "n/a", "na", "not specified", "unspecified"]);
 const SYSTEM = `Perform grounded summarization and extraction from the user's NOTE.
 Use only information supported by NOTE. You may compress, reorder, merge repetition, and state relationships explicit in context. Never add outside knowledge or invent facts, people, commands, decisions, dates, times, places, tasks, reminders, or events. Preserve uncertainty and the note's primary language. Empty categories must stay empty. Return only JSON matching the schema.`;
@@ -60,17 +64,21 @@ TIME FIELDS
 - For an unknown optional field, output the JSON literal null. Never output the strings "null", "unknown", "undefined", "N/A", or "none".
 
 Silently test every candidate against these rules before answering. Do not output that analysis.`;
-
 const nullableString = { anyOf: [{ type: "string" }, { type: "null" }] } as const;
 const itemProperties = { title: { type: "string" }, description: nullableString, startsAtExpression: nullableString, dueAtExpression: nullableString } as const;
 const itemRequired = ["title", "description", "startsAtExpression", "dueAtExpression"];
-const contentSchema = { type: "object", properties: { summary: { type: "string" }, keyPoints: { type: "array", items: { type: "string" } } }, required: ["summary", "keyPoints"], additionalProperties: false } as const;
+const contentSchema = {
+  type: "object",
+  properties: { summary: { type: "string" }, keyPoints: { type: "array", maxItems: 8, items: { type: "string" } } },
+  required: ["summary", "keyPoints"],
+  additionalProperties: false,
+} as const;
 const intentSchema = {
   type: "object",
   properties: {
-    tasks: { type: "array", items: { type: "object", properties: { ...itemProperties, actionItems: { type: "array", items: { type: "object", properties: itemProperties, required: itemRequired, additionalProperties: false } } }, required: [...itemRequired, "actionItems"], additionalProperties: false } },
-    reminders: { type: "array", items: { type: "object", properties: { ...itemProperties, remindAtExpression: nullableString }, required: [...itemRequired, "remindAtExpression"], additionalProperties: false } },
-    calendarIntents: { type: "array", items: { type: "object", properties: { ...itemProperties, endsAtExpression: nullableString, remindAtExpression: nullableString, allDay: { type: "boolean" }, timezone: nullableString }, required: [...itemRequired, "endsAtExpression", "remindAtExpression", "allDay", "timezone"], additionalProperties: false } },
+    tasks: { type: "array", maxItems: 6, items: { type: "object", properties: { ...itemProperties, actionItems: { type: "array", maxItems: 8, items: { type: "object", properties: itemProperties, required: itemRequired, additionalProperties: false } } }, required: [...itemRequired, "actionItems"], additionalProperties: false } },
+    reminders: { type: "array", maxItems: 6, items: { type: "object", properties: { ...itemProperties, remindAtExpression: nullableString }, required: [...itemRequired, "remindAtExpression"], additionalProperties: false } },
+    calendarIntents: { type: "array", maxItems: 6, items: { type: "object", properties: { ...itemProperties, endsAtExpression: nullableString, remindAtExpression: nullableString, allDay: { type: "boolean" }, timezone: nullableString }, required: [...itemRequired, "endsAtExpression", "remindAtExpression", "allDay", "timezone"], additionalProperties: false } },
   },
   required: ["tasks", "reminders", "calendarIntents"], additionalProperties: false,
 } as const;
@@ -152,6 +160,47 @@ export class CoreNoteInsightService {
     const input = transcript.trim();
     console.info("[CoreInsights] Input received", { requestId, noteId, inputLength: input.length });
     if (!input) throw new CoreNoteInsightGenerationError("empty-transcript", "This note has no text to analyze yet.");
+    if (shouldUseSparseGroundedFallback(input)) {
+      const reference = getLocalReferenceTime();
+      const insight = this.parse(
+        noteId,
+        "deterministic-sparse-v1",
+        { summary: input, keyPoints: [input] },
+        { tasks: [], reminders: [], calendarIntents: [] },
+        requestId,
+        reference.instant,
+        reference.localIso,
+        reference.timezone,
+      );
+      await this.repository.save(insight);
+      console.info("[CoreInsights] Sparse grounded result saved without model inference", { requestId, noteId, inputLength: input.length });
+      return insight;
+    }
+    const deterministic = extractDeterministicShortInsight(input);
+    if (deterministic) {
+      const reference = getLocalReferenceTime();
+      const insight = this.parse(
+        noteId,
+        "deterministic-short-v1",
+        deterministic.content,
+        deterministic.intents,
+        requestId,
+        reference.instant,
+        reference.localIso,
+        reference.timezone,
+      );
+      await this.repository.save(insight);
+      const calendars = insight.getCalendarIntents();
+      console.info("[CoreInsights] Short grounded result saved without model inference", {
+        requestId,
+        noteId,
+        inputLength: input.length,
+        taskCount: insight.getTasks().length,
+        reminderCount: calendars.filter((item) => item.kind === "reminder").length,
+        calendarIntentCount: calendars.filter((item) => item.kind === "calendar").length,
+      });
+      return insight;
+    }
     const model = await this.llmModelService.getActiveModel();
     if (!model) throw new CoreNoteInsightGenerationError("model-unavailable", "Choose and activate a local language model in AI Models first.");
     const modelFile = this.llmModelService.resolveModelFile(model);
@@ -160,13 +209,19 @@ export class CoreNoteInsightService {
     let context: LlamaContext | null = null;
     try {
       console.info("[CoreInsights] Local LLM starting", { requestId, noteId, modelId: model.getId(), contextSize: CONTEXT_SIZE, stages: 2 });
-      context = await initLlama({ model: modelFile.uri, n_ctx: CONTEXT_SIZE, n_batch: BATCH_SIZE });
+      context = await initLlama({
+        model: modelFile.uri,
+        n_ctx: CONTEXT_SIZE,
+        n_batch: BATCH_SIZE,
+        n_gpu_layers: GPU_LAYERS,
+        use_mmap: true,
+      });
       const reference = getLocalReferenceTime();
       console.info("[CoreInsights] Local time reference captured", { requestId, referenceTime: reference.localIso, timezone: reference.timezone });
       const contentRaw = await this.runStage(context, CONTENT_PROMPT, input, contentSchema, CONTENT_TOKENS, requestId, "content");
       const content = this.parseJson<ContentOutput>(contentRaw);
-      const timeContext = `${INTENT_PROMPT}\n\nREFERENCE TIME (device local clock; context only, do not copy it unless NOTE contains that time):\n${reference.localIso}\nDEVICE TIMEZONE:\n${reference.timezone}`;
-      const intentRaw = await this.runStage(context, timeContext, input, intentSchema, INTENT_TOKENS, requestId, "intent");
+      const intentPrompt = `${INTENT_PROMPT}\n\nREFERENCE TIME (device local clock; context only, do not copy it unless NOTE contains that time):\n${reference.localIso}\nDEVICE TIMEZONE:\n${reference.timezone}`;
+      const intentRaw = await this.runStage(context, intentPrompt, input, intentSchema, INTENT_TOKENS, requestId, "intent");
       const intents = this.parseJson<IntentOutput>(intentRaw);
       const insight = this.parse(noteId, model.getId(), content, intents, requestId, reference.instant, reference.localIso, reference.timezone);
       const calendars = insight.getCalendarIntents();
@@ -220,7 +275,20 @@ export class CoreNoteInsightService {
       console.info("[CoreInsights] Prompt budget ready", { requestId, stage, promptTokens, outputTokens, inputTruncated: false });
     }
     const stageStartedAt = Date.now();
-    const result = await context.completion({ messages, response_format: { type: "json_schema", json_schema: { strict: true, schema } }, n_predict: outputTokens, temperature: 0 });
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      void stopCompletionSafely(context);
+    }, GENERATION_TIMEOUT_MS);
+    let result;
+    try {
+      result = await context.completion({ messages, response_format: { type: "json_schema", json_schema: { strict: true, schema } }, n_predict: outputTokens, temperature: 0, enable_thinking: false, reasoning_format: "none" });
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (timedOut || result.interrupted) {
+      throw new CoreNoteInsightGenerationError("generation-failed", "Structured Note took too long on this device. Try a shorter note or a smaller active model.");
+    }
     const raw = result.content || result.text;
     console.info("[CoreInsights] Stage completed", { requestId, stage, durationMs: Date.now() - stageStartedAt, outputLength: raw.length, nPredict: outputTokens, temperature: 0 });
     return raw;
@@ -302,6 +370,15 @@ export class CoreNoteInsightService {
   private uniqueStrings(value: unknown[]): string[] {
     const seen = new Set<string>();
     return value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).map((item) => item.trim()).filter((item) => { const key = this.normalized(item); if (!key || seen.has(key)) return false; seen.add(key); return true; });
+  }
+}
+
+async function stopCompletionSafely(context: LlamaContext | null | undefined): Promise<void> {
+  try {
+    const result = context?.stopCompletion();
+    if (result && typeof result.then === "function") await result;
+  } catch {
+    // A completion deadline must never surface a second native bridge error.
   }
 }
 

@@ -35,6 +35,7 @@ const MAX_PREPARED_WAV_BYTES =
   MAX_AUDIO_DURATION_SECONDS * LIVE_AUDIO_BYTES_PER_SECOND + 44;
 const MAX_AUDIO_DURATION_MS = MAX_AUDIO_DURATION_SECONDS * 1000;
 const DURATION_WARNING_MS = 5 * 60 * 1000;
+const MAX_COMBINED_FINAL_AUDIO_MS = 45 * 1000;
 
 type SessionCallbacks = {
   onText: (text: string) => void;
@@ -118,6 +119,19 @@ type PendingTranscription = {
   sliceIndex: number;
   audioData: Uint8Array;
   isFinal?: boolean;
+};
+
+type RealtimeTranscriberInternals = {
+  transcriptionQueue: PendingTranscription[];
+  processingPromise: Promise<void> | null;
+  activeTranscriptions: Set<{
+    promise: Promise<unknown>;
+    stop: () => Promise<void>;
+  }>;
+  sliceManager: {
+    getCurrentSliceInfo: () => { currentSliceIndex: number };
+    getAudioDataForTranscription: (sliceIndex: number) => Uint8Array | null;
+  };
 };
 
 const fileSystemAdapter: WavFileWriterFs = {
@@ -220,14 +234,18 @@ export class TranscriptionService {
               fs: fileSystemAdapter,
             };
       const catalogEntry = this.sttModelService.getCatalogEntry(model.getId());
+      const isWhisper = model.getEngine() === "whisper";
       this.transcriber = new RealtimeTranscriber(
         dependencies,
         {
-          audioSliceSec: 8,
-          audioMinSec: 0.8,
-          maxSlicesInMemory: 6,
-          realtimeProcessingPauseMs: 1200,
-          initRealtimeAfterMs: 800,
+          // Whisper benefits from a longer phrase window for Chinese word
+          // boundaries and punctuation. Parakeet keeps the lower-latency
+          // English settings.
+          audioSliceSec: isWhisper ? 12 : 8,
+          audioMinSec: isWhisper ? 1.2 : 0.8,
+          maxSlicesInMemory: isWhisper ? 4 : 6,
+          realtimeProcessingPauseMs: isWhisper ? 1600 : 1200,
+          initRealtimeAfterMs: isWhisper ? 1200 : 800,
           audioOutputPath: recording.uri,
           ...(model.getEngine() === "whisper"
             ? {
@@ -286,7 +304,53 @@ export class TranscriptionService {
     }
     this.captureActiveRecordingDuration();
     this.clearDurationTimers();
-    await this.transcriber.nextSlice();
+    const recordingDurationMs = this.accumulatedRecordingMs;
+
+    // Stop accepting PCM before finalizing the current slice. whisper.rn's
+    // nextSlice() only queues the final inference; stop() marks the transcriber
+    // inactive before draining that queue, which makes the completed result get
+    // discarded. Wait for the queued final slice while the transcriber is still
+    // active, then let stop() finalize the WAV and release its stream state.
+    await this.audioStream?.stop();
+    const activeModel = await this.sttModelService.getActiveModel();
+    const combinedAudio =
+      activeModel?.getEngine() === "whisper" &&
+      recordingDurationMs <= MAX_COMBINED_FINAL_AUDIO_MS
+        ? this.collectRetainedAudio(this.transcriber)
+        : null;
+
+    if (combinedAudio !== null && this.context !== null) {
+      // Short Whisper sessions can otherwise contain several increasingly long
+      // snapshots of the same audio. Abort those redundant jobs and run one
+      // authoritative pass over the complete retained PCM instead.
+      const finalPassStartedAt = Date.now();
+      console.info("[LiveTranscription] Combined final pass started", {
+        recordingDurationMs,
+        audioBytes: combinedAudio.length,
+      });
+      await this.cancelPendingTranscriptions(this.transcriber);
+      const catalogEntry = activeModel === null
+        ? null
+        : this.sttModelService.getCatalogEntry(activeModel.getId());
+      const finalRequest = (this.context as WhisperContext).transcribeData(
+        combinedAudio.buffer as ArrayBuffer,
+        {
+          language: catalogEntry?.transcriptionLanguage ?? "auto",
+          translate: false,
+        },
+      );
+      const finalResult = await finalRequest.promise;
+      this.results.clear();
+      this.results.set(0, finalResult.result.trim());
+      this.sessionCallbacks?.onText(this.getTranscript());
+      console.info("[LiveTranscription] Combined final pass completed", {
+        durationMs: Date.now() - finalPassStartedAt,
+        transcriptLength: finalResult.result.trim().length,
+      });
+    } else {
+      await this.transcriber.nextSlice();
+      await this.waitForPendingTranscriptions(this.transcriber);
+    }
     await this.transcriber.stop();
     const result = {
       transcript: this.getTranscript(),
@@ -550,9 +614,7 @@ export class TranscriptionService {
   private compactPendingTranscriptions(): void {
     if (this.transcriber === null) return;
 
-    const internals = this.transcriber as unknown as {
-      transcriptionQueue: PendingTranscription[];
-    };
+    const internals = this.transcriber as unknown as RealtimeTranscriberInternals;
     const queue = internals.transcriptionQueue;
     if (!Array.isArray(queue) || queue.length < 2) return;
 
@@ -565,6 +627,61 @@ export class TranscriptionService {
         (left, right) => left.sliceIndex - right.sliceIndex,
       ),
     );
+  }
+
+  private async waitForPendingTranscriptions(
+    transcriber: RealtimeTranscriber,
+  ): Promise<void> {
+    const internals = transcriber as unknown as RealtimeTranscriberInternals;
+
+    // A completed processingPromise normally means the queue is empty. Loop in
+    // case a final audio callback arrived while the current promise was settling.
+    while (true) {
+      const processingPromise = internals.processingPromise;
+      if (processingPromise !== null) {
+        await processingPromise;
+      }
+      if (internals.transcriptionQueue.length === 0) return;
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
+  }
+
+  private collectRetainedAudio(
+    transcriber: RealtimeTranscriber,
+  ): Uint8Array | null {
+    const internals = transcriber as unknown as RealtimeTranscriberInternals;
+    const { currentSliceIndex } = internals.sliceManager.getCurrentSliceInfo();
+    const slices: Uint8Array[] = [];
+
+    for (let index = 0; index <= currentSliceIndex; index += 1) {
+      const audio = internals.sliceManager.getAudioDataForTranscription(index);
+      if (audio !== null && audio.length > 0) slices.push(audio);
+    }
+    if (slices.length === 0) return null;
+
+    const combined = new Uint8Array(
+      slices.reduce((total, audio) => total + audio.length, 0),
+    );
+    let offset = 0;
+    slices.forEach((audio) => {
+      combined.set(audio, offset);
+      offset += audio.length;
+    });
+    return combined;
+  }
+
+  private async cancelPendingTranscriptions(
+    transcriber: RealtimeTranscriber,
+  ): Promise<void> {
+    const internals = transcriber as unknown as RealtimeTranscriberInternals;
+    internals.transcriptionQueue.splice(0);
+    await Promise.allSettled(
+      [...internals.activeTranscriptions].map((request) => request.stop()),
+    );
+    if (internals.processingPromise !== null) {
+      await internals.processingPromise;
+    }
+    internals.transcriptionQueue.splice(0);
   }
 
   private async release(deleteRecording: boolean): Promise<void> {

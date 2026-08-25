@@ -10,6 +10,7 @@ import { InferenceError } from "@/errors/inference-error";
 import type { TranscriptContextBlock } from "./ask-ai-grounded-messages";
 import {
   chunkTranscriptText,
+  countCrossLanguageTopicMatches,
   isTranscriptOverviewQuestion,
   normalizeEvidenceText,
   normalizeForSearch,
@@ -134,6 +135,7 @@ export type AnswerType =
 export type DeterministicGuard =
   | "relation-mismatch"
   | "overview-context-present"
+  | "topic-match"
   | "yes-no-explicit-support"
   | "meta-missing"
   | "classifier-fallback";
@@ -184,8 +186,10 @@ type EvidenceExtractionContext = {
   currentQuestion: string;
 };
 
-export function getGroundingRefusal(): string {
-  return ASK_AI_GROUNDING_REFUSAL;
+export function getGroundingRefusal(question: string = ""): string {
+  return /[\u3400-\u9fff\uf900-\ufaff]/.test(question)
+    ? "所選筆記的轉錄內容沒有足夠資訊回答這個問題。"
+    : ASK_AI_GROUNDING_REFUSAL;
 }
 
 export function getAskAiMetaResponse(history: ChatHistoryMessage[]): string | null {
@@ -328,6 +332,7 @@ export function classifySelectedEvidence(
     deterministicGuard === "relation-mismatch"
       ? "unsupported"
       : deterministicGuard === "overview-context-present" ||
+          deterministicGuard === "topic-match" ||
           deterministicGuard === "yes-no-explicit-support"
         ? "supported"
         : deterministicGuard === "meta-missing"
@@ -591,15 +596,21 @@ async function buildEvidenceDecisionPrompts(
 
   for (const decisionContext of decisionContexts) {
     const decisionAnalysis = analyzeQuery(decisionContext.currentQuestion);
+    const selectionQuestion = queryAnalysis.isMultiPart
+      ? `${decisionContext.currentQuestion} ${extractionContext.currentQuestion}`
+      : decisionContext.currentQuestion;
     const decisionRetrievalCandidates =
       queryAnalysis.isMultiPart
-        ? rankEvidenceCandidates(evidenceChunks, decisionContext)
+        ? rankEvidenceCandidates(evidenceChunks, {
+            ...decisionContext,
+            currentQuestion: selectionQuestion,
+          })
         : retrievalCandidates;
     const selection = selectDeterministicEvidence(
       evidenceChunks,
       decisionRetrievalCandidates,
       decisionAnalysis,
-      decisionContext.currentQuestion,
+      selectionQuestion,
       analyzeFollowUpNeed(decisionContext.currentQuestion),
       decisionContext.previousUserQuestion,
     );
@@ -731,6 +742,7 @@ function evaluateCandidate(
   const currentTopicScore = scoreTopicOverlap(
     tokenizeMeaningful(currentQuestion),
     candidate.text,
+    currentQuestion,
   );
   const relationScore = isRelationCompatible(candidate.text, queryAnalysis)
     ? 1
@@ -742,9 +754,10 @@ function evaluateCandidate(
     ? 1
     : 0;
   const followUpScore = followUp.usesPreviousUser
-    ? scoreTopicOverlap(
+      ? scoreTopicOverlap(
         tokenizeMeaningful(previousUserQuestion),
         candidate.text,
+        previousUserQuestion,
       )
     : 0;
 
@@ -762,9 +775,10 @@ function evaluateCandidate(
   };
 }
 
-function scoreTopicOverlap(tokens: string[], evidenceText: string): number {
+function scoreTopicOverlap(tokens: string[], evidenceText: string, sourceText: string = ""): number {
   const evidenceTokens = new Set(tokenizeMeaningful(evidenceText));
-  return [...new Set(tokens)].filter((token) => evidenceTokens.has(token)).length;
+  const lexicalMatches = [...new Set(tokens)].filter((token) => evidenceTokens.has(token)).length;
+  return lexicalMatches + countCrossLanguageTopicMatches(sourceText, evidenceText);
 }
 
 function hasExpectedAnswerShape(
@@ -813,7 +827,7 @@ function isRelationCompatible(
     case "name-or-identity":
       return hasIdentityRelation(evidenceText, normalizedEvidence);
     case "responsibility":
-      return /\b(responsible for|assigned to|handles?|tasked with|role is|works on|working on)\b/.test(
+      return /\b(responsible for|assigned to|handles?|tasked with|role is|works on|working on)\b|(?:負責|负责|分工|指派|交給|交给)/.test(
         normalizedEvidence,
       );
     case "purpose-or-utility":
@@ -825,7 +839,7 @@ function isRelationCompatible(
     case "time-or-date":
       return hasTimeDateRelation(normalizedEvidence);
     case "reason-or-cause":
-      return /\b(because|because of|due to|reason|causes?|since|therefore|as a result)\b/.test(
+      return /\b(because|because of|due to|reason|causes?|since|therefore|as a result)\b|(?:因為|因为|原因|所以|導致|导致)/.test(
         normalizedEvidence,
       );
     case "command-or-procedure":
@@ -835,11 +849,11 @@ function isRelationCompatible(
     case "creator-or-authorship":
       return containsCreatorRelationLanguage(normalizedEvidence);
     case "location":
-      return /\b(located|stored|saved|kept|inside|at)\b/.test(
+      return /\b(located|stored|saved|kept|inside|at)\b|(?:位於|位于|地點|地点|位置|在)/.test(
         normalizedEvidence,
       );
     case "quantity":
-      return /\b\d+|one|two|three|four|five|several|many|few|multiple\b/.test(
+      return /\b\d+|one|two|three|four|five|several|many|few|multiple\b|(?:一|二|三|四|五|六|七|八|九|十|百|千|萬|万|個|个|次)/.test(
         normalizedEvidence,
       );
     case "summary-or-overview":
@@ -855,7 +869,7 @@ function hasIdentityRelation(
   return (
     /\b(is|are|was|were|called|named|known as|titled|logged in as)\b/.test(
       normalizedEvidence,
-    ) || hasMultiWordProperNameLikePhrase(evidenceText)
+    ) || /(?:叫做|稱為|称为|名稱|名称|名字|是)/.test(normalizedEvidence) || hasMultiWordProperNameLikePhrase(evidenceText)
   );
 }
 
@@ -887,7 +901,8 @@ function hasTimeDateRelation(normalizedEvidence: string): boolean {
       normalizedEvidence,
     ) ||
     /\b\d{1,2}(:\d{2})?\s*(am|pm)?\b/.test(normalizedEvidence) ||
-    /\b\d{1,4}[/-]\d{1,2}([/-]\d{1,4})?\b/.test(normalizedEvidence)
+    /\b\d{1,4}[/-]\d{1,2}([/-]\d{1,4})?\b/.test(normalizedEvidence) ||
+    /(?:今天|今日|明天|明日|後天|后天|上午|下午|晚上|早上|中午|點|点|月|日|號|号|截止|到期)/.test(normalizedEvidence)
   );
 }
 
@@ -993,7 +1008,7 @@ function detectExpectedAnswerType(
   if (relation === "reason-or-cause" || firstToken === "why") {
     return "reason";
   }
-  if (firstToken === "who") {
+  if (firstToken === "who" || /(?:誰|谁)/.test(normalizedQuestion)) {
     return "person";
   }
   if (relation === "time-or-date" || firstToken === "when") {
@@ -1081,11 +1096,18 @@ function detectDeterministicGuard(
     return "meta-missing";
   }
 
+  // Selection already requires topic overlap and relation compatibility.
+  // A strong lexical match is sufficient evidence for the grounded answer
+  // stage and avoids a second local-model classifier completion.
+  if ((selectedEvidenceCandidates[0]?.score ?? 0) >= 5) {
+    return "topic-match";
+  }
+
   return "classifier-fallback";
 }
 
 function containsCreatorRelationLanguage(normalizedEvidence: string): boolean {
-  return /\b(invent|invented|inventor|create|created|creator|design|designed|develop|developed|make|made|build|built|found|founded)\b/.test(
+  return /\b(invent|invented|inventor|create|created|creator|design|designed|develop|developed|make|made|build|built|found|founded)\b|(?:建立|創建|创建|設計|设计|開發|开发|製作|制作)/.test(
     normalizedEvidence,
   );
 }
@@ -1282,6 +1304,8 @@ function scoreEvidenceChunk(
     }
   }
 
+  score += countCrossLanguageTopicMatches(question, chunkText) * 6;
+
   score += scoreQuestionTypeBonus(
     question,
     chunkText,
@@ -1397,6 +1421,25 @@ function detectRetrievalIntent(
 ): RetrievalIntent {
   if (isTranscriptOverviewQuestion(question)) {
     return "summary-or-overview";
+  }
+
+  if (/(?:為什麼|为什么|原因|因為|因为)/.test(normalizedQuestion)) {
+    return "reason-or-cause";
+  }
+  if (/(?:哪裡|哪里|何處|何处|地點|地点|位置)/.test(normalizedQuestion)) {
+    return "location";
+  }
+  if (/(?:什麼時候|什么时候|何時|何时|幾點|几点|日期|截止|到期)/.test(normalizedQuestion)) {
+    return "time-or-date";
+  }
+  if (/(?:誰負責|谁负责|負責人|负责人|由誰|由谁)/.test(normalizedQuestion)) {
+    return "responsibility";
+  }
+  if (/(?:叫什麼|叫什么|名稱|名称|名字)/.test(normalizedQuestion)) {
+    return "name-or-identity";
+  }
+  if (/(?:多少|幾個|几个|幾次|几次)/.test(normalizedQuestion)) {
+    return "quantity";
   }
 
   if (/^how (many|much)\b/.test(normalizedQuestion)) {

@@ -28,6 +28,8 @@ export type SttModelCatalogEntry = {
   downloadUrl: string;
   /** Language hint passed to Whisper. Omitted for engines that do not use it. */
   transcriptionLanguage?: string;
+  languageLabel: string;
+  recommendedForChinese?: boolean;
 };
 
 /**
@@ -37,6 +39,23 @@ export type SttModelCatalogEntry = {
  * models from other repositories/engines) can be appended here freely.
  */
 export const STT_MODEL_CATALOG: readonly SttModelCatalogEntry[] = [
+  {
+    id: "whisper-small-multilingual-f16",
+    engine: "whisper",
+    name: "Whisper Small Multilingual",
+    description:
+      "Recommended for Mandarin Chinese, Cantonese-accented Mandarin, mixed Chinese/English, and punctuation-aware transcription.",
+    format: "GGML",
+    quantization: "F16",
+    sizeBytes: 487_601_967,
+    expectedSizeBytes: 487_601_967,
+    fileName: "ggml-small.bin",
+    downloadUrl:
+      "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin?download=true",
+    transcriptionLanguage: "zh",
+    languageLabel: "中文優先 · 中英混合",
+    recommendedForChinese: true,
+  },
   {
     id: "parakeet-tdt-0.6b-v3-q4_0",
     engine: "parakeet",
@@ -49,6 +68,7 @@ export const STT_MODEL_CATALOG: readonly SttModelCatalogEntry[] = [
     fileName: "ggml-parakeet-tdt-0.6b-v3-q4_0.bin",
     downloadUrl:
       "https://huggingface.co/ggml-org/parakeet-GGUF/resolve/main/ggml-parakeet-tdt-0.6b-v3-q4_0.bin?download=true",
+    languageLabel: "English only",
   },
   {
     id: "parakeet-tdt-0.6b-v3-q4_k",
@@ -62,6 +82,7 @@ export const STT_MODEL_CATALOG: readonly SttModelCatalogEntry[] = [
     fileName: "ggml-parakeet-tdt-0.6b-v3-q4_k.bin",
     downloadUrl:
       "https://huggingface.co/ggml-org/parakeet-GGUF/resolve/main/ggml-parakeet-tdt-0.6b-v3-q4_k.bin?download=true",
+    languageLabel: "English only",
   },
   {
     id: "parakeet-tdt-0.6b-v3-q8_0",
@@ -75,6 +96,7 @@ export const STT_MODEL_CATALOG: readonly SttModelCatalogEntry[] = [
     fileName: "ggml-parakeet-tdt-0.6b-v3-q8_0.bin",
     downloadUrl:
       "https://huggingface.co/ggml-org/parakeet-GGUF/resolve/main/ggml-parakeet-tdt-0.6b-v3-q8_0.bin?download=true",
+    languageLabel: "English only",
   },
   {
     id: "parakeet-tdt-0.6b-v3-f16",
@@ -88,20 +110,6 @@ export const STT_MODEL_CATALOG: readonly SttModelCatalogEntry[] = [
     fileName: "ggml-parakeet-tdt-0.6b-v3-f16.bin",
     downloadUrl:
       "https://huggingface.co/ggml-org/parakeet-GGUF/resolve/main/ggml-parakeet-tdt-0.6b-v3-f16.bin?download=true",
-  },
-  {
-    id: "whisper-small-multilingual-f16",
-    engine: "whisper",
-    name: "Whisper Small Multilingual (F16)",
-    description:
-      "Full-precision multilingual Whisper small for Chinese compatibility testing.",
-    format: "GGML",
-    quantization: "F16",
-    sizeBytes: 487_601_967,
-    expectedSizeBytes: 487_601_967,
-    fileName: "ggml-small.bin",
-    downloadUrl:
-      "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin?download=true",
-    transcriptionLanguage: "zh",
+    languageLabel: "English only",
   },
 ];

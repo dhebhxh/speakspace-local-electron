@@ -200,7 +200,7 @@ export default function SttModelsScreen() {
       >
         <View style={styles.heading}>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            Download models to run speech recognition fully on this device.
+            中文語音請優先安裝並啟用 Whisper Small Multilingual；Parakeet 系列僅適合英語。所有轉錄都只在此裝置上執行。
           </Text>
         </View>
 
@@ -230,6 +230,8 @@ export default function SttModelsScreen() {
                 key={entry.id}
                 name={entry.name}
                 description={entry.description}
+                languageLabel={entry.languageLabel}
+                recommendedForChinese={entry.recommendedForChinese === true}
                 format={entry.format}
                 quantization={entry.quantization}
                 sizeBytes={installed?.getSizeBytes() ?? entry.sizeBytes}

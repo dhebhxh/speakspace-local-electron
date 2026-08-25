@@ -38,7 +38,7 @@ export function resolveCoreNoteTime(expression: unknown, reference: Date): Resol
     }
   }
 
-  let date: Date | null = parseExplicitDate(lower);
+  let date: Date | null = parseExplicitDate(lower, reference);
   if (date) {
     // An explicit year-month-day always wins over relative words elsewhere in the phrase.
   } else if (/\bday after tomorrow\b|后天/.test(lower)) date = addDays(startOfDay(reference), 2);
@@ -85,12 +85,13 @@ function findWeekday(value: string): number | null {
   for (const [name, day] of Object.entries(WEEKDAYS)) if (value.includes(name)) return day;
   return null;
 }
-function parseExplicitDate(value: string): Date | null {
-  const match = value.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/) ?? value.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
+function parseExplicitDate(value: string, reference: Date): Date | null {
+  const numeric = value.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+  const chinese = value.match(/(?:(\d{4})\s*年\s*)?(\d{1,2})\s*月\s*(\d{1,2})\s*[日號号]/);
+  if (!numeric && !chinese) return null;
+  const year = numeric ? Number(numeric[1]) : Number(chinese?.[1] ?? reference.getFullYear());
+  const month = Number(numeric?.[2] ?? chinese?.[2]);
+  const day = Number(numeric?.[3] ?? chinese?.[3]);
   const date = new Date(year, month - 1, day);
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
 }
@@ -101,7 +102,7 @@ function parseClockTime(value: string): { hour: number; minute: number } | null 
     if (english[3] === "pm") hour += 12;
     return { hour, minute: Number(english[2] ?? 0) };
   }
-  const chinese = value.match(/(上午|早上|中午|下午|晚上)?\s*(\d{1,2}|[一二三四五六七八九十]+)\s*[点时](?:\s*(\d{1,2})\s*分?)?/);
+  const chinese = value.match(/(上午|早上|中午|下午|晚上)?\s*(\d{1,2}|[一二兩两三四五六七八九十]+)\s*[點点時时](?:\s*(\d{1,2})\s*分?)?/);
   if (!chinese) return null;
   const parsedHour = /^\d+$/.test(chinese[2]) ? Number(chinese[2]) : chineseNumber(chinese[2]);
   if (parsedHour === null || parsedHour > 23) return null;

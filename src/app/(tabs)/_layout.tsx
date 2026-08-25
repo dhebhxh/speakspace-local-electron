@@ -43,11 +43,9 @@ export default function TabsLayout() {
             <TabBarIcon
               color={color}
               focused={focused}
-              name={{
-                ios: "rectangle.grid.2x2",
-                android: "dashboard",
-                web: "dashboard",
-              }}
+              name={focused
+                ? { ios: "rectangle.grid.2x2.fill", android: "dashboard", web: "dashboard" }
+                : { ios: "rectangle.grid.2x2", android: "dashboard", web: "dashboard" }}
             />
           ),
         }}
@@ -60,7 +58,9 @@ export default function TabsLayout() {
             <TabBarIcon
               color={color}
               focused={focused}
-              name={{ ios: "folder", android: "folder", web: "folder" }}
+              name={focused
+                ? { ios: "folder.fill", android: "folder_open", web: "folder_open" }
+                : { ios: "folder", android: "folder", web: "folder" }}
             />
           ),
         }}
@@ -73,11 +73,9 @@ export default function TabsLayout() {
             <TabBarIcon
               color={color}
               focused={focused}
-              name={{
-                ios: "cube",
-                android: "deployed_code",
-                web: "deployed_code",
-              }}
+              name={focused
+                ? { ios: "cube.fill", android: "deployed_code", web: "deployed_code" }
+                : { ios: "cube", android: "deployed_code", web: "deployed_code" }}
             />
           ),
         }}
@@ -90,7 +88,9 @@ export default function TabsLayout() {
             <TabBarIcon
               color={color}
               focused={focused}
-              name={{ ios: "gearshape", android: "settings", web: "settings" }}
+              name={focused
+                ? { ios: "gearshape.fill", android: "settings", web: "settings" }
+                : { ios: "gearshape", android: "settings", web: "settings" }}
             />
           ),
         }}

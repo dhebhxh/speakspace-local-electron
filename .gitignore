@@ -44,3 +44,7 @@ example
 
 # Local Expo module Android build outputs
 /modules/*/android/build/
+
+# Local emulator verification and packaged release artifacts
+/artifacts/
+/outputs/

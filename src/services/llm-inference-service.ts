@@ -9,6 +9,8 @@ import {
   NO_TRANSCRIPT_CONTEXT_ERROR,
 } from "@/constants/ask-ai-grounding-policy";
 import {
+  ASK_AI_CLASSIFIER_TOKENS,
+  ASK_AI_COMPLETION_TIMEOUT_MS,
   ASK_AI_COMPLETION_TOP_P,
   ASK_AI_CONFIGURED_N_CTX,
   ASK_AI_GENERATION_RESERVE,
@@ -29,18 +31,30 @@ import {
   getGroundingRefusal,
   type VerifiedEvidenceResult,
 } from "./ask-ai-evidence-gate";
-import { findMissingOverviewNumberAtoms } from "./ask-ai-evidence-text";
+import { buildDirectGroundedEvidenceAnswer, findMissingOverviewNumberAtoms } from "./ask-ai-evidence-text";
 import { AiConversationService } from "./ai-conversation-service";
 
 export type GenerateCallbacks = {
   onToken: (tokenText: string) => void;
+  onStatus?: (status: GenerateStage) => void;
 };
+
+export type GenerateStage = "preparing" | "retrieving" | "answering" | "validating";
 
 export type GenerateResult = {
   assistantText: string;
   promptTokenCount: number;
   historyTrimmed: boolean;
 };
+
+async function stopCompletionSafely(context: LlamaContext | null | undefined): Promise<void> {
+  try {
+    const result = context?.stopCompletion();
+    if (result && typeof result.then === "function") await result;
+  } catch {
+    // Stop and timeout paths must remain safe across llama.rn bridge versions.
+  }
+}
 
 export class LlmInferenceService {
   private context: LlamaContext | null = null;
@@ -92,9 +106,11 @@ export class LlmInferenceService {
   }
 
   private async runGeneration(conversationId: string, callbacks: GenerateCallbacks): Promise<GenerateResult> {
+      callbacks.onStatus?.("preparing");
       await this.aiConversationService.getConversationOrThrow(conversationId);
       await this.ensureContextForActiveModel();
       await this.prepareConversationSwitch(conversationId);
+      callbacks.onStatus?.("retrieving");
 
       const linkedNotes =
         await this.aiConversationService.getLinkedNotes(conversationId);
@@ -162,7 +178,7 @@ export class LlmInferenceService {
         classifiedDecisions.length === 0 ||
         unsupportedDecision !== undefined
       ) {
-        const assistantText = getGroundingRefusal();
+        const assistantText = getGroundingRefusal(currentQuestion);
         await this.aiConversationService.addAssistantMessage(
           conversationId,
           assistantText,
@@ -175,19 +191,33 @@ export class LlmInferenceService {
         };
       }
 
-      const finalResult =
-        extractionPrompt.questionKind === "multi-part"
+      callbacks.onStatus?.("answering");
+      const verifiedEvidence = [...new Set(classifiedDecisions.flatMap(({ result }) => result.verifiedEvidence))];
+      const directAnswer = buildDirectGroundedEvidenceAnswer(currentQuestion, verifiedEvidence);
+      let finalResult: GenerateResult;
+      if (directAnswer) {
+        callbacks.onStatus?.("validating");
+        callbacks.onToken(directAnswer);
+        finalResult = {
+          assistantText: directAnswer,
+          promptTokenCount: extractionPrompt.promptTokenCount,
+          historyTrimmed: false,
+        };
+      } else {
+        finalResult = extractionPrompt.questionKind === "multi-part"
           ? await this.generateMultiPartAnswer(
               context,
+              currentQuestion,
               classifiedDecisions,
               callbacks,
             )
           : await this.generateFinalAnswer(
               context,
               currentQuestion,
-              classifiedDecisions[0]?.result.verifiedEvidence ?? [],
+              verifiedEvidence,
               callbacks,
             );
+      }
 
       const assistantText = finalResult.assistantText;
 
@@ -217,14 +247,28 @@ export class LlmInferenceService {
 
       let classifierText = "";
       if (decision.deterministicGuard === "classifier-fallback") {
-        const classifierResult = await context.completion({
-          messages: decision.messages,
-          n_predict: ASK_AI_GENERATION_RESERVE,
-          temperature: 0,
-          top_p: 1,
-          enable_thinking: false,
-          reasoning_format: "none",
-        });
+        let timedOut = false;
+        const timeout = setTimeout(() => {
+          timedOut = true;
+          void stopCompletionSafely(context);
+        }, ASK_AI_COMPLETION_TIMEOUT_MS);
+        let classifierResult: NativeCompletionResult;
+        try {
+          classifierResult = await context.completion({
+            messages: decision.messages,
+            n_predict: ASK_AI_CLASSIFIER_TOKENS,
+            temperature: 0,
+            top_p: 1,
+            enable_thinking: false,
+            reasoning_format: "none",
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+
+        if (timedOut) {
+          throw new InferenceError("The local model took too long while checking the note. Please try again.");
+        }
 
         if (this.generationAborted || classifierResult.interrupted) {
           throw new InferenceError("Generation was stopped.");
@@ -256,46 +300,12 @@ export class LlmInferenceService {
 
   private async generateMultiPartAnswer(
     context: LlamaContext,
+    currentQuestion: string,
     classifiedDecisions: ClassifiedDecision[],
     callbacks: GenerateCallbacks,
   ): Promise<GenerateResult> {
-    const answerParts: string[] = [];
-    let promptTokenCount = 0;
-    let historyTrimmed = false;
-
-    for (let index = 0; index < classifiedDecisions.length; index += 1) {
-      const classifiedDecision = classifiedDecisions[index];
-      if (classifiedDecision === undefined) {
-        continue;
-      }
-
-      if (index > 0) {
-        callbacks.onToken("\n");
-      }
-
-      const clauseResult = await this.generateFinalAnswer(
-        context,
-        classifiedDecision.decision.question,
-        classifiedDecision.result.verifiedEvidence,
-        callbacks,
-      );
-      answerParts.push(clauseResult.assistantText);
-      promptTokenCount += clauseResult.promptTokenCount;
-      historyTrimmed = historyTrimmed || clauseResult.historyTrimmed;
-
-      if (typeof __DEV__ !== "undefined" && __DEV__) {
-        console.log(
-          `[AskAI Multi] clause ${index + 1} answer:`,
-          clauseResult.assistantText,
-        );
-      }
-    }
-
-    return {
-      assistantText: answerParts.join("\n").trim(),
-      promptTokenCount,
-      historyTrimmed,
-    };
+    const verifiedEvidence = [...new Set(classifiedDecisions.flatMap(({ result }) => result.verifiedEvidence))];
+    return this.generateFinalAnswer(context, currentQuestion, verifiedEvidence, callbacks);
   }
 
   private async generateFinalAnswer(
@@ -316,6 +326,7 @@ export class LlmInferenceService {
       verifiedEvidence,
       false,
       1,
+      callbacks,
     );
     if (firstAttempt.valid) {
       callbacks.onToken(firstAttempt.result.assistantText);
@@ -328,6 +339,7 @@ export class LlmInferenceService {
       verifiedEvidence,
       true,
       2,
+      callbacks,
     );
     if (retryAttempt.valid) {
       callbacks.onToken(retryAttempt.result.assistantText);
@@ -356,6 +368,7 @@ export class LlmInferenceService {
     verifiedEvidence: string[],
     constrainedRetry: boolean,
     attempt: number,
+    callbacks: GenerateCallbacks,
   ): Promise<FinalAttemptResult> {
     const finalPrompt = await fitVerifiedAnswerMessagesToBudget(
       context,
@@ -375,27 +388,41 @@ export class LlmInferenceService {
       resolved: false,
     };
 
-    const completionResult = await context.completion(
-      {
-        messages: finalPrompt.messages,
-        n_predict: ASK_AI_GENERATION_RESERVE,
-        temperature: 0,
-        top_p: ASK_AI_COMPLETION_TOP_P,
-        enable_thinking: false,
-        reasoning_format: "none",
-      },
-      (data) => {
-        if (this.generationAborted) {
-          return;
-        }
-        if (data.token.length > 0) {
-          streamedText += data.token;
-          this.streamVisibleFinalToken(data.token, streamPrefixState, {
-            onToken: () => undefined,
-          });
-        }
-      },
-    );
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      void stopCompletionSafely(context);
+    }, ASK_AI_COMPLETION_TIMEOUT_MS);
+    let completionResult: NativeCompletionResult;
+    try {
+      completionResult = await context.completion(
+        {
+          messages: finalPrompt.messages,
+          n_predict: ASK_AI_GENERATION_RESERVE,
+          temperature: 0,
+          top_p: ASK_AI_COMPLETION_TOP_P,
+          enable_thinking: false,
+          reasoning_format: "none",
+        },
+        (data) => {
+          if (this.generationAborted) {
+            return;
+          }
+          if (data.token.length > 0) {
+            streamedText += data.token;
+            this.streamVisibleFinalToken(data.token, streamPrefixState, {
+              onToken: () => undefined,
+            });
+          }
+        },
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (timedOut) {
+      throw new InferenceError("The local model took too long to answer. Try a shorter question or a smaller active model.");
+    }
 
     if (this.generationAborted || completionResult.interrupted) {
       throw new InferenceError("Generation was stopped.");
@@ -406,6 +433,7 @@ export class LlmInferenceService {
       streamedText,
     );
     const assistantText = this.cleanupFinalAssistantText(rawAssistantText);
+    callbacks.onStatus?.("validating");
     const validation = this.validateGeneratedAnswerAgainstEvidence(
       assistantText,
       verifiedEvidence,
@@ -642,7 +670,7 @@ export class LlmInferenceService {
   public async stopGeneration(): Promise<void> {
     this.generationAborted = true;
     if (this.context !== null && this.isGenerating) {
-      await this.context.stopCompletion().catch(() => undefined);
+      await stopCompletionSafely(this.context);
     }
   }
 

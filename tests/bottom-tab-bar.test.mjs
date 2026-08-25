@@ -8,9 +8,12 @@ test("bottom tabs map the requested icons on iOS, Android, and web", async () =>
   const source = await readFile(sourcePath, "utf8");
 
   assert.match(source, /ios: "rectangle\.grid\.2x2"/);
+  assert.match(source, /ios: "rectangle\.grid\.2x2\.fill"/);
   assert.match(source, /android: "dashboard"/);
+  assert.match(source, /ios: "folder\.fill", android: "folder_open", web: "folder_open"/);
   assert.match(source, /ios: "folder", android: "folder", web: "folder"/);
   assert.match(source, /ios: "cube"/);
+  assert.match(source, /ios: "cube\.fill"/);
   assert.match(source, /android: "deployed_code"/);
   assert.match(source, /import \{\s*SymbolView/);
   assert.match(source, /expo-symbols\/androidWeights\/regular/);

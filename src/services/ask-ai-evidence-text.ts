@@ -7,6 +7,16 @@ const CJK_CHARACTER_PATTERN =
 const TOKEN_RUN_PATTERN =
   /[a-z0-9]+|[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]+/g;
 
+const CROSS_LANGUAGE_TOPIC_GROUPS: readonly { english: RegExp; cjk: RegExp }[] = [
+  { english: /\b(?:meeting|appointment|conference|interview|call)\b/i, cjk: /開會|开会|會議|会议|約會|约会|訪談|访谈|面試|面试/ },
+  { english: /\b(?:office|location|place|venue)\b/i, cjk: /辦公室|办公室|地點|地点|位置|場所|场所/ },
+  { english: /\b(?:project|assignment)\b/i, cjk: /專案|项目|任務|任务/ },
+  { english: /\b(?:code|identifier|codename)\b/i, cjk: /代號|代号|編號|编号/ },
+  { english: /\b(?:task|todo|reminder|deadline|due)\b/i, cjk: /待辦|待办|提醒|截止|到期/ },
+  { english: /\b(?:date|time|today|tomorrow|morning|afternoon|evening)\b/i, cjk: /日期|時間|时间|今天|明天|上午|下午|晚上|點|点/ },
+  { english: /\b(?:note|transcript|recording)\b/i, cjk: /筆記|笔记|轉錄|转录|逐字稿|錄音|录音/ },
+];
+
 const STOPWORDS = new Set([
   "a",
   "an",
@@ -91,6 +101,46 @@ export function normalizeForSearch(text: string): string {
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+export function countCrossLanguageTopicMatches(question: string, evidence: string): number {
+  const normalizedQuestion = question.normalize("NFKC").toLowerCase();
+  const normalizedEvidence = evidence.normalize("NFKC").toLowerCase();
+  return CROSS_LANGUAGE_TOPIC_GROUPS.filter(({ english, cjk }) =>
+    (english.test(normalizedQuestion) && cjk.test(normalizedEvidence)) ||
+    (cjk.test(normalizedQuestion) && english.test(normalizedEvidence)),
+  ).length;
+}
+
+export function buildDirectGroundedEvidenceAnswer(question: string, verifiedEvidence: string[]): string | null {
+  const evidence = [...new Set(verifiedEvidence.map(normalizeEvidenceText).filter(Boolean))];
+  const evidenceText = evidence.join(" ");
+  if (!evidenceText || evidenceText.length > 240 || isTranscriptOverviewQuestion(question)) return null;
+
+  const normalizedQuestion = normalizeForSearch(question);
+  const asksWhere = /\bwhere\b|哪裡|哪里|何處|何处|地點|地点|位置/u.test(normalizedQuestion);
+  const asksWho = /\bwho\b|\bwith\b|誰|谁/u.test(normalizedQuestion);
+  const meeting = evidenceText.match(/(?:和|與|与)([^，。,.]{2,16}?)在([^，。,.]{2,40}?)(?:開會|开会|舉行會議|举行会议)/u);
+  if (meeting && (asksWhere || asksWho)) {
+    const person = meeting[1]?.trim();
+    const location = meeting[2]?.trim();
+    if (person && location) {
+      if (/[\u3400-\u9fff\uf900-\ufaff]/u.test(question)) {
+        if (asksWhere && asksWho) return `會議地點是${location}，與會者是${person}。`;
+        if (asksWhere) return `會議地點是${location}。`;
+        return `與會者是${person}。`;
+      }
+      if (asksWhere && asksWho) return `The meeting is at ${location}, with ${person}.`;
+      if (asksWhere) return `The meeting is at ${location}.`;
+      return `The meeting is with ${person}.`;
+    }
+  }
+
+  const isDirectFactQuestion = /^(?:what|which|who|when|where)\b|什麼|什么|哪個|哪个|誰|谁|何時|何时|哪裡|哪里/u.test(normalizedQuestion);
+  if (!isDirectFactQuestion || /\bwhy\b|\bhow\b|為什麼|为什么|如何|怎麼|怎么/u.test(normalizedQuestion)) return null;
+  return /[\u3400-\u9fff\uf900-\ufaff]/u.test(question)
+    ? evidence.join("\n")
+    : `According to the transcript: ${evidence.join(" ")}`;
 }
 
 function tokenizeCjkRun(run: string): string[] {

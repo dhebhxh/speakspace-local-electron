@@ -6,13 +6,17 @@ import { KnowledgeGenerationError } from "@/errors/knowledge-generation-error";
 import { KnowledgeDocumentRepository } from "@/repositories/knowledge-document-repository";
 import { LlmModelService } from "@/services/llm-model-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { extractDeterministicShortKnowledge } from "@/services/short-grounded-extraction";
+import { shouldUseSparseGroundedFallback } from "@/services/sparse-grounded-fallback";
 
 type ModelOutput = { sections?: Record<string, unknown> };
 
-const MODEL_CONTEXT_SIZE = 6144;
-const MODEL_BATCH_SIZE = 128;
-const MAX_PREDICTED_TOKENS = 1792;
-const CONTEXT_SAFETY_TOKENS = 192;
+const MODEL_CONTEXT_SIZE = 4096;
+const MODEL_BATCH_SIZE = 256;
+const MAX_PREDICTED_TOKENS = 768;
+const CONTEXT_SAFETY_TOKENS = 128;
+const GENERATION_TIMEOUT_MS = 120_000;
+const GPU_LAYERS = 99;
 const SYSTEM_PROMPT = `Extract scenario-specific knowledge from NOTE. Core Note Insights separately handles summary, general key points, tasks/action items, reminders, and calendar intents; do not recreate those categories.
 Use only information supported by NOTE. You may organize, combine repetition, and clearly restate supported relationships, but never add outside knowledge, new facts, opinions, conclusions, questions, or advice. Preserve uncertainty, attribution, and the note's primary language. A field with no evidence must be []. Return only JSON matching the schema.`;
 
@@ -78,6 +82,30 @@ export class KnowledgeService {
     if (!input) throw new KnowledgeGenerationError("empty-transcript", "This note has no transcript to organize yet.");
     console.info("[Knowledge] Generation requested", { requestId, noteId, scenario, transcriptLength: input.length });
 
+    if (shouldUseSparseGroundedFallback(input)) {
+      const definition = getKnowledgeScenarioDefinition(scenario);
+      const sections = Object.fromEntries(definition.sections.map((section) => [section.key, []]));
+      const document = this.toDocument(noteId, scenario, "deterministic-sparse-v1", JSON.stringify({ sections }), requestId);
+      await this.repository.save(document);
+      console.info("[Knowledge] Sparse grounded result saved without model inference", { requestId, noteId, scenario, transcriptLength: input.length });
+      return document;
+    }
+
+    const definition = getKnowledgeScenarioDefinition(scenario);
+    const deterministicSections = extractDeterministicShortKnowledge(input, scenario, definition.sections.map((section) => section.key));
+    if (deterministicSections) {
+      const document = this.toDocument(noteId, scenario, "deterministic-short-v1", JSON.stringify({ sections: deterministicSections }), requestId);
+      await this.repository.save(document);
+      console.info("[Knowledge] Short grounded result saved without model inference", {
+        requestId,
+        noteId,
+        scenario,
+        transcriptLength: input.length,
+        itemCount: document.getSections().reduce((count, section) => count + section.items.length, 0),
+      });
+      return document;
+    }
+
     const model = await this.llmModelService.getActiveModel();
     if (!model) throw new KnowledgeGenerationError("model-unavailable", "Choose and activate a local language model in AI Models first.");
     const modelFile = this.llmModelService.resolveModelFile(model);
@@ -86,12 +114,18 @@ export class KnowledgeService {
     let context: LlamaContext | null = null;
     try {
       const modelLoadStartedAt = Date.now();
-      context = await initLlama({ model: modelFile.uri, n_ctx: MODEL_CONTEXT_SIZE, n_batch: MODEL_BATCH_SIZE });
+      context = await initLlama({
+        model: modelFile.uri,
+        n_ctx: MODEL_CONTEXT_SIZE,
+        n_batch: MODEL_BATCH_SIZE,
+        n_gpu_layers: GPU_LAYERS,
+        use_mmap: true,
+      });
       console.info("[Knowledge] Local model loaded", { requestId, modelId: model.getId(), durationMs: Date.now() - modelLoadStartedAt, contextSize: MODEL_CONTEXT_SIZE });
 
       const definition = getKnowledgeScenarioDefinition(scenario);
       const sectionShape = Object.fromEntries(definition.sections.map((section) => [section.key, []]));
-      const sectionProperties = Object.fromEntries(definition.sections.map((section) => [section.key, { type: "array", items: { type: "string" } }]));
+      const sectionProperties = Object.fromEntries(definition.sections.map((section) => [section.key, { type: "array", maxItems: 8, items: { type: "string" } }]));
       const sectionGuide = definition.sections.map((section) => `- ${section.key} (${section.title}): ${section.instruction}`).join("\n");
       const makeMessages = (note: string): RNLlamaOAICompatibleMessage[] => [
         { role: "system", content: SYSTEM_PROMPT },
@@ -134,17 +168,32 @@ ${note}
       console.info("[Knowledge] Prompt prepared", { requestId, scenario, transcriptLength: usedInput.length, promptTokens, outputTokens: MAX_PREDICTED_TOKENS, requestedSectionCount: definition.sections.length });
 
       const completionStartedAt = Date.now();
-      const result = await context.completion({
-        messages,
-        response_format: { type: "json_schema", json_schema: { strict: true, schema: {
-          type: "object",
-          properties: { sections: { type: "object", properties: sectionProperties, required: definition.sections.map((section) => section.key), additionalProperties: false } },
-          required: ["sections"],
-          additionalProperties: false,
-        } } },
-        n_predict: MAX_PREDICTED_TOKENS,
-        temperature: 0,
-      });
+      let timedOut = false;
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        void stopCompletionSafely(context);
+      }, GENERATION_TIMEOUT_MS);
+      let result;
+      try {
+        result = await context.completion({
+          messages,
+          response_format: { type: "json_schema", json_schema: { strict: true, schema: {
+            type: "object",
+            properties: { sections: { type: "object", properties: sectionProperties, required: definition.sections.map((section) => section.key), additionalProperties: false } },
+            required: ["sections"],
+            additionalProperties: false,
+          } } },
+          n_predict: MAX_PREDICTED_TOKENS,
+          temperature: 0,
+          enable_thinking: false,
+          reasoning_format: "none",
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+      if (timedOut || result.interrupted) {
+        throw new KnowledgeGenerationError("generation-failed", "Knowledge generation took too long on this device. Try a shorter note or a smaller active model.");
+      }
       const rawOutput = result.content || result.text;
       console.info("[Knowledge] Local completion finished", { requestId, modelId: model.getId(), durationMs: Date.now() - completionStartedAt, outputLength: rawOutput.length, nPredict: MAX_PREDICTED_TOKENS, temperature: 0 });
       const document = this.toDocument(noteId, scenario, model.getId(), rawOutput, requestId);
@@ -203,6 +252,15 @@ ${note}
     const now = new Date().toISOString();
     // Keep the legacy database column empty for compatibility; scenario knowledge no longer owns a summary.
     return new KnowledgeDocument(`knowledge-${Date.now()}-${Math.random().toString(36).slice(2)}`, noteId, scenario, "", sections, modelId, now, now);
+  }
+}
+
+async function stopCompletionSafely(context: LlamaContext | null | undefined): Promise<void> {
+  try {
+    const result = context?.stopCompletion();
+    if (result && typeof result.then === "function") await result;
+  } catch {
+    // A completion deadline must never surface a second native bridge error.
   }
 }
 

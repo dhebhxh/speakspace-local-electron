@@ -21,6 +21,9 @@ import { CoreNoteInsightRepository } from "@/repositories/core-note-insight-repo
 import { CoreNoteInsightService } from "@/services/core-note-insight-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 import { SpeechPlaybackService } from "@/services/speech-playback-service";
+import { NoteTranslationRepository } from "@/repositories/note-translation-repository";
+import { NoteTranslationService } from "@/services/note-translation-service";
+import { SharedLlmContextService } from "@/services/shared-llm-context-service";
 import { NoteClassificationService } from "@/services/note-classification-service";
 import { TrashService } from "@/services/trash-service";
 import { KnowledgeTemplateRepository } from "@/repositories/knowledge-template-repository";
@@ -38,6 +41,7 @@ export class AppContainer {
   public readonly aiConversationService: AiConversationService;
   public readonly llmInferenceService: LlmInferenceService;
   public readonly speechPlaybackService: SpeechPlaybackService;
+  public readonly noteTranslationService: NoteTranslationService;
   public readonly trashService: TrashService;
   public readonly knowledgeTemplateService: KnowledgeTemplateService;
 
@@ -56,9 +60,12 @@ export class AppContainer {
       databaseManager,
     );
     const localLlmCoordinator = new LocalLlmCoordinator();
+    const sharedLlmContextService = new SharedLlmContextService(localLlmCoordinator);
+    const noteTranslationRepository = new NoteTranslationRepository(databaseManager);
     this.trashService = new TrashService(databaseManager);
 
     this.llmModelService = new LlmModelService(llmModelRepository, localLlmCoordinator);
+    this.noteTranslationService = new NoteTranslationService(noteTranslationRepository, this.llmModelService, localLlmCoordinator, sharedLlmContextService);
     const noteClassificationService = new NoteClassificationService(
       noteRepository,
       this.llmModelService,
@@ -91,6 +98,7 @@ export class AppContainer {
       this.llmModelService,
       this.aiConversationService,
       localLlmCoordinator,
+      sharedLlmContextService,
     );
   }
 }

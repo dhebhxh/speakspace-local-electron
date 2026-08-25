@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, type PressableProps } from "react-native";
+import { UiText as Text } from "@/components/ui-text";
+import { Pressable, StyleSheet, type PressableProps } from "react-native";
 
 import { Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";

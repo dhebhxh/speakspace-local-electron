@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
+import { UiText as Text } from "@/components/ui-text";
+import { StyleSheet, View } from "react-native";
 
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";

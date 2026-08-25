@@ -1,107 +1,90 @@
 import type { SttModelEngine } from "@/domain/stt-model/stt-model";
 
-/**
- * Directory (relative to the app's document directory) where downloaded
- * STT model files are stored on disk.
- */
+/** Directory (relative to the app document directory) for downloaded models. */
 export const STT_MODELS_DIRECTORY_NAME = "stt-models";
 
 export type SttModelCatalogEntry = {
-  /** Stable identifier, also used as the primary key once installed. */
   id: string;
-  /**
-   * Inference engine required to load the model. `whisper.rn` currently
-   * loads Parakeet GGUF models through `initParakeet`. Adding support for
-   * another engine (for example classic Whisper ggml models) only requires
-   * adding new catalog entries plus a matching load path in
-   * `SttModelService` - the catalog itself is never limited to one model.
-   */
   engine: SttModelEngine;
   name: string;
   description: string;
   format: string;
   quantization: string | null;
   sizeBytes: number;
-  /** Exact expected download size when the supplier publishes one. */
   expectedSizeBytes?: number;
   fileName: string;
   downloadUrl: string;
-  /** Language hint passed to Whisper. Omitted for engines that do not use it. */
   transcriptionLanguage?: string;
 };
 
-/**
- * Downloadable STT models, sourced from the `ggml-org/parakeet-GGUF`
- * Hugging Face repository. Each quantization is a separate entry so users
- * can pick the size/accuracy trade-off they want, and more entries (or
- * models from other repositories/engines) can be appended here freely.
- */
-export const STT_MODEL_CATALOG: readonly SttModelCatalogEntry[] = [
-  {
-    id: "parakeet-tdt-0.6b-v3-q4_0",
-    engine: "parakeet",
-    name: "Parakeet TDT 0.6B v3 (Q4_0)",
-    description:
-      "NVIDIA Parakeet TDT 0.6B v3, 4-bit quantized. Smallest and fastest option.",
-    format: "GGUF",
-    quantization: "Q4_0",
-    sizeBytes: 356 * 1024 * 1024,
-    fileName: "ggml-parakeet-tdt-0.6b-v3-q4_0.bin",
-    downloadUrl:
-      "https://huggingface.co/ggml-org/parakeet-GGUF/resolve/main/ggml-parakeet-tdt-0.6b-v3-q4_0.bin?download=true",
-  },
-  {
-    id: "parakeet-tdt-0.6b-v3-q4_k",
-    engine: "parakeet",
-    name: "Parakeet TDT 0.6B v3 (Q4_K)",
-    description:
-      "NVIDIA Parakeet TDT 0.6B v3, 4-bit k-quant. Balanced size and accuracy.",
-    format: "GGUF",
-    quantization: "Q4_K",
-    sizeBytes: 416 * 1024 * 1024,
-    fileName: "ggml-parakeet-tdt-0.6b-v3-q4_k.bin",
-    downloadUrl:
-      "https://huggingface.co/ggml-org/parakeet-GGUF/resolve/main/ggml-parakeet-tdt-0.6b-v3-q4_k.bin?download=true",
-  },
-  {
-    id: "parakeet-tdt-0.6b-v3-q8_0",
-    engine: "parakeet",
-    name: "Parakeet TDT 0.6B v3 (Q8_0)",
-    description:
-      "NVIDIA Parakeet TDT 0.6B v3, 8-bit quantized. Higher accuracy, larger download.",
-    format: "GGUF",
-    quantization: "Q8_0",
-    sizeBytes: 669 * 1024 * 1024,
-    fileName: "ggml-parakeet-tdt-0.6b-v3-q8_0.bin",
-    downloadUrl:
-      "https://huggingface.co/ggml-org/parakeet-GGUF/resolve/main/ggml-parakeet-tdt-0.6b-v3-q8_0.bin?download=true",
-  },
-  {
-    id: "parakeet-tdt-0.6b-v3-f16",
-    engine: "parakeet",
-    name: "Parakeet TDT 0.6B v3 (F16)",
-    description:
-      "NVIDIA Parakeet TDT 0.6B v3, full 16-bit precision. Best accuracy, largest download.",
-    format: "GGUF",
-    quantization: "F16",
-    sizeBytes: Math.round(1.26 * 1024 * 1024 * 1024),
-    fileName: "ggml-parakeet-tdt-0.6b-v3-f16.bin",
-    downloadUrl:
-      "https://huggingface.co/ggml-org/parakeet-GGUF/resolve/main/ggml-parakeet-tdt-0.6b-v3-f16.bin?download=true",
-  },
-  {
-    id: "whisper-small-multilingual-f16",
+type ModelDefinition = readonly [id: string, sizeMiB: number];
+
+const WHISPER_MODELS: readonly ModelDefinition[] = [
+  ["tiny", 75],
+  ["tiny-q5_1", 31],
+  ["tiny-q8_0", 42],
+  ["base", 142],
+  ["base-q5_1", 57],
+  ["base-q8_0", 78],
+  ["small", 466],
+  ["small-q5_1", 181],
+  ["small-q8_0", 252],
+  ["medium", 1_464],
+  ["medium-q5_0", 514],
+  ["medium-q8_0", 785],
+  ["large-v3", 2_950],
+  ["large-v3-q5_0", 1_080],
+  ["large-v3-turbo", 1_550],
+  ["large-v3-turbo-q5_0", 574],
+  ["large-v3-turbo-q8_0", 834],
+];
+
+const PARAKEET_MODELS: readonly ModelDefinition[] = [
+  ["parakeet-tdt-0.6b-v3-f32", 2_520],
+  ["parakeet-tdt-0.6b-v3-f16", 1_290],
+  ["parakeet-tdt-0.6b-v3-q8_0", 669],
+  ["parakeet-tdt-0.6b-v3-q4_0", 356],
+  ["parakeet-tdt-0.6b-v3-q4_k", 416],
+];
+
+function quantizationFromId(id: string): string {
+  const suffix = id.match(/-(f32|f16|q\d+_[0-9a-z]+)$/i)?.[1];
+  return suffix?.toUpperCase() ?? "F16";
+}
+
+function createWhisperEntry([id, sizeMiB]: ModelDefinition): SttModelCatalogEntry {
+  const quantization = quantizationFromId(id);
+  const modelName = id.replace(/-(?:q5_0|q5_1|q8_0)$/i, "");
+  return {
+    id,
     engine: "whisper",
-    name: "Whisper Small Multilingual (F16)",
-    description:
-      "Full-precision multilingual Whisper small for Chinese compatibility testing.",
+    name: `Whisper ${modelName} (${quantization})`,
+    description: `Multilingual Whisper ${modelName} speech recognition model (${quantization}).`,
     format: "GGML",
-    quantization: "F16",
-    sizeBytes: 487_601_967,
-    expectedSizeBytes: 487_601_967,
-    fileName: "ggml-small.bin",
-    downloadUrl:
-      "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin?download=true",
-    transcriptionLanguage: "zh",
-  },
+    quantization,
+    sizeBytes: sizeMiB * 1024 * 1024,
+    fileName: `ggml-${id}.bin`,
+    downloadUrl: `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${id}.bin?download=true`,
+  };
+}
+
+function createParakeetEntry([id, sizeMiB]: ModelDefinition): SttModelCatalogEntry {
+  const quantization = quantizationFromId(id);
+  return {
+    id,
+    engine: "parakeet",
+    name: `Parakeet TDT 0.6B v3 (${quantization})`,
+    description: `NVIDIA Parakeet TDT 0.6B v3 speech recognition model (${quantization}).`,
+    format: "GGUF",
+    quantization,
+    sizeBytes: sizeMiB * 1024 * 1024,
+    fileName: `ggml-${id}.bin`,
+    downloadUrl: `https://huggingface.co/ggml-org/parakeet-GGUF/resolve/main/ggml-${id}.bin?download=true`,
+  };
+}
+
+/** The complete set of STT models offered for download. */
+export const STT_MODEL_CATALOG: readonly SttModelCatalogEntry[] = [
+  ...WHISPER_MODELS.map(createWhisperEntry),
+  ...PARAKEET_MODELS.map(createParakeetEntry),
 ];

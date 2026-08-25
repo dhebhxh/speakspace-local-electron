@@ -1,3 +1,6 @@
+import { UiAlert as Alert } from "@/localization/ui-alert";
+import { UiTextInput as TextInput } from "@/components/ui-text-input";
+import { UiText as Text } from "@/components/ui-text";
 import { requestRecordingPermissionsAsync } from "expo-audio";
 import {
   activateKeepAwakeAsync,
@@ -6,15 +9,12 @@ import {
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  Alert,
   ActivityIndicator,
   AppState,
   Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

@@ -28,9 +28,11 @@
     "expo-symbols": "~57.0.2",
     "expo-system-ui": "~57.0.2",
     "expo-web-browser": "~57.0.2",
+    "i18next": "^26.4.0",
     "llama.rn": "0.12.9",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-i18next": "^17.0.12",
     "react-native": "0.86.2",
     "react-native-calendars": "^1.1314.0",
     "react-native-gesture-handler": "~2.32.0",
@@ -50,7 +52,7 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "postinstall": "node scripts/patch-whisper-jsi-string-lifetimes.mjs && node scripts/patch-expo-dev-launcher-release-plist.mjs",
+    "postinstall": "node scripts/patch-whisper-jsi-string-lifetimes.mjs && node scripts/patch-expo-dev-launcher-release-plist.mjs && node scripts/patch-sherpa-tts-stream-lifetime.mjs",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "test": "node --test tests/*.test.mjs",

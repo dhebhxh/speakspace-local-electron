@@ -1,6 +1,8 @@
+import { UiAlert as Alert } from "@/localization/ui-alert";
+import { UiText as Text } from "@/components/ui-text";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
@@ -8,6 +10,7 @@ import { LlmModelCard, LlmModelCardStatus } from "@/components/llm-model-card";
 import { Colors, Spacing } from "@/constants/theme";
 import { LlmModel } from "@/domain/llm-model/llm-model";
 import { useTheme } from "@/hooks/use-theme";
+import { useUiCopyTranslation } from "@/hooks/use-ui-copy-translation";
 import { LlmModelDownloadProgress } from "@/services/llm-model-service";
 
 type ListState =
@@ -31,6 +34,7 @@ const emptyRowState: RowState = {
 
 export default function LlmModelsScreen() {
   const theme = useTheme();
+  const tr = useUiCopyTranslation();
   const colors = Colors[theme.mode];
   const insets = useSafeAreaInsets();
   const { llmModelService } = appContainer;
@@ -150,7 +154,7 @@ export default function LlmModelsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: "LLM Models" }} />
+      <Stack.Screen options={{ title: tr("Large Language Models") }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
@@ -181,7 +185,7 @@ export default function LlmModelsScreen() {
               <LlmModelCard
                 key={entry.id}
                 name={entry.name}
-                description={entry.description}
+                description={tr(entry.description)}
                 format={entry.format}
                 quantization={entry.quantization}
                 sizeBytes={installed?.getSizeBytes() ?? entry.sizeBytes}

@@ -1,13 +1,7 @@
+import { UiText as Text } from "@/components/ui-text";
 import { type Href, usePathname, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import {
-  PanResponder,
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { PanResponder, Pressable, StyleSheet, useWindowDimensions, View,  } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors, Radius } from "@/constants/theme";

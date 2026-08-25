@@ -1,5 +1,6 @@
+import { UiText as Text } from "@/components/ui-text";
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import type { CoreTask } from "@/domain/core-note-insight/core-note-insight";
@@ -101,7 +102,7 @@ export function HomeTaskList({
             onPress={() => setCompletedExpanded((current) => !current)}
             style={({ pressed }) => [styles.completedHeader, pressed && styles.pressed]}
           >
-            <Text style={[styles.groupTitle, { color: colors.textMuted }]}>Completed ({groups.completed.length})</Text>
+            <Text style={[styles.groupTitle, { color: colors.textMuted }]}>{`Completed (${groups.completed.length})`}</Text>
             <Text style={[styles.chevron, { color: colors.textMuted }]}>{completedExpanded ? "⌃" : "⌄"}</Text>
           </Pressable>
           {completedExpanded && (

@@ -8,7 +8,7 @@ import { Migration } from "../core/migration";
  * deliberately left uncategorized; new saves are classified by the service.
  */
 export class IosParitySchemaMigration extends Migration {
-  public readonly version = 10;
+  public readonly version = 12;
 
   public async migrate(database: SQLiteDatabase): Promise<void> {
     await database.execAsync(`

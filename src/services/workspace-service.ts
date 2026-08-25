@@ -1,5 +1,3 @@
-import { File, Paths } from "expo-file-system";
-
 import { Workspace } from "@/domain/workspace/workspace";
 import { ValidationError } from "@/errors/validation-error";
 import { WorkspaceNotFoundError } from "@/errors/workspace-not-found-error";
@@ -7,7 +5,6 @@ import { WorkspaceRepository } from "@/repositories/workspace-repository";
 import { NoteRepository } from "@/repositories/note-repository";
 
 export class WorkspaceService {
-  private static readonly defaultWorkspaceId = "workspace-default";
   public constructor(
     private readonly workspaceRepository: WorkspaceRepository,
     private readonly noteRepository: NoteRepository,
@@ -31,16 +28,13 @@ export class WorkspaceService {
   }
 
   public async getOrCreateDefaultWorkspace(): Promise<Workspace> {
-    const existing = await this.workspaceRepository.findById(
-      WorkspaceService.defaultWorkspaceId,
-    );
-    if (existing !== null) {
-      return existing;
-    }
+    const active = await this.workspaceRepository.findAll();
+    const existing = active.find((workspace) => workspace.getName() === "My Workspace") ?? active[0];
+    if (existing) return existing;
 
     const now = new Date().toISOString();
     const workspace = new Workspace(
-      WorkspaceService.defaultWorkspaceId,
+      this.createId(),
       "My Workspace",
       now,
       now,
@@ -57,18 +51,11 @@ export class WorkspaceService {
 
   public async deleteWorkspace(id: string): Promise<void> {
     await this.getWorkspaceOrThrow(id);
-    const notes = await this.noteRepository.findByWorkspaceId(id);
-    await this.workspaceRepository.delete(id);
-    for (const note of notes) {
-      const audioRelativePath = note.getAudioRelativePath();
-      if (audioRelativePath !== null) {
-        const audioFile = new File(
-          Paths.document,
-          ...audioRelativePath.split("/"),
-        );
-        if (audioFile.exists) audioFile.delete();
-      }
-    }
+    await this.workspaceRepository.trash(id);
+  }
+
+  public async restoreWorkspace(id: string): Promise<void> {
+    await this.workspaceRepository.restore(id);
   }
 
   private async getWorkspaceOrThrow(id: string): Promise<Workspace> {

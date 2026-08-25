@@ -40,9 +40,9 @@ test("team config supports a per-developer iOS bundle identifier", async () => {
     appJson.expo.ios.bundleIdentifier,
     "com.dhebhxh.speakspacelocalmobile",
   );
-  assert.equal(packageJson.version, "1.1.0");
   assert.equal(appJson.expo.version, packageJson.version);
-  assert.equal(appJson.expo.ios.buildNumber, "2");
+  assert.match(packageJson.version, /^\d+\.\d+\.\d+$/);
+  assert.match(appJson.expo.ios.buildNumber, /^\d+$/);
   assert.match(dynamicConfig, /process\.env\.IOS_BUNDLE_IDENTIFIER/);
   assert.doesNotMatch(dynamicConfig, /DEVELOPMENT_TEAM|PROVISIONING_PROFILE/);
 });

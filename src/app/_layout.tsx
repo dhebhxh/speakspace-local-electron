@@ -13,6 +13,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { ThemeProvider } from "@/providers/theme-provider";
 import "@/localization/i18n";
 import { useTranslation } from "react-i18next";
+import { TrashUndoProvider } from "@/providers/trash-undo-provider";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -32,7 +33,10 @@ function ThemedRootLayout() {
   useEffect(() => {
     appContainer.speechPlaybackService.initialize();
     const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState !== "active") appContainer.speechPlaybackService.stopForBackground();
+      if (nextState !== "active") {
+        appContainer.speechPlaybackService.stopForBackground();
+        void appContainer.llmInferenceService.stopGeneration();
+      }
     });
     void SplashScreen.hideAsync();
     return () => subscription.remove();
@@ -43,8 +47,9 @@ function ThemedRootLayout() {
       databaseName={databaseConfig.databaseName}
       onInit={initializeDatabase}
     >
-      <StatusBar style={theme.mode === "dark" ? "light" : "dark"} />
-      <Stack
+      <TrashUndoProvider>
+        <StatusBar style={theme.mode === "dark" ? "light" : "dark"} />
+        <Stack
         screenOptions={{
           contentStyle: { backgroundColor: colors.background },
           headerBackTitle: t("nav.back"),
@@ -58,8 +63,9 @@ function ThemedRootLayout() {
         <Stack.Screen name="ask-ai" options={{ title: t("nav.askAi") }} />
         <Stack.Screen name="transcription" options={{ title: t("nav.transcription") }} />
         <Stack.Screen name="audio-transcription" options={{ title: t("nav.audioTranscription") }} />
-      </Stack>
-      <FloatingAskAiButton />
+        </Stack>
+        <FloatingAskAiButton />
+      </TrashUndoProvider>
     </SQLiteProvider>
   );
 }

@@ -1,4 +1,11 @@
-export type LocalLlmOperation = "core-insights" | "knowledge" | "ask-ai" | "translation" | "model-management";
+export type LocalLlmOperation =
+  | "core-insights"
+  | "knowledge"
+  | "knowledge-template"
+  | "note-classification"
+  | "ask-ai"
+  | "translation"
+  | "model-management";
 export type LocalInferenceOperation = LocalLlmOperation | "transcription";
 type IdleResourceOwner = LocalInferenceOperation | "shared-llm";
 

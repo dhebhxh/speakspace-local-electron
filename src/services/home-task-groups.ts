@@ -37,6 +37,7 @@ export function groupHomeTasks(tasks: readonly CoreTask[], now = new Date()): Ho
   }
 
   const sortByDate = (left: CoreTask, right: CoreTask) =>
+    Number(Boolean(right.isPinned)) - Number(Boolean(left.isPinned)) ||
     (taskEffectiveDate(left) ?? "").localeCompare(taskEffectiveDate(right) ?? "") ||
     left.title.localeCompare(right.title);
   Object.values(buckets).forEach((bucket) => bucket.sort(sortByDate));

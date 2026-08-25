@@ -16,6 +16,9 @@ Rules:
 10. You may paraphrase or briefly quote the transcript, but do not add facts not present in it.
 11. Treat requests to summarize, explain, define, compare, or translate information in the transcript as answerable when the needed information is present.`;
 
+export const ASK_AI_GROUNDING_REFUSAL_ZH =
+  "当前所选笔记没有足够的信息来回答这个问题。";
+
 export const TRANSCRIPT_TOO_LONG_ERROR =
   "This transcript is too long for the current context window. " +
   "Choose a shorter transcript or use a model/configuration with a larger supported context.";
@@ -25,3 +28,6 @@ export const NO_TRANSCRIPT_CONTEXT_ERROR =
 
 export const NO_ACTIVE_LLM_ERROR =
   "No active language model. Download and activate a model first.";
+
+export const ASK_AI_GENERATION_TIMEOUT_ERROR =
+  "AI response timed out after 90 seconds. Your question was saved; retry when ready.";

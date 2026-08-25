@@ -6,18 +6,23 @@ const sourcePath = new URL(
   "../src/app/workspaces/index.tsx",
   import.meta.url,
 );
+const editorModalPath = new URL(
+  "../src/components/safe-area-modal.tsx",
+  import.meta.url,
+);
 
 test("new workspace form is a safe-area-aware centered dialog", async () => {
-  const source = await readFile(sourcePath, "utf8");
+  const [source, editorModal] = await Promise.all([
+    readFile(sourcePath, "utf8"),
+    readFile(editorModalPath, "utf8"),
+  ]);
 
-  assert.match(source, /styles\.modalViewport/);
-  assert.match(source, /paddingTop: Spacing\.lg \+ insets\.top/);
-  assert.match(source, /paddingBottom: Spacing\.lg \+ insets\.bottom/);
-  assert.match(source, /accessibilityViewIsModal/);
-  assert.match(source, /modalViewport: \{ flexGrow: 1, justifyContent: "center"/);
-  assert.match(source, /modal: \{[\s\S]*borderRadius: Radius\.lg/);
-  assert.doesNotMatch(
-    source,
-    /modalBackdrop: \{[\s\S]*?justifyContent: "flex-end"[\s\S]*?\},/,
-  );
+  assert.match(source, /<SafeAreaModal[\s\S]*androidPresentation="center"/);
+  assert.doesNotMatch(source, /autoFocus/);
+  assert.match(editorModal, /Platform\.OS === "ios" \|\| androidPresentation === "center"/);
+  assert.match(editorModal, /paddingTop: Spacing\.lg \+ insets\.top/);
+  assert.match(editorModal, /paddingBottom: Spacing\.lg \+ insets\.bottom/);
+  assert.match(editorModal, /accessibilityViewIsModal/);
+  assert.match(editorModal, /centeredViewport:[\s\S]*justifyContent: "center"/);
+  assert.match(editorModal, /centeredCard:[\s\S]*borderRadius: Radius\.lg/);
 });

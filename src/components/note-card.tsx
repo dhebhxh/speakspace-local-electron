@@ -5,12 +5,18 @@ import { Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
 import { formatDate } from "@/utils/format-date";
+import { NOTE_CATEGORY_LABELS } from "@/constants/note-categories";
+import type { NoteMatchSource } from "@/services/note-fuzzy-search";
 
 type NoteCardProps = {
   note: Note;
   onPress: () => void;
   onPinPress?: () => void;
   isPinning?: boolean;
+  onLongPress?: () => void;
+  selected?: boolean;
+  selectionMode?: boolean;
+  match?: { source: NoteMatchSource; excerpt: string; query?: string };
 };
 
 export function NoteCard({
@@ -18,6 +24,10 @@ export function NoteCard({
   onPress,
   onPinPress,
   isPinning = false,
+  onLongPress,
+  selected = false,
+  selectionMode = false,
+  match,
 }: NoteCardProps) {
   const theme = useTheme();
   const colors = Colors[theme.mode];
@@ -33,7 +43,14 @@ export function NoteCard({
     >
       <Pressable
         accessibilityRole="button"
+        accessibilityActions={onLongPress ? [{ name: "longpress", label: "Select note" }] : undefined}
         onPress={onPress}
+        onLongPress={onLongPress}
+        onAccessibilityAction={({ nativeEvent }) => {
+          if (nativeEvent.actionName === "longpress") onLongPress?.();
+        }}
+        delayLongPress={350}
+        accessibilityState={{ selected: selectionMode ? selected : undefined }}
         style={({ pressed }) => [
           styles.content,
           (onPinPress || note.getIsPinned()) && styles.contentWithPin,
@@ -41,16 +58,27 @@ export function NoteCard({
         ]}
       >
         <View style={styles.header}>
+          {selectionMode && (
+            <View style={[styles.selection, { backgroundColor: selected ? colors.accent : "transparent", borderColor: selected ? colors.accent : colors.border }]}>
+              {selected && <Text style={styles.check}>✓</Text>}
+            </View>
+          )}
           <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
             {title}
           </Text>
         </View>
-        <Text
-          style={[styles.preview, { color: colors.textMuted }]}
-          numberOfLines={3}
-        >
-          {preview}
-        </Text>
+        <View style={styles.badgeRow}>
+          <View style={[styles.categoryBadge, { backgroundColor: colors.accentSoft }]}>
+            <Text style={[styles.categoryText, { color: colors.accent }]}>{NOTE_CATEGORY_LABELS[note.getCategory()]}</Text>
+          </View>
+          {match && <Text style={[styles.matchSource, { color: colors.textMuted }]}>{match.source}</Text>}
+        </View>
+        <HighlightedPreview
+          text={match?.excerpt || preview}
+          query={match?.query}
+          color={colors.textMuted}
+          highlightColor={colors.accent}
+        />
         <View style={styles.footer}>
           <Text style={[styles.meta, { color: colors.textMuted }]}>
             {formatDate(note.getUpdatedAt())}
@@ -90,6 +118,20 @@ export function NoteCard({
   );
 }
 
+function HighlightedPreview({ text, query, color, highlightColor }: { text: string; query?: string; color: string; highlightColor: string }) {
+  const needle = query?.trim();
+  if (!needle) return <Text style={[styles.preview, { color }]} numberOfLines={3}>{text}</Text>;
+  const index = text.toLocaleLowerCase().indexOf(needle.toLocaleLowerCase());
+  if (index < 0) return <Text style={[styles.preview, { color }]} numberOfLines={3}>{text}</Text>;
+  return (
+    <Text style={[styles.preview, { color }]} numberOfLines={3}>
+      {text.slice(0, index)}
+      <Text style={{ color: highlightColor, fontWeight: "800" }}>{text.slice(index, index + needle.length)}</Text>
+      {text.slice(index + needle.length)}
+    </Text>
+  );
+}
+
 const styles = StyleSheet.create({
   card: {
     borderCurve: "continuous",
@@ -111,6 +153,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: Spacing.sm,
   },
+  selection: { alignItems: "center", borderRadius: 10, borderWidth: 1.5, height: 20, justifyContent: "center", width: 20 },
+  check: { color: "#FFFFFF", fontSize: 13, fontWeight: "900" },
+  badgeRow: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+  categoryBadge: { borderCurve: "continuous", borderRadius: Radius.sm, paddingHorizontal: 8, paddingVertical: 3 },
+  categoryText: { fontSize: 11, fontWeight: "800" },
+  matchSource: { fontSize: 11, fontWeight: "700" },
   title: {
     flex: 1,
     fontSize: 17,

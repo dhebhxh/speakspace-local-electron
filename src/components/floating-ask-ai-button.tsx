@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { PanResponder, Pressable, StyleSheet, useWindowDimensions, View,  } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Colors, Radius } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 const BUTTON_SIZE = 72;
@@ -46,6 +46,7 @@ export function FloatingAskAiButton() {
   const hidden =
     pathname === "/ask-ai" ||
     pathname === "/transcription" ||
+    (pathname.startsWith("/notes/") && pathname !== "/notes/search") ||
     pathname.startsWith("/ai/");
 
   const clampPosition = (x: number, y: number) => ({

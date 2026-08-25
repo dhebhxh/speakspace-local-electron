@@ -29,11 +29,17 @@ export type GenerateResult = {
   historyTrimmed: boolean;
 };
 
+export type LlmGenerationSnapshot =
+  | { status: "idle" }
+  | { status: "running"; conversationId: string };
+
 /** Runs one grounded completion over the linked transcript and chat history. */
 export class LlmInferenceService {
   private activeConversationId: string | null = null;
   private isGenerating = false;
   private generationAborted = false;
+  private generationSnapshot: LlmGenerationSnapshot = { status: "idle" };
+  private readonly generationListeners = new Set<(snapshot: LlmGenerationSnapshot) => void>();
 
   public constructor(
     private readonly llmModelService: LlmModelService,
@@ -44,6 +50,21 @@ export class LlmInferenceService {
 
   public getIsGenerating(): boolean {
     return this.isGenerating;
+  }
+
+  public getGenerationSnapshot(): LlmGenerationSnapshot {
+    return this.generationSnapshot;
+  }
+
+  public subscribeToGeneration(listener: (snapshot: LlmGenerationSnapshot) => void): () => void {
+    this.generationListeners.add(listener);
+    listener(this.generationSnapshot);
+    return () => this.generationListeners.delete(listener);
+  }
+
+  private publishGenerationSnapshot(snapshot: LlmGenerationSnapshot): void {
+    this.generationSnapshot = snapshot;
+    for (const listener of this.generationListeners) listener(snapshot);
   }
 
   public getLoadedModelId(): string | null {
@@ -64,12 +85,14 @@ export class LlmInferenceService {
 
     this.isGenerating = true;
     this.generationAborted = false;
+    this.publishGenerationSnapshot({ status: "running", conversationId });
     try {
       return await this.coordinator.runExclusive("ask-ai", () =>
         this.runGeneration(conversationId, callbacks),
       );
     } finally {
       this.isGenerating = false;
+      this.publishGenerationSnapshot({ status: "idle" });
     }
   }
 

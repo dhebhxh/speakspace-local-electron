@@ -41,27 +41,27 @@ SideStore 的系统要求和下载入口可能变化，开始前先打开
 ### 3. 下载并校验 SpeakSpace
 
 从小组仓库的
-[iOS v1.1.0 Release](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.1.0)
+[iOS v1.3.0 Release](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.3.0)
 下载以下两个文件：
 
-- [`SpeakSpace-iOS-v1.1.0.ipa`](https://github.com/dhebhxh/speakspace-local-mobile/releases/download/ios-v1.1.0/SpeakSpace-iOS-v1.1.0.ipa)
-- [`SpeakSpace-iOS-v1.1.0.ipa.sha256`](https://github.com/dhebhxh/speakspace-local-mobile/releases/download/ios-v1.1.0/SpeakSpace-iOS-v1.1.0.ipa.sha256)
+- [`SpeakSpace-iOS-v1.3.0.ipa`](https://github.com/dhebhxh/speakspace-local-mobile/releases/download/ios-v1.3.0/SpeakSpace-iOS-v1.3.0.ipa)
+- [`SpeakSpace-iOS-v1.3.0.ipa.sha256`](https://github.com/dhebhxh/speakspace-local-mobile/releases/download/ios-v1.3.0/SpeakSpace-iOS-v1.3.0.ipa.sha256)
 
 把两个文件放进同一个文件夹，在 PowerShell 中运行：
 
 ```powershell
-Get-FileHash .\SpeakSpace-iOS-v1.1.0.ipa -Algorithm SHA256
-Get-Content .\SpeakSpace-iOS-v1.1.0.ipa.sha256
+Get-FileHash .\SpeakSpace-iOS-v1.3.0.ipa -Algorithm SHA256
+Get-Content .\SpeakSpace-iOS-v1.3.0.ipa.sha256
 ```
 
 两个 SHA-256 值必须完全相同。本次发布的正确值是：
 
 ```text
-565b3893b0681fe80c54e2fc9e877424c99c93591c3890f82ad21cf7dc060df8
+7088d98be6f2cffe8328b01b7dc1d2e2ca6be0541a9bdd0784ba18a8f464e3f5
 ```
 
 如需回退，旧的
-[iOS v1.0.0 Release](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.0.0)
+[iOS v1.2.0 Release](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.2.0)
 仍然保留；不要在同一台 iPhone 上通过卸载重装来回退，否则本地数据会被删除。
 
 ### 4. 用 SideStore 安装和刷新
@@ -101,6 +101,9 @@ iPhone setup and signing procedure. Record the physical-device results in
 
 The engineering work, decisions, failures, and fixes behind the iPhone port are
 documented in [docs/ios-port-development-YQ.md](docs/ios-port-development-YQ.md).
+The current stable release is documented in
+[docs/ios-release-v1.3.0-YQ.md](docs/ios-release-v1.3.0-YQ.md), and version-level
+changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Development
 

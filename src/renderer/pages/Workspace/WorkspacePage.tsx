@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Search } from 'lucide-react';
+import { CheckSquare2, Plus, Search, Square, SquareMinus } from 'lucide-react';
 import type { TrashActionResult } from '@shared/types/TrashTypes';
 import TrashUndoToast from '../../components/TrashUndoToast';
 import WorkspaceDetailHeader from './components/WorkspaceDetailHeader';
@@ -30,6 +30,7 @@ export default function WorkspacePage() {
     setQuery,
     visibleNotes,
     selectedNoteIds,
+    setSelectedNoteIds,
     toggleNoteSelection,
     revealNote,
   } = detail;
@@ -107,6 +108,53 @@ export default function WorkspacePage() {
     revealNote(noteUndo.id);
   };
 
+  const visibleNoteIds = visibleNotes.map((note) => note.id);
+  const selectedVisibleNoteCount = visibleNoteIds.filter((noteId) =>
+    selectedNoteIds.includes(noteId),
+  ).length;
+  const allVisibleNotesSelected =
+    visibleNoteIds.length > 0 &&
+    selectedVisibleNoteCount === visibleNoteIds.length;
+  let visibleSelectionState: boolean | 'mixed' = false;
+  if (allVisibleNotesSelected) {
+    visibleSelectionState = true;
+  } else if (selectedVisibleNoteCount > 0) {
+    visibleSelectionState = 'mixed';
+  }
+  const visibleSelectionLabelKey = allVisibleNotesSelected
+    ? 'workspace.detail.deselectAllVisible'
+    : 'workspace.detail.selectAllVisible';
+  let visibleSelectionIcon = <Square aria-hidden="true" size={16} />;
+  if (selectedVisibleNoteCount > 0) {
+    visibleSelectionIcon = <SquareMinus aria-hidden="true" size={16} />;
+  }
+  if (allVisibleNotesSelected) {
+    visibleSelectionIcon = <CheckSquare2 aria-hidden="true" size={16} />;
+  }
+
+  /**
+   * 搜索只改变当前可见笔记，不应静默清除其他搜索结果里的选择。
+   * 因此这个切换只增加或移除当前可见的笔记 ID。
+   */
+  const toggleVisibleNoteSelection = () => {
+    const visibleIds = new Set(visibleNoteIds);
+    setSelectedNoteIds((current) => {
+      const shouldDeselect =
+        visibleNoteIds.length > 0 &&
+        visibleNoteIds.every((noteId) => current.includes(noteId));
+
+      if (shouldDeselect) {
+        return current.filter((noteId) => !visibleIds.has(noteId));
+      }
+
+      const next = [...current];
+      visibleNoteIds.forEach((noteId) => {
+        if (!next.includes(noteId)) next.push(noteId);
+      });
+      return next;
+    });
+  };
+
   if (loading) {
     return (
       <p className="workspace-detail-status">{t('workspace.detail.loading')}</p>
@@ -151,6 +199,18 @@ export default function WorkspacePage() {
         workspaceId={detail.workspaceId}
       />
 
+      <button
+        aria-pressed={visibleSelectionState}
+        className="ws-btn workspace-note-selection-toggle"
+        disabled={visibleNoteIds.length === 0}
+        onClick={toggleVisibleNoteSelection}
+        title={t(visibleSelectionLabelKey)}
+        type="button"
+      >
+        {visibleSelectionIcon}
+        {t(visibleSelectionLabelKey)}
+      </button>
+
       {/* 勾选之后才出现：平时工具条上不该挂着删除之类的按钮。
           两个都带计数，所以不必再单开一行显示「已选中 N 篇」。 */}
       {selectedNoteIds.length > 0 && (
@@ -188,7 +248,7 @@ export default function WorkspacePage() {
 
       {/* 笔记全部装进这个容器，它自己滚。顶栏是页面里另一个独立的块，
           两者互不重叠——内容被这个容器裁掉，根本到不了顶栏那一层。 */}
-      <div className="workspace-detail-body">
+      <div className="workspace-detail-body" data-tour="workspace-detail-notes">
         {error && (
           <p className="workspace-detail-error" role="alert">
             {error}

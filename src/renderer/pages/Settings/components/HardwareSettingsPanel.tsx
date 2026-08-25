@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { SystemProfile } from '@shared/types/ModelRecommendationTypes';
+import { Link } from 'react-router-dom';
+import type {
+  ModelRecommendationResult,
+  SystemProfile,
+} from '@shared/types/ModelRecommendationTypes';
 
 /** 主进程返回的档位是中文枚举，这里映射成翻译键和 CSS 用的英文类名。 */
 const LEVELS: Record<
@@ -16,6 +20,8 @@ const LEVELS: Record<
 export default function HardwareSettingsPanel() {
   const { t } = useTranslation();
   const [profile, setProfile] = useState<SystemProfile | null>(null);
+  const [recommendation, setRecommendation] =
+    useState<ModelRecommendationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -26,10 +32,28 @@ export default function HardwareSettingsPanel() {
       setLoading(true);
       setError('');
       try {
-        const next = (await window.electron.recommendation.getSystemProfile(
-          forceRefresh,
-        )) as SystemProfile | undefined;
-        setProfile(next ?? null);
+        // 手动刷新先使主进程的显卡缓存失效。推荐接口随后复用这次
+        // 探测结果，不会再启动一组 nvidia-smi / WMI 子进程。
+        if (forceRefresh) {
+          const refreshed =
+            (await window.electron.recommendation.getSystemProfile(true)) as
+              | SystemProfile
+              | undefined;
+          if (refreshed) setProfile(refreshed);
+        }
+
+        const [sttModels, llmModels] = await Promise.all([
+          window.electron.modelManagement.getModelList('stt'),
+          window.electron.modelManagement.getModelList('llm'),
+        ]);
+        const next = (await window.electron.recommendation.getModels(
+          sttModels,
+          llmModels,
+        )) as ModelRecommendationResult | undefined;
+
+        if (!next) throw new Error(t('settings.hardware.recommendation.error'));
+        setProfile(next.profile);
+        setRecommendation(next);
       } catch (reason) {
         setError(
           reason instanceof Error
@@ -191,6 +215,66 @@ export default function HardwareSettingsPanel() {
       )}
 
       <p className="settings-hardware-hint">{t('settings.hardware.hint')}</p>
+
+      <div
+        className="settings-model-recommendations"
+        aria-labelledby="hardware-recommendation-title"
+      >
+        <div className="settings-model-recommendation-heading">
+          <div>
+            <h3 id="hardware-recommendation-title">
+              {t('settings.hardware.recommendation.title')}
+            </h3>
+            <p>{t('settings.hardware.recommendation.desc')}</p>
+          </div>
+          <Link className="settings-model-manage-link" to="/ModelManagement">
+            {t('settings.hardware.recommendation.manage')}
+          </Link>
+        </div>
+
+        <div
+          aria-busy={loading}
+          aria-live="polite"
+          className="settings-model-recommendation-grid"
+        >
+          {loading && !recommendation ? (
+            <p className="settings-model-recommendation-status">
+              <span aria-hidden="true" className="settings-loading-spinner" />
+              {t('settings.hardware.recommendation.loading')}
+            </p>
+          ) : (
+            recommendation &&
+            (['stt', 'llm'] as const).map((modelType) => {
+              const model = recommendation[modelType];
+              return (
+                <article
+                  className="settings-model-recommendation-card"
+                  key={modelType}
+                >
+                  <span>
+                    {t(`settings.hardware.recommendation.${modelType}`)}
+                  </span>
+                  <strong>
+                    {model?.name ??
+                      t('settings.hardware.recommendation.unavailable')}
+                  </strong>
+                  <p>
+                    {model
+                      ? t(
+                          `settings.hardware.recommendation.${modelType}.reason`,
+                          {
+                            memory: recommendation.profile.totalMemoryGb,
+                            cores: recommendation.profile.logicalCores,
+                          },
+                        )
+                      : t('settings.hardware.recommendation.unavailable.desc')}
+                  </p>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </div>
     </section>
   );
 }

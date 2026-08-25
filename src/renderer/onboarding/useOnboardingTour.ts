@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ONBOARDING_STEPS, OnboardingStep } from './OnboardingSteps';
+import resolveOnboardingRoute from './resolveOnboardingRoute';
 
 export type TargetRect = {
   top: number;
@@ -62,26 +63,33 @@ export default function useOnboardingTour(active: boolean) {
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<TargetRect | null>(null);
   const [settling, setSettling] = useState(false);
+  const [routedIndex, setRoutedIndex] = useState<number | null>(null);
 
   const step = ONBOARDING_STEPS[index];
   const total = ONBOARDING_STEPS.length;
 
   // 上一步的位置，用来画那条从旧目标飞向新目标的轨迹
   const previousRect = useRef<TargetRect | null>(null);
+  // Optional steps must be skipped in the same direction the user was moving.
+  // Otherwise pressing Back at the dashboard would bounce straight back there.
+  const direction = useRef<1 | -1>(1);
 
   const reset = useCallback(() => {
     setIndex(0);
     setRect(null);
+    setRoutedIndex(null);
+    direction.current = 1;
     previousRect.current = null;
   }, []);
 
   const goTo = useCallback(
     (nextIndex: number) => {
       const clamped = Math.max(0, Math.min(nextIndex, total - 1));
+      if (clamped !== index) direction.current = clamped > index ? 1 : -1;
       previousRect.current = rect;
       setIndex(clamped);
     },
-    [rect, total],
+    [index, rect, total],
   );
 
   const next = useCallback(() => goTo(index + 1), [goTo, index]);
@@ -92,13 +100,52 @@ export default function useOnboardingTour(active: boolean) {
   // 否则「上一步」只把弹窗挪回去、页面还停在后一步那一页，聚光灯就找不到
   // 目标了。replace:true 是为了不让引导把浏览历史塞满。
   useEffect(() => {
-    if (!active) return;
-    navigate(step.route, { replace: true });
-  }, [active, navigate, step.route, index]);
+    if (!active) return undefined;
+
+    let cancelled = false;
+    setRoutedIndex(null);
+    setSettling(true);
+
+    const skipUnavailableStep = () => {
+      if (cancelled) return;
+      setRect(null);
+      setSettling(false);
+      setIndex((current) => {
+        if (current !== index) return current;
+        return Math.max(0, Math.min(current + direction.current, total - 1));
+      });
+    };
+
+    resolveOnboardingRoute(step)
+      .then((route) => {
+        if (cancelled) return null;
+
+        if (route) {
+          navigate(route, { replace: true });
+          setRoutedIndex(index);
+          return route;
+        }
+
+        // No workspace yet: detail-only guidance has nothing truthful to point
+        // at. Skip it immediately rather than waiting for a missing DOM target.
+        skipUnavailableStep();
+        return null;
+      })
+      .catch(() => {
+        // resolveOnboardingRoute already converts expected IPC failures to
+        // null. This final guard keeps an unexpected resolver failure from
+        // becoming an unhandled rejection that closes the tour.
+        skipUnavailableStep();
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [active, index, navigate, step, total]);
 
   // 找目标 → 滚进可视区 → 持续跟住位置
   useEffect(() => {
-    if (!active) return undefined;
+    if (!active || routedIndex !== index) return undefined;
 
     if (!step.target) {
       setRect(null);
@@ -152,7 +199,7 @@ export default function useOnboardingTour(active: boolean) {
       cancelled = true;
       cancelAnimationFrame(frame);
     };
-  }, [active, step.target, index]);
+  }, [active, index, routedIndex, step.target]);
 
   // 键盘：← → 翻页，Esc 退出交给调用方处理
   useEffect(() => {

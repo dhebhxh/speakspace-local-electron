@@ -151,7 +151,11 @@ export default function WorkspaceHomePage({
           </p>
         </div>
 
-        <form className="workspace-home-create" onSubmit={createWorkspace}>
+        <form
+          className="workspace-home-create"
+          data-tour="workspace-home-create"
+          onSubmit={createWorkspace}
+        >
           <label htmlFor="recent-workspace-name">
             <span>{t('workspace.create.label')}</span>
             <div>

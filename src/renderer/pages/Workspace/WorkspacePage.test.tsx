@@ -129,6 +129,11 @@ describe('WorkspacePage', () => {
     renderPage();
 
     expect(screen.getByText('workspace.detail.empty')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: 'workspace.detail.selectAllVisible',
+      }),
+    ).toBeDisabled();
   });
 
   it('renders existing notes using the detail hook note contract', () => {
@@ -139,6 +144,67 @@ describe('WorkspacePage', () => {
     expect(screen.getByTestId('workspace-note')).toHaveTextContent(
       'Existing note',
     );
+  });
+
+  it('一键全选当前可见笔记，同时保留其他筛选结果中的选择', () => {
+    const second = { ...note, id: 11, name: 'Second note' };
+    const hiddenSelectedNoteId = 99;
+    const detail = createDetail([note, second], [hiddenSelectedNoteId]);
+    mockedUseWorkspaceDetail.mockReturnValue(detail);
+
+    renderPage();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'workspace.detail.selectAllVisible',
+      }),
+    );
+
+    expect(detail.setSelectedNoteIds).toHaveBeenCalledTimes(1);
+    const updateSelection = jest.mocked(detail.setSelectedNoteIds).mock
+      .calls[0][0] as (current: number[]) => number[];
+    expect(updateSelection([hiddenSelectedNoteId])).toEqual([
+      hiddenSelectedNoteId,
+      note.id,
+      second.id,
+    ]);
+  });
+
+  it('当前可见笔记已全选时只取消它们，不清除筛选外的选择', () => {
+    const second = { ...note, id: 11, name: 'Second note' };
+    const hiddenSelectedNoteId = 99;
+    const detail = createDetail(
+      [note, second],
+      [hiddenSelectedNoteId, note.id, second.id],
+    );
+    mockedUseWorkspaceDetail.mockReturnValue(detail);
+
+    renderPage();
+    const deselectButton = screen.getByRole('button', {
+      name: 'workspace.detail.deselectAllVisible',
+    });
+    expect(deselectButton).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(deselectButton);
+
+    const updateSelection = jest.mocked(detail.setSelectedNoteIds).mock
+      .calls[0][0] as (current: number[]) => number[];
+    expect(updateSelection([hiddenSelectedNoteId, note.id, second.id])).toEqual(
+      [hiddenSelectedNoteId],
+    );
+  });
+
+  it('部分可见笔记被选择时向辅助技术报告混合状态', () => {
+    const second = { ...note, id: 11, name: 'Second note' };
+    mockedUseWorkspaceDetail.mockReturnValue(
+      createDetail([note, second], [note.id]),
+    );
+
+    renderPage();
+
+    expect(
+      screen.getByRole('button', {
+        name: 'workspace.detail.selectAllVisible',
+      }),
+    ).toHaveAttribute('aria-pressed', 'mixed');
   });
 
   it('笔记问答按钮和批量删除同在顶栏工具条里，且都带计数', () => {

@@ -1,3 +1,5 @@
+import type { SavedRecording } from '@shared/types/AudioTypes';
+
 export enum RecordingState {
   Idle = 'idle',
   Recording = 'recording',
@@ -6,12 +8,7 @@ export enum RecordingState {
   Saved = 'saved',
 }
 
-export type SavedRecording = {
-  relativePath: string;
-  mimeType: string;
-  byteLength: number;
-  createdAt: string;
-};
+export type { SavedRecording } from '@shared/types/AudioTypes';
 
 export type RecordingSnapshot = {
   state: RecordingState;

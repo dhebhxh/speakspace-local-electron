@@ -8,6 +8,10 @@ import {
 } from 'electron';
 import type { TranscriptionSource } from '@shared/types/TranscriptionTypes';
 import type {
+  AudioImportProgress,
+  AudioImportProgressEvent,
+} from '@shared/types/AudioTypes';
+import type {
   ScenarioTemplateSelection,
   StructuredNoteDraft,
 } from '@shared/types/KnowledgeGenerationTypes';
@@ -18,6 +22,8 @@ import type {
 import { AgentEvent, AgentRunRequest } from './agent/AgentTypes';
 
 export type Channels = 'ipc-example';
+
+let audioImportSequence = 0;
 
 const electronHandler = {
   ipcRenderer: {
@@ -83,8 +89,38 @@ const electronHandler = {
     saveRecording(data: ArrayBuffer, mimeType: string) {
       return ipcRenderer.invoke('Audio:saveRecording', data, mimeType);
     },
-    importRecordingFile(filePath: string) {
-      return ipcRenderer.invoke('Audio:importRecordingFile', filePath);
+    importRecordingFile(
+      filePath: string,
+      onProgress?: (progress: AudioImportProgress) => void,
+    ) {
+      audioImportSequence += 1;
+      const requestId = `${Date.now()}-${audioImportSequence}`;
+      const progressListener = (
+        _event: IpcRendererEvent,
+        rawProgress: unknown,
+      ) => {
+        if (typeof rawProgress !== 'object' || rawProgress === null) return;
+        const progress = rawProgress as Partial<AudioImportProgressEvent>;
+        if (progress.requestId !== requestId) return;
+        if (
+          typeof progress.transferredBytes !== 'number' ||
+          typeof progress.totalBytes !== 'number' ||
+          typeof progress.percent !== 'number'
+        ) {
+          return;
+        }
+        onProgress?.({
+          transferredBytes: progress.transferredBytes,
+          totalBytes: progress.totalBytes,
+          percent: progress.percent,
+        });
+      };
+      ipcRenderer.on('Audio:importProgress', progressListener);
+      return ipcRenderer
+        .invoke('Audio:importRecordingFile', filePath, requestId)
+        .finally(() => {
+          ipcRenderer.removeListener('Audio:importProgress', progressListener);
+        });
     },
     discardRecording(relativePath: string) {
       return ipcRenderer.invoke('Audio:discardRecording', relativePath);

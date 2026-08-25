@@ -6,12 +6,19 @@ import { RecordingSnapshot } from './RecordingTypes';
 export default function useRecordingSession(
   session: RecordingSession,
 ): RecordingSnapshot {
-  const [snapshot, setSnapshot] = useState(() => session.getSnapshot());
+  const [state, setState] = useState(() => ({
+    session,
+    snapshot: session.getSnapshot(),
+  }));
 
-  useEffect(
-    () => session.subscribe(() => setSnapshot(session.getSnapshot())),
-    [session],
-  );
+  useEffect(() => {
+    const publish = () => {
+      setState({ session, snapshot: session.getSnapshot() });
+    };
+    const unsubscribe = session.subscribe(publish);
+    publish();
+    return unsubscribe;
+  }, [session]);
 
-  return snapshot;
+  return state.session === session ? state.snapshot : session.getSnapshot();
 }

@@ -40,7 +40,10 @@ export default function WorkspaceDetailHeader({
   // 从哪个页面点进来就回哪去；直接打开（刷新、深链）时回工作空间列表。
   const back = useBackNavigation();
   return (
-    <div className="workspace-detail-topbar">
+    <div
+      className="workspace-detail-topbar"
+      data-tour="workspace-detail-header"
+    >
       {/* 返回和标题同一行：吸顶栏本来就该矮，不值得为一个返回链接单开一行。 */}
       <header className="workspace-detail-head">
         <Link className="workspace-back-link" to={back.path}>

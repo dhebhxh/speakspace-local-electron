@@ -6,12 +6,26 @@ import TranscriptionController, {
 export default function useTranscriptionController(
   controller: TranscriptionController,
 ): TranscriptionControllerSnapshot {
-  const [snapshot, setSnapshot] = useState(() => controller.getSnapshot());
+  const [state, setState] = useState(() => ({
+    controller,
+    snapshot: controller.getSnapshot(),
+  }));
 
-  useEffect(
-    () => controller.subscribe(() => setSnapshot(controller.getSnapshot())),
-    [controller],
-  );
+  useEffect(() => {
+    const publish = () => {
+      setState({ controller, snapshot: controller.getSnapshot() });
+    };
+    const unsubscribe = controller.subscribe(publish);
+    // The controller can change without emitting. Publish once after subscribing
+    // so an update between render and this effect cannot be missed.
+    publish();
+    return unsubscribe;
+  }, [controller]);
 
-  return snapshot;
+  // Effects run after child rendering. Returning the new controller's snapshot
+  // immediately prevents one frame of the previous completed transcript from
+  // reopening the review dialog while save actions already target the new one.
+  return state.controller === controller
+    ? state.snapshot
+    : controller.getSnapshot();
 }

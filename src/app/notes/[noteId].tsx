@@ -470,6 +470,7 @@ export default function NoteDetailScreen() {
   const transcriptTranslated = savedTranslation?.isSectionActive("transcript") ?? false;
   const insightsTranslated = savedTranslation?.isSectionActive("insights") ?? false;
   const knowledgeTranslated = savedTranslation?.isSectionActive("knowledge") ?? false;
+  const knowledgeTranslationVisible = liveSection === "knowledge" || knowledgeTranslated;
   const displayInsight = state.status === "success" ? translateCoreInsight(state.coreInsights, liveSection === "insights" ? livePayload?.strings : insightsTranslated ? savedTranslation?.getPayload().strings : undefined) : null;
   const displayKnowledge = state.status === "success" ? translateKnowledge(state.knowledge, liveSection === "knowledge" ? livePayload?.strings : knowledgeTranslated ? savedTranslation?.getPayload().strings : undefined) : null;
 
@@ -791,7 +792,7 @@ export default function NoteDetailScreen() {
                     />
                   </View>
                 </View>
-              ) : knowledgeTranslated && displayKnowledge ? (
+              ) : knowledgeTranslationVisible && displayKnowledge ? (
                 <View style={styles.document}>
                   <KnowledgeResult
                     document={displayKnowledge}

@@ -11,9 +11,11 @@ test("speech playback uses cancellable streaming TTS with serialized lifecycle",
 
   assert.match(source, /createStreamingTTS/);
   assert.match(source, /generateSpeechStream/);
-  assert.match(source, /writePcmChunk/);
+  assert.match(source, /pcmPlayback\.write/);
   assert.match(source, /cancelSpeechStream/);
-  assert.match(source, /stopPcmPlayer/);
+  assert.match(source, /pcmPlayback\.stopImmediately/);
+  assert.doesNotMatch(source, /engine\.startPcmPlayer/);
+  assert.doesNotMatch(source, /engine\.writePcmChunk/);
   assert.match(source, /engine\.destroy\(\)/);
   assert.match(source, /lifecycleChain/);
   assert.match(source, /interruptPromise/);

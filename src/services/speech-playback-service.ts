@@ -2,6 +2,7 @@ import { setAudioModeAsync } from "expo-audio";
 import { createStreamingTTS, type StreamingTtsEngine, type TtsStreamController, type TTSModelType } from "react-native-sherpa-onnx/tts";
 
 import { type InferenceTask, type InferenceTaskContext, LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { pcmPlayback } from "@/services/pcm-playback";
 import { TtsModelService } from "@/services/tts-model-service";
 import { detectTtsLanguage, type TtsLanguageCode } from "@/services/tts-language";
 
@@ -11,6 +12,7 @@ export type SpeechPlaybackState = { phase: SpeechPlaybackPhase; speechId: string
 export type SpeechRequest = { id: string; label: string; text: string; requestedLanguage?: TtsLanguageCode };
 
 type SpeechSession = {
+  playbackId: string;
   id: string;
   label: string;
   text: string;
@@ -32,6 +34,7 @@ type SpeechSession = {
 };
 
 const initialState: SpeechPlaybackState = { phase: "idle", speechId: null, label: null, message: null, errorCode: null, inferenceBusy: false };
+let playbackSessionCounter = 0;
 
 export class SpeechPlaybackService {
   private readonly listeners = new Set<() => void>();
@@ -74,6 +77,7 @@ export class SpeechPlaybackService {
       resolveStreamEnded = resolve;
     });
     const session: SpeechSession = {
+      playbackId: `speech-playback-${++playbackSessionCounter}`,
       id: request.id, label: request.label, text, requestedLanguage: request.requestedLanguage ?? detectTtsLanguage(text), engine: null, controller: null,
       writeChain: Promise.resolve(), playbackStartedAt: null, totalSamples: 0,
       sampleRate: null, completionTimer: null, interruptPromise: null,
@@ -162,8 +166,11 @@ export class SpeechPlaybackService {
       const sampleRate = await engine.getSampleRate();
       if (!this.isCurrent(session)) return;
       session.sampleRate = sampleRate;
-      await engine.startPcmPlayer(sampleRate, 1);
-      if (!this.isCurrent(session)) return;
+      await pcmPlayback.start(session.playbackId, sampleRate);
+      if (!this.isCurrent(session)) {
+        pcmPlayback.stopImmediately();
+        return;
+      }
       session.streamStarted = true;
       session.controller = await engine.generateSpeechStream(session.text, { sid: 0, speed: 1 }, {
         onChunk: (chunk) => this.handleStreamChunk(session, chunk.samples, chunk.sampleRate),
@@ -200,9 +207,8 @@ export class SpeechPlaybackService {
       session.playbackStartedAt = Date.now();
       this.setSessionState(session, "playing", "Playing");
     }
-    const engine = session.engine;
     session.writeChain = session.writeChain.then(async () => {
-      if (this.isCurrent(session)) await engine.writePcmChunk(samples);
+      if (this.isCurrent(session)) await pcmPlayback.write(session.playbackId, samples);
     }).catch((error) => {
       if (this.isCurrent(session)) void this.failSession(session, "playback", error instanceof Error ? error.message : "Speech playback failed.");
     });
@@ -222,6 +228,7 @@ export class SpeechPlaybackService {
 
   private completeSession(session: SpeechSession): Promise<void> {
     if (!this.isCurrent(session)) return Promise.resolve();
+    pcmPlayback.stopImmediately();
     this.session = null;
     session.cancelled = true;
     this.setState({ ...initialState, inferenceBusy: this.coordinator.isBusy() });
@@ -230,6 +237,7 @@ export class SpeechPlaybackService {
 
   private failSession(session: SpeechSession, code: SpeechPlaybackErrorCode, message: string): Promise<void> {
     if (!this.isCurrent(session)) return Promise.resolve();
+    pcmPlayback.stopImmediately();
     this.session = null;
     session.cancelled = true;
     this.setError(session.id, session.label, code, message);
@@ -242,6 +250,7 @@ export class SpeechPlaybackService {
     message: string,
   ): Promise<void> {
     if (!this.isCurrent(session)) return;
+    pcmPlayback.stopImmediately();
     this.session = null;
     session.cancelled = true;
     this.setError(session.id, session.label, code, message);
@@ -253,6 +262,9 @@ export class SpeechPlaybackService {
     if (session) {
       this.session = null;
       session.cancelled = true;
+      // This synchronous native call is the audible Stop boundary. Synthesis
+      // cancellation and lifecycle cleanup continue independently below.
+      pcmPlayback.stopImmediately();
       if (session.completionTimer !== null) clearTimeout(session.completionTimer);
       session.completionTimer = null;
       // Start one immediate native stop chain. Cleanup awaits this same promise
@@ -288,13 +300,9 @@ export class SpeechPlaybackService {
   }
 
   private async interruptEngine(engine: StreamingTtsEngine): Promise<void> {
-    // Stop audible output first, then cancel inference. Both calls are serialized
-    // to avoid racing the native PCM player against itself.
-    // Do not await synthesis cancellation before silencing already-buffered PCM.
-    const playbackStop = engine.stopPcmPlayer().catch(() => undefined);
-    const synthesisStop = engine.cancelSpeechStream().catch(() => undefined);
-    await playbackStop;
-    await synthesisStop;
+    // Audible playback is owned and already stopped by pcmPlayback. Sherpa stays
+    // responsible only for ending future synthesis callbacks and remains reusable.
+    await engine.cancelSpeechStream().catch(() => undefined);
   }
 
   private enqueueLifecycle(operation: () => Promise<void>): Promise<void> {

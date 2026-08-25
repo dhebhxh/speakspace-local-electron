@@ -209,7 +209,7 @@ test("theme launch and speech stop keep their resolved state", async () => {
   assert.match(rootLayout, /SplashScreen\.preventAutoHideAsync\(\)/);
   assert.match(rootLayout, /stopForBackground\(\)/);
   assert.match(speechService, /cancelSpeechStream\(\)/);
-  assert.match(speechService, /stopPcmPlayer\(\)/);
+  assert.match(speechService, /pcmPlayback\.stopImmediately\(\)/);
   assert.doesNotMatch(tabs, /name="dashboard"/);
   assert.match(tabs, /name="settings"/);
 });

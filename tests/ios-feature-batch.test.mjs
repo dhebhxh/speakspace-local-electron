@@ -116,7 +116,7 @@ test("cancelling LLM work keeps the shared runtime compatible and reusable", asy
   const coordinator = new localInference.LocalLlmCoordinator();
   let releases = 0;
   coordinator.registerIdleCleanup("shared-llm", async () => { releases += 1; }, [
-    "ask-ai", "translation", "knowledge", "knowledge-template", "note-classification", "core-insights",
+    "ask-ai", "translation", "knowledge", "knowledge-template", "note-classification", "core-insights", "tts",
   ]);
   let finish;
   let markRegistered;
@@ -131,6 +131,8 @@ test("cancelling LLM work keeps the shared runtime compatible and reusable", asy
   await task.cancel();
   await assert.rejects(task.promise, /cancelled/i);
   await coordinator.runExclusive("translation", async () => undefined);
+  await coordinator.runExclusive("tts", async () => undefined);
+  await coordinator.runExclusive("core-insights", async () => undefined);
   assert.equal(releases, 0);
 });
 
@@ -224,4 +226,16 @@ test("Structured Note regeneration reconciles exact one-off and recurring identi
   assert.match(repository, /coreTaskIdentity\(previous\.title, previous\.due_at, previous\.starts_at\)/);
   assert.match(repository, /previous\.series_key === task\.seriesKey/);
   assert.match(repository, /const taskId = matching\?\.id \?\? task\.id/);
+  assert.match(repository, /WHERE insight_id = \? AND is_current = 1/);
+});
+
+test("Structured Note keeps historical tasks out of the current view without showing a permanent spinner", async () => {
+  const noteDetail = await readFile(
+    new URL("../src/app/notes/[noteId].tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(noteDetail, /busy=\{busyIds\.has\(task\.id\)\}/);
+  assert.match(noteDetail, /disabled=\{task\.status === "completed" && !canRestore\}/);
+  assert.doesNotMatch(noteDetail, /busy=\{busyIds\.has\(task\.id\) \|\| \(task\.status === "completed" && !canRestore\)\}/);
 });

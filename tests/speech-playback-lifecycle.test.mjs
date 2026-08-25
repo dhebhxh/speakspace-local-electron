@@ -3,8 +3,23 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const servicePath = new URL("../src/services/speech-playback-service.ts", import.meta.url);
+const sharedLlmPath = new URL("../src/services/shared-llm-context-service.ts", import.meta.url);
 const buttonPath = new URL("../src/components/speech-playback-button.tsx", import.meta.url);
 const notePath = new URL("../src/app/notes/[noteId].tsx", import.meta.url);
+
+test("LLM and TTS runtimes remain cached across alternating inference", async () => {
+  const [speechSource, sharedLlmSource, noteSource] = await Promise.all([
+    readFile(servicePath, "utf8"),
+    readFile(sharedLlmPath, "utf8"),
+    readFile(notePath, "utf8"),
+  ]);
+
+  assert.match(sharedLlmSource, /"core-insights", "tts"/);
+  assert.match(speechSource, /if \(this\.cachedEngine && this\.cachedEngineKey === key\) return/);
+  assert.match(speechSource, /if \(engine !== this\.cachedEngine\) await engine\.destroy/);
+  assert.match(noteSource, /coreNoteInsightService\.ensureReady\(\)/);
+  assert.doesNotMatch(noteSource, /speechPlaybackService\.ensureReady\(\)/);
+});
 
 test("speech playback uses cancellable streaming TTS with serialized lifecycle", async () => {
   const source = await readFile(servicePath, "utf8");

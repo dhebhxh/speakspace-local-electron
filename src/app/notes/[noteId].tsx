@@ -24,6 +24,7 @@ import { Colors, Radius, Spacing } from "@/constants/theme";
 import {
   KnowledgeDocument,
   KnowledgeScenario,
+  type KnowledgeSection,
 } from "@/domain/knowledge/knowledge-document";
 import { NOTE_CATEGORY_KEYS, NOTE_CATEGORY_LABELS, type NoteCategory } from "@/constants/note-categories";
 import type { KnowledgeTemplate } from "@/domain/knowledge/knowledge-template";
@@ -40,6 +41,7 @@ import type { NoteTranslation, NoteTranslationPayload, NoteTranslationSection } 
 import { useNoteTranslationCopy } from "@/hooks/use-note-translation-copy";
 import type { NoteTranslationCopy } from "@/localization/note-translation-copy";
 import { InferenceCancelledError } from "@/services/local-llm-coordinator";
+import type { CoreInsightPreview } from "@/services/core-note-insight-service";
 
 type NoteDetailState =
   | { status: "loading" }
@@ -60,12 +62,14 @@ type NoteDetailState =
 type GenerationState =
   | { status: "idle" }
   | { status: "selecting"; scenario: KnowledgeScenario }
-  | { status: "queued" | "generating"; scenario: KnowledgeScenario }
+  | { status: "queued"; scenario: KnowledgeScenario }
+  | { status: "generating"; scenario: KnowledgeScenario; partialSections: KnowledgeSection[] }
   | { status: "error"; scenario: KnowledgeScenario; message: string };
 
 type CoreInsightGenerationState =
   | { status: "idle" }
-  | { status: "queued" | "generating" }
+  | { status: "queued" }
+  | { status: "generating"; partial: CoreInsightPreview }
   | { status: "error"; message: string };
 
 type TranslationState =
@@ -111,10 +115,7 @@ export default function NoteDetailScreen() {
   const playerStatus = useAudioPlayerStatus(player);
 
   useEffect(() => {
-    void Promise.allSettled([
-      coreNoteInsightService.ensureReady(),
-      appContainer.speechPlaybackService.ensureReady(),
-    ]);
+    void coreNoteInsightService.ensureReady().catch(() => undefined);
   }, [coreNoteInsightService]);
 
   const loadNote = async () => {
@@ -196,7 +197,9 @@ export default function NoteDetailScreen() {
 
   useEffect(() => coreNoteInsightService.subscribeToGeneration(noteId, (generationState) => {
     if (generationState.status === "queued" || generationState.status === "generating") {
-      setCoreGeneration({ status: generationState.status });
+      setCoreGeneration(generationState.status === "generating"
+        ? { status: "generating", partial: generationState.partial }
+        : { status: "queued" });
       return;
     }
     if (generationState.status === "failed") {
@@ -213,7 +216,9 @@ export default function NoteDetailScreen() {
 
   useEffect(() => knowledgeService.subscribeToGeneration(noteId, (generationState) => {
     if (generationState.status === "queued" || generationState.status === "generating") {
-      setGeneration({ status: generationState.status, scenario: generationState.scenario });
+      setGeneration(generationState.status === "generating"
+        ? { status: "generating", scenario: generationState.scenario, partialSections: generationState.partialSections }
+        : { status: "queued", scenario: generationState.scenario });
       return;
     }
     if (generationState.status === "failed") {
@@ -258,7 +263,7 @@ export default function NoteDetailScreen() {
       noteId: state.note.getId(),
       scenario,
     });
-    setGeneration({ status: "generating", scenario });
+    setGeneration({ status: "generating", scenario, partialSections: [] });
     try {
       const knowledge = await knowledgeService.generate(
         state.note.getId(),
@@ -296,7 +301,7 @@ export default function NoteDetailScreen() {
 
   const generateCustomKnowledge = async (template: KnowledgeTemplate) => {
     if (state.status !== "success") return;
-    setGeneration({ status: "generating", scenario: "general" });
+    setGeneration({ status: "generating", scenario: "general", partialSections: [] });
     try {
       const knowledge = await knowledgeService.generateCustom(
         state.note.getId(), state.note.getTranscript(), template,
@@ -405,7 +410,7 @@ export default function NoteDetailScreen() {
     if (state.status !== "success") return;
     const startedAt = Date.now();
     console.info("[NoteDetail] Core insights generation started", { noteId: state.note.getId() });
-    setCoreGeneration({ status: "generating" });
+    setCoreGeneration({ status: "generating", partial: { phase: "content", summary: "", keyPoints: [], tasks: [], reminders: [], calendarIntents: [] } });
     try {
       const coreInsights = await coreNoteInsightService.generate(state.note.getId(), state.note.getTranscript());
       setState((current) => current.status === "success" && current.note.getId() === state.note.getId() ? { ...current, coreInsights } : current);
@@ -614,10 +619,22 @@ export default function NoteDetailScreen() {
                 <View style={[styles.generationStatus, { backgroundColor: colors.surfaceMuted }]}>
                   <ActivityIndicator color={colors.accent} />
                   <View style={styles.headingCopy}>
-                    <Text style={[styles.statusTitle, { color: colors.text }]}>{coreGeneration.status === "queued" ? "Waiting for local AI…" : "Extracting core insights…"}</Text>
+                    <Text style={[styles.statusTitle, { color: colors.text }]}>{coreGeneration.status === "queued" ? "Waiting for local AI…" : coreGeneration.partial.phase === "structured" ? "Structuring note…" : coreGeneration.partial.phase === "content" ? "Writing summary and key points…" : "Extracting tasks and dates…"}</Text>
                     <Text style={[styles.supportingText, { color: colors.textMuted }]}>Running privately on this device.</Text>
                   </View>
                   <AppButton label="Cancel" variant="secondary" onPress={() => void coreNoteInsightService.cancelGeneration(noteId)} />
+                  {coreGeneration.status === "generating" && (coreGeneration.partial.summary || coreGeneration.partial.keyPoints.length > 0 || coreGeneration.partial.tasks.length > 0 || coreGeneration.partial.reminders.length > 0 || coreGeneration.partial.calendarIntents.length > 0) && (
+                    <View style={styles.streamPreview}>
+                      {coreGeneration.partial.summary && <Text selectable style={[styles.body, { color: colors.text }]}>{coreGeneration.partial.summary}</Text>}
+                      {coreGeneration.partial.keyPoints.map((point, index) => <Text selectable key={`${index}-${point}`} style={[styles.body, { color: colors.text }]}>• {point}</Text>)}
+                      {coreGeneration.partial.tasks.length > 0 && <Text style={[styles.statusTitle, { color: colors.text }]}>Tasks</Text>}
+                      {coreGeneration.partial.tasks.map((item, index) => <Text selectable key={`task-${index}-${item}`} style={[styles.body, { color: colors.text }]}>• {item}</Text>)}
+                      {coreGeneration.partial.reminders.length > 0 && <Text style={[styles.statusTitle, { color: colors.text }]}>Reminders</Text>}
+                      {coreGeneration.partial.reminders.map((item, index) => <Text selectable key={`reminder-${index}-${item}`} style={[styles.body, { color: colors.text }]}>• {item}</Text>)}
+                      {coreGeneration.partial.calendarIntents.length > 0 && <Text style={[styles.statusTitle, { color: colors.text }]}>Calendar</Text>}
+                      {coreGeneration.partial.calendarIntents.map((item, index) => <Text selectable key={`calendar-${index}-${item}`} style={[styles.body, { color: colors.text }]}>• {item}</Text>)}
+                    </View>
+                  )}
                 </View>
               ) : (
                 <>
@@ -698,6 +715,16 @@ export default function NoteDetailScreen() {
                     </Text>
                   </View>
                   <AppButton label="Cancel" variant="secondary" onPress={() => void knowledgeService.cancelGeneration(noteId)} />
+                  {generation.status === "generating" && generation.partialSections.length > 0 && (
+                    <View style={styles.streamPreview}>
+                      {generation.partialSections.map((section) => (
+                        <View key={section.key} style={styles.headingCopy}>
+                          <Text style={[styles.statusTitle, { color: colors.text }]}>{section.title}</Text>
+                          {section.items.map((item, index) => <Text selectable key={`${index}-${item}`} style={[styles.body, { color: colors.text }]}>• {item}</Text>)}
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
               ) : generation.status === "selecting" ||
                 generation.status === "error" ? (
@@ -1055,7 +1082,8 @@ function InteractiveTask({ task, index, textColor, mutedColor, borderColor, acce
         description={task.description}
         time={coreTimeDisplay(task.metadata, "dueAt", task.dueAt)}
         completed={task.status === "completed"}
-        busy={busyIds.has(task.id) || (task.status === "completed" && !canRestore)}
+        busy={busyIds.has(task.id)}
+        disabled={task.status === "completed" && !canRestore}
         emphasized
         textColor={textColor}
         mutedColor={mutedColor}
@@ -1084,12 +1112,13 @@ function InteractiveTask({ task, index, textColor, mutedColor, borderColor, acce
   );
 }
 
-function ChecklistRow({ title, description, time, completed, busy, emphasized = false, textColor, mutedColor, borderColor, accentColor, onPress }: {
+function ChecklistRow({ title, description, time, completed, busy, disabled = false, emphasized = false, textColor, mutedColor, borderColor, accentColor, onPress }: {
   title: string;
   description: string | null;
   time: string | null;
   completed: boolean;
   busy: boolean;
+  disabled?: boolean;
   emphasized?: boolean;
   textColor: string;
   mutedColor: string;
@@ -1100,9 +1129,9 @@ function ChecklistRow({ title, description, time, completed, busy, emphasized = 
   return (
     <Pressable
       accessibilityRole="checkbox"
-      accessibilityState={{ checked: completed, disabled: busy }}
+      accessibilityState={{ checked: completed, disabled: busy || disabled }}
       accessibilityLabel={`${completed ? "Mark incomplete" : "Mark complete"}: ${title}`}
-      disabled={busy}
+      disabled={busy || disabled}
       onPress={onPress}
       style={({ pressed }) => [styles.checklistRow, pressed && styles.pressed]}
     >
@@ -1483,6 +1512,7 @@ const styles = StyleSheet.create({
   scenarioBadgeText: { fontSize: 12, fontWeight: "800" },
   generationStatus: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     borderRadius: Radius.sm,
     gap: Spacing.md,
@@ -1528,6 +1558,7 @@ const styles = StyleSheet.create({
   input: { borderRadius: Radius.sm, borderWidth: 1, fontSize: 16, minHeight: 48, paddingHorizontal: Spacing.md },
   workspaceChoices: { gap: Spacing.sm },
   document: { gap: Spacing.lg },
+  streamPreview: { flexBasis: "100%", gap: Spacing.sm },
   knowledgeSection: { gap: Spacing.sm },
   dividedSection: { borderTopWidth: 1, paddingTop: Spacing.lg },
   resultTitle: { fontSize: 19, fontWeight: "800" },

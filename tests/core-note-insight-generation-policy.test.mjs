@@ -247,16 +247,67 @@ test("content fallback remains useful and bounded when a model never closes JSON
   assert.ok(fallback.keyPoints.length <= 8);
 });
 
-test("CoreNoteInsightService integrates adaptive batching, stop detection, and semantic filtering", async () => {
+test("CoreNoteInsightService defaults to one structured completion and keeps adaptive generation as fallback", async () => {
   const service = await readFile(
     new URL("../src/services/core-note-insight-service.ts", import.meta.url),
     "utf8",
   );
 
   assert.match(service, /runAdaptiveStructuredBatches/);
+  assert.match(service, /structuredSchema/);
+  assert.match(service, /generateStructured/);
+  assert.match(service, /Single-stage pipeline completed/);
+  assert.match(service, /Falling back to content and batched intents/);
+  assert.match(service, /promptTokens > maxPrompt/);
   assert.match(service, /completionHitOutputLimit/);
   assert.match(service, /splitIntentTranscript/);
   assert.match(service, /sanitizeAdaptiveIntentBatches/);
   assert.match(service, /hitOutputLimit/);
   assert.match(service, /stoppedLimit/);
+});
+
+test("Structured Note streaming only builds changed previews after throttling", async () => {
+  const service = await readFile(
+    new URL("../src/services/core-note-insight-service.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(service, /publishStreamingPreview/);
+  assert.match(service, /sameCoreInsightPreview/);
+  assert.match(service, /previousStatus !== state\.status/);
+  assert.match(service, /< 100/);
+  assert.doesNotMatch(service, /publishPartial/);
+});
+
+test("single-stage schema preserves the stable task and calendar candidate contract", async () => {
+  const service = await readFile(
+    new URL("../src/services/core-note-insight-service.ts", import.meta.url),
+    "utf8",
+  );
+
+  for (const field of [
+    "summary", "keyPoints", "tasks", "actionItems", "recurrence",
+    "reminders", "calendarIntents", "description", "startsAtExpression",
+    "dueAtExpression", "remindAtExpression", "endsAtExpression", "allDay", "timezone",
+  ]) assert.match(service, new RegExp(field));
+  assert.match(service, /status: "pending"/);
+  assert.match(service, /completedAt: null/);
+  assert.match(service, /resolveCoreNoteTime\(item\.startsAtExpression/);
+  assert.match(service, /resolveCoreNoteTime\(item\.endsAtExpression/);
+  assert.match(service, /resolveCoreNoteTime\(item\.remindAtExpression/);
+});
+
+test("Structured Note key points prefer a concise selection and are schema-capped at six", async () => {
+  const service = await readFile(
+    new URL("../src/services/core-note-insight-service.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(service, /Prefer 3 to 5 key points for an ordinary note/);
+  assert.match(service, /Use 1 or 2 when the note contains little meaningful information/);
+  assert.match(service, /Never return more than 6 key points/);
+  assert.match(service, /Merge semantically related information instead of extracting sentence by sentence/);
+  assert.match(service, /omitting it would materially reduce the user's understanding/);
+  assert.match(service, /keyPoints: \{ type: "array", items: \{ type: "string" \}, maxItems: 6 \}/);
+  assert.doesNotMatch(service, /Select at most 12 non-overlapping items/);
 });

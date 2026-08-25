@@ -27,7 +27,7 @@ export class SharedLlmContextService {
     // by the application scheduler; completion/cancellation does not unload it.
     coordinator.registerIdleCleanup("shared-llm", () => this.release(), [
       "ask-ai", "translation", "knowledge", "knowledge-template",
-      "note-classification", "core-insights",
+      "note-classification", "core-insights", "tts",
     ]);
   }
 

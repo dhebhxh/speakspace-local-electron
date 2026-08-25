@@ -98,7 +98,7 @@ test("Trash undo refreshes the visible collection after restoring data", async (
   ]);
 
   assert.match(templatesScreen, /undo: async \(\) => \{[\s\S]*?restore\("template"[\s\S]*?await load\(\)/);
-  assert.match(templatesScreen, /useFocusEffect\(useCallback\(\(\) => \{ void load\(\); \}, \[load\]\)\)/);
+  assert.match(templatesScreen, /useFocusEffect\(useCallback\(\(\) => \{[\s\S]*?void load\(\);[\s\S]*?\}, \[load\]\)\)/);
   assert.match(searchScreen, /undo: async \(\) => \{[\s\S]*?restoreNotes\(ids\)[\s\S]*?searchNoteResults/);
   assert.match(workspaceScreen, /undo: async \(\) => \{[\s\S]*?restoreNotes\(ids\)[\s\S]*?await loadWorkspace\(\)/);
 });

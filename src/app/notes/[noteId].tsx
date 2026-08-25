@@ -39,6 +39,7 @@ import { formatDate } from "@/utils/format-date";
 import type { NoteTranslation, NoteTranslationPayload, NoteTranslationSection } from "@/domain/note-translation/note-translation";
 import { useNoteTranslationCopy } from "@/hooks/use-note-translation-copy";
 import type { NoteTranslationCopy } from "@/localization/note-translation-copy";
+import { InferenceCancelledError } from "@/services/local-llm-coordinator";
 
 type NoteDetailState =
   | { status: "loading" }
@@ -108,6 +109,13 @@ export default function NoteDetailScreen() {
     : null;
   const player = useAudioPlayer(audioUri);
   const playerStatus = useAudioPlayerStatus(player);
+
+  useEffect(() => {
+    void Promise.allSettled([
+      coreNoteInsightService.ensureReady(),
+      appContainer.speechPlaybackService.ensureReady(),
+    ]);
+  }, [coreNoteInsightService]);
 
   const loadNote = async () => {
     setState({ status: "loading" });
@@ -266,6 +274,10 @@ export default function NoteDetailScreen() {
         durationMs: Date.now() - startedAt,
       });
     } catch (error) {
+      if (error instanceof InferenceCancelledError) {
+        setGeneration({ status: "idle" });
+        return;
+      }
       const message =
         error instanceof KnowledgeGenerationError
           ? error.message
@@ -293,6 +305,10 @@ export default function NoteDetailScreen() {
       setState((current) => current.status === "success" ? { ...current, knowledge, knowledgeHistory } : current);
       setGeneration({ status: "idle" });
     } catch (error) {
+      if (error instanceof InferenceCancelledError) {
+        setGeneration({ status: "idle" });
+        return;
+      }
       setGeneration({ status: "error", scenario: "general", message: error instanceof Error ? error.message : "Knowledge generation did not finish." });
     }
   };
@@ -396,6 +412,10 @@ export default function NoteDetailScreen() {
       setCoreGeneration({ status: "idle" });
       console.info("[NoteDetail] Core insights displayed", { noteId: state.note.getId(), durationMs: Date.now() - startedAt });
     } catch (error) {
+      if (error instanceof InferenceCancelledError) {
+        setCoreGeneration({ status: "idle" });
+        return;
+      }
       const message = error instanceof CoreNoteInsightGenerationError ? error.message : "Structured Note did not finish. Please try again.";
       console.error("[NoteDetail] Core insights generation failed", { noteId: state.note.getId(), durationMs: Date.now() - startedAt, error });
       setCoreGeneration({ status: "error", message });
@@ -426,6 +446,7 @@ export default function NoteDetailScreen() {
       setState((current) => current.status === "success" ? { ...current, translation } : current);
       setTranslationState({ status: "idle" });
     } catch (error) {
+      if (error instanceof InferenceCancelledError) { setTranslationState({ status: "idle" }); return; }
       console.warn("[NoteDetail] Section translation failed", { section, error });
       setTranslationState({ status: "error", section, message: translationCopy.genericError });
     }
@@ -577,7 +598,7 @@ export default function NoteDetailScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Transcript
               </Text>
-              <TranslationControl section="transcript" translated={transcriptTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} />
+              <TranslationControl section="transcript" translated={transcriptTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} onCancel={() => noteTranslationService.cancel()} />
               <Text style={[styles.body, { color: colors.text }]}>
                 {liveSection === "transcript" && livePayload?.transcript ? livePayload.transcript : transcriptTranslated ? savedTranslation?.getPayload().transcript : state.note.getTranscript()}
               </Text>
@@ -587,7 +608,7 @@ export default function NoteDetailScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Structured Note</Text>
                 <Text style={[styles.supportingText, { color: colors.textMuted }]}>Summary, key points, tasks, reminders, and calendar events.</Text>
               </View>
-              {state.coreInsights && <TranslationControl section="insights" translated={insightsTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} />}
+              {state.coreInsights && <TranslationControl section="insights" translated={insightsTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} onCancel={() => noteTranslationService.cancel()} />}
               {coreGeneration.status === "generating" || coreGeneration.status === "queued" ? (
                 <View style={[styles.generationStatus, { backgroundColor: colors.surfaceMuted }]}>
                   <ActivityIndicator color={colors.accent} />
@@ -595,6 +616,7 @@ export default function NoteDetailScreen() {
                     <Text style={[styles.statusTitle, { color: colors.text }]}>{coreGeneration.status === "queued" ? "Waiting for local AI…" : "Extracting core insights…"}</Text>
                     <Text style={[styles.supportingText, { color: colors.textMuted }]}>Running privately on this device.</Text>
                   </View>
+                  <AppButton label="Cancel" variant="secondary" onPress={() => void coreNoteInsightService.cancelGeneration(noteId)} />
                 </View>
               ) : (
                 <>
@@ -651,7 +673,7 @@ export default function NoteDetailScreen() {
                   </View>
                 )}
               </View>
-              {state.knowledge && <TranslationControl section="knowledge" translated={knowledgeTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} />}
+              {state.knowledge && <TranslationControl section="knowledge" translated={knowledgeTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} onCancel={() => noteTranslationService.cancel()} />}
 
               {generation.status === "generating" || generation.status === "queued" ? (
                 <View
@@ -674,6 +696,7 @@ export default function NoteDetailScreen() {
                       Running privately on this device. This can take a moment.
                     </Text>
                   </View>
+                  <AppButton label="Cancel" variant="secondary" onPress={() => void knowledgeService.cancelGeneration(noteId)} />
                 </View>
               ) : generation.status === "selecting" ||
                 generation.status === "error" ? (
@@ -1331,7 +1354,7 @@ function KnowledgeResult({
   );
 }
 
-function TranslationControl({ section, translated, targetLanguage, state, copy, dangerColor, mutedColor, onTranslate, onRestore }: {
+function TranslationControl({ section, translated, targetLanguage, state, copy, dangerColor, mutedColor, onTranslate, onRestore, onCancel }: {
   section: NoteTranslationSection;
   translated: boolean;
   targetLanguage: string;
@@ -1341,6 +1364,7 @@ function TranslationControl({ section, translated, targetLanguage, state, copy, 
   mutedColor: string;
   onTranslate: (section: NoteTranslationSection) => Promise<void>;
   onRestore: (section: NoteTranslationSection) => Promise<void>;
+  onCancel: () => Promise<void>;
 }) {
   const translating = state.status === "translating" && state.section === section;
   const error = state.status === "error" && state.section === section ? state.message : null;
@@ -1351,10 +1375,10 @@ function TranslationControl({ section, translated, targetLanguage, state, copy, 
       </Text>
       <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{copy.localHint}</Text>
       <AppButton
-        label={translated ? copy.restore : translating ? copy.translating : copy.translate}
+        label={translating ? "Cancel" : translated ? copy.restore : copy.translate}
         variant="secondary"
-        disabled={state.status === "translating"}
-        onPress={() => translated ? void onRestore(section) : void onTranslate(section)}
+        disabled={state.status === "translating" && !translating}
+        onPress={() => translating ? void onCancel() : translated ? void onRestore(section) : void onTranslate(section)}
       />
       {error && <Text selectable style={[styles.errorText, { color: dangerColor }]}>{error}</Text>}
     </View>

@@ -1,7 +1,7 @@
 import { setAudioModeAsync } from "expo-audio";
 import { createStreamingTTS, type StreamingTtsEngine, type TtsStreamController, type TTSModelType } from "react-native-sherpa-onnx/tts";
 
-import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { type InferenceTask, type InferenceTaskContext, LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 import { TtsModelService } from "@/services/tts-model-service";
 import { detectTtsLanguage, type TtsLanguageCode } from "@/services/tts-language";
 
@@ -28,6 +28,7 @@ type SpeechSession = {
   resolveStreamEnded: () => void;
   cancelled: boolean;
   cleaned: boolean;
+  task: InferenceTask<void> | null;
 };
 
 const initialState: SpeechPlaybackState = { phase: "idle", speechId: null, label: null, message: null, errorCode: null, inferenceBusy: false };
@@ -67,11 +68,6 @@ export class SpeechPlaybackService {
     }
     // An active button is a stop button. The next press starts again from the beginning.
     if (this.session?.id === request.id) return this.stop();
-    if (this.coordinator.isBusy()) {
-      this.setError(request.id, request.label, "busy", "Wait for the current local AI or transcription operation to finish.");
-      return Promise.resolve();
-    }
-
     const previous = this.detachSession();
     let resolveStreamEnded: () => void = () => {};
     const streamEnded = new Promise<void>((resolve) => {
@@ -82,7 +78,7 @@ export class SpeechPlaybackService {
       writeChain: Promise.resolve(), playbackStartedAt: null, totalSamples: 0,
       sampleRate: null, completionTimer: null, interruptPromise: null,
       streamStarted: false, streamEnded, resolveStreamEnded,
-      cancelled: false, cleaned: false,
+      cancelled: false, cleaned: false, task: null,
     };
     this.session = session;
     this.setSessionState(session, "preparing", "Preparing speech…");
@@ -92,7 +88,15 @@ export class SpeechPlaybackService {
         await this.cleanupSession(session);
         return;
       }
-      await this.startSession(session);
+      const task = this.coordinator.schedule("tts", async (lifecycle) => {
+        await this.startSession(session, lifecycle);
+        if (session.streamStarted) await session.streamEnded;
+        lifecycle.throwIfCancelled();
+      });
+      session.task = task;
+      await task.promise.catch((error) => {
+        if (!session.cancelled) throw error;
+      });
     });
   }
 
@@ -100,12 +104,30 @@ export class SpeechPlaybackService {
     const session = this.detachSession();
     this.setState({ ...initialState, inferenceBusy: this.coordinator.isBusy() });
     if (!session) return this.lifecycleChain;
+    void session.task?.cancel();
     return this.enqueueLifecycle(() => this.cleanupSession(session));
   }
 
   public stopForBackground(): void { void this.stop(); }
 
-  private async startSession(session: SpeechSession): Promise<void> {
+  public async ensureReady(): Promise<void> {
+    await this.coordinator.runExclusive("tts", () => this.ensureEngineReady());
+  }
+
+  private async ensureEngineReady(): Promise<void> {
+    const model = await this.ttsModelService.getActiveModel();
+    if (!model) return;
+    const language = await this.ttsModelService.resolveLanguage(model, "en");
+    if (!language) return;
+    const key = `${model.getId()}:${language.lexiconLanguage ?? "single-language"}`;
+    if (this.cachedEngine && this.cachedEngineKey === key) return;
+    const previous = this.cachedEngine;
+    this.cachedEngine = await createStreamingTTS({ modelPath: { type: "file", path: this.ttsModelService.resolveModelPath(model) }, modelType: model.getModelType() as TTSModelType, numThreads: 2 });
+    this.cachedEngineKey = key;
+    await previous?.destroy().catch(() => undefined);
+  }
+
+  private async startSession(session: SpeechSession, lifecycle: InferenceTaskContext): Promise<void> {
     try {
       await setAudioModeAsync({ allowsRecording: false, interruptionMode: "doNotMix", playsInSilentMode: true, shouldPlayInBackground: false });
       const model = await this.ttsModelService.getActiveModel();
@@ -135,6 +157,7 @@ export class SpeechPlaybackService {
         this.cachedEngineKey = engineKey;
       }
       session.engine = engine;
+      lifecycle.setInterrupt(() => this.interruptEngine(engine));
       if (!this.isCurrent(session)) return;
       const sampleRate = await engine.getSampleRate();
       if (!this.isCurrent(session)) return;
@@ -267,8 +290,11 @@ export class SpeechPlaybackService {
   private async interruptEngine(engine: StreamingTtsEngine): Promise<void> {
     // Stop audible output first, then cancel inference. Both calls are serialized
     // to avoid racing the native PCM player against itself.
-    await engine.stopPcmPlayer().catch(() => undefined);
-    await engine.cancelSpeechStream().catch(() => undefined);
+    // Do not await synthesis cancellation before silencing already-buffered PCM.
+    const playbackStop = engine.stopPcmPlayer().catch(() => undefined);
+    const synthesisStop = engine.cancelSpeechStream().catch(() => undefined);
+    await playbackStop;
+    await synthesisStop;
   }
 
   private enqueueLifecycle(operation: () => Promise<void>): Promise<void> {

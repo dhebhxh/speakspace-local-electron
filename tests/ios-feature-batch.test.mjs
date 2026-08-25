@@ -58,6 +58,82 @@ test("Ask AI and translation keep their shared native context warm", async () =>
   assert.equal(releases, 1);
 });
 
+test("queued inference cancellation never starts and does not lock the scheduler", async () => {
+  const coordinator = new localInference.LocalLlmCoordinator();
+  let releaseFirst;
+  const gate = new Promise((resolve) => { releaseFirst = resolve; });
+  const first = coordinator.runExclusive("ask-ai", () => gate);
+  let started = false;
+  const queued = coordinator.schedule("knowledge", async () => { started = true; });
+  await queued.cancel();
+  await assert.rejects(queued.promise, /cancelled/i);
+  assert.equal(started, false);
+  releaseFirst();
+  await first;
+  await coordinator.runExclusive("translation", async () => undefined);
+  assert.equal(coordinator.isBusy(), false);
+});
+
+test("running inference cancellation invokes the registered native interrupt", async () => {
+  const coordinator = new localInference.LocalLlmCoordinator();
+  let interrupted = false;
+  let finish;
+  let markRegistered;
+  const registered = new Promise((resolve) => { markRegistered = resolve; });
+  const nativeWork = new Promise((resolve) => { finish = resolve; });
+  const task = coordinator.schedule("ask-ai", async (lifecycle) => {
+    lifecycle.setInterrupt(async () => { interrupted = true; finish(); });
+    markRegistered();
+    await nativeWork;
+  });
+  await registered;
+  await task.cancel();
+  await assert.rejects(task.promise, /cancelled/i);
+  assert.equal(interrupted, true);
+  assert.equal(coordinator.isBusy(), false);
+});
+
+test("running inference cancellation accepts a synchronous native interrupt", async () => {
+  const coordinator = new localInference.LocalLlmCoordinator();
+  let interrupted = false;
+  let finish;
+  let markRegistered;
+  const registered = new Promise((resolve) => { markRegistered = resolve; });
+  const nativeWork = new Promise((resolve) => { finish = resolve; });
+  const task = coordinator.schedule("translation", async (lifecycle) => {
+    lifecycle.setInterrupt(() => { interrupted = true; finish(); });
+    markRegistered();
+    await nativeWork;
+  });
+  await registered;
+  await task.cancel();
+  await assert.rejects(task.promise, /cancelled/i);
+  assert.equal(interrupted, true);
+  assert.equal(coordinator.isBusy(), false);
+});
+
+test("cancelling LLM work keeps the shared runtime compatible and reusable", async () => {
+  const coordinator = new localInference.LocalLlmCoordinator();
+  let releases = 0;
+  coordinator.registerIdleCleanup("shared-llm", async () => { releases += 1; }, [
+    "ask-ai", "translation", "knowledge", "knowledge-template", "note-classification", "core-insights",
+  ]);
+  let finish;
+  let markRegistered;
+  const registered = new Promise((resolve) => { markRegistered = resolve; });
+  const nativeWork = new Promise((resolve) => { finish = resolve; });
+  const task = coordinator.schedule("core-insights", async (lifecycle) => {
+    lifecycle.setInterrupt(() => { finish(); });
+    markRegistered();
+    await nativeWork;
+  });
+  await registered;
+  await task.cancel();
+  await assert.rejects(task.promise, /cancelled/i);
+  await coordinator.runExclusive("translation", async () => undefined);
+  assert.equal(releases, 0);
+});
+
 test("TTS model paths survive an iOS sandbox container UUID change", () => {
   const oldPath = "/old-container/Documents/sherpa-onnx/models/tts/model/model";
   const currentDocuments = "file:///new-container/Documents/";

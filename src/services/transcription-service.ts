@@ -26,7 +26,7 @@ import {
 import { MAX_IMPORTED_AUDIO_BYTES } from "@/domain/audio-import/audio-import";
 import { SttModelService } from "@/services/stt-model-service";
 import { ensureStorageAvailable } from "@/services/storage-safety-service";
-import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { type InferenceTask, type InferenceTaskContext, LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 
 export const RECORDINGS_DIRECTORY_NAME = "recordings";
 export const MAX_AUDIO_DURATION_SECONDS = 2 * 60 * 60;
@@ -140,6 +140,7 @@ const fileSystemAdapter: WavFileWriterFs = {
 
 export class TranscriptionService {
   private context: ParakeetContext | WhisperContext | null = null;
+  private contextModelId: string | null = null;
   private transcriber: RealtimeTranscriber | null = null;
   private audioStream: PausableAudioStream | null = null;
   private recordingRelativePath: string | null = null;
@@ -154,6 +155,7 @@ export class TranscriptionService {
   private sessionCallbacks: SessionCallbacks | null = null;
   private releaseInferenceSlot: (() => void) | null = null;
   private starting = false;
+  private activeFileTask: InferenceTask<string> | null = null;
 
   public constructor(
     private readonly sttModelService: SttModelService,
@@ -191,7 +193,7 @@ export class TranscriptionService {
 
     const recordings = new Directory(Paths.document, RECORDINGS_DIRECTORY_NAME);
     recordings.create({ idempotent: true, intermediates: true });
-    this.releaseInferenceSlot = await this.coordinator.acquire("transcription");
+    this.releaseInferenceSlot = await this.coordinator.acquire("live-stt");
     const fileName = `recording-${Date.now()}.wav`;
     const recording = new File(recordings, fileName);
     this.recordingRelativePath = `${RECORDINGS_DIRECTORY_NAME}/${fileName}`;
@@ -202,10 +204,7 @@ export class TranscriptionService {
     this.sessionCallbacks = callbacks;
 
     try {
-      this.context = await this.initializeContext(
-        model.getEngine(),
-        modelFile.uri,
-      );
+      await this.ensureContext(model.getId(), model.getEngine(), modelFile.uri);
       this.audioStream = new PausableAudioStream();
       const dependencies: RealtimeTranscriberDependencies =
         model.getEngine() === "parakeet"
@@ -305,19 +304,46 @@ export class TranscriptionService {
     callbacks: ImportedAudioCallbacks,
     requestId = `audio-import-${Date.now()}`,
   ): Promise<string> {
-    return this.coordinator.runExclusive("transcription", () =>
-      this.transcribeFileExclusive(inputUri, callbacks, requestId),
+    const task = this.coordinator.schedule("file-stt", (lifecycle) =>
+      this.transcribeFileExclusive(inputUri, callbacks, requestId, lifecycle),
     );
+    this.activeFileTask = task;
+    return task.promise.finally(() => { if (this.activeFileTask === task) this.activeFileTask = null; });
+  }
+
+  public cancelFileTranscription(): Promise<void> { return this.activeFileTask?.cancel() ?? Promise.resolve(); }
+
+  public async ensureReady(): Promise<void> {
+    await this.coordinator.runExclusive("file-stt", () => this.ensureActiveModelContext());
+  }
+
+  private async ensureActiveModelContext(): Promise<void> {
+    const model = await this.sttModelService.getActiveModel();
+    if (!model) return;
+    const file = this.sttModelService.resolveModelFile(model);
+    if (!file.exists) return;
+    await this.ensureContext(model.getId(), model.getEngine(), file.uri);
+  }
+
+  private async ensureContext(modelId: string, engine: "parakeet" | "whisper", uri: string): Promise<void> {
+    if (this.context && this.contextModelId === modelId) return;
+    const previous = this.context;
+    this.context = null;
+    this.contextModelId = null;
+    await previous?.release().catch(() => undefined);
+    this.context = await this.initializeContext(engine, uri);
+    this.contextModelId = modelId;
   }
 
   private async transcribeFileExclusive(
     inputUri: string,
     callbacks: ImportedAudioCallbacks,
     requestId: string,
+    lifecycle: InferenceTaskContext,
   ): Promise<string> {
     const startedAt = Date.now();
     console.info("[AudioImport] Local transcription service started", { requestId });
-    if (this.transcriber !== null || this.context !== null) {
+    if (this.transcriber !== null) {
       throw new Error("A transcription session is already active.");
     }
 
@@ -374,10 +400,7 @@ export class TranscriptionService {
       callbacks.onPrepared();
       const modelLoadStartedAt = Date.now();
       console.info("[AudioImport] Loading local STT model", { requestId });
-      this.context = await this.initializeContext(
-        model.getEngine(),
-        modelFile.uri,
-      );
+      await this.ensureContext(model.getId(), model.getEngine(), modelFile.uri);
       console.info("[AudioImport] Local STT model loaded", {
         requestId,
         durationMs: Date.now() - modelLoadStartedAt,
@@ -391,7 +414,10 @@ export class TranscriptionService {
             language: catalogEntry?.transcriptionLanguage ?? "auto",
             translate: false,
           });
+      lifecycle.setInterrupt(request.stop);
       const result = await request.promise;
+      lifecycle.setInterrupt(null);
+      lifecycle.throwIfCancelled();
       const transcript = result.result.trim();
       console.info("[AudioImport] Local file inference completed", {
         requestId,
@@ -402,6 +428,7 @@ export class TranscriptionService {
       });
       return transcript;
     } catch (error) {
+      lifecycle.throwIfCancelled();
       console.error("[AudioImport] Local transcription service failed", {
         requestId,
         durationMs: Date.now() - startedAt,
@@ -409,11 +436,6 @@ export class TranscriptionService {
       });
       throw error;
     } finally {
-      const context = this.context;
-      this.context = null;
-      await context?.release().catch((error) => {
-        console.warn("[AudioImport] Could not release STT context", { requestId, error });
-      });
       if (prepared?.temporary && preparedFile.exists) {
         preparedFile.delete();
         console.info("[AudioImport] Prepared temporary WAV deleted", { requestId });
@@ -570,11 +592,9 @@ export class TranscriptionService {
   private async release(deleteRecording: boolean): Promise<void> {
     const recordingPath = this.recordingRelativePath;
     const transcriber = this.transcriber;
-    const context = this.context;
     const releaseInferenceSlot = this.releaseInferenceSlot;
     this.transcriber = null;
     this.audioStream = null;
-    this.context = null;
     this.releaseInferenceSlot = null;
     this.recordingRelativePath = null;
     this.paused = false;
@@ -589,7 +609,6 @@ export class TranscriptionService {
     }
 
     await transcriber?.release().catch(() => undefined);
-    await context?.release().catch(() => undefined);
     releaseInferenceSlot?.();
     if (deleteRecording && recordingPath !== null) {
       const file = new File(Paths.document, ...recordingPath.split("/"));

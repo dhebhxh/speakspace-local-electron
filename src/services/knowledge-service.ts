@@ -1,4 +1,4 @@
-import { initLlama, type LlamaContext, type RNLlamaOAICompatibleMessage } from "llama.rn";
+import { type LlamaContext, type RNLlamaOAICompatibleMessage } from "llama.rn";
 
 import { getKnowledgeScenarioDefinition } from "@/constants/knowledge-scenarios";
 import { KnowledgeDocument, type KnowledgeScenario, type KnowledgeSection } from "@/domain/knowledge/knowledge-document";
@@ -6,7 +6,8 @@ import type { KnowledgeTemplate } from "@/domain/knowledge/knowledge-template";
 import { KnowledgeGenerationError } from "@/errors/knowledge-generation-error";
 import { KnowledgeDocumentRepository } from "@/repositories/knowledge-document-repository";
 import { LlmModelService } from "@/services/llm-model-service";
-import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { InferenceCancelledError, type InferenceTask, type InferenceTaskContext, LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { LlmRequestService } from "@/services/llm-request-service";
 
 type ModelOutput = { sections?: Record<string, unknown> };
 type GenerationDefinition = {
@@ -18,7 +19,6 @@ type GenerationDefinition = {
 };
 
 const MODEL_CONTEXT_SIZE = 6144;
-const MODEL_BATCH_SIZE = 128;
 const MAX_PREDICTED_TOKENS = 1792;
 const CONTEXT_SAFETY_TOKENS = 192;
 const SYSTEM_PROMPT = `Extract scenario-specific knowledge from NOTE. Core Note Insights separately handles summary, general key points, tasks/action items, reminders, and calendar intents; do not recreate those categories.
@@ -27,9 +27,13 @@ Use only information supported by NOTE. You may organize, combine repetition, an
 export class KnowledgeService {
   private readonly generationStates = new Map<string, KnowledgeGenerationState>();
   private readonly activeGenerations = new Map<string, Promise<KnowledgeDocument>>();
+  private readonly activeTasks = new Map<string, InferenceTask<KnowledgeDocument>>();
   private readonly listeners = new Map<string, Set<(state: KnowledgeGenerationState) => void>>();
 
-  public constructor(private readonly repository: KnowledgeDocumentRepository, private readonly llmModelService: LlmModelService, private readonly coordinator: LocalLlmCoordinator) {}
+  public constructor(private readonly repository: KnowledgeDocumentRepository, private readonly llmModelService: LlmModelService, private readonly coordinator: LocalLlmCoordinator, private readonly requests: LlmRequestService) {}
+
+  public cancelGeneration(noteId: string): Promise<void> { return this.activeTasks.get(noteId)?.cancel() ?? Promise.resolve(); }
+  public async ensureReady(): Promise<void> { await this.coordinator.runExclusive("knowledge", async () => { await this.requests.ensureReady(); }); }
 
   public getForNote(noteId: string): Promise<KnowledgeDocument | null> {
     return this.repository.findByNoteId(noteId);
@@ -92,25 +96,30 @@ export class KnowledgeService {
 
     const requestId = `knowledge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.publish(noteId, { status: "queued", requestId, scenario, startedAt: Date.now() });
-    const promise = this.coordinator.runExclusive("knowledge", async () => {
+    const task = this.coordinator.schedule("knowledge", async (lifecycle) => {
       this.publish(noteId, { status: "generating", requestId, scenario, startedAt: Date.now() });
-      return this.runGeneration(noteId, transcript, definition, requestId);
+      return this.runGeneration(noteId, transcript, definition, requestId, lifecycle);
     });
+    const promise = task.promise;
+    this.activeTasks.set(noteId, task);
     this.activeGenerations.set(noteId, promise);
     void promise.then(
       () => {
         this.activeGenerations.delete(noteId);
+        this.activeTasks.delete(noteId);
         this.publish(noteId, { status: "completed", requestId, scenario, finishedAt: Date.now() });
       },
       (error: unknown) => {
         this.activeGenerations.delete(noteId);
+        this.activeTasks.delete(noteId);
+        if (error instanceof InferenceCancelledError) { this.publish(noteId, { status: "idle" }); return; }
         this.publish(noteId, { status: "failed", requestId, scenario, finishedAt: Date.now(), message: error instanceof Error ? error.message : "Knowledge generation did not finish. Please try again." });
       },
     );
     return promise;
   }
 
-  private async runGeneration(noteId: string, transcript: string, definition: GenerationDefinition, requestId: string): Promise<KnowledgeDocument> {
+  private async runGeneration(noteId: string, transcript: string, definition: GenerationDefinition, requestId: string, lifecycle: InferenceTaskContext): Promise<KnowledgeDocument> {
     const scenario = definition.scenario;
     const generationStartedAt = Date.now();
     const input = transcript.trim();
@@ -122,10 +131,9 @@ export class KnowledgeService {
     const modelFile = this.llmModelService.resolveModelFile(model);
     if (!modelFile.exists) throw new KnowledgeGenerationError("model-file-missing", "The active model file is missing. Reinstall it from AI Models.");
 
-    let context: LlamaContext | null = null;
     try {
       const modelLoadStartedAt = Date.now();
-      context = await initLlama({ model: modelFile.uri, n_ctx: MODEL_CONTEXT_SIZE, n_batch: MODEL_BATCH_SIZE });
+      const context = await this.requests.ensureReady();
       console.info("[Knowledge] Local model loaded", { requestId, modelId: model.getId(), durationMs: Date.now() - modelLoadStartedAt, contextSize: MODEL_CONTEXT_SIZE });
 
       const sectionShape = Object.fromEntries(definition.sections.map((section) => [section.key, []]));
@@ -172,7 +180,7 @@ ${note}
       console.info("[Knowledge] Prompt prepared", { requestId, scenario, transcriptLength: usedInput.length, promptTokens, outputTokens: MAX_PREDICTED_TOKENS, requestedSectionCount: definition.sections.length });
 
       const completionStartedAt = Date.now();
-      const result = await context.completion({
+      const { raw: rawOutput } = await this.requests.complete(context, {
         messages,
         response_format: { type: "json_schema", json_schema: { strict: true, schema: {
           type: "object",
@@ -182,27 +190,24 @@ ${note}
         } } },
         n_predict: MAX_PREDICTED_TOKENS,
         temperature: 0,
-      });
-      const rawOutput = result.content || result.text;
+      }, lifecycle);
       console.info("[Knowledge] Local completion finished", { requestId, modelId: model.getId(), durationMs: Date.now() - completionStartedAt, outputLength: rawOutput.length, nPredict: MAX_PREDICTED_TOKENS, temperature: 0 });
       const document = this.toDocument(noteId, definition, model.getId(), rawOutput, requestId);
       const itemCount = document.getSections().reduce((count, section) => count + section.items.length, 0);
       console.info("[Knowledge] Model output parsed", { requestId, sectionCount: document.getSections().length, itemCount });
+      lifecycle.throwIfCancelled();
       await this.repository.save(document);
       console.info("[Knowledge] Generation completed", { requestId, noteId, scenario, modelId: model.getId(), totalDurationMs: Date.now() - generationStartedAt, itemCount });
       return document;
     } catch (error) {
+      if (error instanceof InferenceCancelledError) {
+        console.info("[Knowledge] Generation cancelled", { requestId, noteId, scenario });
+        throw error;
+      }
       console.error("[Knowledge] Generation failed", { requestId, noteId, scenario, durationMs: Date.now() - generationStartedAt, errorCode: error instanceof KnowledgeGenerationError ? error.code : "unexpected", error });
       if (error instanceof KnowledgeGenerationError) throw error;
       throw new KnowledgeGenerationError("generation-failed", "Knowledge generation did not finish. Please try again.", { cause: error instanceof Error ? error : undefined });
-    } finally {
-      if (context) try {
-        const releaseStartedAt = Date.now();
-        console.info("[Knowledge] Releasing model context", { requestId, noteId });
-        await context.release();
-        console.info("[Knowledge] Model context released", { requestId, noteId, durationMs: Date.now() - releaseStartedAt });
-      } catch (error) { console.warn("[Knowledge] Could not release model context", { requestId, error }); }
-    }
+    } finally { /* Shared runtime remains READY. */ }
   }
 
   private publish(noteId: string, state: KnowledgeGenerationState): void {
@@ -213,8 +218,7 @@ ${note}
   }
 
   private async countTokens(context: LlamaContext, messages: RNLlamaOAICompatibleMessage[]): Promise<number> {
-    const formatted = await context.getFormattedChat(messages, null, { jinja: true, enable_thinking: false, reasoning_format: "none" });
-    return (await context.tokenize(formatted.prompt ?? "")).tokens.length;
+    return this.requests.countMessageTokens(context, messages);
   }
 
   private toDocument(noteId: string, definition: GenerationDefinition, modelId: string, raw: string, requestId: string): KnowledgeDocument {

@@ -1,5 +1,3 @@
-import { initLlama, type LlamaContext } from "llama.rn";
-
 import {
   buildCategoryPrompt,
   parseCategory,
@@ -8,6 +6,7 @@ import {
 import { NoteRepository } from "@/repositories/note-repository";
 import { LlmModelService } from "@/services/llm-model-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { LlmRequestService } from "@/services/llm-request-service";
 
 export type NoteCategoryChange = { noteId: string; category: NoteCategory };
 type NoteCategoryChangeListener = (change: NoteCategoryChange) => void;
@@ -19,6 +18,7 @@ export class NoteClassificationService {
     private readonly noteRepository: NoteRepository,
     private readonly llmModelService: LlmModelService,
     private readonly coordinator: LocalLlmCoordinator,
+    private readonly requests: LlmRequestService,
   ) {}
 
   public async classifyNote(noteId: string): Promise<NoteCategory | null> {
@@ -47,18 +47,15 @@ export class NoteClassificationService {
       const file = this.llmModelService.resolveModelFile(model);
       if (!file.exists) return null;
       return this.coordinator.runExclusive("note-classification", async () => {
-        let context: LlamaContext | null = null;
         try {
-          context = await initLlama({ model: file.uri, n_ctx: 2_048, n_batch: 64 });
-          const result = await context.completion({
+          const context = await this.requests.ensureReady();
+          const { raw } = await this.requests.complete(context, {
             messages: [{ role: "user", content: buildCategoryPrompt(transcript) }],
             n_predict: 16,
             temperature: 0,
           });
-          return parseCategory(result.content || result.text);
-        } finally {
-          if (context) await context.release().catch(() => undefined);
-        }
+          return parseCategory(raw);
+        } finally { /* Shared runtime remains READY. */ }
       });
     } catch (error) {
       console.warn("[NoteCategory] Automatic classification failed", {

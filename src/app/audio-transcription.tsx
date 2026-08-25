@@ -15,6 +15,7 @@ import type { Workspace } from "@/domain/workspace/workspace";
 import { validateImportedAudio } from "@/domain/audio-import/audio-import";
 import { useTheme } from "@/hooks/use-theme";
 import { formatBytes } from "@/utils/format-bytes";
+import { InferenceCancelledError } from "@/services/local-llm-coordinator";
 
 type Status = "empty" | "selected" | "preparing" | "transcribing" | "complete";
 type SelectedAudio = { uri: string; name: string; size: number };
@@ -44,6 +45,8 @@ export default function AudioTranscriptionScreen() {
       transcriptionService.deleteTemporaryImport(selectedRef.current.uri);
     }
   }, [transcriptionService]);
+
+  useEffect(() => { void transcriptionService.ensureReady().catch(() => undefined); }, [transcriptionService]);
 
   const replaceSelection = (audio: SelectedAudio | null) => {
     if (selectedRef.current !== null && selectedRef.current.uri !== audio?.uri) {
@@ -127,6 +130,10 @@ export default function AudioTranscriptionScreen() {
         transcriptLength: text.length,
       });
     } catch (caught) {
+      if (caught instanceof InferenceCancelledError) {
+        setStatus("selected");
+        return;
+      }
       console.error("[AudioImport] Imported audio transcription failed", {
         requestId,
         phase,
@@ -249,7 +256,7 @@ export default function AudioTranscriptionScreen() {
               </View>
               {status !== "complete" && (
                 <View style={styles.actions}>
-                  <AppButton label={busy ? (status === "preparing" ? "Preparing audio…" : "Transcribing…") : "Start transcription"} disabled={busy} onPress={() => void startTranscription()} />
+                  <AppButton label={busy ? "Cancel transcription" : "Start transcription"} onPress={() => busy ? void transcriptionService.cancelFileTranscription() : void startTranscription()} />
                   <AppButton label="Choose another audio" variant="secondary" disabled={busy} onPress={() => void chooseAudio()} />
                 </View>
               )}

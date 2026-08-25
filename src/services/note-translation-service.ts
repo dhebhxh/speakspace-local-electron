@@ -7,7 +7,8 @@ import { NoteTranslationError } from "@/errors/note-translation-error";
 import type { UiLanguage } from "@/localization/i18n";
 import { NoteTranslationRepository } from "@/repositories/note-translation-repository";
 import { LlmModelService } from "@/services/llm-model-service";
-import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { InferenceCancelledError, type InferenceTask, type InferenceTaskContext, LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { LlmRequestService } from "@/services/llm-request-service";
 import { SharedLlmContextService } from "@/services/shared-llm-context-service";
 
 type TranslationInput = { key: string; text: string };
@@ -22,6 +23,8 @@ export type NoteTranslationOperationState =
 export class NoteTranslationService {
   private state: NoteTranslationOperationState = { status: "idle" };
   private activePromise: Promise<NoteTranslation> | null = null;
+  private activeTask: InferenceTask<NoteTranslation> | null = null;
+  private lifecycle: InferenceTaskContext | null = null;
   private readonly listeners = new Set<(state: NoteTranslationOperationState) => void>();
 
   public constructor(
@@ -29,7 +32,11 @@ export class NoteTranslationService {
     private readonly llmModelService: LlmModelService,
     private readonly coordinator: LocalLlmCoordinator,
     private readonly sharedContext: SharedLlmContextService,
+    private readonly requests: LlmRequestService,
   ) {}
+
+  public cancel(): Promise<void> { return this.activeTask?.cancel() ?? Promise.resolve(); }
+  public async ensureReady(): Promise<void> { await this.coordinator.runExclusive("translation", async () => { await this.requests.ensureReady(); }); }
 
   public getForNote(noteId: string): Promise<NoteTranslation | null> { return this.repository.findByNoteId(noteId); }
   public getOperationState(): NoteTranslationOperationState { return this.state; }
@@ -51,16 +58,21 @@ export class NoteTranslationService {
     const requestedAt = Date.now();
     console.info("[Translation] Translation requested", { requestId, noteId, section, targetLocale });
     this.publish({ status: "translating", requestId, noteId, section, targetLanguage });
-    const promise = this.coordinator.runExclusive("translation", async () => {
+    const task = this.coordinator.schedule("translation", async (lifecycle) => {
       console.info("[Translation] Inference slot acquired", { requestId, waitMs: Date.now() - requestedAt });
-      return this.runTranslation(requestId, noteId, section, targetLocale, targetLanguage, transcript, coreInsights, knowledge);
-    }).then((translation) => {
+      this.lifecycle = lifecycle;
+      try { return await this.runTranslation(requestId, noteId, section, targetLocale, targetLanguage, transcript, coreInsights, knowledge); }
+      finally { this.lifecycle = null; }
+    });
+    this.activeTask = task;
+    const promise = task.promise.then((translation) => {
       this.publish({ status: "completed", requestId, noteId, section });
       return translation;
     }).catch((error) => {
+      if (error instanceof InferenceCancelledError) { this.publish({ status: "idle" }); throw error; }
       this.publish({ status: "failed", requestId, noteId, section });
       throw error;
-    }).finally(() => { this.activePromise = null; });
+    }).finally(() => { this.activePromise = null; this.activeTask = null; });
     this.activePromise = promise;
     return promise;
   }
@@ -104,12 +116,14 @@ export class NoteTranslationService {
       const now = new Date().toISOString();
       const activeSections = sameLanguage ? Array.from(new Set([...(previous?.getActiveSections() ?? []), section])) : [section];
       const translation = new NoteTranslation(noteId, targetLanguage, payload, activeSections, model.getId(), previous?.getCreatedAt() ?? now, now);
+      this.lifecycle?.throwIfCancelled();
       await this.repository.save(translation);
       const generationMs = metrics.reduce((sum, item) => sum + item.generationMs, 0);
       const tokenCount = metrics.reduce((sum, item) => sum + item.tokenCount, 0);
       console.info("[Translation] Translation completed", { requestId, contextPrepareMs: prepared.contextPrepareMs, contextReused: prepared.reused, generationMs, promptPrefillMs: metrics.reduce((sum, item) => sum + item.promptPrefillMs, 0), tokenCount, tokensPerSecond: generationMs > 0 ? tokenCount / (generationMs / 1000) : 0, timeToFirstTokenMs: metrics[0]?.timeToFirstTokenMs ?? null, fieldCount: inputs.length });
       return translation;
     } catch (error) {
+      if (error instanceof InferenceCancelledError) throw error;
       if (error instanceof NoteTranslationError) throw error;
       throw new NoteTranslationError("The local translation did not finish. Please try again or select a stronger model.", { cause: error instanceof Error ? error : undefined });
     }
@@ -122,12 +136,13 @@ export class NoteTranslationService {
     console.info("[Translation] Generation started", { requestId, field: input.key, sourceCharacters: input.text.length });
     let result: NativeCompletionResult;
     try {
-      result = await context.completion({ messages: this.translationMessages(targetLocale, targetLanguage, input.text), n_predict: this.translationTokenBudget(input.text), temperature: 0, enable_thinking: false, reasoning_format: "none" }, (data) => {
+      const completed = await this.requests.complete(context, { messages: this.translationMessages(targetLocale, targetLanguage, input.text), n_predict: this.translationTokenBudget(input.text), temperature: 0, enable_thinking: false, reasoning_format: "none" }, this.lifecycle ?? undefined, (data) => {
         if (firstTokenAt === null) { firstTokenAt = Date.now(); console.info("[Translation] First token received", { requestId, field: input.key, timeToFirstTokenMs: firstTokenAt - generationStartedAt }); }
         streamedText = data.accumulated_text ?? `${streamedText}${data.token}`;
         this.setPayloadValue(payload, input.key, streamedText);
         this.publish({ status: "translating", requestId, noteId, section, targetLanguage, partialPayload: this.copyPayload(payload) });
       });
+      result = completed.result;
     } catch (error) {
       this.restorePayloadValue(payload, input);
       this.publish({ status: "translating", requestId, noteId, section, targetLanguage, partialPayload: this.copyPayload(payload) });

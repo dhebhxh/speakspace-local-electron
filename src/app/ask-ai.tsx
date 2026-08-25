@@ -36,6 +36,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useTrashUndo } from "@/providers/trash-undo-provider";
 import type { AiConversationHistoryItem } from "@/services/ai-conversation-service";
 import type { LlmGenerationSnapshot } from "@/services/llm-inference-service";
+import { InferenceCancelledError } from "@/services/local-llm-coordinator";
 import { formatDate } from "@/utils/format-date";
 
 type ScreenState =
@@ -119,6 +120,13 @@ export default function AskAiScreen() {
   const sendInFlightRef = useRef(false);
   const [shouldFollowLatestMessage, setShouldFollowLatestMessage] =
     useState(true);
+
+  useFocusEffect(useCallback(() => {
+    void Promise.allSettled([
+      llmInferenceService.ensureReady(),
+      appContainer.speechPlaybackService.ensureReady(),
+    ]);
+  }, [llmInferenceService]));
 
   const routeConversationId = firstParam(params.conversationId);
   const routeMode = firstParam(params.mode);
@@ -362,6 +370,10 @@ export default function AskAiScreen() {
       await refreshMessages(conversationId);
       if (isMountedRef.current) setNotice(null);
     } catch (error) {
+      if (error instanceof InferenceCancelledError) {
+        if (isMountedRef.current) setStreamingText("");
+        return;
+      }
       const message = errorMessage(error);
       if (isMountedRef.current) {
         setNotice(

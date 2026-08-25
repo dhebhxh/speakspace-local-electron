@@ -47,6 +47,8 @@ export default function TranscriptionScreen() {
   const [noteName, setNoteName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => { void transcriptionService.ensureReady().catch(() => undefined); }, [transcriptionService]);
+
   useEffect(() => {
     const pauseForSystem = (message: string) => {
       if (statusRef.current !== "recording") return;

@@ -13,8 +13,9 @@ import {
 } from "@/constants/ask-ai-inference-config";
 import { InferenceError } from "@/errors/inference-error";
 import { LlmModelService } from "@/services/llm-model-service";
-import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { type InferenceTask, type InferenceTaskContext, LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 import { SharedLlmContextService } from "@/services/shared-llm-context-service";
+import { LlmRequestService } from "@/services/llm-request-service";
 
 import { notesToTranscriptBlocks } from "./ask-ai-grounded-messages";
 import { buildAskAiCacheIdentity } from "./ask-ai-cache-identity";
@@ -38,6 +39,7 @@ export class LlmInferenceService {
   private activeConversationId: string | null = null;
   private isGenerating = false;
   private generationAborted = false;
+  private activeTask: InferenceTask<GenerateResult> | null = null;
   private generationSnapshot: LlmGenerationSnapshot = { status: "idle" };
   private readonly generationListeners = new Set<(snapshot: LlmGenerationSnapshot) => void>();
 
@@ -46,6 +48,7 @@ export class LlmInferenceService {
     private readonly aiConversationService: AiConversationService,
     private readonly coordinator: LocalLlmCoordinator,
     private readonly sharedContext: SharedLlmContextService,
+    private readonly requests: LlmRequestService,
   ) {}
 
   public getIsGenerating(): boolean {
@@ -87,10 +90,13 @@ export class LlmInferenceService {
     this.generationAborted = false;
     this.publishGenerationSnapshot({ status: "running", conversationId });
     try {
-      return await this.coordinator.runExclusive("ask-ai", () =>
-        this.runGeneration(conversationId, callbacks),
+      const task = this.coordinator.schedule("ask-ai", (lifecycle) =>
+        this.runGeneration(conversationId, callbacks, lifecycle),
       );
+      this.activeTask = task;
+      return await task.promise;
     } finally {
+      this.activeTask = null;
       this.isGenerating = false;
       this.publishGenerationSnapshot({ status: "idle" });
     }
@@ -99,6 +105,7 @@ export class LlmInferenceService {
   private async runGeneration(
     conversationId: string,
     callbacks: GenerateCallbacks,
+    lifecycle: InferenceTaskContext,
   ): Promise<GenerateResult> {
     await this.aiConversationService.getConversationOrThrow(conversationId);
     await this.ensureContextForActiveModel();
@@ -142,7 +149,8 @@ export class LlmInferenceService {
     const completionStartedAt = Date.now();
     let firstTokenAt: number | null = null;
     let streamedText = "";
-    const completionResult = await context.completion(
+    lifecycle.throwIfCancelled();
+    const completed = await this.requests.complete(context,
       {
         messages: prompt.messages,
         n_predict: ASK_AI_GENERATION_RESERVE,
@@ -150,7 +158,7 @@ export class LlmInferenceService {
         top_p: ASK_AI_COMPLETION_TOP_P,
         enable_thinking: false,
         reasoning_format: "none",
-      },
+      }, lifecycle,
       (data) => {
         if (this.generationAborted || data.token.length === 0) return;
         if (firstTokenAt === null) firstTokenAt = Date.now();
@@ -158,7 +166,9 @@ export class LlmInferenceService {
         callbacks.onToken(data.token);
       },
     );
+    const completionResult = completed.result;
 
+    lifecycle.throwIfCancelled();
     if (this.generationAborted || completionResult.interrupted) {
       throw new InferenceError("Generation was stopped.");
     }
@@ -172,6 +182,7 @@ export class LlmInferenceService {
     }
     if (streamedText.trim().length === 0) callbacks.onToken(assistantText);
 
+    lifecycle.throwIfCancelled();
     await this.aiConversationService.addAssistantMessage(
       conversationId,
       assistantText,
@@ -204,6 +215,7 @@ export class LlmInferenceService {
 
   public async stopGeneration(): Promise<void> {
     this.generationAborted = true;
+    await this.activeTask?.cancel();
     if (this.sharedContext.getContext() !== null && this.isGenerating) {
       await this.sharedContext
         .getContext()
@@ -211,6 +223,8 @@ export class LlmInferenceService {
         .catch(() => undefined);
     }
   }
+
+  public async ensureReady(): Promise<void> { await this.coordinator.runExclusive("ask-ai", () => this.ensureContextForActiveModel()); }
 
   public async releaseContext(): Promise<void> {
     if (this.isGenerating) {

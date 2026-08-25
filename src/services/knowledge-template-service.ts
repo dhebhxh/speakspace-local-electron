@@ -1,23 +1,26 @@
-import { initLlama, type LlamaContext } from "llama.rn";
-
 import { KnowledgeTemplate, type KnowledgeTemplateSection } from "@/domain/knowledge/knowledge-template";
 import { ValidationError } from "@/errors/validation-error";
 import { KnowledgeTemplateRepository } from "@/repositories/knowledge-template-repository";
 import { extractFirstJsonObject } from "@/services/core-note-insight-generation-policy";
 import { LlmModelService } from "@/services/llm-model-service";
-import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { InferenceCancelledError, type InferenceTask, LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { LlmRequestService } from "@/services/llm-request-service";
 
 type Proposal = { sections?: { title?: unknown; instruction?: unknown }[] };
 
 export class KnowledgeTemplateService {
+  private activeTask: InferenceTask<KnowledgeTemplateSection[]> | null = null;
   public constructor(
     private readonly repository: KnowledgeTemplateRepository,
     private readonly llmModelService: LlmModelService,
     private readonly coordinator: LocalLlmCoordinator,
+    private readonly requests: LlmRequestService,
   ) {}
 
   public getTemplates(): Promise<KnowledgeTemplate[]> { return this.repository.findAll(); }
   public getTemplate(id: string): Promise<KnowledgeTemplate | null> { return this.repository.findById(id); }
+  public cancelProposal(): Promise<void> { return this.activeTask?.cancel() ?? Promise.resolve(); }
+  public async ensureReady(): Promise<void> { await this.coordinator.runExclusive("knowledge-template", async () => { await this.requests.ensureReady(); }); }
 
   public async proposeSections(name: string, requirement: string): Promise<KnowledgeTemplateSection[]> {
     const normalizedName = this.requireText(name, "Template name");
@@ -27,11 +30,10 @@ export class KnowledgeTemplateService {
     const file = this.llmModelService.resolveModelFile(model);
     if (!file.exists) throw new ValidationError("The active model file is missing. Reinstall it or build the sections manually.");
 
-    return this.coordinator.runExclusive("knowledge-template", async () => {
-      let context: LlamaContext | null = null;
+    const task = this.coordinator.schedule("knowledge-template", async (lifecycle) => {
       try {
-        context = await initLlama({ model: file.uri, n_ctx: 4_096, n_batch: 96 });
-        const result = await context.completion({
+        const context = await this.requests.ensureReady();
+        const { raw } = await this.requests.complete(context, {
           messages: [{
             role: "user",
             content: `Design 2 to 8 extraction sections for a local note Knowledge template.
@@ -48,8 +50,8 @@ Each section needs a short title and a precise instruction describing what groun
           } } },
           n_predict: 900,
           temperature: 0,
-        });
-        const json = extractFirstJsonObject(result.content || result.text);
+        }, lifecycle);
+        const json = extractFirstJsonObject(raw);
         if (!json) throw new Error("The local model did not return complete JSON.");
         const proposal = JSON.parse(json) as Proposal;
         const sections = (proposal.sections ?? []).flatMap((section, index) => {
@@ -59,13 +61,14 @@ Each section needs a short title and a precise instruction describing what groun
         });
         return this.validateSections(sections);
       } catch (error) {
+        if (error instanceof InferenceCancelledError) throw error;
         if (error instanceof ValidationError) throw error;
         console.warn("[KnowledgeTemplate] Section proposal failed", { error });
         throw new ValidationError("The local model could not propose a valid template. Retry or build it manually.");
-      } finally {
-        if (context) await context.release().catch(() => undefined);
-      }
+      } finally { /* Shared runtime remains READY. */ }
     });
+    this.activeTask = task;
+    return task.promise.finally(() => { if (this.activeTask === task) this.activeTask = null; });
   }
 
   public async save(input: {

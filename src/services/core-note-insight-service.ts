@@ -1,4 +1,4 @@
-import { initLlama, type LlamaContext, type RNLlamaOAICompatibleMessage } from "llama.rn";
+import { type LlamaContext, type RNLlamaOAICompatibleMessage } from "llama.rn";
 
 import { CoreNoteInsight, type CoreActionItem, type CoreCalendarIntent, type CoreCalendarIntentKind, type CoreTask } from "@/domain/core-note-insight/core-note-insight";
 import { CoreNoteInsightGenerationError } from "@/errors/core-note-insight-generation-error";
@@ -15,7 +15,8 @@ import {
 } from "@/services/core-note-insight-generation-policy";
 import { getLocalReferenceTime, resolveCoreNoteTime, type ResolvedCoreNoteTime } from "@/services/core-note-time";
 import { LlmModelService } from "@/services/llm-model-service";
-import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { InferenceCancelledError, type InferenceTask, type InferenceTaskContext, LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { LlmRequestService } from "@/services/llm-request-service";
 import {
   annotateTaskRecurrences,
   normalizeTaskRecurrence,
@@ -31,7 +32,6 @@ type ContentOutput = { summary?: unknown; keyPoints?: unknown };
 type IntentOutput = { tasks?: unknown; reminders?: unknown; calendarIntents?: unknown };
 
 const CONTEXT_SIZE = 6144;
-const BATCH_SIZE = 128;
 const CONTENT_TOKENS = 1536;
 const CONTENT_RETRY_TOKENS = 2304;
 const INTENT_TOKENS = 1536;
@@ -111,13 +111,18 @@ export class CoreNoteInsightService {
 
   private readonly generationStates = new Map<string, CoreInsightGenerationState>();
   private readonly activeGenerations = new Map<string, Promise<CoreNoteInsight>>();
+  private readonly activeTasks = new Map<string, InferenceTask<CoreNoteInsight>>();
+  private currentLifecycle: InferenceTaskContext | null = null;
   private readonly listeners = new Map<string, Set<(state: CoreInsightGenerationState) => void>>();
 
   public constructor(
     private readonly repository: CoreNoteInsightRepository,
     private readonly llmModelService: LlmModelService,
     private readonly coordinator: LocalLlmCoordinator,
+    private readonly requests: LlmRequestService,
   ) {}
+  public cancelGeneration(noteId: string): Promise<void> { return this.activeTasks.get(noteId)?.cancel() ?? Promise.resolve(); }
+  public async ensureReady(): Promise<void> { await this.coordinator.runExclusive("core-insights", async () => { await this.requests.ensureReady(); }); }
   public getForNote(noteId: string): Promise<CoreNoteInsight | null> { return this.repository.findByNoteId(noteId); }
 
   public async setTaskCompleted(noteId: string, taskId: string, completed: boolean): Promise<CoreNoteInsight> {
@@ -163,18 +168,25 @@ export class CoreNoteInsightService {
 
     const requestId = `core-insights-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.publish(noteId, { status: "queued", requestId, startedAt: Date.now() });
-    const promise = this.coordinator.runExclusive("core-insights", async () => {
+    const task = this.coordinator.schedule("core-insights", async (lifecycle) => {
       this.publish(noteId, { status: "generating", requestId, startedAt: Date.now() });
-      return this.runGeneration(noteId, transcript, requestId);
+      this.currentLifecycle = lifecycle;
+      try { return await this.runGeneration(noteId, transcript, requestId); }
+      finally { this.currentLifecycle = null; }
     });
+    const promise = task.promise;
+    this.activeTasks.set(noteId, task);
     this.activeGenerations.set(noteId, promise);
     void promise.then(
       () => {
         this.activeGenerations.delete(noteId);
+        this.activeTasks.delete(noteId);
         this.publish(noteId, { status: "completed", requestId, finishedAt: Date.now() });
       },
       (error: unknown) => {
         this.activeGenerations.delete(noteId);
+        this.activeTasks.delete(noteId);
+        if (error instanceof InferenceCancelledError) { this.publish(noteId, { status: "idle" }); return; }
         this.publish(noteId, { status: "failed", requestId, finishedAt: Date.now(), message: error instanceof Error ? error.message : "Structured Note did not finish. Please try again." });
       },
     );
@@ -191,10 +203,9 @@ export class CoreNoteInsightService {
     const modelFile = this.llmModelService.resolveModelFile(model);
     if (!modelFile.exists) throw new CoreNoteInsightGenerationError("model-file-missing", "The active model file is missing. Reinstall it from AI Models.");
 
-    let context: LlamaContext | null = null;
     try {
       console.info("[CoreInsights] Local LLM starting", { requestId, noteId, modelId: model.getId(), contextSize: CONTEXT_SIZE, pipeline: "content+batched-intents" });
-      context = await initLlama({ model: modelFile.uri, n_ctx: CONTEXT_SIZE, n_batch: BATCH_SIZE });
+      const context = await this.requests.ensureReady();
       const reference = getLocalReferenceTime();
       console.info("[CoreInsights] Local time reference captured", { requestId, referenceTime: reference.localIso, timezone: reference.timezone });
       const content = await this.generateContent(context, input, requestId);
@@ -204,21 +215,19 @@ export class CoreNoteInsightService {
       const insight = this.parse(noteId, model.getId(), content, intents, requestId, reference.instant, reference.localIso, reference.timezone);
       const calendars = insight.getCalendarIntents();
       console.info("[CoreInsights] Structured output parsed", { requestId, summaryLength: insight.getSummary().length, keyPointCount: insight.getKeyPoints().length, taskCount: insight.getTasks().length, actionItemCount: insight.getActionItems().length, reminderCount: calendars.filter((x) => x.kind === "reminder").length, calendarIntentCount: calendars.filter((x) => x.kind === "calendar").length });
+      this.currentLifecycle?.throwIfCancelled();
       await this.repository.save(insight);
       console.info("[CoreInsights] Saved and ready for display", { requestId, noteId, durationMs: Date.now() - startedAt });
       return insight;
     } catch (error) {
+      if (error instanceof InferenceCancelledError) {
+        console.info("[CoreInsights] Generation cancelled", { requestId, noteId });
+        throw error;
+      }
       console.error("[CoreInsights] Generation failed", { requestId, noteId, durationMs: Date.now() - startedAt, errorCode: error instanceof CoreNoteInsightGenerationError ? error.code : "unexpected", error });
       if (error instanceof CoreNoteInsightGenerationError) throw error;
       throw new CoreNoteInsightGenerationError("generation-failed", "Structured Note did not finish. Please try again.", { cause: error instanceof Error ? error : undefined });
-    } finally {
-      if (context) try {
-        const releaseStartedAt = Date.now();
-        console.info("[CoreInsights] Releasing model context", { requestId, noteId });
-        await context.release();
-        console.info("[CoreInsights] Model context released", { requestId, noteId, durationMs: Date.now() - releaseStartedAt });
-      } catch (error) { console.warn("[CoreInsights] Could not release model context", { requestId, error }); }
-    }
+    } finally { /* Shared runtime remains READY. */ }
   }
 
   private async generateContent(context: LlamaContext, input: string, requestId: string): Promise<ContentOutput> {
@@ -344,8 +353,7 @@ export class CoreNoteInsightService {
       console.info("[CoreInsights] Prompt budget ready", { requestId, stage, promptTokens, outputTokens, inputTruncated: false });
     }
     const stageStartedAt = Date.now();
-    const result = await context.completion({ messages, response_format: { type: "json_schema", json_schema: { strict: true, schema } }, n_predict: outputTokens, temperature: 0 });
-    const raw = result.content || result.text;
+    const { result, raw } = await this.requests.complete(context, { messages, response_format: { type: "json_schema", json_schema: { strict: true, schema } }, n_predict: outputTokens, temperature: 0 }, this.currentLifecycle ?? undefined);
     const hitOutputLimit = completionHitOutputLimit(result, outputTokens);
     console.info("[CoreInsights] Stage completed", {
       requestId,
@@ -365,8 +373,7 @@ export class CoreNoteInsightService {
   }
 
   private async countTokens(context: LlamaContext, messages: RNLlamaOAICompatibleMessage[]): Promise<number> {
-    const formatted = await context.getFormattedChat(messages, null, { jinja: true, enable_thinking: false, reasoning_format: "none" });
-    return (await context.tokenize(formatted.prompt ?? "")).tokens.length;
+    return this.requests.countMessageTokens(context, messages);
   }
 
   private parseJson<T>(raw: string): T {

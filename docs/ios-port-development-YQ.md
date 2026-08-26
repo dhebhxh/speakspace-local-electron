@@ -793,6 +793,27 @@ git diff --check
 
 这些限制与“不上架 App Store、仅需 iPhone 本地运行”的毕设范围一致。后续若有真实用户反馈，应优先补真实通知到点矩阵、PDF 在不同分享目标中的外观，以及多种 iPhone 内存等级下的 timeout 数据，而不是扩大到 Android 或云服务。
 
+### 12.10 iOS v1.4.0 稳定版封版
+
+完成选择功能的真机验收后，把 App version 从 `1.3.0` 提升为 `1.4.0`，iOS build number 从 `4` 提升为 `5`。版本号同时写入 `app.json`、`package.json` 和 lockfile 根元数据，并用 `npx expo config --type public --json` 复核生成配置。`ios/` 继续由 Expo Prebuild 生成并被 Git 忽略，Personal Team、provisioning profile、DerivedData、设备数据库和测试附件不进入仓库。
+
+封版从 `npx expo prebuild --platform ios --clean` 开始，重新生成原生工程并安装 CocoaPods。随后从两个独立 DerivedData 执行 iPhoneOS Release 全量构建：公开 SideStore 包使用 `CODE_SIGNING_ALLOWED=NO`，真机验收包使用本机 Personal Team 自动签名。两次 `xcodebuild` 都以退出码 0 完成。自动 verifier 对两个 `.app` 检查 bundle identifier、最低系统、iPhone-only device family、arm64 和内嵌 bundle，并对真机包额外要求有效签名；`codesign --verify --deep --strict` 也通过。最终 entitlement 只有 Personal Team application/team identifier 与调试签名允许项，没有 `aps-environment`，因此本地通知没有引入 APNs capability。
+
+未签名 `.app` 由项目 packager 复制进 `Payload/`，递归移除签名和 provisioning 材料后生成 `SpeakSpace-iOS-v1.4.0.ipa`。最终 IPA 为 34,231,895 bytes，包内 JavaScript bundle 为 4,785,256 bytes，SHA-256 为 `67e57fd017faf9d43141f9fcb0cb9460c7d7e7b17dd588090a0626f27470bb0a`。`unzip -t`、独立 `shasum -a 256 -c` 和 archive entry 扫描均通过，归档没有 `_CodeSignature`、`embedded.mobileprovision`、其他 provisioning profile 或 `__MACOSX` 元数据。公开 IPA 只用于测试者在 SideStore 中自行重新签名；本机签名包不上传。
+
+最终 Personal Team 签名 `.app` 的包内版本为 `1.4.0 (5)`，离线 JavaScript bundle 为 4,785,254 bytes。测试前 `devicectl` 确认手机已解锁，且只安装一个 `1.3.0 (4)` 的正式 Bundle ID；用相同 Bundle ID 覆盖安装后，设备清单只保留一个 SpeakSpace `1.4.0 (5)`，没有 XCUITest runner 或第二个 SpeakSpace 包，App 可脱离 Metro 启动且进程保持运行。本轮没有使用 iPhone Mirroring。
+
+覆盖安装后从手机复制 `Documents/SQLite`。`speakspace.db` 的 schema 为 v12，`PRAGMA integrity_check` 返回 `ok`，`PRAGMA foreign_key_check` 无记录；Notes、Workspaces、subnotes、Ask AI、Structured Note、Knowledge、Task、calendar intent 和 translation 等用户内容表全部为 0，`ExpoSQLiteStorage` 偏好记录为 0。STT、LLM、TTS model table 各保留 1 条 active 配置，符合“清除测试样本、只保留后续真机测试需要的模型”的状态。由于采用覆盖安装而不是卸载，这次检查同时验证了同 Bundle ID 的升级路径不会破坏清理后的容器。
+
+版本更新后再次执行发布质量门：88 tests passed、0 failed；TypeScript 通过；Lint 为 0 error、12 warnings；Expo dependency check 无待更新项；Expo Doctor 为 21/21。production dependency audit 没有 high/critical，仍报告 13 个 Expo CLI、config plugin、Xcode/ngrok 工具链传递依赖的 moderate `uuid` 公告；强制修复会把 Expo 降到不兼容旧版，因此不执行 `npm audit fix --force`。本轮最终版本实测覆盖签名、安装、启动和数据完整性；业务 XCUITest 在元数据提升前的同一功能源码上完成，避免把版本号变化误写成重新穷举了全部 UI。
+
+发布采用可回滚步骤：先推送 `main`，再创建 annotated tag `ios-v1.4.0`，把 IPA 与 checksum 上传为 GitHub draft Release；从 GitHub 重新下载并复算大小和 SHA-256 后才发布为 latest。原 `ios-v1.3.0` tag、Release 和资产继续保留为回滚点，不通过卸载 App 回退本地数据。
+
+> Evidence:
+> - Source: `app.json`, `package.json`, `package-lock.json`, `CHANGELOG.md`, `docs/ios-release-v1.4.0-YQ.md`, `scripts/verify-ios-release.mjs`, `scripts/package-ios-sidestore.mjs`
+> - Method: 版本配置检查、干净 Prebuild、未签名和签名 Release 全量构建、codesign/entitlement 检查、IPA ZIP/entry/SHA-256 验证、真机覆盖安装/启动/进程检查、设备数据库复制和发布门复跑
+> - Confidence: High；Windows SideStore 首次安装与七天 Refresh、真实到点通知的 Focus/静音矩阵和所有 PDF 分享目标仍需相应外部环境完成
+
 ## 十三、参考资料
 
 - Expo SDK 57 app config：<https://docs.expo.dev/versions/v57.0.0/config/app/>

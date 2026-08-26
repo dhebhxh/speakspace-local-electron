@@ -2,6 +2,31 @@
 
 本文件记录 SpeakSpace Local Mobile 面向组内测试的稳定版本。iOS 安装包不发布到 App Store，二进制资产附在团队仓库对应的 GitHub Release 中。
 
+## [1.4.0] - 2026-08-26
+
+### Added
+
+- Home 日历同时展示 Structured Note 中的事件、待办截止日期和提醒；结构化时间缺失时可从原始 transcript 提取有明确依据的日期，并避免同日重复。
+- Task 和 Reminder 支持 iOS 本地通知，点击通知可回到来源 Note；权限由用户主动开启，修改、完成或删除后会重新同步通知计划。
+- Note detail 支持导出 PDF 并打开 iOS 系统分享面板；单 Note 导出不会泄露关联多 Note 对话的正文。
+- 新增英语首次使用引导、可重新打开的操作指南和字体大小设置；iOS 界面只提供英语。
+- Note detail 显示关联的 Ask AI 对话并允许继续；Ask AI 新增安全 Markdown 渲染、阶段进度、自动朗读开关和可见 spinner。
+- Workspace 在空白或默认命名场景提供确定性名称建议，须由用户确认后才会应用。
+
+### Changed
+
+- Ask AI、Structured Note 和 Knowledge 使用从请求进入队列即开始计算的硬 deadline，并支持安全取消排队中或正在运行的本地推理。
+- 新录音或导入音频先保存原始 Note，再自动进入 Structured Note 生成与审核；生成失败不会丢失 transcript 或录音路径。
+- iOS 用户界面统一为英语，同时继续支持多语言 transcript、STT、TTS 和内容处理。
+
+### Fixed
+
+- 修复原有 Ask AI 90 秒配置没有覆盖排队、模型加载和保存阶段的问题，并保证取消后本地推理仍保持 FIFO 串行状态。
+- 修复 Structured Note 未给出时间戳时 Home 无法显示原文明确日期，以及 fallback 与结构化日程重复的问题。
+- 修复模型输出中的 Markdown 标记可能作为原始符号显示给用户的问题；HTML、脚本、远程图片和非 HTTPS 链接不会成为可执行内容。
+
+发布记录：[SpeakSpace iOS v1.4.0](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.4.0)
+
 ## [1.3.0] - 2026-08-24
 
 ### Added

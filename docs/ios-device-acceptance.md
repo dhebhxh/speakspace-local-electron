@@ -183,6 +183,44 @@ The local `.xcresult`, signed app, provisioning material, and copied device
 database are intentionally not committed. Reproducible test and packaging
 commands remain in the release and development records.
 
+## v1.4.0 targeted regression supplement
+
+This supplement records the 2026-08-26 selected-feature acceptance and final
+versioned Release installation. The feature XCUITests ran on the same business
+source immediately before the metadata-only version/build bump. The final
+`1.4.0 (5)` binary was then rebuilt from a clean Expo Prebuild, strictly
+verified, installed, launched, and checked against the cleaned device database.
+It does not mark the unfilled audio, long-recording, notification environment,
+share-destination, or external SideStore rows above as passed.
+
+| Field | Result |
+| --- | --- |
+| Test date | 2026-08-26 |
+| App version | `1.4.0 (5)` |
+| Device | iPhone 16 Pro Max, iOS 27.0 beta |
+| Bundle identifier | `com.dhebhxh.speakspacelocalmobile` |
+| Install method | Xcode Personal Team signed Release, same-bundle-ID overwrite |
+| Final device data | 0 user-content rows, 0 preference rows, and one active STT, LLM, and TTS model configuration |
+
+| Targeted gate | Result | Evidence or notes |
+| --- | --- | --- |
+| Selected-feature Node regression | PASS | 88 tests passed, 0 failed after the `1.4.0 (5)` metadata update |
+| Calendar fallback Release XCUITest | PASS | Structured Note spinner, null structured timestamps, transcript fallback, Home deduplication, date selection, and source-Note navigation passed 1/1 in 62.337 seconds on the same business source |
+| Clean English launch XCUITest | PASS | English `Private & Local` onboarding and enabled `Continue` passed 1/1 on the same business source |
+| Clean unsigned iPhoneOS Release | PASS | Version/build, arm64, iPhone family, minimum iOS 16.4, and 4,785,256-byte embedded JavaScript bundle verified |
+| SideStore IPA validation | PASS | 34,231,895-byte IPA; ZIP integrity, archive-entry scan, and independent SHA-256 `67e57fd017faf9d43141f9fcb0cb9460c7d7e7b17dd588090a0626f27470bb0a` verified |
+| Signed Release verifier and strict code-sign verification | PASS | Final `1.4.0 (5)` app is iPhone-only arm64, contains a 4,785,254-byte JavaScript bundle, has a valid Personal Team signature, and has no `aps-environment` entitlement |
+| Overwrite installation exposes exactly one expected app | PASS | Device inventory contains one SpeakSpace entry, version `1.4.0 (5)`, and no XCUITest runner or second SpeakSpace bundle |
+| App launches without Metro and remains running | PASS | `devicectl` launch succeeded and process inventory reported the installed executable |
+| Copied SQLite database integrity | PASS | Schema v12; `PRAGMA integrity_check` returned `ok`; `PRAGMA foreign_key_check` returned no rows |
+| Clean post-test state | PASS | User-content tables and Expo preference storage contain 0 rows; one active STT, LLM, and TTS model configuration remains for subsequent user testing |
+
+The app was not uninstalled during the final overwrite test, so the successful
+database check also covers the same-bundle-ID upgrade path. Local build output,
+signing material, copied databases, and XCUITest results are intentionally not
+committed. The unsigned IPA and checksum are published only as GitHub Release
+assets.
+
 ## Final decision
 
 The iPhone migration passes only when every required row above passes, both

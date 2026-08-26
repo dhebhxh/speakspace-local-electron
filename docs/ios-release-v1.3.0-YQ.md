@@ -2,7 +2,7 @@
 
 ## 发布定位
 
-`ios-v1.3.0` 是当前 iPhone 稳定顶版，基于团队仓库 `main` 封版。它不发布到 App Store；组员可在 Mac 上使用 Xcode 覆盖安装，也可在 Windows 上使用 SideStore 和自己的 Apple Account 对公开 IPA 重新签名。Android 不在本次发布验收范围内。
+`ios-v1.3.0` 是上一版 iPhone 稳定版，基于团队仓库 `main` 封版。当前稳定顶版见 `ios-v1.4.0`；本记录保留用于回滚审计。它不发布到 App Store；组员可在 Mac 上使用 Xcode 覆盖安装，也可在 Windows 上使用 SideStore 和自己的 Apple Account 对公开 IPA 重新签名。Android 不在本次发布验收范围内。
 
 本版把桌面端已经稳定的内容管理和知识工作流移植到 iPhone，同时针对小屏幕、本地模型上下文和设备存储做了明确简化：搜索不依赖 Embedding，Ask AI 最多选择三篇 Note，聊天页不展示来源列表，周期 Task 只实现五种确定规则。
 

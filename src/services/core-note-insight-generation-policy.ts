@@ -1,3 +1,5 @@
+import { extractCoreNoteTimeExpression } from "./core-note-time.ts";
+
 export type StructuredCompletionSignals = {
   truncated?: boolean;
   stopped_limit?: number;
@@ -325,8 +327,10 @@ const TEMPORAL_EN = /\b(?:today|tomorrow|tonight|morning|afternoon|evening|monda
 const TEMPORAL_ZH = /(?:今天|明天|今晚|上午|下午|晚上|星期[一二三四五六日天]|周[一二三四五六日天]|\d{1,4}\s*年|\d{1,2}\s*月|\d{1,2}\s*[日号点时])/u;
 const CLOCK_EN = /\b(?:1[0-2]|0?\d)(?::[0-5]\d)?\s*(?:am|pm)\b|\b(?:[01]?\d|2[0-3]):[0-5]\d\b/iu;
 const CLOCK_ZH = /(?:上午|早上|中午|下午|晚上)?\s*(?:\d{1,2}|[一二三四五六七八九十]+)\s*[点时]/u;
-const NEGATED_INTENT_EN = /\b(?:no\s+(?:task|action|reminder|meeting|event|appointment)|do\s+not\s+remind|not\s+scheduled|was\s+cancelled|is\s+cancelled)\b/iu;
-const NEGATED_INTENT_ZH = /(?:无需|不需要|不要|没有)(?:.{0,8})(?:任务|待办|提醒|会议|活动|日程|预约)|(?:会议|活动|日程|预约)(?:已)?取消/u;
+const NEGATED_INTENT_EN = /\b(?:no\s+(?:task|action|reminder|meeting|event|appointment)|(?:do|does|did)\s+not\s+(?:need|have|require|remember|remind)|(?:is|are|was|were)\s+not\s+(?:needed|required|scheduled)|(?:was|is|were|are)\s+cancelled)\b/iu;
+const NEGATED_INTENT_ZH = /(?:无需|不需要|不用|不要|不必|无需再|没有)(?:.{0,16})(?:任务|待办|提醒|会议|活动|日程|预约|完成|提交|准备|记住|背诵)|(?:会议|活动|日程|预约)(?:已)?取消/u;
+const ADVISORY_INTENT_EN = /\b(?:i(?:'d|\s+would)\s+recommend|we\s+recommend|recommend(?:ed|ing)?|suggest(?:ed|ing)?|consider|might\s+want\s+to|could\s+try|it\s+(?:may|might)\s+help\s+to)\b/iu;
+const ADVISORY_INTENT_ZH = /(?:我(?:会)?建议|建议(?:可以|先|从)?|推荐(?:可以|先|从)?|不妨|可以考虑|最好考虑)/u;
 
 function completedFact(clause: string): boolean {
   return COMPLETED_FACT_EN.test(clause) || COMPLETED_FACT_ZH.test(clause);
@@ -362,12 +366,12 @@ function isNegatedIntent(clause: string): boolean {
   return NEGATED_INTENT_EN.test(clause) || NEGATED_INTENT_ZH.test(clause);
 }
 
-function cleanEvidenceTitle(clause: string): string {
-  return truncateCharacters(stripRecurrenceAnnotations(clause).replace(/[.!?。！？;；]+$/u, "").trim(), 240);
+function isAdvisoryIntent(clause: string): boolean {
+  return ADVISORY_INTENT_EN.test(clause) || ADVISORY_INTENT_ZH.test(clause);
 }
 
-function hasTemporalEvidence(clause: string): boolean {
-  return TEMPORAL_EN.test(clause) || TEMPORAL_ZH.test(clause);
+function cleanEvidenceTitle(clause: string): string {
+  return truncateCharacters(stripRecurrenceAnnotations(clause).replace(/[.!?。！？;；]+$/u, "").trim(), 240);
 }
 
 function hasClockEvidence(clause: string): boolean {
@@ -377,7 +381,7 @@ function hasClockEvidence(clause: string): boolean {
 function explicitEvidenceCategory(
   clause: string,
 ): keyof SanitizedIntentOutput | null {
-  if (!clause || completedFact(clause) || isNegatedIntent(clause)) return null;
+  if (!clause || completedFact(clause) || isNegatedIntent(clause) || isAdvisoryIntent(clause)) return null;
   if (hasReminderEvidence(clause)) return "reminders";
   if (hasStrongCalendarEvidence(clause)) return "calendarIntents";
   if (hasTaskEvidence(clause) || hasRecurringTaskEvidence(clause)) return "tasks";
@@ -396,7 +400,7 @@ function deterministicIntentItem(
       title,
       description: null,
       startsAtExpression: null,
-      dueAtExpression: recurrence ? recurrenceDueExpression(clause, recurrence) : (hasTemporalEvidence(clause) ? clause : null),
+      dueAtExpression: recurrence ? recurrenceDueExpression(clause, recurrence) : extractCoreNoteTimeExpression(clause),
       recurrence: recurrence?.kind ?? null,
       actionItems: [],
     };
@@ -405,13 +409,13 @@ function deterministicIntentItem(
     return {
       title,
       description: null,
-      remindAtExpression: hasTemporalEvidence(clause) ? clause : null,
+      remindAtExpression: extractCoreNoteTimeExpression(clause),
     };
   }
   return {
     title,
     description: null,
-    startsAtExpression: hasTemporalEvidence(clause) ? clause : null,
+    startsAtExpression: extractCoreNoteTimeExpression(clause),
     endsAtExpression: null,
     allDay: !hasClockEvidence(clause),
     timezone: null,
@@ -446,7 +450,8 @@ function addMissingExplicitEvidence(
 function groundedExpression(value: unknown, clause: string): string | null | undefined {
   if (value === null || value === undefined) return value;
   if (typeof value !== "string" || !value.trim()) return null;
-  return normalized(clause).includes(normalized(value)) ? value.trim() : null;
+  if (!normalized(clause).includes(normalized(value))) return null;
+  return extractCoreNoteTimeExpression(value);
 }
 
 function groundedItem(item: UnknownItem, clause: string): UnknownItem {
@@ -464,10 +469,10 @@ export function sanitizeIntentOutput(value: unknown, transcript: string): Saniti
   const tasks = items(output.tasks).flatMap((item) => {
     const clause = supportingClause(item, transcript);
     const recurrence = recurrenceEvidence(clause);
-    if ((!hasTaskEvidence(clause) && !recurrence) || isNegatedIntent(clause)) return [];
+    if ((!hasTaskEvidence(clause) && !recurrence) || isNegatedIntent(clause) || isAdvisoryIntent(clause)) return [];
     const actionItems = items(item.actionItems).flatMap((action) => {
       const actionClause = supportingClause(action, transcript);
-      return hasTaskEvidence(actionClause) ? [groundedItem(action, actionClause)] : [];
+      return hasTaskEvidence(actionClause) && !isNegatedIntent(actionClause) && !isAdvisoryIntent(actionClause) ? [groundedItem(action, actionClause)] : [];
     });
     const grounded = groundedItem(item, clause);
     return [{
@@ -479,11 +484,11 @@ export function sanitizeIntentOutput(value: unknown, transcript: string): Saniti
   });
   const reminders = items(output.reminders).flatMap((item) => {
     const clause = supportingClause(item, transcript);
-    return hasReminderEvidence(clause) && !isNegatedIntent(clause) ? [groundedItem(item, clause)] : [];
+    return hasReminderEvidence(clause) && !isNegatedIntent(clause) && !isAdvisoryIntent(clause) ? [groundedItem(item, clause)] : [];
   });
   const calendarIntents = items(output.calendarIntents).flatMap((item) => {
     const clause = supportingClause(item, transcript);
-    return hasCalendarEvidence(clause) && !isNegatedIntent(clause) ? [groundedItem(item, clause)] : [];
+    return hasCalendarEvidence(clause) && !isNegatedIntent(clause) && !isAdvisoryIntent(clause) ? [groundedItem(item, clause)] : [];
   });
   return addMissingExplicitEvidence({ tasks, reminders, calendarIntents }, transcript);
 }

@@ -12,7 +12,7 @@ import {
   sanitizeIntentOutput,
   splitIntentTranscript,
 } from "../src/services/core-note-insight-generation-policy.ts";
-import { resolveCoreNoteTime } from "../src/services/core-note-time.ts";
+import { extractCoreNoteTimeExpression, resolveCoreNoteTime } from "../src/services/core-note-time.ts";
 import { annotateTaskRecurrences } from "../src/services/task-recurrence.ts";
 
 const emptyIntents = () => ({ tasks: [], reminders: [], calendarIntents: [] });
@@ -199,6 +199,45 @@ test("explicit recurring actions survive when the small model omits them", () =>
 test("negated intents are not recreated by deterministic coverage", () => {
   const transcript = "No reminder is required. The meeting was cancelled.";
   assert.deepEqual(sanitizeIntentOutput(emptyIntents(), transcript), emptyIntents());
+});
+
+test("polluted time fields are reduced to grounded time phrases for every intent kind", () => {
+  const transcript = [
+    "Please submit them before next Thursday.",
+    "Remember to call Maya at 13:45 on the same day.",
+    "The review meeting will be held at 14:30 on 3 September 2026.",
+  ].join(" ");
+  const sanitized = sanitizeIntentOutput({
+    tasks: [{ title: "Submit them", dueAtExpression: "Please submit them before next Thursday", actionItems: [] }],
+    reminders: [{ title: "Call Maya", remindAtExpression: "Remember to call Maya at 13:45 on the same day" }],
+    calendarIntents: [{ title: "Review meeting", startsAtExpression: "The review meeting will be held at 14:30 on 3 September 2026" }],
+  }, transcript);
+
+  assert.equal(sanitized.tasks[0].dueAtExpression, "before next Thursday");
+  assert.equal(sanitized.reminders[0].remindAtExpression, "at 13:45 on the same day");
+  assert.equal(sanitized.calendarIntents[0].startsAtExpression, "at 14:30 on 3 September 2026");
+  assert.equal(extractCoreNoteTimeExpression("This has no date"), null);
+
+  const recovered = sanitizeIntentOutput(emptyIntents(), transcript);
+  assert.equal(recovered.tasks[0].dueAtExpression, "before next Thursday");
+  assert.equal(recovered.reminders[0].remindAtExpression, "at 13:45 on the same day");
+  assert.equal(recovered.calendarIntents[0].startsAtExpression, "at 14:30 on 3 September 2026");
+});
+
+test("negated and advisory task clauses are rejected even when the model emits tasks", () => {
+  const transcript = [
+    "You do not need to memorize these definitions by Friday.",
+    "I'd recommend starting the optional reading next Thursday.",
+  ].join(" ");
+  const modelOutput = {
+    ...emptyIntents(),
+    tasks: [
+      { title: "Memorize these definitions", dueAtExpression: "by Friday", actionItems: [] },
+      { title: "Start the optional reading", dueAtExpression: "next Thursday", actionItems: [] },
+    ],
+  };
+
+  assert.deepEqual(sanitizeIntentOutput(modelOutput, transcript), emptyIntents());
 });
 
 test("English date and time evidence in a full grounded clause resolves locally", () => {

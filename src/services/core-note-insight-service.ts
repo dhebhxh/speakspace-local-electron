@@ -16,6 +16,8 @@ import {
 import { getLocalReferenceTime, resolveCoreNoteTime, type ResolvedCoreNoteTime } from "@/services/core-note-time";
 import { LlmModelService } from "@/services/llm-model-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { InferenceDeadline, type InferenceAbortReason } from "@/services/inference-deadline";
+import { STRUCTURED_NOTE_GENERATION_DEADLINE_MS } from "@/constants/local-ai-deadlines";
 import {
   annotateTaskRecurrences,
   normalizeTaskRecurrence,
@@ -29,6 +31,7 @@ type OutputCalendar = OutputItem & { endsAtExpression?: unknown; remindAtExpress
 type OutputTask = OutputItem & { actionItems?: unknown; recurrence?: unknown };
 type ContentOutput = { summary?: unknown; keyPoints?: unknown };
 type IntentOutput = { tasks?: unknown; reminders?: unknown; calendarIntents?: unknown };
+type ActiveCoreRequest = { requestId: string; deadline: InferenceDeadline; context: LlamaContext | null };
 
 const CONTEXT_SIZE = 6144;
 const BATCH_SIZE = 128;
@@ -111,7 +114,9 @@ export class CoreNoteInsightService {
 
   private readonly generationStates = new Map<string, CoreInsightGenerationState>();
   private readonly activeGenerations = new Map<string, Promise<CoreNoteInsight>>();
+  private readonly activeRequests = new Map<string, ActiveCoreRequest>();
   private readonly listeners = new Map<string, Set<(state: CoreInsightGenerationState) => void>>();
+  private readonly changeListeners = new Set<() => void>();
 
   public constructor(
     private readonly repository: CoreNoteInsightRepository,
@@ -120,8 +125,14 @@ export class CoreNoteInsightService {
   ) {}
   public getForNote(noteId: string): Promise<CoreNoteInsight | null> { return this.repository.findByNoteId(noteId); }
 
+  public subscribeToChanges(listener: () => void): () => void {
+    this.changeListeners.add(listener);
+    return () => this.changeListeners.delete(listener);
+  }
+
   public async setTaskCompleted(noteId: string, taskId: string, completed: boolean): Promise<CoreNoteInsight> {
     await this.repository.setTaskCompleted(noteId, taskId, completed);
+    this.changeListeners.forEach((listener) => listener());
     return this.getUpdatedInsight(noteId);
   }
 
@@ -156,34 +167,64 @@ export class CoreNoteInsightService {
   public generate(noteId: string, transcript: string): Promise<CoreNoteInsight> {
     const state = this.getGenerationState(noteId);
     const existing = this.activeGenerations.get(noteId);
-    if (existing && (state.status === "queued" || state.status === "generating")) {
+    if (existing && (state.status === "queued" || state.status === "generating" || state.status === "stopping")) {
       console.info("[CoreInsights] Reusing in-flight generation", { noteId, requestId: state.requestId });
       return existing;
     }
 
     const requestId = `core-insights-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    this.publish(noteId, { status: "queued", requestId, startedAt: Date.now() });
+    const startedAt = Date.now();
+    const deadline = new InferenceDeadline(STRUCTURED_NOTE_GENERATION_DEADLINE_MS);
+    const request: ActiveCoreRequest = { requestId, deadline, context: null };
+    this.activeRequests.set(noteId, request);
+    deadline.signal.addEventListener("abort", () => {
+      const active = this.activeRequests.get(noteId);
+      if (active !== request) return;
+      this.publish(noteId, { status: "stopping", requestId, startedAt });
+      void active.context?.stopCompletion().catch(() => undefined);
+    }, { once: true });
+    this.publish(noteId, { status: "queued", requestId, startedAt });
     const promise = this.coordinator.runExclusive("core-insights", async () => {
-      this.publish(noteId, { status: "generating", requestId, startedAt: Date.now() });
-      return this.runGeneration(noteId, transcript, requestId);
+      deadline.throwIfAborted((reason) => this.abortError(reason));
+      this.publish(noteId, { status: "generating", requestId, startedAt });
+      return this.runGeneration(noteId, transcript, requestId, request);
+    }, { signal: deadline.signal }).catch((error: unknown) => {
+      if (deadline.reason) throw this.abortError(deadline.reason);
+      throw error;
     });
     this.activeGenerations.set(noteId, promise);
     void promise.then(
       () => {
+        deadline.dispose();
         this.activeGenerations.delete(noteId);
+        if (this.activeRequests.get(noteId) === request) this.activeRequests.delete(noteId);
         this.publish(noteId, { status: "completed", requestId, finishedAt: Date.now() });
       },
       (error: unknown) => {
+        deadline.dispose();
         this.activeGenerations.delete(noteId);
+        if (this.activeRequests.get(noteId) === request) this.activeRequests.delete(noteId);
         this.publish(noteId, { status: "failed", requestId, finishedAt: Date.now(), message: error instanceof Error ? error.message : "Structured Note did not finish. Please try again." });
       },
     );
     return promise;
   }
 
-  private async runGeneration(noteId: string, transcript: string, requestId: string): Promise<CoreNoteInsight> {
+  public async stopGeneration(noteId: string): Promise<void> {
+    const request = this.activeRequests.get(noteId);
+    if (!request) return;
+    request.deadline.abort("cancelled");
+    await request.context?.stopCompletion().catch(() => undefined);
+  }
+
+  public async stopAllGenerations(): Promise<void> {
+    await Promise.all([...this.activeRequests.keys()].map((noteId) => this.stopGeneration(noteId)));
+  }
+
+  private async runGeneration(noteId: string, transcript: string, requestId: string, request: ActiveCoreRequest): Promise<CoreNoteInsight> {
     const startedAt = Date.now();
     const input = transcript.trim();
+    request.deadline.throwIfAborted((reason) => this.abortError(reason));
     console.info("[CoreInsights] Input received", { requestId, noteId, inputLength: input.length });
     if (!input) throw new CoreNoteInsightGenerationError("empty-transcript", "This note has no text to analyze yet.");
     const model = await this.llmModelService.getActiveModel();
@@ -195,20 +236,25 @@ export class CoreNoteInsightService {
     try {
       console.info("[CoreInsights] Local LLM starting", { requestId, noteId, modelId: model.getId(), contextSize: CONTEXT_SIZE, pipeline: "content+batched-intents" });
       context = await initLlama({ model: modelFile.uri, n_ctx: CONTEXT_SIZE, n_batch: BATCH_SIZE });
+      request.context = context;
+      request.deadline.throwIfAborted((reason) => this.abortError(reason));
       const reference = getLocalReferenceTime();
       console.info("[CoreInsights] Local time reference captured", { requestId, referenceTime: reference.localIso, timezone: reference.timezone });
-      const content = await this.generateContent(context, input, requestId);
+      const content = await this.generateContent(context, input, requestId, request.deadline);
       const timeContext = `${INTENT_PROMPT}\n\nREFERENCE TIME (device local clock; context only, do not copy it unless NOTE contains that time):\n${reference.localIso}\nDEVICE TIMEZONE:\n${reference.timezone}`;
       const annotatedIntentInput = annotateTaskRecurrences(input, reference.instant);
-      const intents = await this.generateIntents(context, timeContext, annotatedIntentInput, requestId);
+      const intents = await this.generateIntents(context, timeContext, annotatedIntentInput, requestId, request.deadline);
       const insight = this.parse(noteId, model.getId(), content, intents, requestId, reference.instant, reference.localIso, reference.timezone);
+      request.deadline.throwIfAborted((reason) => this.abortError(reason));
       const calendars = insight.getCalendarIntents();
       console.info("[CoreInsights] Structured output parsed", { requestId, summaryLength: insight.getSummary().length, keyPointCount: insight.getKeyPoints().length, taskCount: insight.getTasks().length, actionItemCount: insight.getActionItems().length, reminderCount: calendars.filter((x) => x.kind === "reminder").length, calendarIntentCount: calendars.filter((x) => x.kind === "calendar").length });
       await this.repository.save(insight);
+      this.changeListeners.forEach((listener) => listener());
       console.info("[CoreInsights] Saved and ready for display", { requestId, noteId, durationMs: Date.now() - startedAt });
       return insight;
     } catch (error) {
       console.error("[CoreInsights] Generation failed", { requestId, noteId, durationMs: Date.now() - startedAt, errorCode: error instanceof CoreNoteInsightGenerationError ? error.code : "unexpected", error });
+      if (request.deadline.reason) throw this.abortError(request.deadline.reason);
       if (error instanceof CoreNoteInsightGenerationError) throw error;
       throw new CoreNoteInsightGenerationError("generation-failed", "Structured Note did not finish. Please try again.", { cause: error instanceof Error ? error : undefined });
     } finally {
@@ -218,10 +264,11 @@ export class CoreNoteInsightService {
         await context.release();
         console.info("[CoreInsights] Model context released", { requestId, noteId, durationMs: Date.now() - releaseStartedAt });
       } catch (error) { console.warn("[CoreInsights] Could not release model context", { requestId, error }); }
+      if (request.context === context) request.context = null;
     }
   }
 
-  private async generateContent(context: LlamaContext, input: string, requestId: string): Promise<ContentOutput> {
+  private async generateContent(context: LlamaContext, input: string, requestId: string, deadline: InferenceDeadline): Promise<ContentOutput> {
     const attempts = [
       { instruction: CONTENT_PROMPT, tokens: CONTENT_TOKENS, stage: "content" },
       {
@@ -231,7 +278,7 @@ export class CoreNoteInsightService {
       },
     ];
     for (const attempt of attempts) {
-      const result = await this.runStage(context, attempt.instruction, input, contentSchema, attempt.tokens, requestId, attempt.stage);
+      const result = await this.runStage(context, attempt.instruction, input, contentSchema, attempt.tokens, requestId, attempt.stage, deadline);
       if (result.hitOutputLimit) continue;
       try {
         const parsed = this.parseJson<ContentOutput>(result.raw);
@@ -253,7 +300,7 @@ export class CoreNoteInsightService {
     return fallback;
   }
 
-  private async generateIntents(context: LlamaContext, instruction: string, input: string, requestId: string): Promise<IntentOutput> {
+  private async generateIntents(context: LlamaContext, instruction: string, input: string, requestId: string, deadline: InferenceDeadline): Promise<IntentOutput> {
     const chunks = splitIntentTranscript(input);
     console.info("[CoreInsights] Intent evidence batches ready", {
       requestId,
@@ -262,7 +309,7 @@ export class CoreNoteInsightService {
     });
     const batches = await runAdaptiveStructuredBatches<IntentOutput>({
       inputs: chunks,
-      complete: (chunk, mode) => this.runIntentStage(context, instruction, chunk, mode, requestId),
+      complete: (chunk, mode) => this.runIntentStage(context, instruction, chunk, mode, requestId, deadline),
       parse: (raw) => {
         const parsed = this.parseJson<IntentOutput>(raw);
         if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.reminders) || !Array.isArray(parsed.calendarIntents)) {
@@ -297,6 +344,7 @@ export class CoreNoteInsightService {
     input: string,
     mode: AdaptiveCompletionMode,
     requestId: string,
+    deadline: InferenceDeadline,
   ): Promise<StructuredStageResult> {
     const recovery = mode === "expanded"
       ? "\n\nRECOVERY MODE: Return one minimal complete JSON object. Keep only directly supported pending actions, explicit reminders, and scheduled events. Empty arrays are correct. Close every string, array, and object."
@@ -309,6 +357,7 @@ export class CoreNoteInsightService {
       mode === "expanded" ? INTENT_RETRY_TOKENS : INTENT_TOKENS,
       requestId,
       `intent-${mode}`,
+      deadline,
     );
   }
 
@@ -319,7 +368,8 @@ export class CoreNoteInsightService {
     this.listeners.get(noteId)?.forEach((listener) => listener(state));
   }
 
-  private async runStage(context: LlamaContext, instruction: string, input: string, schema: object, outputTokens: number, requestId: string, stage: string): Promise<StructuredStageResult> {
+  private async runStage(context: LlamaContext, instruction: string, input: string, schema: object, outputTokens: number, requestId: string, stage: string, deadline: InferenceDeadline): Promise<StructuredStageResult> {
+    deadline.throwIfAborted((reason) => this.abortError(reason));
     const makeMessages = (note: string): RNLlamaOAICompatibleMessage[] => [
       { role: "system", content: SYSTEM },
       { role: "user", content: `${instruction}\n\nNOTE:\n---\n${note}\n---` },
@@ -327,24 +377,25 @@ export class CoreNoteInsightService {
     const maxPrompt = CONTEXT_SIZE - outputTokens - SAFETY_TOKENS;
     let used = input;
     let messages = makeMessages(used);
-    let promptTokens = await this.countTokens(context, messages);
+    let promptTokens = await this.countTokens(context, messages, deadline);
     if (promptTokens > maxPrompt) {
       let low = 0;
       let high = input.length;
       while (low < high) {
         const mid = Math.ceil((low + high) / 2);
-        if (await this.countTokens(context, makeMessages(input.slice(0, mid))) <= maxPrompt) low = mid;
+        if (await this.countTokens(context, makeMessages(input.slice(0, mid)), deadline) <= maxPrompt) low = mid;
         else high = mid - 1;
       }
       used = input.slice(0, low).trimEnd();
       messages = makeMessages(used);
-      promptTokens = await this.countTokens(context, messages);
+      promptTokens = await this.countTokens(context, messages, deadline);
       console.warn("[CoreInsights] Input truncated by token budget", { requestId, stage, originalCharacters: input.length, usedCharacters: used.length, promptTokens, outputTokens });
     } else {
       console.info("[CoreInsights] Prompt budget ready", { requestId, stage, promptTokens, outputTokens, inputTruncated: false });
     }
     const stageStartedAt = Date.now();
     const result = await context.completion({ messages, response_format: { type: "json_schema", json_schema: { strict: true, schema } }, n_predict: outputTokens, temperature: 0 });
+    deadline.throwIfAborted((reason) => this.abortError(reason));
     const raw = result.content || result.text;
     const hitOutputLimit = completionHitOutputLimit(result, outputTokens);
     console.info("[CoreInsights] Stage completed", {
@@ -364,9 +415,18 @@ export class CoreNoteInsightService {
     return { raw, hitOutputLimit };
   }
 
-  private async countTokens(context: LlamaContext, messages: RNLlamaOAICompatibleMessage[]): Promise<number> {
+  private async countTokens(context: LlamaContext, messages: RNLlamaOAICompatibleMessage[], deadline: InferenceDeadline): Promise<number> {
+    deadline.throwIfAborted((reason) => this.abortError(reason));
     const formatted = await context.getFormattedChat(messages, null, { jinja: true, enable_thinking: false, reasoning_format: "none" });
-    return (await context.tokenize(formatted.prompt ?? "")).tokens.length;
+    const count = (await context.tokenize(formatted.prompt ?? "")).tokens.length;
+    deadline.throwIfAborted((reason) => this.abortError(reason));
+    return count;
+  }
+
+  private abortError(reason: InferenceAbortReason): CoreNoteInsightGenerationError {
+    return reason === "timeout"
+      ? new CoreNoteInsightGenerationError("timeout", "Structured Note reached its 3-minute limit. The Note is safe; please retry.")
+      : new CoreNoteInsightGenerationError("cancelled", "Structured Note generation was stopped. The Note is safe; you can retry.");
   }
 
   private parseJson<T>(raw: string): T {
@@ -463,6 +523,6 @@ export class CoreNoteInsightService {
 
 export type CoreInsightGenerationState =
   | { status: "idle" }
-  | { status: "queued" | "generating"; requestId: string; startedAt: number }
+  | { status: "queued" | "generating" | "stopping"; requestId: string; startedAt: number }
   | { status: "completed"; requestId: string; finishedAt: number }
   | { status: "failed"; requestId: string; finishedAt: number; message: string };

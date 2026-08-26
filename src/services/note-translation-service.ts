@@ -4,7 +4,7 @@ import type { CoreNoteInsight } from "@/domain/core-note-insight/core-note-insig
 import type { KnowledgeDocument } from "@/domain/knowledge/knowledge-document";
 import { NoteTranslation, type NoteTranslationPayload, type NoteTranslationSection } from "@/domain/note-translation/note-translation";
 import { NoteTranslationError } from "@/errors/note-translation-error";
-import type { UiLanguage } from "@/localization/i18n";
+import type { ContentLanguage } from "@/localization/i18n";
 import { NoteTranslationRepository } from "@/repositories/note-translation-repository";
 import { LlmModelService } from "@/services/llm-model-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
@@ -42,7 +42,7 @@ export class NoteTranslationService {
     return this.repository.findByNoteId(noteId);
   }
 
-  public translate(noteId: string, section: NoteTranslationSection, targetLocale: UiLanguage, targetLanguage: string, transcript: string, coreInsights: CoreNoteInsight | null, knowledge: KnowledgeDocument | null): Promise<NoteTranslation> {
+  public translate(noteId: string, section: NoteTranslationSection, targetLocale: ContentLanguage, targetLanguage: string, transcript: string, coreInsights: CoreNoteInsight | null, knowledge: KnowledgeDocument | null): Promise<NoteTranslation> {
     if (this.activePromise) {
       if (this.state.status === "translating" && this.state.noteId === noteId && this.state.section === section) return this.activePromise;
       throw new NoteTranslationError("Another local translation is already running.");
@@ -65,7 +65,7 @@ export class NoteTranslationService {
     return promise;
   }
 
-  private async runTranslation(requestId: string, noteId: string, section: NoteTranslationSection, targetLocale: UiLanguage, targetLanguage: string, transcript: string, coreInsights: CoreNoteInsight | null, knowledge: KnowledgeDocument | null): Promise<NoteTranslation> {
+  private async runTranslation(requestId: string, noteId: string, section: NoteTranslationSection, targetLocale: ContentLanguage, targetLanguage: string, transcript: string, coreInsights: CoreNoteInsight | null, knowledge: KnowledgeDocument | null): Promise<NoteTranslation> {
     const model = await this.llmModelService.getActiveModel();
     if (!model) throw new NoteTranslationError("Choose and activate a local language model in AI Models first.");
     const modelFile = this.llmModelService.resolveModelFile(model);
@@ -115,7 +115,7 @@ export class NoteTranslationService {
     }
   }
 
-  private async streamField(context: LlamaContext, requestId: string, noteId: string, section: NoteTranslationSection, targetLocale: UiLanguage, targetLanguage: string, input: TranslationInput, payload: NoteTranslationPayload): Promise<GenerationMetrics> {
+  private async streamField(context: LlamaContext, requestId: string, noteId: string, section: NoteTranslationSection, targetLocale: ContentLanguage, targetLanguage: string, input: TranslationInput, payload: NoteTranslationPayload): Promise<GenerationMetrics> {
     const generationStartedAt = Date.now();
     let firstTokenAt: number | null = null;
     let streamedText = "";
@@ -145,7 +145,7 @@ export class NoteTranslationService {
     return metrics;
   }
 
-  private translationMessages(targetLocale: UiLanguage, targetLanguage: string, text: string): RNLlamaOAICompatibleMessage[] {
+  private translationMessages(targetLocale: ContentLanguage, targetLanguage: string, text: string): RNLlamaOAICompatibleMessage[] {
     return [{ role: "system", content: `Translate the following text into ${targetLanguage} (${targetLocale}). Return only the translation. Do not include explanations, labels, delimiters, or the original text.` }, { role: "user", content: `SOURCE:\n${text}` }];
   }
 

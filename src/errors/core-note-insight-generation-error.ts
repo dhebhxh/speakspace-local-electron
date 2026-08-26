@@ -3,6 +3,8 @@ export type CoreNoteInsightGenerationErrorCode =
   | "model-unavailable"
   | "model-file-missing"
   | "invalid-output"
+  | "timeout"
+  | "cancelled"
   | "generation-failed";
 
 export class CoreNoteInsightGenerationError extends Error {

@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
@@ -11,16 +11,22 @@ import { Colors } from "@/constants/theme";
 import { databaseConfig, initializeDatabase } from "@/database";
 import { useTheme } from "@/hooks/use-theme";
 import { ThemeProvider } from "@/providers/theme-provider";
-import "@/localization/i18n";
-import { useTranslation } from "react-i18next";
 import { TrashUndoProvider } from "@/providers/trash-undo-provider";
+import {
+  AppPreferencesProvider,
+  useAppPreferences,
+} from "@/providers/app-preferences-provider";
+import { NotificationCoordinator } from "@/components/notification-coordinator";
+import { OnboardingGuard } from "@/components/onboarding-guard";
 
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <ThemedRootLayout />
+      <AppPreferencesProvider>
+        <ThemedRootLayout />
+      </AppPreferencesProvider>
     </ThemeProvider>
   );
 }
@@ -28,7 +34,8 @@ export default function RootLayout() {
 function ThemedRootLayout() {
   const theme = useTheme();
   const colors = Colors[theme.mode];
-  const { t } = useTranslation();
+  const pathname = usePathname();
+  const { hasCompletedOnboarding } = useAppPreferences();
 
   useEffect(() => {
     appContainer.speechPlaybackService.initialize();
@@ -36,6 +43,8 @@ function ThemedRootLayout() {
       if (nextState !== "active") {
         appContainer.speechPlaybackService.stopForBackground();
         void appContainer.llmInferenceService.stopGeneration();
+        void appContainer.coreNoteInsightService.stopAllGenerations();
+        void appContainer.knowledgeService.stopAllGenerations();
       }
     });
     void SplashScreen.hideAsync();
@@ -48,11 +57,13 @@ function ThemedRootLayout() {
       onInit={initializeDatabase}
     >
       <TrashUndoProvider>
+        <OnboardingGuard />
+        <NotificationCoordinator />
         <StatusBar style={theme.mode === "dark" ? "light" : "dark"} />
         <Stack
         screenOptions={{
           contentStyle: { backgroundColor: colors.background },
-          headerBackTitle: t("nav.back"),
+          headerBackTitle: "Back",
           headerShadowVisible: false,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.accent,
@@ -60,11 +71,14 @@ function ThemedRootLayout() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="ask-ai" options={{ title: t("nav.askAi") }} />
-        <Stack.Screen name="transcription" options={{ title: t("nav.transcription") }} />
-        <Stack.Screen name="audio-transcription" options={{ title: t("nav.audioTranscription") }} />
+        <Stack.Screen name="ask-ai" options={{ title: "Ask AI" }} />
+        <Stack.Screen name="transcription" options={{ title: "Transcription" }} />
+        <Stack.Screen name="audio-transcription" options={{ title: "Transcribe audio file" }} />
+        <Stack.Screen name="getting-started" options={{ headerShown: false }} />
         </Stack>
-        <FloatingAskAiButton />
+        {hasCompletedOnboarding && pathname !== "/getting-started" && (
+          <FloatingAskAiButton />
+        )}
       </TrashUndoProvider>
     </SQLiteProvider>
   );

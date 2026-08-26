@@ -8,6 +8,7 @@ import {
   ASK_AI_COMPLETION_TEMPERATURE,
   ASK_AI_COMPLETION_TOP_P,
   ASK_AI_CONFIGURED_N_CTX,
+  ASK_AI_GENERATION_DEADLINE_MS,
   ASK_AI_GENERATION_RESERVE,
   ASK_AI_N_GPU_LAYERS,
 } from "@/constants/ask-ai-inference-config";
@@ -15,6 +16,10 @@ import { InferenceError } from "@/errors/inference-error";
 import { LlmModelService } from "@/services/llm-model-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 import { SharedLlmContextService } from "@/services/shared-llm-context-service";
+import { InferenceDeadline, type InferenceAbortReason } from "@/services/inference-deadline";
+import type { AppPreferencesService } from "@/services/app-preferences-service";
+import type { SpeechPlaybackService } from "@/services/speech-playback-service";
+import { markdownToPlainText } from "@/services/safe-markdown";
 
 import { notesToTranscriptBlocks } from "./ask-ai-grounded-messages";
 import { buildAskAiCacheIdentity } from "./ask-ai-cache-identity";
@@ -25,19 +30,25 @@ export type GenerateCallbacks = { onToken: (tokenText: string) => void };
 
 export type GenerateResult = {
   assistantText: string;
+  assistantMessageId: string;
   promptTokenCount: number;
   historyTrimmed: boolean;
 };
 
 export type LlmGenerationSnapshot =
   | { status: "idle" }
-  | { status: "running"; conversationId: string };
+  | {
+      status: "running";
+      conversationId: string;
+      phase: "preparing-context" | "waiting" | "loading-model" | "generating" | "saving" | "stopping";
+    };
 
 /** Runs one grounded completion over the linked transcript and chat history. */
 export class LlmInferenceService {
   private activeConversationId: string | null = null;
   private isGenerating = false;
   private generationAborted = false;
+  private activeDeadline: InferenceDeadline | null = null;
   private generationSnapshot: LlmGenerationSnapshot = { status: "idle" };
   private readonly generationListeners = new Set<(snapshot: LlmGenerationSnapshot) => void>();
 
@@ -46,6 +57,8 @@ export class LlmInferenceService {
     private readonly aiConversationService: AiConversationService,
     private readonly coordinator: LocalLlmCoordinator,
     private readonly sharedContext: SharedLlmContextService,
+    private readonly preferences: AppPreferencesService,
+    private readonly speechPlayback: SpeechPlaybackService,
   ) {}
 
   public getIsGenerating(): boolean {
@@ -85,12 +98,38 @@ export class LlmInferenceService {
 
     this.isGenerating = true;
     this.generationAborted = false;
-    this.publishGenerationSnapshot({ status: "running", conversationId });
+    const deadline = new InferenceDeadline(ASK_AI_GENERATION_DEADLINE_MS);
+    this.activeDeadline = deadline;
+    deadline.signal.addEventListener("abort", () => {
+      this.generationAborted = true;
+      this.publishGenerationSnapshot({ status: "running", conversationId, phase: "stopping" });
+      void this.sharedContext.getContext()?.stopCompletion().catch(() => undefined);
+    }, { once: true });
+    this.publishGenerationSnapshot({
+      status: "running",
+      conversationId,
+      phase: this.coordinator.isBusy() ? "waiting" : "preparing-context",
+    });
     try {
-      return await this.coordinator.runExclusive("ask-ai", () =>
-        this.runGeneration(conversationId, callbacks),
+      const result = await this.coordinator.runExclusive(
+        "ask-ai",
+        () => this.runGeneration(conversationId, callbacks, deadline),
+        { signal: deadline.signal },
       );
+      if (this.preferences.getSnapshot().autoSpeakAnswers) {
+        void this.speechPlayback.speak({
+          id: `ask-ai:${result.assistantMessageId}`,
+          label: "AI answer",
+          text: markdownToPlainText(result.assistantText),
+        }).catch(() => undefined);
+      }
+      return result;
+    } catch (error) {
+      if (deadline.reason) throw this.abortError(deadline.reason);
+      throw error;
     } finally {
+      deadline.dispose();
+      if (this.activeDeadline === deadline) this.activeDeadline = null;
       this.isGenerating = false;
       this.publishGenerationSnapshot({ status: "idle" });
     }
@@ -99,14 +138,18 @@ export class LlmInferenceService {
   private async runGeneration(
     conversationId: string,
     callbacks: GenerateCallbacks,
+    deadline: InferenceDeadline,
   ): Promise<GenerateResult> {
+    this.setPhase(conversationId, "preparing-context");
+    deadline.throwIfAborted((reason) => this.abortError(reason));
     await this.aiConversationService.getConversationOrThrow(conversationId);
-    await this.ensureContextForActiveModel();
+    await this.ensureContextForActiveModel(conversationId, deadline);
     const linkedNotes =
       await this.aiConversationService.getLinkedNotes(conversationId);
     if (linkedNotes.length === 0) {
       throw new InferenceError(NO_TRANSCRIPT_CONTEXT_ERROR);
     }
+    deadline.throwIfAborted((reason) => this.abortError(reason));
 
     const transcriptBlocks = notesToTranscriptBlocks(linkedNotes);
     const cacheActivationStartedAt = Date.now();
@@ -135,9 +178,8 @@ export class LlmInferenceService {
       history,
     );
 
-    if (this.generationAborted) {
-      throw new InferenceError("Generation was stopped.");
-    }
+    deadline.throwIfAborted((reason) => this.abortError(reason));
+    this.setPhase(conversationId, "generating");
 
     const completionStartedAt = Date.now();
     let firstTokenAt: number | null = null;
@@ -159,6 +201,7 @@ export class LlmInferenceService {
       },
     );
 
+    deadline.throwIfAborted((reason) => this.abortError(reason));
     if (this.generationAborted || completionResult.interrupted) {
       throw new InferenceError("Generation was stopped.");
     }
@@ -172,7 +215,9 @@ export class LlmInferenceService {
     }
     if (streamedText.trim().length === 0) callbacks.onToken(assistantText);
 
-    await this.aiConversationService.addAssistantMessage(
+    this.setPhase(conversationId, "saving");
+    deadline.throwIfAborted((reason) => this.abortError(reason));
+    const assistantMessage = await this.aiConversationService.addAssistantMessage(
       conversationId,
       assistantText,
     );
@@ -197,6 +242,7 @@ export class LlmInferenceService {
 
     return {
       assistantText,
+      assistantMessageId: assistantMessage.getId(),
       promptTokenCount: prompt.promptTokenCount,
       historyTrimmed: prompt.historyTrimmed,
     };
@@ -204,6 +250,10 @@ export class LlmInferenceService {
 
   public async stopGeneration(): Promise<void> {
     this.generationAborted = true;
+    if (this.generationSnapshot.status === "running") {
+      this.publishGenerationSnapshot({ ...this.generationSnapshot, phase: "stopping" });
+    }
+    this.activeDeadline?.abort("cancelled");
     if (this.sharedContext.getContext() !== null && this.isGenerating) {
       await this.sharedContext
         .getContext()
@@ -222,7 +272,7 @@ export class LlmInferenceService {
     this.activeConversationId = null;
   }
 
-  private async ensureContextForActiveModel(): Promise<void> {
+  private async ensureContextForActiveModel(conversationId: string, deadline: InferenceDeadline): Promise<void> {
     const activeModel = await this.llmModelService.getActiveModel();
     if (activeModel === null) throw new InferenceError(NO_ACTIVE_LLM_ERROR);
 
@@ -232,10 +282,15 @@ export class LlmInferenceService {
       throw new InferenceError("The active model file is missing on this device.");
     }
 
+    deadline.throwIfAborted((reason) => this.abortError(reason));
+    if (this.sharedContext.getLoadedModelId() !== activeModelId) {
+      this.setPhase(conversationId, "loading-model");
+    }
     const prepared = await this.sharedContext.prepare(
       activeModelId,
       modelFile.uri,
     );
+    deadline.throwIfAborted((reason) => this.abortError(reason));
     console.info("[AskAI] Shared model context prepared", {
       modelId: activeModelId,
       reused: prepared.reused,
@@ -243,6 +298,17 @@ export class LlmInferenceService {
       promptBudgetContextSize: ASK_AI_CONFIGURED_N_CTX,
       gpuLayers: ASK_AI_N_GPU_LAYERS,
     });
+  }
+
+  private setPhase(conversationId: string, phase: Extract<LlmGenerationSnapshot, { status: "running" }>["phase"]): void {
+    if (!this.isGenerating) return;
+    this.publishGenerationSnapshot({ status: "running", conversationId, phase });
+  }
+
+  private abortError(reason: InferenceAbortReason): InferenceError {
+    return reason === "timeout"
+      ? new InferenceError("Ask AI reached its 90-second limit. Your question is saved; please retry.")
+      : new InferenceError("Generation was stopped. Your question is saved; you can retry.");
   }
 
   private async activateConversationCache(identity: string) {

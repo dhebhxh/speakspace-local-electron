@@ -10,6 +10,8 @@
 
 2026 年 8 月 24 日又完成了一轮桌面功能对齐：统一回收站、Note 批量操作、最多三篇 Note 的 Ask AI、自定义 Knowledge 模板与不可变历史、保存后自动分类、无 Embedding 的本地模糊搜索，以及可置顶的滚动周期 Task。实现继续复用共享领域层和 SQLite，没有增加云服务、Embedding 模型或 App Store 依赖；最终通过 Xcode 在连接的 iPhone 16 Pro Max 上执行完整 Release UI 验收。
 
+2026 年 8 月 26 日完成第三轮 iOS 可用性补全：界面收敛为仅英语，新增首页日期兜底、本地任务和提醒通知、Note PDF 分享、保存后自动生成 Structured Note、首次使用引导、字号偏好、Note 关联 Ask AI、分阶段加载反馈、安全 Markdown、Ask AI 自动朗读和 Workspace 归类建议。同时为 Ask AI、Structured Note 和 Knowledge 建立端到端超时与可取消队列，避免本地模型排队或推理失败时丢失原始 Note。该批次保持 iPhone、本地优先和 Personal Team 安装边界，没有增加云服务或 App Store 发布依赖。
+
 > Evidence:
 > - Source: `modules/audio-converter/ios/`, `modules/audio-session-events/ios/`, `src/services/transcription-service.ts`, `src/database/migrations/ios-parity-schema-migration.ts`, `tests/ios-parity-features.test.mjs`, `scripts/verify-ios-release.mjs`, `scripts/package-ios-sidestore.mjs`
 > - Method: 对照 `main` 基线审查所有新增与修改文件；在 iPhone 16 Pro Max 上构建、安装并执行核心流程和桌面功能对齐验收
@@ -640,7 +642,158 @@ xcodebuild \
 > - Method: 版本一致性检查、干净 Prebuild、未签名 Release 全量构建、包内 metadata/架构检查、IPA 签名材料扫描和 SHA-256 复算、签名 Release 覆盖安装与设备数据库复检
 > - Confidence: High；外部 Windows + SideStore 安装与七天刷新仍由组员补充验收
 
-## 十二、参考资料
+## 十二、2026-08-26 iOS 可用性、日历与可靠性补全
+
+### 12.1 需求确认和实现顺序
+
+本轮从 PC 和既有 Android 分支中选择了适合毕设 iPhone 演示、且不依赖 App Store 或服务器的功能。开发前逐项确认了以下边界：iOS 界面只保留英语；日期识别既不能过度保守到几乎无结果，也不能把无时间语义的普通句子标到日历；通知必须是本地通知并默认关闭；保存流程必须先保护原始 Note；模型输出中的 Markdown 只用于排版，用户不能看到原始格式符，也不能让模型文本执行脚本或隐藏网络请求；耗时操作要显示 spinner 和具体阶段。
+
+实现采用“确定性规则优先保护边界，本地模型负责内容组织”的顺序：先扩展 Service 和全局偏好，再接入页面和加载状态，最后用 Node 回归、Release 构建和真机 XCUITest 验证完整链路。业务代码继续通过 `AppContainer` 注入，没有让页面直接操作 SQLite、系统通知或 PDF 临时文件。
+
+| 功能 | 主要入口 | 关键实现 | 失败时保留的内容 |
+| --- | --- | --- | --- |
+| Home 日期标记 | Home Calendar | Structured Note 日期优先，transcript 确定性兜底并按 Note + 日期去重 | 原 Note 和已有 Structured Note |
+| 本地通知 | Settings / app foreground | 只调度未来 pending Task 和明确 Reminder，点击前校验 Note | Note、Task 和偏好；关闭时撤销本 App 通知 |
+| 自动 Structured Note | 录音或导入保存后 | 先提交 Note，再进入 Note detail 前台生成 | 原始 transcript 和录音 |
+| Ask AI / Knowledge | Note 和 Ask AI 页面 | 全流程 deadline、FIFO 取消、阶段状态和 spinner | 用户问题、旧 Structured Note、Knowledge 历史 |
+| PDF 分享 | Note detail | HTML 转义、临时 PDF、iOS share sheet、`finally` 清理 | Note 本身不受导出失败影响 |
+| 首次引导和偏好 | 首次启动 / Settings | 本地 KV、可重开指南、仅检查模型而不自动下载 | 默认值安全回退 |
+
+> Evidence:
+> - Source: `src/application/app-container.ts`, `src/providers/app-preferences-provider.tsx`, `src/services/app-preferences-service.ts`, `tests/selected-ios-features.test.mjs`
+> - Method: 把每项用户确认转为可验证的 service contract，再检查页面只通过 contract 调用能力
+> - Confidence: High
+
+### 12.2 英语界面、字号偏好和首次使用引导
+
+本轮删除了运行时 UI 语言切换和 `react-i18next` / `i18next` 依赖，`UiText` 与 `UiTextInput` 不再对界面字符串做隐式翻译。`UI_LANGUAGES` 固定为 `en`；多语言 transcript、STT/TTS 模型目录和内容语言类型仍独立保留，因此“界面只用英语”不会把中文录音或其他语言内容能力一并删除。Note 内容翻译入口当前以英语作为界面和目标说明。
+
+Settings 增加 Small、Default、Large 三档 App 字号。公共文本组件先展平已有 style，只缩放 `fontSize` 和 `lineHeight`，同时保留 React Native `allowFontScaling`，所以用户自己的 iPhone Dynamic Type 仍然生效。偏好使用 `expo-sqlite/kv-store` 保存在设备本地；读取失败回到 Default、通知关闭、自动朗读关闭和未完成引导，不会阻塞启动。
+
+首次启动由 `OnboardingGuard` 导向四步 Getting Started：本地隐私、录音/导入、模型配置和开始使用。模型页只读取 Active STT/LLM/TTS 状态，不在用户不知情时下载文件；从引导进入模型页时提供明确的返回按钮。完成或跳过后写入本地偏好，Settings 可以用 replay 参数重新打开，但 replay 不会重置已完成状态。
+
+> Evidence:
+> - Source: `src/localization/i18n.ts`, `src/components/ui-text.tsx`, `src/components/ui-text-input.tsx`, `src/app/getting-started.tsx`, `src/components/onboarding-guard.tsx`, `src/app/(tabs)/settings.tsx`
+> - Method: 静态测试确认英语 UI 和已删除依赖；首次启动路由、三种模型页返回路径和字号缩放由 TypeScript、Lint 与 Release 构建共同检查
+> - Confidence: High
+
+### 12.3 Home 自动日期标记和本地通知
+
+旧 Home 只显示 Structured Note 的 `calendarIntents`，所以 Task 的 `dueAt` 不会进入日历，小模型返回无法信任的空 timestamp 时，即使 transcript 明确写了日期也不会标记。本轮新增 `buildHomeCalendarItems`，统一合并未完成且 current 的 Task、Reminder 和 Calendar event。结构化日期存在时直接使用；同一 Note 同一天的 transcript 兜底会被抑制，避免重复卡片。
+
+当结构化 timestamp 为空时，兜底解析器只从原 transcript 读取可验证日期：ISO 日期、中英文年月日、英文月份日期、today/tomorrow/day after tomorrow，以及带任务或日程上下文的本周/下周具体星期。`later`、单独的 `next week`、`next month` 等无法落到一天的表达不会创建标记；相对日期还要求句子含 need、submit、meeting、remind 等行动证据。标题从原句移除日期并清理悬空介词；真机样本暴露的 `scheduled for ... at` 已加入回归，最终显示为 `scheduled at 2:00 PM`。这种策略比只相信小模型更有召回，同时不把所有出现日期的叙述都当成任务。
+
+```mermaid
+flowchart LR
+  N[Saved Note] --> S[Structured Note]
+  S -->|valid timestamp| H[Home calendar]
+  S -->|future pending Task or explicit Reminder| L[Local iOS notification]
+  S -->|timestamp is null| F[Grounded transcript date fallback]
+  F --> H
+  F -. display only; no inferred alert .-> L
+```
+
+通知通过 `expo-notifications` 调度，默认关闭，只有用户在 Settings 主动打开时才申请权限。调度器只接收未来的 current pending Task 和明确带 `remindAt` 的 Reminder；普通 Calendar event 和 transcript 兜底日期不会静默变成系统提醒。每次 Note、Workspace 或 Structured Note 状态变化，以及 App 回到前台时，服务只撤销并重建 `data.kind === "speakspace-note"` 的自有请求，不影响其他 App。点击通知后先限制 Note ID 字符和长度，再确认数据库中仍存在该 Note，最后才导航。
+
+项目只使用本地通知。`with-local-notifications-only` config plugin 在 Prebuild 时移除 `aps-environment`，避免 `expo-notifications` 的远程推送能力破坏免费 Personal Team 签名；没有 APNs token、推送服务器或后台远程通知。
+
+> Evidence:
+> - Source: `src/services/home-calendar-items.ts`, `src/services/note-notification-planner.ts`, `src/services/note-notification-service.ts`, `src/components/notification-coordinator.tsx`, `plugins/with-local-notifications-only.js`
+> - Method: 单元测试覆盖 structured 优先、同日去重、模糊日期拒绝、中英文相对日期、过去/完成/旧 occurrence 过滤和稳定 notification ID；Release 真机链路覆盖空结构化 timestamp 时从 transcript 标记并回到来源 Note
+> - Confidence: High；系统通知在真实到点时的声音和展示仍受用户的 iOS Focus、静音和通知设置控制
+
+### 12.4 本地 AI deadline、取消和可见进度
+
+原有 `ASK_AI_GENERATION_TIMEOUT_MS` 只有配置含义，没有覆盖排队、模型加载和保存。现在 `InferenceDeadline` 从请求被接受时开始计时：Ask AI 90 秒、Knowledge 120 秒、Structured Note 180 秒。`LocalLlmCoordinator` 从 promise tail 改为显式 FIFO job queue，排队中的请求可由 `AbortSignal` 删除；运行中的请求会尽快调用 llama context 的 `stopCompletion()`，但在 native promise 真正 unwind 前仍占用串行槽位，避免第二个模型 context 与未退出的旧任务重叠。
+
+Ask AI 依次公布 Preparing note context、Waiting for local AI、Loading the language model、Generating an answer、Saving the answer 和 Stopping generation。Structured Note、Knowledge、PDF、偏好保存、Workspace 建议和引导模型检查也在对应等待点显示 `ActivityIndicator`。进入后台或锁屏时，Root Layout 会停止 Ask AI、所有 Structured Note 和 Knowledge generation；失败或超时不会删除用户问题、原始 Note、旧 Structured Note 或历史 Knowledge result。
+
+自动 Structured Note 的顺序有意与桌面的 save-blocking review 不同：录音或音频导入先把 transcript 和录音相对路径写入 Note，路由再带 `autoGenerate=1` 打开 Insights。Note detail 只在该 Note 尚无 Structured Note 且本次自动入口未启动过时生成一次，生成中可停止，失败后仍可手工 Retry。这样本地 1B–3B 模型即使慢或崩溃，也不会让刚录好的内容跟随生成请求一起丢失。
+
+> Evidence:
+> - Source: `src/services/inference-deadline.ts`, `src/services/local-llm-coordinator.ts`, `src/services/llm-inference-service.ts`, `src/services/core-note-insight-service.ts`, `src/services/knowledge-service.ts`, `src/app/transcription.tsx`, `src/app/audio-transcription.tsx`
+> - Method: 异步回归测试主动取消 queued 和 active job，确认调用方及时得到 `AbortError`、后继 job 不提前运行、native work 退出后 pending count 回到 0；页面入口静态检查阶段文案和 spinner
+> - Confidence: High；不可取消的短暂 SQLite/native 清理仍必须先完成，协调器会保留独占槽位而不是强行并发
+
+### 12.5 安全 Markdown、自动朗读和关联对话
+
+Ask AI 的 assistant message 不再把 `**`、`#`、表格分隔线等 Markdown 原样显示给用户。`parseSafeMarkdown` 把有限子集转换为原生 React Native Text/View：标题、段落、强调、列表、引用、表格行和代码块。它不使用 WebView 或 `innerHTML`；HTML/script/style 和远程图片被移除，代码只能显示或复制，不能执行。链接只允许 HTTPS，界面显示解析后的域名，并在打开系统浏览器前要求用户确认。朗读前再通过 `markdownToPlainText` 去除排版字符，所以 TTS 听到的是正常文本而不是“星号星号”或表格语法。
+
+Settings 的 Speak New AI Answers 默认关闭。开启后只朗读刚完成且已经保存的 assistant reply，仍复用全局 `SpeechPlaybackService`；新的 STT/LLM 操作会停止旧朗读，避免本地重任务并发。Note detail 新增 Ask AI Conversations，按更新时间显示所有直接关联当前 Note 的会话，可继续最近一条或新建会话，不扩张原来最多三篇来源和 exact source-set 规则。
+
+> Evidence:
+> - Source: `src/services/safe-markdown.ts`, `src/components/safe-markdown-text.tsx`, `src/services/llm-inference-service.ts`, `src/services/ai-conversation-service.ts`, `src/app/ask-ai.tsx`, `src/app/notes/[noteId].tsx`
+> - Method: 恶意样本包含 script、HTTP link、远程 image 和 code fence；测试确认危险内容不进入可交互 token、HTTPS 域名可见、朗读文本无 Markdown 标记
+> - Confidence: High
+
+### 12.6 Note PDF、Workspace 建议和隐私边界
+
+Note detail 的 Export PDF 使用 `expo-print` 把本地构造的 HTML 写成 cache PDF，再通过 `expo-sharing` 打开 iOS share sheet。标题、transcript、Structured Note、Knowledge 和 Ask AI message 在插入 HTML 前全部转义；音频只列出文件名和“未嵌入”说明，不把大录音复制进 PDF。share sheet 关闭或抛错后，`finally` 删除临时文件。
+
+单 Note 导出的隐私边界由 ADR 0017 固定：只有 source set 恰好为这一篇 Note 的 conversation 才包含完整消息；关联多篇 Note 的 conversation 只列名称、更新时间和来源数量，不把其他 Note 的内容带进单 Note PDF。该规则在 Service 层形成 export DTO，不依赖页面临时隐藏。
+
+Workspace 建议不调用 LLM，也不自动搬移 Note。服务只在没有 Workspace，或唯一 Workspace 名为 `My Workspace` 时，读取最近 20 篇活动 Note 的名称、固定 category 和 transcript 关键词，在 Meeting、Study、Research、Project、Ideas 五个稳定名称中打分。分数不足、已有自定义名称或存在多个 Workspace 时不显示；用户必须 Review rename / Use suggestion 才会写入，Dismiss 只隐藏当前页面提示。
+
+> Evidence:
+> - Source: `src/services/note-pdf-document.ts`, `src/services/note-pdf-export-service.ts`, `src/services/workspace-name-suggestion.ts`, `src/app/workspaces/index.tsx`, `docs/adr/0017-keep-note-pdf-export-scoped-to-one-note.md`
+> - Method: 自动检查 HTML escape、单 Note conversation 条件、Print/Sharing 调用和临时文件清理；确定性样本验证建议阈值和不覆盖自定义 Workspace
+> - Confidence: High
+
+### 12.7 ADR、安全审计和依赖选择
+
+本轮新增四个 ADR，把最容易在后续修改中被破坏的行为写成稳定决定：0016 先保存 Note 再自动生成；0017 单 Note PDF 的 conversation 隐私范围；0018 三类本地 LLM 的端到端 deadline；0019 把 LLM Markdown 当作不可信文本。安全审计按四条 trust boundary 检查：模型输出不得进入可执行 HTML；PDF 输入必须编码；通知 deep link 必须校验且验证实体存在；仓库不得包含密钥、签名材料、真机容器或测试数据库。
+
+新增依赖只使用 Expo SDK 57 对应的 `expo-notifications`、`expo-print` 和 `expo-sharing`，版本由 lockfile 固定。通知配置不申请远程推送 entitlement，PDF 不上传服务器，Workspace 建议不引入新模型。发布前执行 production dependency audit；high/critical 项作为阻断，moderate 项按实际可达性和 Expo SDK 兼容性记录，不执行会降级 SDK 的 `npm audit fix --force`。
+
+> Evidence:
+> - Source: `docs/adr/0016-save-note-before-automatic-structured-note-review.md` 至 `docs/adr/0019-render-llm-markdown-as-inert-native-text.md`, `app.config.ts`, `package.json`, `package-lock.json`
+> - Method: 逐项检查输入、输出、权限、持久化和临时文件边界；提交前扫描 staged diff 的 secret-like 字段、证书扩展名和大文件
+> - Confidence: High
+
+### 12.8 自动检查、Release 真机验收和设备清理
+
+当前批次新增 `selected-ios-features.test.mjs`，覆盖 Home 日期合并和真机样本文案、通知 planner、安全 Markdown、Workspace 建议、推理队列取消、deadline reason、PDF 隐私和临时文件清理、功能入口 spinner、模型按钮无歧义 accessibility label，以及本地通知 entitlement。它与原有 iOS、Ask AI、Structured Note、Knowledge、Trash、搜索、Task recurrence、录音和模型测试一起运行。
+
+真机使用连接的 iPhone 16 Pro Max，在 Release 配置下通过 Xcode、`xcrun devicectl` 和 XCUITest 操作，没有使用 iPhone Mirroring。端到端样本先打开一篇含 8 月 29 日提醒和 8 月 30 日 14:00 会议的 Note，触发 `Extracting core insights…` spinner，进入 Calendar Intents，再回 Home 检查两天标记；本地小模型返回的两个结构化 timestamp 都是 `null`，因此测试实际覆盖 transcript fallback，而不是提前注入成功结果。选择 8 月 30 日后只出现一条去重 agenda，点击后返回原 Note。最终 `.xcresult` 为 1 test、1 passed、0 failed，测试用时 62.337 秒。
+
+封板前又从新的 DerivedData 完整执行签名的 iPhoneOS Release `build-for-testing`。自动 verifier 确认版本 `1.3.0 (4)`、最低 iOS 16.4、设备族仅 iPhone、arm64、有效签名和 4,785,234-byte 离线 JavaScript bundle；最终 entitlement 不含 `aps-environment`，因此本地通知没有意外引入 Personal Team 不可用的 APNs capability。把这份确切产物覆盖安装并清空偏好后，独立的干净启动 XCUITest 在真机确认首屏为英语 `Private & Local` / `Your data stays yours` 引导和可用的 `Continue`，结果为 1 test、1 passed、0 failed。
+
+测试后从手机移除 XCUITest runner，并清空 Notes、Workspaces、conversations、Structured Note/Knowledge/Task 等用户内容表和偏好 KV；SQLite integrity 为 `ok`。设备只保留一个正式 Bundle ID 的 SpeakSpace `1.3.0 (4)`，以及当前版本后续测试需要的各一个 Active STT、LLM 和 TTS 模型，不保留旧 App、多版本图标或本轮样本。App 清理后重新启动。由于手机运行 iOS 27.0 beta、Mac 端 Xcode 为 26.6/SDK 26.5，Xcode 偶尔记录与实际锁定状态不一致的 `notification_proxy` passcode 日志；设备状态检查为已解锁，且 Release 测试正常完成，所以该日志不作为 App 失败。
+
+提交 GitHub 前重新执行以下发布门：
+
+```bash
+npm test
+npx tsc --noEmit
+npm run lint
+npx expo install --check
+npx expo-doctor
+npm audit --omit=dev --audit-level=high
+git diff --check
+```
+
+同时执行 iOS Release build-for-testing、检查 staged 文件中无证书/数据库/模型/真机附件和异常大文件，并在 push 前再次 fetch `origin/main`。物理 `.xcresult` 和截图作为本机报告证据保存，不进入 Git；Git 只保留可重复执行的业务测试和本开发记录。
+
+最终复跑结果为 88 tests passed、0 failed；TypeScript 通过，Lint 为 0 error、12 warnings，Expo dependency check 无待更新项，Expo Doctor 为 21/21，`git diff --check` 通过。production dependency audit 没有 high/critical，保留 13 个来自 Expo CLI、config plugin、Xcode/ngrok 构建工具链间接依赖 `uuid` 的 moderate 公告；npm 的强制修复会把 Expo 降到不兼容的旧版本，因此本轮不执行 `npm audit fix --force`，等待 Expo SDK 兼容更新。
+
+> Evidence:
+> - Source: `tests/selected-ios-features.test.mjs`, local Release `.xcresult`, device app/database inspection, this YQ development record
+> - Method: Node 全量回归、TypeScript、Lint、Expo dependency/doctor、安全 audit、Release build-for-testing、XCUITest 触控和测试后数据库核对
+> - Confidence: High；真机结果证明本轮 Structured Note → Home calendar → source Note 主链，系统通知到点展示、不同 iOS Focus 配置和所有 share-sheet 目标仍属于设备/环境组合测试，而不是由单条 XCUITest 穷举
+
+### 12.9 本轮有意保留的限制
+
+1. Transcript 日期兜底只用于 Home 展示，不把推断结果持久化为 Structured Note，也不据此自动创建系统通知。
+2. 本地通知只覆盖未来 current pending Task 和明确 Reminder；Calendar event 不默认提醒，用户关闭权限后 App 不能绕过 iOS 设置。
+3. Ask AI Markdown 是安全、有限子集，不追求完整 CommonMark；图片、HTML 和非 HTTPS 链接只作为不可执行文本或被移除。
+4. PDF 是单 Note 快照，不嵌入音频，也不泄露多 Note conversation 的消息正文。
+5. Workspace 建议是确定性规则，只在空/通用 Workspace 场景提示，不承诺桌面端 LLM 归类的语义深度。
+6. 本地推理只保证有限等待、可取消和旧数据安全，不保证小模型每次都生成正确日期或云端模型级语言质量。
+7. iOS 界面只保留英语；多语言 transcript、STT/TTS 和内容处理能力不等于提供多语言 UI。
+
+这些限制与“不上架 App Store、仅需 iPhone 本地运行”的毕设范围一致。后续若有真实用户反馈，应优先补真实通知到点矩阵、PDF 在不同分享目标中的外观，以及多种 iPhone 内存等级下的 timeout 数据，而不是扩大到 Android 或云服务。
+
+## 十三、参考资料
 
 - Expo SDK 57 app config：<https://docs.expo.dev/versions/v57.0.0/config/app/>
 - Expo CLI 依赖检查与自动修复：<https://docs.expo.dev/more/expo-cli/>
@@ -666,6 +819,13 @@ xcodebuild \
 | 本地模糊搜索 | `src/services/note-fuzzy-search.ts`, `src/app/notes/search.tsx` |
 | Custom Knowledge 与历史 | `src/services/knowledge-template-service.ts`, `src/repositories/knowledge-document-repository.ts`, `src/app/(tabs)/ai/knowledge-templates.tsx` |
 | Task recurrence 与 pin | `src/services/task-recurrence.ts`, `src/repositories/core-note-insight-repository.ts`, `src/components/home-task-list.tsx` |
+| Home 日期聚合与 transcript 兜底 | `src/services/home-calendar-items.ts`, `src/app/(tabs)/index.tsx` |
+| 本地 Task/Reminder 通知 | `src/services/note-notification-planner.ts`, `src/services/note-notification-service.ts`, `src/components/notification-coordinator.tsx`, `plugins/with-local-notifications-only.js` |
+| 本地 AI deadline 与取消 | `src/services/inference-deadline.ts`, `src/services/local-llm-coordinator.ts`, `src/services/llm-inference-service.ts`, `src/services/core-note-insight-service.ts`, `src/services/knowledge-service.ts` |
+| 安全 Markdown 与 Ask AI 阶段 | `src/services/safe-markdown.ts`, `src/components/safe-markdown-text.tsx`, `src/app/ask-ai.tsx` |
+| Note PDF 与分享 | `src/services/note-pdf-document.ts`, `src/services/note-pdf-export-service.ts` |
+| 首次引导、偏好与字号 | `src/app/getting-started.tsx`, `src/providers/app-preferences-provider.tsx`, `src/services/app-preferences-service.ts`, `src/components/ui-text.tsx` |
+| Workspace 名称建议 | `src/services/workspace-name-suggestion.ts`, `src/app/workspaces/index.tsx` |
 | iOS parity 数据迁移 | `src/database/migrations/ios-parity-schema-migration.ts` |
 | iPhone UI 与安全区域弹窗 | `src/components/safe-area-modal.tsx`, `src/app/(tabs)/_layout.tsx`, `src/app/transcription.tsx`, `src/app/workspaces/index.tsx` |
 | Release 验证 | `scripts/verify-ios-release.mjs` |

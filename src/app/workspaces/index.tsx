@@ -2,7 +2,7 @@ import { UiTextInput as TextInput } from "@/components/ui-text-input";
 import { UiText as Text } from "@/components/ui-text";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Keyboard, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Alert, Keyboard, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
@@ -15,6 +15,7 @@ import { WorkspaceCard } from "@/components/workspace-card";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import { ValidationError } from "@/errors/validation-error";
 import { useTheme } from "@/hooks/use-theme";
+import type { WorkspaceNameSuggestion } from "@/services/workspace-name-suggestion";
 
 type WorkspaceListState =
   | { status: "loading" }
@@ -24,6 +25,7 @@ type WorkspaceListState =
       workspaces: Awaited<
         ReturnType<typeof appContainer.workspaceService.getWorkspaces>
       >;
+      suggestion: WorkspaceNameSuggestion | null;
     };
 
 export function WorkspaceListScreen({ embeddedInTab = false }: { embeddedInTab?: boolean }) {
@@ -39,18 +41,55 @@ export function WorkspaceListScreen({ embeddedInTab = false }: { embeddedInTab?:
   const [name, setName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isApplyingSuggestion, setIsApplyingSuggestion] = useState(false);
+  const [hideSuggestion, setHideSuggestion] = useState(false);
 
   const loadWorkspaces = async () => {
     setState({ status: "loading" });
 
     try {
+      const [workspaces, suggestion] = await Promise.all([
+        workspaceService.getWorkspaces(),
+        workspaceService.getWorkspaceNameSuggestion(),
+      ]);
       setState({
         status: "success",
-        workspaces: await workspaceService.getWorkspaces(),
+        workspaces,
+        suggestion,
       });
     } catch {
       setState({ status: "error", message: "Unable to load workspaces." });
     }
+  };
+
+  const applySuggestion = (suggestion: WorkspaceNameSuggestion) => {
+    if (suggestion.action === "create") {
+      setName(suggestion.name);
+      setFormError(null);
+      setIsModalVisible(true);
+      return;
+    }
+    if (!suggestion.workspaceId) return;
+    Alert.alert(
+      `Rename to ${suggestion.name}?`,
+      "Only the workspace name will change. Notes will not be moved.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Rename",
+          onPress: () => {
+            setIsApplyingSuggestion(true);
+            void workspaceService.renameWorkspace(suggestion.workspaceId!, suggestion.name)
+              .then(async () => {
+                setHideSuggestion(true);
+                await loadWorkspaces();
+              })
+              .catch(() => Alert.alert("Unable to rename workspace", "Please try again."))
+              .finally(() => setIsApplyingSuggestion(false));
+          },
+        },
+      ],
+    );
   };
 
   useFocusEffect(
@@ -130,6 +169,21 @@ export function WorkspaceListScreen({ embeddedInTab = false }: { embeddedInTab?:
             message={state.message}
             onRetry={() => void loadWorkspaces()}
           />
+        )}
+        {state.status === "success" && state.suggestion && !hideSuggestion && (
+          <View style={[styles.suggestionCard, { backgroundColor: colors.accentSoft, borderColor: colors.border }]}>
+            <View style={styles.suggestionCopy}>
+              <Text style={[styles.suggestionKicker, { color: colors.accent }]}>ORGANISATION SUGGESTION</Text>
+              <Text style={[styles.suggestionTitle, { color: colors.text }]}>{state.suggestion.name}</Text>
+              <Text style={[styles.suggestionReason, { color: colors.textMuted }]}>{state.suggestion.reason}</Text>
+              <Text style={[styles.suggestionPrivacy, { color: colors.textMuted }]}>Calculated locally with fixed rules. Nothing is moved automatically.</Text>
+            </View>
+            <View style={styles.suggestionActions}>
+              {isApplyingSuggestion && <ActivityIndicator accessibilityLabel="Applying workspace suggestion" color={colors.accent} />}
+              <AppButton label={state.suggestion.action === "rename" ? "Review rename" : "Use suggestion"} variant="secondary" disabled={isApplyingSuggestion} onPress={() => applySuggestion(state.suggestion!)} />
+              <AppButton label="Dismiss" variant="quiet" disabled={isApplyingSuggestion} onPress={() => setHideSuggestion(true)} />
+            </View>
+          </View>
         )}
         {state.status === "success" && state.workspaces.length === 0 && (
           <EmptyState
@@ -222,6 +276,13 @@ const styles = StyleSheet.create({
   title: { fontSize: 34, fontWeight: "800" },
   workspaceSubtitle: { fontSize: 14, lineHeight: 20 },
   list: { gap: Spacing.md },
+  suggestionCard: { borderRadius: Radius.md, borderWidth: 1, gap: Spacing.md, padding: Spacing.md },
+  suggestionCopy: { flex: 1, gap: Spacing.xs },
+  suggestionKicker: { fontSize: 11, fontWeight: "800", letterSpacing: 1 },
+  suggestionTitle: { fontSize: 20, fontWeight: "800" },
+  suggestionReason: { fontSize: 14, lineHeight: 20 },
+  suggestionPrivacy: { fontSize: 12, lineHeight: 17 },
+  suggestionActions: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
   modalHeader: {
     alignItems: "center",
     flexDirection: "row",

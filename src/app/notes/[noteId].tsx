@@ -4,8 +4,8 @@ import { UiText as Text } from "@/components/ui-text";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import * as Clipboard from "expo-clipboard";
 import { File, Paths } from "expo-file-system";
-import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -15,7 +15,7 @@ import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 import { SafeAreaModal } from "@/components/safe-area-modal";
 import { SpeechPlaybackButton } from "@/components/speech-playback-button";
-import type { UiLanguage } from "@/localization/i18n";
+import type { ContentLanguage } from "@/localization/i18n";
 import { normalizeTtsLanguage } from "@/services/tts-language";
 import {
   KNOWLEDGE_SCENARIO_DEFINITIONS,
@@ -39,6 +39,8 @@ import { formatDate } from "@/utils/format-date";
 import type { NoteTranslation, NoteTranslationPayload, NoteTranslationSection } from "@/domain/note-translation/note-translation";
 import { useNoteTranslationCopy } from "@/hooks/use-note-translation-copy";
 import type { NoteTranslationCopy } from "@/localization/note-translation-copy";
+import type { AiConversationHistoryItem } from "@/services/ai-conversation-service";
+import { markdownToPlainText } from "@/services/safe-markdown";
 
 type NoteDetailState =
   | { status: "loading" }
@@ -54,17 +56,18 @@ type NoteDetailState =
       knowledgeTemplates: KnowledgeTemplate[];
       coreInsights: CoreNoteInsight | null;
       translation: NoteTranslation | null;
+      linkedConversations: AiConversationHistoryItem[];
     };
 
 type GenerationState =
   | { status: "idle" }
   | { status: "selecting"; scenario: KnowledgeScenario }
-  | { status: "queued" | "generating"; scenario: KnowledgeScenario }
+  | { status: "queued" | "generating" | "stopping"; scenario: KnowledgeScenario }
   | { status: "error"; scenario: KnowledgeScenario; message: string };
 
 type CoreInsightGenerationState =
   | { status: "idle" }
-  | { status: "queued" | "generating" }
+  | { status: "queued" | "generating" | "stopping" }
   | { status: "error"; message: string };
 
 type TranslationState =
@@ -76,10 +79,10 @@ type NoteSection = "transcript" | "insights" | "knowledge";
 type InsightSectionKey = "summary" | "key-points" | "tasks" | "reminders" | "calendar";
 
 export default function NoteDetailScreen() {
-  const { noteId, section, knowledgeResultId } = useLocalSearchParams<{ noteId: string; section?: string; knowledgeResultId?: string }>();
+  const { noteId, section, knowledgeResultId, autoGenerate } = useLocalSearchParams<{ noteId: string; section?: string; knowledgeResultId?: string; autoGenerate?: string }>();
   const theme = useTheme();
   const colors = Colors[theme.mode];
-  const { noteService, workspaceService, knowledgeService, coreNoteInsightService, noteTranslationService } = appContainer;
+  const { noteService, workspaceService, knowledgeService, coreNoteInsightService, noteTranslationService, aiConversationService, notePdfExportService } = appContainer;
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { language: translationLanguage, copy: translationCopy } = useNoteTranslationCopy();
@@ -100,7 +103,9 @@ export default function NoteDetailScreen() {
   const [activeSection, setActiveSection] = useState<NoteSection>("transcript");
   const [translationState, setTranslationState] = useState<TranslationState>({ status: "idle" });
   const firstRenderedTranslationRequest = useRef<string | null>(null);
+  const automaticGenerationStarted = useRef(false);
   const [categoryVisible, setCategoryVisible] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const audioRelativePath =
     state.status === "success" ? state.note.getAudioRelativePath() : null;
   const audioUri = audioRelativePath
@@ -120,7 +125,7 @@ export default function NoteDetailScreen() {
         return;
       }
 
-      const [workspace, knowledgeHistory, knowledgeTemplates, coreInsights, translation] = await Promise.all([
+      const [workspace, knowledgeHistory, knowledgeTemplates, coreInsights, translation, linkedConversations] = await Promise.all([
         workspaceService
           .getWorkspace(loadedNote.getWorkspaceId())
           .catch((error) => {
@@ -149,6 +154,10 @@ export default function NoteDetailScreen() {
           console.warn("[NoteDetail] Saved translation could not be loaded", { noteId: loadedNote.getId(), error });
           return null;
         }),
+        aiConversationService.getConversationHistoryForNote(loadedNote.getId()).catch((error) => {
+          console.warn("[NoteDetail] Linked Ask AI conversations could not be loaded", { noteId: loadedNote.getId(), error });
+          return [];
+        }),
       ]);
       setState({
         status: "success",
@@ -159,6 +168,7 @@ export default function NoteDetailScreen() {
         knowledgeTemplates,
         coreInsights,
         translation,
+        linkedConversations,
       });
     } catch (error) {
       console.error("[NoteDetail] Unable to load note", { noteId, error });
@@ -169,6 +179,15 @@ export default function NoteDetailScreen() {
   useEffect(() => {
     void loadNote();
   }, [noteId]);
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    void aiConversationService.getConversationHistoryForNote(noteId).then((linkedConversations) => {
+      if (!active) return;
+      setState((current) => current.status === "success" ? { ...current, linkedConversations } : current);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [aiConversationService, noteId]));
 
   useEffect(() => () => {
     void appContainer.speechPlaybackService.stop();
@@ -187,7 +206,7 @@ export default function NoteDetailScreen() {
   }, [section]);
 
   useEffect(() => coreNoteInsightService.subscribeToGeneration(noteId, (generationState) => {
-    if (generationState.status === "queued" || generationState.status === "generating") {
+    if (generationState.status === "queued" || generationState.status === "generating" || generationState.status === "stopping") {
       setCoreGeneration({ status: generationState.status });
       return;
     }
@@ -204,7 +223,7 @@ export default function NoteDetailScreen() {
   }), [coreNoteInsightService, noteId]);
 
   useEffect(() => knowledgeService.subscribeToGeneration(noteId, (generationState) => {
-    if (generationState.status === "queued" || generationState.status === "generating") {
+    if (generationState.status === "queued" || generationState.status === "generating" || generationState.status === "stopping") {
       setGeneration({ status: generationState.status, scenario: generationState.scenario });
       return;
     }
@@ -385,6 +404,21 @@ export default function NoteDetailScreen() {
     ]);
   };
 
+  const exportPdf = async () => {
+    if (isExportingPdf) return;
+    setIsExportingPdf(true);
+    try {
+      await notePdfExportService.exportAndShare(noteId);
+    } catch (error) {
+      Alert.alert(
+        "Unable to export PDF",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const generateCoreInsights = async () => {
     if (state.status !== "success") return;
     const startedAt = Date.now();
@@ -401,6 +435,18 @@ export default function NoteDetailScreen() {
       setCoreGeneration({ status: "error", message });
     }
   };
+
+  useEffect(() => {
+    if (
+      autoGenerate !== "1" ||
+      automaticGenerationStarted.current ||
+      state.status !== "success" ||
+      state.coreInsights !== null
+    ) return;
+    automaticGenerationStarted.current = true;
+    setActiveSection("insights");
+    void generateCoreInsights();
+  }, [autoGenerate, state]);
 
   const setCoreTaskCompleted = async (taskId: string, completed: boolean) => {
     if (state.status !== "success") return;
@@ -548,16 +594,27 @@ export default function NoteDetailScreen() {
                   <Text style={[styles.audioAction, { color: colors.accent }]}>{playerStatus.playing ? "Pause" : "Play"}</Text>
                 </Pressable>
               )}
-              <AppButton
-                label="Ask AI about this transcript"
-                variant="secondary"
-                onPress={() =>
-                  router.push({
-                    pathname: "/ask-ai",
-                    params: { noteId: state.note.getId() },
-                  } as unknown as Href)
-                }
-              />
+              <View style={styles.headerActions}>
+                <AppButton
+                  label="Ask AI about this transcript"
+                  variant="secondary"
+                  onPress={() =>
+                    router.push({
+                      pathname: "/ask-ai",
+                      params: { noteId: state.note.getId() },
+                    } as unknown as Href)
+                  }
+                />
+                <View style={styles.exportAction}>
+                  {isExportingPdf && <ActivityIndicator accessibilityLabel="Creating PDF" color={colors.accent} />}
+                  <AppButton
+                    label={isExportingPdf ? "Creating PDF…" : "Export PDF"}
+                    variant="secondary"
+                    disabled={isExportingPdf}
+                    onPress={() => void exportPdf()}
+                  />
+                </View>
+              </View>
             </View>
             <SectionTabs
               activeSection={activeSection}
@@ -588,13 +645,14 @@ export default function NoteDetailScreen() {
                 <Text style={[styles.supportingText, { color: colors.textMuted }]}>Summary, key points, tasks, reminders, and calendar events.</Text>
               </View>
               {state.coreInsights && <TranslationControl section="insights" translated={insightsTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} />}
-              {coreGeneration.status === "generating" || coreGeneration.status === "queued" ? (
+              {coreGeneration.status === "generating" || coreGeneration.status === "queued" || coreGeneration.status === "stopping" ? (
                 <View style={[styles.generationStatus, { backgroundColor: colors.surfaceMuted }]}>
                   <ActivityIndicator color={colors.accent} />
                   <View style={styles.headingCopy}>
-                    <Text style={[styles.statusTitle, { color: colors.text }]}>{coreGeneration.status === "queued" ? "Waiting for local AI…" : "Extracting core insights…"}</Text>
+                    <Text style={[styles.statusTitle, { color: colors.text }]}>{coreGeneration.status === "queued" ? "Waiting for local AI…" : coreGeneration.status === "stopping" ? "Stopping…" : "Extracting core insights…"}</Text>
                     <Text style={[styles.supportingText, { color: colors.textMuted }]}>Running privately on this device.</Text>
                   </View>
+                  {coreGeneration.status !== "stopping" && <AppButton label="Stop" variant="quiet" onPress={() => void coreNoteInsightService.stopGeneration(noteId)} />}
                 </View>
               ) : (
                 <>
@@ -653,7 +711,7 @@ export default function NoteDetailScreen() {
               </View>
               {state.knowledge && <TranslationControl section="knowledge" translated={knowledgeTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} />}
 
-              {generation.status === "generating" || generation.status === "queued" ? (
+              {generation.status === "generating" || generation.status === "queued" || generation.status === "stopping" ? (
                 <View
                   style={[
                     styles.generationStatus,
@@ -663,7 +721,7 @@ export default function NoteDetailScreen() {
                   <ActivityIndicator color={colors.accent} />
                   <View style={styles.headingCopy}>
                     <Text style={[styles.statusTitle, { color: colors.text }]}>
-                      {generation.status === "queued" ? "Waiting for local AI…" : "Organizing your knowledge…"}
+                      {generation.status === "queued" ? "Waiting for local AI…" : generation.status === "stopping" ? "Stopping…" : "Organizing your knowledge…"}
                     </Text>
                     <Text
                       style={[
@@ -674,6 +732,7 @@ export default function NoteDetailScreen() {
                       Running privately on this device. This can take a moment.
                     </Text>
                   </View>
+                  {generation.status !== "stopping" && <AppButton label="Stop" variant="quiet" onPress={() => void knowledgeService.stopGeneration(noteId)} />}
                 </View>
               ) : generation.status === "selecting" ||
                 generation.status === "error" ? (
@@ -817,6 +876,43 @@ export default function NoteDetailScreen() {
                 />
               )}
             </View>}
+            <View style={[styles.knowledgeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.knowledgeHeading}>
+                <View style={styles.headingCopy}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Ask AI Conversations</Text>
+                  <Text style={[styles.supportingText, { color: colors.textMuted }]}>Conversations that use this Note as a source.</Text>
+                </View>
+                <AppButton
+                  label="New"
+                  variant="quiet"
+                  onPress={() => router.push({ pathname: "/ask-ai", params: { noteId: state.note.getId(), mode: "new" } } as unknown as Href)}
+                />
+              </View>
+              {state.linkedConversations.length === 0 ? (
+                <Text style={[styles.emptyInsight, { color: colors.textMuted }]}>No linked conversations yet.</Text>
+              ) : (
+                <View style={styles.conversationList}>
+                  {state.linkedConversations.map((item) => (
+                    <Pressable
+                      key={item.conversation.getId()}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Continue ${item.conversation.getName()}`}
+                      onPress={() => router.push({ pathname: "/ask-ai", params: { conversationId: item.conversation.getId() } } as unknown as Href)}
+                      style={({ pressed }) => [styles.conversationCard, { backgroundColor: colors.background, borderColor: colors.border }, pressed && styles.pressed]}
+                    >
+                      <View style={styles.headingCopy}>
+                        <Text style={[styles.scenarioTitle, { color: colors.text }]}>{item.conversation.getName()}</Text>
+                        <Text numberOfLines={2} style={[styles.supportingText, { color: colors.textMuted }]}>
+                          {item.latestMessage ? markdownToPlainText(item.latestMessage.getContent()) : "Conversation started"}
+                        </Text>
+                        <Text style={[styles.generatedMeta, { color: colors.textMuted }]}>{formatDate(item.conversation.getUpdatedAt())} · {item.linkedNotes.length} {item.linkedNotes.length === 1 ? "source" : "sources"}</Text>
+                      </View>
+                      <Text style={[styles.audioAction, { color: colors.accent }]}>Continue</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
           </>
         )}
       </ScrollView>
@@ -860,7 +956,7 @@ export default function NoteDetailScreen() {
 
 function CoreInsightResult({ insight, requestedLanguage, textColor, mutedColor, borderColor, accentColor, surfaceMutedColor, onTaskCompletedChange, onTaskPinnedChange }: {
   insight: CoreNoteInsight;
-  requestedLanguage?: UiLanguage;
+  requestedLanguage?: ContentLanguage;
   textColor: string;
   mutedColor: string;
   borderColor: string;
@@ -1276,7 +1372,7 @@ function KnowledgeResult({
   borderColor,
 }: {
   document: KnowledgeDocument;
-  requestedLanguage?: UiLanguage;
+  requestedLanguage?: ContentLanguage;
   textColor: string;
   mutedColor: string;
   borderColor: string;
@@ -1409,6 +1505,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { gap: Spacing.lg, padding: Spacing.lg },
   header: { gap: Spacing.md },
+  headerActions: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+  exportAction: { alignItems: "center", flexDirection: "row", gap: Spacing.sm },
   translationControl: { gap: Spacing.xs },
   headerUtilityRow: { alignItems: "center", flexDirection: "row", gap: Spacing.md, justifyContent: "space-between" },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
@@ -1443,6 +1541,8 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     padding: Spacing.md,
   },
+  conversationList: { gap: Spacing.sm },
+  conversationCard: { alignItems: "center", borderRadius: Radius.sm, borderWidth: 1, flexDirection: "row", gap: Spacing.md, padding: Spacing.md },
   knowledgeHeading: {
     flexDirection: "row",
     alignItems: "flex-start",

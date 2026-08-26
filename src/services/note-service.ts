@@ -8,6 +8,7 @@ import { NoteClassificationService, type NoteCategoryChange } from "@/services/n
 import { searchNoteCorpus, type NoteSearchResult } from "@/services/note-fuzzy-search";
 
 export class NoteService {
+  private readonly changeListeners = new Set<() => void>();
   public constructor(
     private readonly noteRepository: NoteRepository,
     private readonly workspaceRepository: WorkspaceRepository,
@@ -52,6 +53,7 @@ export class NoteService {
     }
     note.rename(normalizedName);
     await this.noteRepository.update(note);
+    this.publishChange();
   }
 
   public async setNotePinned(id: string, isPinned: boolean): Promise<void> {
@@ -66,10 +68,12 @@ export class NoteService {
     }
 
     await this.noteRepository.update(note);
+    this.publishChange();
   }
 
   public async setNotesPinned(ids: readonly string[], isPinned: boolean): Promise<void> {
     await this.noteRepository.setPinnedMany(ids, isPinned);
+    this.publishChange();
   }
 
   public async moveNote(id: string, workspaceId: string): Promise<void> {
@@ -86,12 +90,14 @@ export class NoteService {
     }
     note.moveToWorkspace(normalizedWorkspaceId);
     await this.noteRepository.update(note);
+    this.publishChange();
   }
 
   public async moveNotes(ids: readonly string[], workspaceId: string): Promise<void> {
     const normalizedWorkspaceId = workspaceId.trim();
     if (!normalizedWorkspaceId) throw new ValidationError("Target workspace cannot be empty.");
     await this.noteRepository.moveMany(ids, normalizedWorkspaceId);
+    this.publishChange();
   }
 
   public async createNote(
@@ -126,6 +132,7 @@ export class NoteService {
     );
 
     await this.noteRepository.create(note);
+    this.publishChange();
     void this.classificationService?.classifyNote(note.getId());
     return note;
   }
@@ -136,20 +143,24 @@ export class NoteService {
     }
 
     await this.noteRepository.update(note);
+    this.publishChange();
     void this.classificationService?.classifyNote(note.getId());
   }
 
   public async deleteNote(id: string): Promise<void> {
     await this.getNoteOrThrow(id);
     await this.noteRepository.trashMany([id]);
+    this.publishChange();
   }
 
   public async trashNotes(ids: readonly string[]): Promise<void> {
     await this.noteRepository.trashMany(ids);
+    this.publishChange();
   }
 
   public async restoreNotes(ids: readonly string[]): Promise<void> {
     await this.noteRepository.restoreMany(ids);
+    this.publishChange();
   }
 
   public async setCategory(id: string, category: NoteCategory): Promise<void> {
@@ -164,6 +175,15 @@ export class NoteService {
 
   public subscribeToCategoryChanges(listener: (change: NoteCategoryChange) => void): () => void {
     return this.classificationService?.subscribe(listener) ?? (() => undefined);
+  }
+
+  public subscribeToChanges(listener: () => void): () => void {
+    this.changeListeners.add(listener);
+    return () => this.changeListeners.delete(listener);
+  }
+
+  private publishChange(): void {
+    this.changeListeners.forEach((listener) => listener());
   }
 
   private async getNoteOrThrow(id: string): Promise<Note> {

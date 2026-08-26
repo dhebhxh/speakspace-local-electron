@@ -28,6 +28,9 @@ import { NoteClassificationService } from "@/services/note-classification-servic
 import { TrashService } from "@/services/trash-service";
 import { KnowledgeTemplateRepository } from "@/repositories/knowledge-template-repository";
 import { KnowledgeTemplateService } from "@/services/knowledge-template-service";
+import { AppPreferencesService } from "@/services/app-preferences-service";
+import { NoteNotificationService } from "@/services/note-notification-service";
+import { NotePdfExportService } from "@/services/note-pdf-export-service";
 
 export class AppContainer {
   public readonly workspaceService: WorkspaceService;
@@ -44,8 +47,12 @@ export class AppContainer {
   public readonly noteTranslationService: NoteTranslationService;
   public readonly trashService: TrashService;
   public readonly knowledgeTemplateService: KnowledgeTemplateService;
+  public readonly preferencesService: AppPreferencesService;
+  public readonly noteNotificationService: NoteNotificationService;
+  public readonly notePdfExportService: NotePdfExportService;
 
   public constructor(databaseManager: DatabaseManager) {
+    this.preferencesService = new AppPreferencesService();
     const workspaceRepository = new WorkspaceRepository(databaseManager);
     const noteRepository = new NoteRepository(databaseManager);
     const llmModelRepository = new LlmModelRepository(databaseManager);
@@ -84,6 +91,12 @@ export class AppContainer {
       localLlmCoordinator,
     );
     this.coreNoteInsightService = new CoreNoteInsightService(coreNoteInsightRepository, this.llmModelService, localLlmCoordinator);
+    this.noteNotificationService = new NoteNotificationService(
+      this.coreNoteInsightService,
+      this.noteService,
+      this.preferencesService,
+      this.workspaceService,
+    );
     this.sttModelService = new SttModelService(sttModelRepository);
     this.ttsModelService = new TtsModelService(ttsModelRepository);
     this.speechPlaybackService = new SpeechPlaybackService(this.ttsModelService, localLlmCoordinator);
@@ -94,11 +107,20 @@ export class AppContainer {
       conversationContextRepository,
       noteRepository,
     );
+    this.notePdfExportService = new NotePdfExportService(
+      this.noteService,
+      this.workspaceService,
+      this.coreNoteInsightService,
+      this.knowledgeService,
+      this.aiConversationService,
+    );
     this.llmInferenceService = new LlmInferenceService(
       this.llmModelService,
       this.aiConversationService,
       localLlmCoordinator,
       sharedLlmContextService,
+      this.preferencesService,
+      this.speechPlaybackService,
     );
   }
 }

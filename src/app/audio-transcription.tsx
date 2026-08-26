@@ -4,7 +4,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
@@ -200,7 +200,10 @@ export default function AudioTranscriptionScreen() {
         durationMs: Date.now() - saveStartedAt,
         audioRelativePath,
       });
-      router.replace({ pathname: "/notes/[noteId]", params: { noteId: note.getId() } });
+      router.replace({
+        pathname: "/notes/[noteId]",
+        params: { noteId: note.getId(), section: "insights", autoGenerate: "1" },
+      });
     } catch (caught) {
       if (audioRelativePath !== null) transcriptionService.deleteRecording(audioRelativePath);
       console.error("Saving imported transcript as note failed", caught);
@@ -289,6 +292,7 @@ export default function AudioTranscriptionScreen() {
           })}
         </View>
         {error !== null && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
+        {isSaving && <View style={styles.savingStatus}><ActivityIndicator color={colors.accent} /><Text style={[styles.status, { color: colors.textMuted }]}>Saving the original Note first…</Text></View>}
         <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0} onPress={() => void save()} />
         <AppButton label="Cancel" variant="quiet" disabled={isSaving} onPress={() => setShowSave(false)} />
       </SafeAreaModal>
@@ -317,4 +321,5 @@ const styles = StyleSheet.create({
   input: { borderRadius: Radius.sm, borderWidth: 1, fontSize: 16, minHeight: 48, paddingHorizontal: Spacing.md },
   workspaceList: { gap: Spacing.sm },
   workspace: { borderRadius: Radius.sm, borderWidth: 1, padding: Spacing.md },
+  savingStatus: { alignItems: "center", flexDirection: "row", gap: Spacing.sm },
 });

@@ -30,6 +30,10 @@ export type AiConversationHistoryItem = {
   latestMessage: AiMessage | null;
 };
 
+export type NoteConversationExportItem = AiConversationHistoryItem & {
+  messages: AiMessage[] | null;
+};
+
 export class AiConversationService {
   public constructor(
     private readonly conversationRepository: AiConversationRepository,
@@ -59,6 +63,34 @@ export class AiConversationService {
     }
 
     return items;
+  }
+
+  public async getConversationHistoryForNote(
+    noteId: string,
+  ): Promise<AiConversationHistoryItem[]> {
+    const normalizedNoteId = noteId.trim();
+    if (!normalizedNoteId) throw new ValidationError("Note id cannot be empty.");
+    const history = await this.getConversationHistory();
+    return history.filter((item) =>
+      item.linkedNotes.some((note) => note.getId() === normalizedNoteId),
+    );
+  }
+
+  public async getConversationExportForNote(
+    noteId: string,
+  ): Promise<NoteConversationExportItem[]> {
+    const history = await this.getConversationHistoryForNote(noteId);
+    return Promise.all(
+      history.map(async (item) => ({
+        ...item,
+        messages:
+          item.linkedNotes.length === 1 && item.linkedNotes[0].getId() === noteId
+            ? await this.messageRepository.findByConversationId(
+                item.conversation.getId(),
+              )
+            : null,
+      })),
+    );
   }
 
   public async getResumeTargetForNote(

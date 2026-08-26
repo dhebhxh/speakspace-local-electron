@@ -244,7 +244,10 @@ export default function TranscriptionScreen() {
         finished.audioRelativePath,
       );
       setFinished(null);
-      router.replace({ pathname: "/notes/[noteId]", params: { noteId: note.getId() } });
+      router.replace({
+        pathname: "/notes/[noteId]",
+        params: { noteId: note.getId(), section: "insights", autoGenerate: "1" },
+      });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save note.");
     } finally {
@@ -339,6 +342,7 @@ export default function TranscriptionScreen() {
           })}
         </View>
         {error && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
+        {isSaving && <View style={styles.savingStatus}><ActivityIndicator color={colors.accent} /><Text style={[styles.controlHint, { color: colors.textMuted }]}>Saving the original Note first…</Text></View>}
         <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0} onPress={() => void save()} />
       </SafeAreaModal>
     </View>
@@ -379,4 +383,5 @@ const styles = StyleSheet.create({
   input: { borderRadius: Radius.sm, borderWidth: 1, fontSize: 16, minHeight: 48, paddingHorizontal: Spacing.md },
   workspaceList: { gap: Spacing.sm },
   workspace: { borderRadius: Radius.sm, borderWidth: 1, padding: Spacing.md },
+  savingStatus: { alignItems: "center", flexDirection: "row", gap: Spacing.sm },
 });

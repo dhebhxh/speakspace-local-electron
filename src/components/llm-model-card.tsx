@@ -84,7 +84,12 @@ export function LlmModelCard(props: LlmModelCardProps) {
         )}
         {props.status === "installed" && (
           <>
-            <AppButton label={props.isBusy ? "Working…" : "Use"} disabled={props.isBusy} onPress={props.onUse} />
+            <AppButton
+              label={props.isBusy ? "Working…" : "Use"}
+              accessibilityLabel={`Use ${props.name}`}
+              disabled={props.isBusy}
+              onPress={props.onUse}
+            />
             <AppButton label="Uninstall" variant="quiet" disabled={props.isBusy} onPress={props.onUninstall} />
           </>
         )}

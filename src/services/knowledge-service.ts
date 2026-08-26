@@ -7,6 +7,8 @@ import { KnowledgeGenerationError } from "@/errors/knowledge-generation-error";
 import { KnowledgeDocumentRepository } from "@/repositories/knowledge-document-repository";
 import { LlmModelService } from "@/services/llm-model-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { InferenceDeadline, type InferenceAbortReason } from "@/services/inference-deadline";
+import { KNOWLEDGE_GENERATION_DEADLINE_MS } from "@/constants/local-ai-deadlines";
 
 type ModelOutput = { sections?: Record<string, unknown> };
 type GenerationDefinition = {
@@ -16,6 +18,7 @@ type GenerationDefinition = {
   templateId: string | null;
   templateName: string;
 };
+type ActiveKnowledgeRequest = { requestId: string; deadline: InferenceDeadline; context: LlamaContext | null; scenario: KnowledgeScenario };
 
 const MODEL_CONTEXT_SIZE = 6144;
 const MODEL_BATCH_SIZE = 128;
@@ -27,6 +30,7 @@ Use only information supported by NOTE. You may organize, combine repetition, an
 export class KnowledgeService {
   private readonly generationStates = new Map<string, KnowledgeGenerationState>();
   private readonly activeGenerations = new Map<string, Promise<KnowledgeDocument>>();
+  private readonly activeRequests = new Map<string, ActiveKnowledgeRequest>();
   private readonly listeners = new Map<string, Set<(state: KnowledgeGenerationState) => void>>();
 
   public constructor(private readonly repository: KnowledgeDocumentRepository, private readonly llmModelService: LlmModelService, private readonly coordinator: LocalLlmCoordinator) {}
@@ -85,35 +89,65 @@ export class KnowledgeService {
     const scenario = definition.scenario;
     const state = this.getGenerationState(noteId);
     const existing = this.activeGenerations.get(noteId);
-    if (existing && (state.status === "queued" || state.status === "generating")) {
+    if (existing && (state.status === "queued" || state.status === "generating" || state.status === "stopping")) {
       console.info("[Knowledge] Reusing in-flight generation", { noteId, requestId: state.requestId, requestedScenario: scenario, activeScenario: state.scenario });
       return existing;
     }
 
     const requestId = `knowledge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    this.publish(noteId, { status: "queued", requestId, scenario, startedAt: Date.now() });
+    const startedAt = Date.now();
+    const deadline = new InferenceDeadline(KNOWLEDGE_GENERATION_DEADLINE_MS);
+    const request: ActiveKnowledgeRequest = { requestId, deadline, context: null, scenario };
+    this.activeRequests.set(noteId, request);
+    deadline.signal.addEventListener("abort", () => {
+      const active = this.activeRequests.get(noteId);
+      if (active !== request) return;
+      this.publish(noteId, { status: "stopping", requestId, scenario, startedAt });
+      void active.context?.stopCompletion().catch(() => undefined);
+    }, { once: true });
+    this.publish(noteId, { status: "queued", requestId, scenario, startedAt });
     const promise = this.coordinator.runExclusive("knowledge", async () => {
-      this.publish(noteId, { status: "generating", requestId, scenario, startedAt: Date.now() });
-      return this.runGeneration(noteId, transcript, definition, requestId);
+      deadline.throwIfAborted((reason) => this.abortError(reason));
+      this.publish(noteId, { status: "generating", requestId, scenario, startedAt });
+      return this.runGeneration(noteId, transcript, definition, requestId, request);
+    }, { signal: deadline.signal }).catch((error: unknown) => {
+      if (deadline.reason) throw this.abortError(deadline.reason);
+      throw error;
     });
     this.activeGenerations.set(noteId, promise);
     void promise.then(
       () => {
+        deadline.dispose();
         this.activeGenerations.delete(noteId);
+        if (this.activeRequests.get(noteId) === request) this.activeRequests.delete(noteId);
         this.publish(noteId, { status: "completed", requestId, scenario, finishedAt: Date.now() });
       },
       (error: unknown) => {
+        deadline.dispose();
         this.activeGenerations.delete(noteId);
+        if (this.activeRequests.get(noteId) === request) this.activeRequests.delete(noteId);
         this.publish(noteId, { status: "failed", requestId, scenario, finishedAt: Date.now(), message: error instanceof Error ? error.message : "Knowledge generation did not finish. Please try again." });
       },
     );
     return promise;
   }
 
-  private async runGeneration(noteId: string, transcript: string, definition: GenerationDefinition, requestId: string): Promise<KnowledgeDocument> {
+  public async stopGeneration(noteId: string): Promise<void> {
+    const request = this.activeRequests.get(noteId);
+    if (!request) return;
+    request.deadline.abort("cancelled");
+    await request.context?.stopCompletion().catch(() => undefined);
+  }
+
+  public async stopAllGenerations(): Promise<void> {
+    await Promise.all([...this.activeRequests.keys()].map((noteId) => this.stopGeneration(noteId)));
+  }
+
+  private async runGeneration(noteId: string, transcript: string, definition: GenerationDefinition, requestId: string, request: ActiveKnowledgeRequest): Promise<KnowledgeDocument> {
     const scenario = definition.scenario;
     const generationStartedAt = Date.now();
     const input = transcript.trim();
+    request.deadline.throwIfAborted((reason) => this.abortError(reason));
     if (!input) throw new KnowledgeGenerationError("empty-transcript", "This note has no transcript to organize yet.");
     console.info("[Knowledge] Generation requested", { requestId, noteId, scenario, transcriptLength: input.length });
 
@@ -126,6 +160,8 @@ export class KnowledgeService {
     try {
       const modelLoadStartedAt = Date.now();
       context = await initLlama({ model: modelFile.uri, n_ctx: MODEL_CONTEXT_SIZE, n_batch: MODEL_BATCH_SIZE });
+      request.context = context;
+      request.deadline.throwIfAborted((reason) => this.abortError(reason));
       console.info("[Knowledge] Local model loaded", { requestId, modelId: model.getId(), durationMs: Date.now() - modelLoadStartedAt, contextSize: MODEL_CONTEXT_SIZE });
 
       const sectionShape = Object.fromEntries(definition.sections.map((section) => [section.key, []]));
@@ -155,18 +191,18 @@ ${note}
       const maxPromptTokens = MODEL_CONTEXT_SIZE - MAX_PREDICTED_TOKENS - CONTEXT_SAFETY_TOKENS;
       let usedInput = input;
       let messages = makeMessages(usedInput);
-      let promptTokens = await this.countTokens(context, messages);
+      let promptTokens = await this.countTokens(context, messages, request.deadline);
       if (promptTokens > maxPromptTokens) {
         let low = 0;
         let high = input.length;
         while (low < high) {
           const middle = Math.ceil((low + high) / 2);
-          if (await this.countTokens(context, makeMessages(input.slice(0, middle))) <= maxPromptTokens) low = middle;
+          if (await this.countTokens(context, makeMessages(input.slice(0, middle)), request.deadline) <= maxPromptTokens) low = middle;
           else high = middle - 1;
         }
         usedInput = input.slice(0, low).trimEnd();
         messages = makeMessages(usedInput);
-        promptTokens = await this.countTokens(context, messages);
+        promptTokens = await this.countTokens(context, messages, request.deadline);
         console.warn("[Knowledge] Transcript truncated by token budget", { requestId, originalLength: input.length, usedLength: usedInput.length, promptTokens, outputTokens: MAX_PREDICTED_TOKENS });
       }
       console.info("[Knowledge] Prompt prepared", { requestId, scenario, transcriptLength: usedInput.length, promptTokens, outputTokens: MAX_PREDICTED_TOKENS, requestedSectionCount: definition.sections.length });
@@ -183,6 +219,7 @@ ${note}
         n_predict: MAX_PREDICTED_TOKENS,
         temperature: 0,
       });
+      request.deadline.throwIfAborted((reason) => this.abortError(reason));
       const rawOutput = result.content || result.text;
       console.info("[Knowledge] Local completion finished", { requestId, modelId: model.getId(), durationMs: Date.now() - completionStartedAt, outputLength: rawOutput.length, nPredict: MAX_PREDICTED_TOKENS, temperature: 0 });
       const document = this.toDocument(noteId, definition, model.getId(), rawOutput, requestId);
@@ -193,6 +230,7 @@ ${note}
       return document;
     } catch (error) {
       console.error("[Knowledge] Generation failed", { requestId, noteId, scenario, durationMs: Date.now() - generationStartedAt, errorCode: error instanceof KnowledgeGenerationError ? error.code : "unexpected", error });
+      if (request.deadline.reason) throw this.abortError(request.deadline.reason);
       if (error instanceof KnowledgeGenerationError) throw error;
       throw new KnowledgeGenerationError("generation-failed", "Knowledge generation did not finish. Please try again.", { cause: error instanceof Error ? error : undefined });
     } finally {
@@ -202,6 +240,7 @@ ${note}
         await context.release();
         console.info("[Knowledge] Model context released", { requestId, noteId, durationMs: Date.now() - releaseStartedAt });
       } catch (error) { console.warn("[Knowledge] Could not release model context", { requestId, error }); }
+      if (request.context === context) request.context = null;
     }
   }
 
@@ -212,9 +251,18 @@ ${note}
     this.listeners.get(noteId)?.forEach((listener) => listener(state));
   }
 
-  private async countTokens(context: LlamaContext, messages: RNLlamaOAICompatibleMessage[]): Promise<number> {
+  private async countTokens(context: LlamaContext, messages: RNLlamaOAICompatibleMessage[], deadline: InferenceDeadline): Promise<number> {
+    deadline.throwIfAborted((reason) => this.abortError(reason));
     const formatted = await context.getFormattedChat(messages, null, { jinja: true, enable_thinking: false, reasoning_format: "none" });
-    return (await context.tokenize(formatted.prompt ?? "")).tokens.length;
+    const count = (await context.tokenize(formatted.prompt ?? "")).tokens.length;
+    deadline.throwIfAborted((reason) => this.abortError(reason));
+    return count;
+  }
+
+  private abortError(reason: InferenceAbortReason): KnowledgeGenerationError {
+    return reason === "timeout"
+      ? new KnowledgeGenerationError("timeout", "Knowledge reached its 2-minute limit. Existing results are safe; please retry.")
+      : new KnowledgeGenerationError("cancelled", "Knowledge generation was stopped. Existing results are safe; you can retry.");
   }
 
   private toDocument(noteId: string, definition: GenerationDefinition, modelId: string, raw: string, requestId: string): KnowledgeDocument {
@@ -257,6 +305,6 @@ ${note}
 
 export type KnowledgeGenerationState =
   | { status: "idle" }
-  | { status: "queued" | "generating"; requestId: string; scenario: KnowledgeScenario; startedAt: number }
+  | { status: "queued" | "generating" | "stopping"; requestId: string; scenario: KnowledgeScenario; startedAt: number }
   | { status: "completed"; requestId: string; scenario: KnowledgeScenario; finishedAt: number }
   | { status: "failed"; requestId: string; scenario: KnowledgeScenario; finishedAt: number; message: string };

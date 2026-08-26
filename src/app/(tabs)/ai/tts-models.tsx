@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { TtsModelCard, TtsModelCardStatus } from "@/components/tts-model-card";
+import { OnboardingModelBackButton } from "@/components/onboarding-model-back-button";
 import { Colors, Spacing } from "@/constants/theme";
 import { TtsModel } from "@/domain/tts-model/tts-model";
 import { useTheme } from "@/hooks/use-theme";
@@ -78,6 +79,7 @@ export default function TtsModelsScreen() {
   return <View style={[styles.screen, { backgroundColor: colors.background }]}>
     <Stack.Screen options={{ title: tr("Text-to-Speech Models") }} />
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.content, { paddingBottom: Spacing.xxl + insets.bottom }]}>
+      <OnboardingModelBackButton />
       <View style={styles.heading}><Text style={[styles.subtitle, { color: colors.textMuted }]}>Download voices for private speech synthesis with sherpa-onnx on this device.</Text></View>
       {state.status === "error" && <Text style={[styles.error, { color: colors.danger }]}>{state.message}</Text>}
       <View style={styles.list}>{catalog.map((entry) => {

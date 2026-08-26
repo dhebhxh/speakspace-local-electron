@@ -1,10 +1,10 @@
-import type { UiLanguage } from "@/localization/i18n";
+import type { ContentLanguage } from "@/localization/i18n";
 
 export type NoteTranslationPayload = {
   transcript: string;
   strings: Record<string, string>;
   sources?: Record<string, string>;
-  languageCode?: UiLanguage;
+  languageCode?: ContentLanguage;
 };
 
 export type NoteTranslationSection = "transcript" | "insights" | "knowledge";

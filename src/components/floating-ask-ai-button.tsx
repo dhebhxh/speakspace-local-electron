@@ -44,6 +44,7 @@ export function FloatingAskAiButton() {
   }, [width, height, insets.left, insets.right, insets.top, insets.bottom]);
 
   const hidden =
+    pathname === "/getting-started" ||
     pathname === "/ask-ai" ||
     pathname === "/transcription" ||
     (pathname.startsWith("/notes/") && pathname !== "/notes/search") ||

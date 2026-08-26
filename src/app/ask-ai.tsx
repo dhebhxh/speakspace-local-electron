@@ -24,6 +24,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 import { SafeAreaModal } from "@/components/safe-area-modal";
+import { SafeMarkdownText } from "@/components/safe-markdown-text";
 import { SpeechPlaybackButton } from "@/components/speech-playback-button";
 import {
   NO_ACTIVE_LLM_ERROR,
@@ -36,6 +37,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useTrashUndo } from "@/providers/trash-undo-provider";
 import type { AiConversationHistoryItem } from "@/services/ai-conversation-service";
 import type { LlmGenerationSnapshot } from "@/services/llm-inference-service";
+import { markdownToPlainText } from "@/services/safe-markdown";
 import { formatDate } from "@/utils/format-date";
 
 type ScreenState =
@@ -69,6 +71,24 @@ function contextLabel(notes: readonly Note[]): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong.";
+}
+
+function generationPhaseLabel(snapshot: LlmGenerationSnapshot): string {
+  if (snapshot.status !== "running") return "AI is working…";
+  switch (snapshot.phase) {
+    case "preparing-context":
+      return "Preparing note context…";
+    case "waiting":
+      return "Waiting for local AI…";
+    case "loading-model":
+      return "Loading the language model…";
+    case "generating":
+      return "Generating an answer…";
+    case "saving":
+      return "Saving the answer…";
+    case "stopping":
+      return "Stopping generation…";
+  }
 }
 
 export default function AskAiScreen() {
@@ -844,25 +864,21 @@ export default function AskAiScreen() {
                       },
                     ]}
                   >
-                    <Text
-                      selectable
-                      style={[
-                        styles.messageText,
-                        {
-                          color:
-                            message.getRole() === "user"
-                              ? colors.surface
-                              : colors.text,
-                        },
-                      ]}
-                    >
-                      {message.getContent()}
-                    </Text>
+                    {message.getRole() === "assistant" ? (
+                      <SafeMarkdownText markdown={message.getContent()} />
+                    ) : (
+                      <Text
+                        selectable
+                        style={[styles.messageText, { color: colors.surface }]}
+                      >
+                        {message.getContent()}
+                      </Text>
+                    )}
                     {message.getRole() === "assistant" && (
                       <SpeechPlaybackButton
                         speechId={`ask-ai:${message.getId()}`}
                         label="AI answer"
-                        text={message.getContent()}
+                        text={markdownToPlainText(message.getContent())}
                       />
                     )}
                   </View>
@@ -875,9 +891,7 @@ export default function AskAiScreen() {
                       { backgroundColor: colors.surface, borderColor: colors.border },
                     ]}
                   >
-                    <Text selectable style={[styles.messageText, { color: colors.text }]}>
-                      {streamingText}
-                    </Text>
+                    <SafeMarkdownText markdown={streamingText} />
                   </View>
                 )}
                 {isGenerating && streamingText.length === 0 && (
@@ -898,7 +912,9 @@ export default function AskAiScreen() {
                     <Text
                       style={[styles.workingText, { color: colors.textMuted }]}
                     >
-                      AI is working…
+                      {isServiceGeneratingCurrentConversation
+                        ? generationPhaseLabel(generationSnapshot)
+                        : "Preparing local AI…"}
                     </Text>
                   </View>
                 )}
@@ -1175,6 +1191,7 @@ const styles = StyleSheet.create({
   messageBubble: {
     borderRadius: Radius.md,
     borderWidth: 1,
+    gap: Spacing.lg,
     maxWidth: "88%",
     padding: Spacing.md,
   },

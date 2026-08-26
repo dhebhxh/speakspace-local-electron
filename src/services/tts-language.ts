@@ -1,6 +1,6 @@
-import { languageNames, UI_LANGUAGES, type UiLanguage } from "@/localization/i18n";
+import { CONTENT_LANGUAGES, languageNames, type ContentLanguage } from "@/localization/i18n";
 
-export type TtsLanguageCode = UiLanguage;
+export type TtsLanguageCode = ContentLanguage;
 
 const LANGUAGE_ALIASES: Record<TtsLanguageCode, readonly string[]> = {
   en: ["en", "en-us", "us-en", "en-gb", "gb-en", "english", "default"],
@@ -16,7 +16,7 @@ const LANGUAGE_ALIASES: Record<TtsLanguageCode, readonly string[]> = {
 export function normalizeTtsLanguage(value: string | null | undefined): TtsLanguageCode | null {
   if (!value) return null;
   const normalized = value.trim().toLocaleLowerCase().replaceAll("_", "-");
-  return UI_LANGUAGES.find((language) =>
+  return CONTENT_LANGUAGES.find((language) =>
     language.toLocaleLowerCase() === normalized ||
     languageNames[language].toLocaleLowerCase() === normalized ||
     LANGUAGE_ALIASES[language].includes(normalized),

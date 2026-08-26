@@ -14,14 +14,32 @@ export type LocalInferenceSnapshot = {
   pendingCount: number;
 };
 
+type AcquireOptions = { signal?: AbortSignal };
+type QueueJob = {
+  id: number;
+  operation: LocalInferenceOperation;
+  queuedAt: number;
+  signal?: AbortSignal;
+  abortListener?: () => void;
+  resolve: (release: () => void) => void;
+  reject: (error: Error) => void;
+};
+
+function cancellationError(): Error {
+  const error = new Error("The queued local operation was cancelled.");
+  error.name = "AbortError";
+  return error;
+}
+
 /**
- * llama.rn contexts share the same constrained mobile CPU and memory budget.
- * Keep native inference work process-wide and FIFO so independently mounted
- * screens cannot run completions concurrently.
+ * Native model contexts share a constrained mobile CPU and memory budget.
+ * This process-wide FIFO owns one explicit queue so a queued request can be
+ * removed immediately when its end-to-end deadline expires.
  */
 export class LocalLlmCoordinator {
-  private tail: Promise<void> = Promise.resolve();
-  private activeOperation: LocalInferenceOperation | null = null;
+  private activeJob: QueueJob | null = null;
+  private isStartingJob = false;
+  private readonly queue: QueueJob[] = [];
   private readonly idleCleanups = new Map<IdleResourceOwner, { cleanup: () => Promise<void>; compatibleOperations: ReadonlySet<LocalInferenceOperation> }>();
   private readonly listeners = new Set<(snapshot: LocalInferenceSnapshot) => void>();
   private stopSpeechPlayback: (() => Promise<void>) | null = null;
@@ -29,15 +47,15 @@ export class LocalLlmCoordinator {
   private pendingCount = 0;
 
   public getActiveOperation(): LocalInferenceOperation | null {
-    return this.activeOperation;
+    return this.activeJob?.operation ?? null;
   }
 
   public getSnapshot(): LocalInferenceSnapshot {
-    return { activeOperation: this.activeOperation, pendingCount: this.pendingCount };
+    return { activeOperation: this.getActiveOperation(), pendingCount: this.pendingCount };
   }
 
   public isBusy(): boolean {
-    return this.activeOperation !== null || this.pendingCount > 0;
+    return this.activeJob !== null || this.isStartingJob || this.pendingCount > 0;
   }
 
   public subscribe(listener: (snapshot: LocalInferenceSnapshot) => void): () => void {
@@ -53,73 +71,131 @@ export class LocalLlmCoordinator {
     };
   }
 
-  public registerIdleCleanup(owner: IdleResourceOwner, cleanup: () => Promise<void>, compatibleOperations: readonly LocalInferenceOperation[] = [owner as LocalInferenceOperation]): void {
+  public registerIdleCleanup(
+    owner: IdleResourceOwner,
+    cleanup: () => Promise<void>,
+    compatibleOperations: readonly LocalInferenceOperation[] = [owner as LocalInferenceOperation],
+  ): void {
     this.idleCleanups.set(owner, { cleanup, compatibleOperations: new Set(compatibleOperations) });
   }
 
   public async runExclusive<T>(
     operation: LocalInferenceOperation,
     task: () => Promise<T>,
+    options: AcquireOptions = {},
   ): Promise<T> {
-    const release = await this.acquire(operation);
+    const release = await this.acquire(operation, options);
+    let releaseAfterTaskSettles = false;
     try {
-      return await task();
+      if (options.signal?.aborted) throw cancellationError();
+      const taskPromise = Promise.resolve().then(task);
+      if (!options.signal) return await taskPromise;
+
+      let abortListener: (() => void) | null = null;
+      const abortPromise = new Promise<never>((_, reject) => {
+        abortListener = () => reject(cancellationError());
+        options.signal!.addEventListener("abort", abortListener, { once: true });
+      });
+      try {
+        return await Promise.race([taskPromise, abortPromise]);
+      } catch (error) {
+        if (options.signal.aborted) {
+          // Return the timeout/cancellation to the caller immediately, but keep
+          // the serialized native slot until a non-cancellable native await has
+          // actually unwound. This prevents a second model context overlapping it.
+          releaseAfterTaskSettles = true;
+          void taskPromise.then(release, release);
+          throw cancellationError();
+        }
+        throw error;
+      } finally {
+        if (abortListener) options.signal.removeEventListener("abort", abortListener);
+      }
     } finally {
-      release();
+      if (!releaseAfterTaskSettles) release();
     }
   }
 
-  public async acquire(operation: LocalInferenceOperation): Promise<() => void> {
-    const jobId = this.nextJobId++;
+  public acquire(operation: LocalInferenceOperation, options: AcquireOptions = {}): Promise<() => void> {
+    if (options.signal?.aborted) return Promise.reject(cancellationError());
+    const id = this.nextJobId++;
     const queuedAt = Date.now();
-    const queuedBehind = this.activeOperation;
+    const queuedBehind = this.activeJob?.operation ?? this.queue.at(-1)?.operation ?? null;
     this.pendingCount += 1;
-    this.publish();
-    console.info("[LocalInference] Operation queued", { jobId, operation, queuedBehind, pendingCount: this.pendingCount });
 
-    let release!: () => void;
-    const turn = new Promise<void>((resolve) => { release = resolve; });
-    const previous = this.tail;
-    this.tail = previous.catch(() => undefined).then(() => turn);
-
-    try {
-      await this.stopSpeechPlayback?.();
-    } catch (error) {
-      console.warn("[LocalInference] Speech playback cleanup failed; continuing with queued work.", { error });
-    }
-
-    await previous.catch(() => undefined);
-    this.activeOperation = operation;
-    this.publish();
-    console.info("[LocalInference] Operation acquired execution slot", { jobId, operation, waitDurationMs: Date.now() - queuedAt, pendingCount: this.pendingCount });
-    const executionStartedAt = Date.now();
-    try {
-      for (const [owner, resource] of this.idleCleanups) {
-        if (!resource.compatibleOperations.has(operation)) {
-          const cleanupStartedAt = Date.now();
-          console.info("[LocalInference] Releasing idle resources", { jobId, operation, resourceOwner: owner });
-          await resource.cleanup();
-          console.info("[LocalInference] Idle resources released", { jobId, operation, resourceOwner: owner, durationMs: Date.now() - cleanupStartedAt });
-        }
+    const promise = new Promise<() => void>((resolve, reject) => {
+      const job: QueueJob = { id, operation, queuedAt, signal: options.signal, resolve, reject };
+      if (options.signal) {
+        job.abortListener = () => {
+          const index = this.queue.indexOf(job);
+          if (index < 0) return;
+          this.queue.splice(index, 1);
+          this.pendingCount -= 1;
+          options.signal?.removeEventListener("abort", job.abortListener!);
+          console.info("[LocalInference] Cancelled queued operation", { jobId: id, operation, pendingCount: this.pendingCount });
+          job.reject(cancellationError());
+          this.publish();
+          void this.drain();
+        };
+        options.signal.addEventListener("abort", job.abortListener, { once: true });
       }
-    } catch (error) {
-      this.pendingCount -= 1;
-      this.activeOperation = null;
-      this.publish();
-      release();
-      throw error;
-    }
+      this.queue.push(job);
+    });
 
-    let released = false;
-    return () => {
-      if (released) return;
-      released = true;
+    console.info("[LocalInference] Operation queued", { jobId: id, operation, queuedBehind, pendingCount: this.pendingCount });
+    this.publish();
+    void this.drain();
+    return promise;
+  }
+
+  private async drain(): Promise<void> {
+    if (this.activeJob !== null || this.isStartingJob) return;
+    const job = this.queue.shift();
+    if (!job) return;
+    this.isStartingJob = true;
+    this.activeJob = job;
+    this.publish();
+
+    try {
+      try {
+        await this.stopSpeechPlayback?.();
+      } catch (error) {
+        console.warn("[LocalInference] Speech playback cleanup failed; continuing with queued work.", { error });
+      }
+      if (job.signal?.aborted) throw cancellationError();
+
+      for (const [owner, resource] of this.idleCleanups) {
+        if (resource.compatibleOperations.has(job.operation)) continue;
+        const cleanupStartedAt = Date.now();
+        console.info("[LocalInference] Releasing idle resources", { jobId: job.id, operation: job.operation, resourceOwner: owner });
+        await resource.cleanup();
+        console.info("[LocalInference] Idle resources released", { jobId: job.id, operation: job.operation, resourceOwner: owner, durationMs: Date.now() - cleanupStartedAt });
+        if (job.signal?.aborted) throw cancellationError();
+      }
+
+      this.isStartingJob = false;
+      const executionStartedAt = Date.now();
+      console.info("[LocalInference] Operation acquired execution slot", { jobId: job.id, operation: job.operation, waitDurationMs: executionStartedAt - job.queuedAt, pendingCount: this.pendingCount });
+      let released = false;
+      job.resolve(() => {
+        if (released) return;
+        released = true;
+        job.signal?.removeEventListener("abort", job.abortListener!);
+        this.pendingCount -= 1;
+        console.info("[LocalInference] Operation released execution slot", { jobId: job.id, operation: job.operation, executionDurationMs: Date.now() - executionStartedAt, pendingCount: this.pendingCount });
+        this.activeJob = null;
+        this.publish();
+        void this.drain();
+      });
+    } catch (error) {
+      job.signal?.removeEventListener("abort", job.abortListener!);
       this.pendingCount -= 1;
-      console.info("[LocalInference] Operation released execution slot", { jobId, operation, executionDurationMs: Date.now() - executionStartedAt, pendingCount: this.pendingCount });
-      this.activeOperation = null;
+      this.activeJob = null;
+      this.isStartingJob = false;
+      job.reject(error instanceof Error ? error : new Error("Unable to start the local operation."));
       this.publish();
-      release();
-    };
+      void this.drain();
+    }
   }
 
   private publish(): void {

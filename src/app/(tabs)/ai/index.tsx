@@ -1,19 +1,14 @@
 import { UiText as Text } from "@/components/ui-text";
 import { Stack, type Href, useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
-import type { UiLanguage } from "@/localization/i18n";
-import { translateUiCopy } from "@/localization/ui-copy";
 
 export default function AiManagementScreen() {
   const theme = useTheme();
-  const { i18n } = useTranslation();
-  const language = (i18n.resolvedLanguage ?? "en") as UiLanguage;
-  const tr = (value: string) => translateUiCopy(value, language);
+  const tr = (value: string) => value;
   const colors = Colors[theme.mode];
   const router = useRouter();
   const insets = useSafeAreaInsets();

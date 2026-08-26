@@ -31,13 +31,12 @@ test("note detail exposes independent persisted translation controls", async () 
   assert.doesNotMatch(screen, /Translate all/);
 });
 
-test("translation UI copy is centralized and covers every setting language", async () => {
+test("translation UI copy is centralized and remains English-only", async () => {
   const screen = await read("src/app/notes/[noteId].tsx");
   const copy = await read("src/localization/note-translation-copy.ts");
 
   assert.match(screen, /useNoteTranslationCopy\(\)/);
   assert.doesNotMatch(screen, /Restore original|Translating…|Translate into/);
-  for (const language of ["en", '"zh-CN"', "es", "fr", "de", "ja", "ko", "pt"]) {
-    assert.ok(copy.includes(`${language}: {`), `missing translation UI locale ${language}`);
-  }
+  assert.match(copy, /en: \{/);
+  assert.doesNotMatch(copy, /"zh-CN":|\bes: \{|\bfr: \{|\bde: \{|\bja: \{|\bko: \{|\bpt: \{/);
 });

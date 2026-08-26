@@ -48,7 +48,8 @@ export function TtsModelCard(props: Props) {
         {props.status === "not-installed" && <AppButton label="Download" variant="secondary" onPress={props.onDownload} />}
         {props.status === "downloading" && <View style={styles.busyRow}><ActivityIndicator color={colors.accent} />
           <Text style={[styles.busyLabel, { color: colors.textMuted }]}>{phaseLabel}</Text></View>}
-        {props.status === "installed" && <><AppButton label={props.isBusy ? "Working…" : "Use"} disabled={props.isBusy} onPress={props.onUse} />
+        {props.status === "installed" && <><AppButton label={props.isBusy ? "Working…" : "Use"}
+          accessibilityLabel={`Use ${props.name}`} disabled={props.isBusy} onPress={props.onUse} />
           <AppButton label="Uninstall" variant="quiet" disabled={props.isBusy} onPress={props.onUninstall} /></>}
         {props.status === "active" && <Text style={[styles.activeHint, { color: colors.textMuted }]}>Currently used for local speech synthesis.</Text>}
       </View>

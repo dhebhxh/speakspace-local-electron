@@ -128,6 +128,7 @@ export function SttModelCard({
           <>
             <AppButton
               label={isBusy ? "Working…" : "Use"}
+              accessibilityLabel={`Use ${name}`}
               disabled={isBusy}
               onPress={onUse}
             />

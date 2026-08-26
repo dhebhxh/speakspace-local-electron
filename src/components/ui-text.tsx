@@ -1,19 +1,22 @@
-import { Children, type ComponentProps, type ReactNode } from "react";
+import { type ComponentProps } from "react";
 import { Text as NativeText } from "react-native";
-import { useTranslation } from "react-i18next";
 
-import type { UiLanguage } from "@/localization/i18n";
-import { translateUiCopy } from "@/localization/ui-copy";
+import { useAppPreferences } from "@/providers/app-preferences-provider";
+import { textSizeScale } from "@/services/app-preferences-service";
+import { scaleTextStyle } from "@/utils/scale-text-style";
 
 type Props = ComponentProps<typeof NativeText>;
 
 export function UiText({ children, ...props }: Props) {
-  const { i18n } = useTranslation();
-  const language = (i18n.resolvedLanguage ?? "en") as UiLanguage;
-
-  const translated = Children.map(children, (child): ReactNode =>
-    typeof child === "string" ? translateUiCopy(child, language) : child,
+  const { textSize } = useAppPreferences();
+  const scaledStyle = scaleTextStyle(props.style, textSizeScale(textSize));
+  return (
+    <NativeText
+      allowFontScaling
+      {...props}
+      style={[props.style, scaledStyle]}
+    >
+      {children}
+    </NativeText>
   );
-
-  return <NativeText {...props}>{translated}</NativeText>;
 }

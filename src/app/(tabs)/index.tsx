@@ -3,7 +3,6 @@ import { Link, type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Calendar, type DateData } from "react-native-calendars";
-import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
@@ -18,8 +17,8 @@ import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme
 import type { CoreCalendarIntent, CoreTask } from "@/domain/core-note-insight/core-note-insight";
 import type { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
-import type { UiLanguage } from "@/localization/i18n";
 import { configureCalendarLocale } from "@/localization/calendar-locale";
+import { buildHomeCalendarItems, type HomeCalendarItem } from "@/services/home-calendar-items";
 
 type OverviewState =
   | { status: "loading" }
@@ -38,8 +37,7 @@ const formatNumber = (value: number) => new Intl.NumberFormat("en-GB").format(va
 
 export default function HomeScreen() {
   const theme = useTheme();
-  const { i18n } = useTranslation();
-  const language = (i18n.resolvedLanguage ?? "en") as UiLanguage;
+  const language = "en" as const;
   configureCalendarLocale(language);
   const colors = Colors[theme.mode];
   const insets = useSafeAreaInsets();
@@ -77,10 +75,14 @@ export default function HomeScreen() {
       (noteFilter === "pinned" ? note.getIsPinned() : noteFilter === "todos" ? pendingNoteIds.has(note.getId()) : true) &&
       (categoryFilter === "all" || note.getCategory() === categoryFilter),
     );
-    const calendarByDate = new Map<string, CoreCalendarIntent[]>();
-    for (const intent of overview.calendarIntents) {
-      const dateKey = toDateKey(intent.startsAt ?? intent.dueAt ?? intent.remindAt);
-      if (dateKey) calendarByDate.set(dateKey, [...(calendarByDate.get(dateKey) ?? []), intent]);
+    const calendarByDate = new Map<string, HomeCalendarItem[]>();
+    for (const item of buildHomeCalendarItems({
+      notes: overview.notes,
+      tasks: overview.tasks,
+      calendarIntents: overview.calendarIntents,
+      reference: new Date(overview.loadedAt),
+    })) {
+      calendarByDate.set(item.dateKey, [...(calendarByDate.get(item.dateKey) ?? []), item]);
     }
     return {
       pinnedCount: overview.notes.filter((note) => note.getIsPinned()).length,
@@ -189,7 +191,7 @@ export default function HomeScreen() {
                 <Text style={[styles.agendaDate, { color: colors.text }]}>{selectedDate}</Text>
                 {selectedEvents.length === 0
                   ? <Text style={[styles.agendaEmpty, { color: colors.textMuted }]}>No calendar items for this date.</Text>
-                  : selectedEvents.map((event) => <Link key={event.id} href={{ pathname: "/notes/[noteId]", params: { noteId: event.sourceNoteId } }} asChild><Pressable accessibilityRole="button" style={({ pressed }) => [styles.eventRow, { backgroundColor: colors.surfaceMuted }, pressed && styles.pressed]}><View style={[styles.eventDot, { backgroundColor: colors.accent }]} /><View style={styles.eventCopy}><Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text><Text style={[styles.eventKind, { color: colors.textMuted }]}>{event.kind === "reminder" ? "Reminder" : "Calendar event"}</Text></View></Pressable></Link>)}
+                  : selectedEvents.map((event) => <Link key={event.id} href={{ pathname: "/notes/[noteId]", params: { noteId: event.sourceNoteId } }} asChild><Pressable accessibilityRole="button" style={({ pressed }) => [styles.eventRow, { backgroundColor: colors.surfaceMuted }, pressed && styles.pressed]}><View style={[styles.eventDot, { backgroundColor: colors.accent }]} /><View style={styles.eventCopy}><Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text><Text style={[styles.eventKind, { color: colors.textMuted }]}>{event.source === "transcript" ? `From transcript · ${event.kind === "reminder" ? "Reminder" : event.kind === "calendar" ? "Event" : "Task"}` : event.kind === "reminder" ? "Reminder" : event.kind === "task" ? "Task due" : "Calendar event"}</Text></View></Pressable></Link>)}
               </View>
             </View>
           </View>

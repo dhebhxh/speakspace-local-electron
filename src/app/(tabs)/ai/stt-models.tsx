@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { SttModelCard, SttModelCardStatus } from "@/components/stt-model-card";
+import { OnboardingModelBackButton } from "@/components/onboarding-model-back-button";
 import { Colors, Spacing } from "@/constants/theme";
 import { SttModel } from "@/domain/stt-model/stt-model";
 import { useTheme } from "@/hooks/use-theme";
@@ -202,6 +203,7 @@ export default function SttModelsScreen() {
           { paddingBottom: Spacing.xxl + insets.bottom },
         ]}
       >
+        <OnboardingModelBackButton />
         <View style={styles.heading}>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
             Download models to run speech recognition fully on this device.

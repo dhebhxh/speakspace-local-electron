@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { LlmModelCard, LlmModelCardStatus } from "@/components/llm-model-card";
+import { OnboardingModelBackButton } from "@/components/onboarding-model-back-button";
 import { Colors, Spacing } from "@/constants/theme";
 import { LlmModel } from "@/domain/llm-model/llm-model";
 import { useTheme } from "@/hooks/use-theme";
@@ -162,6 +163,7 @@ export default function LlmModelsScreen() {
           { paddingBottom: Spacing.xxl + insets.bottom },
         ]}
       >
+        <OnboardingModelBackButton />
         <View style={styles.heading}>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
             Download GGUF models for fully local language inference on this device.

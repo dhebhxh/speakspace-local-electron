@@ -2,6 +2,34 @@
 
 本文件记录 SpeakSpace Local Mobile 面向组内测试的稳定版本。iOS 安装包不发布到 App Store，二进制资产附在团队仓库对应的 GitHub Release 中。
 
+## [1.5.0] - 2026-08-26
+
+### Added
+
+- Home 新增跨资源搜索，可同时命中 Note、Transcript、Structured Note、Knowledge 和关联 Ask AI conversation，并从结果直达相应内容。
+- Home Note 列表和录音保存时的 Workspace 选择列表增加固定高度、分批加载、滚动与搜索，避免大量数据把后续内容顶出页面。
+- 为跨资源搜索增加 SQLite schema v13 索引迁移，使用批量查询和内存缓存，避免逐 Note 的 N+1 查询。
+- Calendar 只以尚未完成且有日期的 Task 作为数据源，并在有待办的日期显示主题色圆点。
+
+### Changed
+
+- iOS 的 Task 日期预处理移植 Windows 桌面端确定性规则：相对日期先按 Note 创建时的本地日期重写，再交给本地 LLM 提取，重新生成时不会随当天日期漂移。
+- Workspace 列表、Workspace detail、Note detail、Settings 和 AI 管理页面重新整理信息层级与紧凑操作；重命名、删除、移动和导出等次要操作统一收纳或改为就地编辑。
+- Expo SDK 57 相关依赖对齐到当前官方推荐 patch，并重新生成 iOS 原生工程、安装 CocoaPods 后复跑模拟器与真机 Release 构建。
+- 所有受控弹窗支持点击背景关闭，文本 Close 改为图标；录音保存时的 Workspace 选择弹窗也沿用相同关闭规则。
+- Structured Note 保留 Summary、Key points、Tasks 三类内容，移除低准确率的独立 Reminders 和 Calendar 分类；Translate、Copy、Read 改为同一行图标操作。
+- 全局导航栏、状态栏、Calendar 和弹窗背景跟随 Light、Dark、System 主题；返回操作只显示图标，Settings 的外观选择改为紧凑单行分段控件。
+- AI Management 移除重复的 Text-to-Speech Models 入口，只保留一个 TTS 管理项。
+
+### Fixed
+
+- 修复 iOS 与 Windows 对“周五”“下周三”“一周后”“月底”和提前提醒等表达计算出不同 Task 日期的问题。
+- 修复主题切换后部分原生顶部区域或 Calendar 仍保留上一主题颜色的问题。
+- 修复 Workspace 较多时标题、搜索框和新建入口随列表一起滚走，以及空 Workspace 同时出现两个 Create Note 入口的问题。
+- 修复 Home 搜索只覆盖 Note 基本文本、精确结果可能被模糊匹配噪声淹没，以及旧异步结果覆盖新查询的问题。
+
+发布记录：[SpeakSpace iOS v1.5.0](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.5.0)
+
 ## [1.4.0] - 2026-08-26
 
 ### Added

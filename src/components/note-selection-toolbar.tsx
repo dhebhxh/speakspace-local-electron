@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { ModalCloseButton } from "@/components/modal-close-button";
 import { SafeAreaModal } from "@/components/safe-area-modal";
 import { Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import type { Note } from "@/domain/note/note";
@@ -52,10 +53,14 @@ export function NoteSelectionToolbar({
       </View>
       {selectedNotes.length > 3 && <Text style={[styles.hint, { color: colors.textMuted }]}>Select up to 3 notes for Ask AI</Text>}
 
-      <SafeAreaModal visible={moveVisible} onRequestClose={() => setMoveVisible(false)}>
+      <SafeAreaModal dismissDisabled={busy} visible={moveVisible} onRequestClose={() => setMoveVisible(false)}>
         <View style={styles.heading}>
           <Text style={[styles.modalTitle, { color: colors.text }]}>Move selected notes</Text>
-          <Pressable onPress={() => setMoveVisible(false)}><Text style={[styles.link, { color: colors.textMuted }]}>Close</Text></Pressable>
+          <ModalCloseButton
+            disabled={busy}
+            onPress={() => setMoveVisible(false)}
+            tintColor={colors.textMuted}
+          />
         </View>
         {workspaces.map((workspace) => {
           const allAlreadyThere = allSameWorkspace && selectedNotes[0]?.getWorkspaceId() === workspace.getId();

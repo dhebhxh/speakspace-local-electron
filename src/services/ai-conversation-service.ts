@@ -35,6 +35,8 @@ export type NoteConversationExportItem = AiConversationHistoryItem & {
 };
 
 export class AiConversationService {
+  private readonly changeListeners = new Set<() => void>();
+
   public constructor(
     private readonly conversationRepository: AiConversationRepository,
     private readonly messageRepository: AiMessageRepository,
@@ -44,6 +46,11 @@ export class AiConversationService {
 
   public async findConversation(id: string): Promise<AiConversation | null> {
     return this.conversationRepository.findById(id);
+  }
+
+  public subscribeToChanges(listener: () => void): () => void {
+    this.changeListeners.add(listener);
+    return () => this.changeListeners.delete(listener);
   }
 
   public async getConversationHistory(): Promise<AiConversationHistoryItem[]> {
@@ -172,6 +179,7 @@ export class AiConversationService {
     }
 
     await this.contextRepository.link(conversationId, noteId);
+    this.publishChange();
   }
 
   public async unlinkNote(conversationId: string, noteId: string): Promise<void> {
@@ -182,6 +190,7 @@ export class AiConversationService {
       );
     }
     await this.contextRepository.unlink(conversationId, noteId);
+    this.publishChange();
   }
 
   /**
@@ -201,6 +210,7 @@ export class AiConversationService {
       await this.getConversationOrThrow(conversationId);
       await this.assertCanGenerate(conversationId);
       await this.insertUserMessage(conversationId, content);
+      this.publishChange();
       return {
         conversationId,
         messages: await this.getCanonicalMessages(conversationId),
@@ -221,6 +231,7 @@ export class AiConversationService {
       content,
       input.conversationName ?? (notes.length === 1 ? notes[0].getName() : `${notes.length} notes`),
     );
+    this.publishChange();
 
     return {
       conversationId,
@@ -244,6 +255,7 @@ export class AiConversationService {
       conversationId,
       new Date().toISOString(),
     );
+    this.publishChange();
     return message;
   }
 
@@ -307,5 +319,9 @@ export class AiConversationService {
 
   private createId(prefix: string): string {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  private publishChange(): void {
+    this.changeListeners.forEach((listener) => listener());
   }
 }

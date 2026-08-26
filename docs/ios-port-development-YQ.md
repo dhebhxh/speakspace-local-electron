@@ -12,6 +12,8 @@
 
 2026 年 8 月 26 日完成第三轮 iOS 可用性补全：界面收敛为仅英语，新增首页日期兜底、本地任务和提醒通知、Note PDF 分享、保存后自动生成 Structured Note、首次使用引导、字号偏好、Note 关联 Ask AI、分阶段加载反馈、安全 Markdown、Ask AI 自动朗读和 Workspace 归类建议。同时为 Ask AI、Structured Note 和 Knowledge 建立端到端超时与可取消队列，避免本地模型排队或推理失败时丢失原始 Note。该批次保持 iPhone、本地优先和 Personal Team 安装边界，没有增加云服务或 App Store 发布依赖。
 
+同日后续评估发现，小型本地 LLM 对 Reminder 和 Calendar intent 的识别准确率不足以支撑稳定展示，因此将这两类 Structured Note 功能完整下线，而不是只隐藏标签。当前 Insights 只保留 Summary、Key points 和 Tasks；Home 日期标记和本地通知也收敛为仅使用带日期的有效 Task。AI Management 同时删除了重复的底部 Text-to-Speech Models 卡片，保留上方 TTS Models 入口和原有模型管理页面。
+
 > Evidence:
 > - Source: `modules/audio-converter/ios/`, `modules/audio-session-events/ios/`, `src/services/transcription-service.ts`, `src/database/migrations/ios-parity-schema-migration.ts`, `tests/ios-parity-features.test.mjs`, `scripts/verify-ios-release.mjs`, `scripts/package-ios-sidestore.mjs`
 > - Method: 对照 `main` 基线审查所有新增与修改文件；在 iPhone 16 Pro Max 上构建、安装并执行核心流程和桌面功能对齐验收
@@ -652,8 +654,8 @@ xcodebuild \
 
 | 功能 | 主要入口 | 关键实现 | 失败时保留的内容 |
 | --- | --- | --- | --- |
-| Home 日期标记 | Home Calendar | Structured Note 日期优先，transcript 确定性兜底并按 Note + 日期去重 | 原 Note 和已有 Structured Note |
-| 本地通知 | Settings / app foreground | 只调度未来 pending Task 和明确 Reminder，点击前校验 Note | Note、Task 和偏好；关闭时撤销本 App 通知 |
+| Home 日期标记 | Home Calendar | 只汇总带有效 `dueAt` 的 current pending Task | 原 Note 和已有 Structured Note |
+| 本地通知 | Settings / app foreground | 只调度未来的 current pending Task，点击前校验 Note | Note、Task 和偏好；关闭时撤销本 App 通知 |
 | 自动 Structured Note | 录音或导入保存后 | 先提交 Note，再进入 Note detail 前台生成 | 原始 transcript 和录音 |
 | Ask AI / Knowledge | Note 和 Ask AI 页面 | 全流程 deadline、FIFO 取消、阶段状态和 spinner | 用户问题、旧 Structured Note、Knowledge 历史 |
 | PDF 分享 | Note detail | HTML 转义、临时 PDF、iOS share sheet、`finally` 清理 | Note 本身不受导出失败影响 |
@@ -679,27 +681,25 @@ Settings 增加 Small、Default、Large 三档 App 字号。公共文本组件�
 
 ### 12.3 Home 自动日期标记和本地通知
 
-旧 Home 只显示 Structured Note 的 `calendarIntents`，所以 Task 的 `dueAt` 不会进入日历，小模型返回无法信任的空 timestamp 时，即使 transcript 明确写了日期也不会标记。本轮新增 `buildHomeCalendarItems`，统一合并未完成且 current 的 Task、Reminder 和 Calendar event。结构化日期存在时直接使用；同一 Note 同一天的 transcript 兜底会被抑制，避免重复卡片。
+初版实现曾把 current Task、Reminder、Calendar event 和 transcript 日期兜底统一送入 Home Calendar。后续模拟器与真机样本显示 Reminder、Calendar intent 以及 transcript 日程推断的误识别率过高，因此当前实现收敛为只接收 Structured Note 中未完成、current 且具有有效 `dueAt` 的 Task。没有结构化 Task 的普通日期、Reminder 句式和会议描述不再在 Home 生成日期标记。
 
-当结构化 timestamp 为空时，兜底解析器只从原 transcript 读取可验证日期：ISO 日期、中英文年月日、英文月份日期、today/tomorrow/day after tomorrow，以及带任务或日程上下文的本周/下周具体星期。`later`、单独的 `next week`、`next month` 等无法落到一天的表达不会创建标记；相对日期还要求句子含 need、submit、meeting、remind 等行动证据。标题从原句移除日期并清理悬空介词；真机样本暴露的 `scheduled for ... at` 已加入回归，最终显示为 `scheduled at 2:00 PM`。这种策略比只相信小模型更有召回，同时不把所有出现日期的叙述都当成任务。
+这个调整有意保留 Home 的 Calendar 视图，因为它仍能清楚展示 Task 截止日期；删除的是低置信度输入来源，而不是整个日期界面。Agenda 的来源说明固定为 `Task due`，不会再显示 Reminder、Calendar event 或 `From transcript`。明确的提醒语句也不会因为 Reminder 类别被移除而自动降级成 Task，避免换一个名称继续产生同一类误报。
 
 ```mermaid
 flowchart LR
   N[Saved Note] --> S[Structured Note]
-  S -->|valid timestamp| H[Home calendar]
-  S -->|future pending Task or explicit Reminder| L[Local iOS notification]
-  S -->|timestamp is null| F[Grounded transcript date fallback]
-  F --> H
-  F -. display only; no inferred alert .-> L
+  S -->|current pending Task with valid dueAt| H[Home calendar]
+  S -->|future current pending Task| L[Local iOS notification]
+  S -. Reminder / Calendar / transcript date ignored .-> X[No calendar item or alert]
 ```
 
-通知通过 `expo-notifications` 调度，默认关闭，只有用户在 Settings 主动打开时才申请权限。调度器只接收未来的 current pending Task 和明确带 `remindAt` 的 Reminder；普通 Calendar event 和 transcript 兜底日期不会静默变成系统提醒。每次 Note、Workspace 或 Structured Note 状态变化，以及 App 回到前台时，服务只撤销并重建 `data.kind === "speakspace-note"` 的自有请求，不影响其他 App。点击通知后先限制 Note ID 字符和长度，再确认数据库中仍存在该 Note，最后才导航。
+通知通过 `expo-notifications` 调度，默认关闭，只有用户在 Settings 主动打开时才申请权限。调度器现在只接收未来的 current pending Task；Reminder、Calendar event 和 transcript 日期都不会创建系统提醒。每次 Note、Workspace 或 Structured Note 状态变化，以及 App 回到前台时，服务只撤销并重建 `data.kind === "speakspace-note"` 的自有请求，不影响其他 App。升级前已存在的 SpeakSpace Reminder 请求会在下一次有效 reconciliation 中被撤销，只按 Task 重建。点击通知后先限制 Note ID 字符和长度，再确认数据库中仍存在该 Note，最后才导航。
 
 项目只使用本地通知。`with-local-notifications-only` config plugin 在 Prebuild 时移除 `aps-environment`，避免 `expo-notifications` 的远程推送能力破坏免费 Personal Team 签名；没有 APNs token、推送服务器或后台远程通知。
 
 > Evidence:
 > - Source: `src/services/home-calendar-items.ts`, `src/services/note-notification-planner.ts`, `src/services/note-notification-service.ts`, `src/components/notification-coordinator.tsx`, `plugins/with-local-notifications-only.js`
-> - Method: 单元测试覆盖 structured 优先、同日去重、模糊日期拒绝、中英文相对日期、过去/完成/旧 occurrence 过滤和稳定 notification ID；Release 真机链路覆盖空结构化 timestamp 时从 transcript 标记并回到来源 Note
+> - Method: 单元测试覆盖 Task-only 输入、过去/完成/旧 occurrence 过滤、Reminder/Calendar/transcript 输入忽略和稳定 notification ID；模拟器使用旧 QA 数据确认只保留 Task 日期，Release 真机覆盖构建、安装和启动
 > - Confidence: High；系统通知在真实到点时的声音和展示仍受用户的 iOS Focus、静音和通知设置控制
 
 ### 12.4 本地 AI deadline、取消和可见进度
@@ -783,8 +783,8 @@ git diff --check
 
 ### 12.9 本轮有意保留的限制
 
-1. Transcript 日期兜底只用于 Home 展示，不把推断结果持久化为 Structured Note，也不据此自动创建系统通知。
-2. 本地通知只覆盖未来 current pending Task 和明确 Reminder；Calendar event 不默认提醒，用户关闭权限后 App 不能绕过 iOS 设置。
+1. Home 日期标记只覆盖具有有效 `dueAt` 的 current pending Task；不再从 transcript、Reminder 或 Calendar intent 兜底。
+2. 本地通知只覆盖未来 current pending Task；用户关闭权限后 App 不能绕过 iOS 设置。
 3. Ask AI Markdown 是安全、有限子集，不追求完整 CommonMark；图片、HTML 和非 HTTPS 链接只作为不可执行文本或被移除。
 4. PDF 是单 Note 快照，不嵌入音频，也不泄露多 Note conversation 的消息正文。
 5. Workspace 建议是确定性规则，只在空/通用 Workspace 场景提示，不承诺桌面端 LLM 归类的语义深度。
@@ -814,12 +814,175 @@ git diff --check
 > - Method: 版本配置检查、干净 Prebuild、未签名和签名 Release 全量构建、codesign/entitlement 检查、IPA ZIP/entry/SHA-256 验证、真机覆盖安装/启动/进程检查、设备数据库复制和发布门复跑
 > - Confidence: High；Windows SideStore 首次安装与七天 Refresh、真实到点通知的 Focus/静音矩阵和所有 PDF 分享目标仍需相应外部环境完成
 
+### 12.11 Reminder/Calendar 功能下线与重复 TTS 入口修正
+
+本轮根据实际识别质量反馈，从 Structured Note 的产品链路中下线 Reminder 和 Calendar intent。修改不是单纯删除两个 tab，而是同时收窄生成、领域、存储读取和所有下游消费边界：本地 LLM 的 JSON schema 与 prompt 只提取 Task；确定性 fallback 只补明确 Task，并主动排除 `remind me`、`提醒` 等提醒句式；`CoreNoteInsight` 删除 Calendar intent 类型和访问器；Repository 不再读取旧 intent 行，重新生成时会清理该 Note 的旧行。SQLite 的旧表和建表 migration 暂时保留，以免为了删除一张历史表引入破坏性升级风险，但运行时不会再加载这些数据。
+
+页面层的 Insights 只显示 Summary、Key points 和 Tasks，辅助说明同步改为 `Summary, key points, and tasks.`。Copy insights、Read aloud、Translate 和 Export PDF 都不再拼接 Reminder/Calendar section。Home Calendar 只接收 Task，通知调度器也只创建 `speakspace-task-*` 请求；Settings 改为 `AI & Notifications` / `Task Notifications`。这里不审查或改写用户原始 transcript，也不强行删除普通摘要里的自然语言：如果 Note 本身说“提醒团队”，Summary 仍可以把它作为笔记内容描述，但不会生成 Reminder 对象、标签、Home event 或系统通知。
+
+AI Management 原先有一个上方 `TTS Models` 和一个底部 `Text-to-Speech Models`，两者都导航到 `/ai/tts-models`。当前只保留上方卡片，accessibility label 仍明确为 `Manage text-to-speech models`；模拟器点击后成功进入 `Text-to-Speech Models` 页面，说明删除重复入口没有切断模型管理能力。
+
+回归验证使用一组明确标注 `QA SYNTHETIC TEST DATA` 的旧模拟器数据，其中同时含 Task、Reminder 和 Calendar event。这组数据很适合检查兼容行为：更新后的 Insights accessibility tree 只有 Summary、Key points、Tasks 三项；8 月 28 日 agenda 只显示 `Submit graduation project draft · Task due`；旧 Calendar event 对应的 8 月 30 日没有 entry；Settings 只显示 Task Notifications。AI Management accessibility tree 只有一个 TTS 管理按钮，视觉截图也只有四张模型管理卡片。
+
+自动质量门为 89 tests passed、0 failed；TypeScript、Expo dependency check、Expo Doctor 21/21 和 `git diff --check` 通过。Lint 为 0 error、12 个原有 Hook dependency warning。新的 iPhoneOS Release 使用 Xcode 26.6 从独立 DerivedData 完整编译，签名 verifier 与 `codesign --verify --deep --strict` 均通过；产物包含 4,754,844-byte 离线 bundle。连接的 iPhone 16 Pro Max（iOS 27.0 beta）当时处于解锁状态，使用同 Bundle ID 覆盖安装并冷启动成功；设备清单仍只有一个 SpeakSpace `1.4.0 (5)`，进程保持运行，没有安装 XCUITest Runner，也没有使用 iPhone Mirroring。由于 Xcode SDK 为 iOS 26.5、设备为 iOS 27.0 beta，仍保留工具链与设备版本不完全一致的环境风险说明。
+
+> Evidence:
+> - Source: `src/services/core-note-insight-service.ts`, `src/services/core-note-insight-generation-policy.ts`, `src/domain/core-note-insight/core-note-insight.ts`, `src/repositories/core-note-insight-repository.ts`, `src/app/notes/[noteId].tsx`, `src/services/home-calendar-items.ts`, `src/services/note-notification-planner.ts`, `src/app/(tabs)/ai/index.tsx`, `tests/core-note-insight-generation-policy.test.mjs`, `tests/selected-ios-features.test.mjs`
+> - Method: 先执行失败回归确认旧行为，再完成 Task-only 实现；全量 Node/TypeScript/Lint/Expo 检查；模拟器 accessibility tree 与截图；签名 Release 真机构建、覆盖安装、冷启动、唯一 App 和进程检查
+> - Confidence: High；功能移除和剩余入口已覆盖代码、自动测试、模拟器 UI 与真机安装启动，但未把模拟器点击冒充真机触控，也未重新执行与本次改动无关的完整录音、模型下载和 SideStore 矩阵
+
+### 12.12 深色导航一致性与紧凑动作栏
+
+本轮修正了 iOS 深色模式下原生导航层仍沿用浅色背景的问题。Root Stack 现在把 SpeakSpace 的 background、text、accent、border 和 danger token 映射为 React Navigation theme，并为所有根路由统一设置 `headerStyle`、`contentStyle`、`headerTintColor` 与 `headerTitleStyle`。AI 自己的嵌套 Stack 同样使用这些 header 配置，并额外控制其 native-stack `statusBarStyle`，避免 AI Management 正常但模型二级页面重新出现白条或错误图标颜色。根 Tab 的状态栏由 `expo-status-bar` 单独控制，不再让 Root Stack 重复写入；这样既能即时切换 Home/Settings 的图标颜色，也能让 AI 二级原生 Screen 使用当前主题。更完整的 Light/Dark/System 优先级修正在 12.13 记录。
+
+所有 native-stack 返回按钮使用 `headerBackButtonDisplayMode: "minimal"`，只保留系统 chevron。Getting Started 内的自定义上一步按钮，以及从模型页面回到引导的自定义返回按钮，也改为同样的 chevron-only 控件；可见的 `Back` 被移除，但 VoiceOver 仍分别得到 `Previous step` 和 `Back to Getting Started`。Workspace 详情的 New Note 主动作缩为 48×48 的 `+` 图标，保留 `Create a new note` accessibility label；新增 Note 弹窗里的标题和提交按钮没有被误删，因为那里仍需要说明当前操作。
+
+Structured Note 的 Translate、Copy insights 和 Read aloud 原来分成三行且占用过多垂直空间。现在它们组成同一行的三个等宽按钮，视觉标签为 Translate、Copy 和 Read，并分别使用 translate、copy 与 play 图标。翻译和朗读准备阶段显示 `ActivityIndicator`；Copy 成功态短暂显示 Copied。完整语义仍保留在 accessibility label 中。相同原则也用于本页其他上下文明确的动作：Ask AI about this transcript → Ask AI、Generate/Regenerate Core Insights → Generate/Regenerate、Manage Templates → Templates、Generate Knowledge again → Regenerate、Classify Automatically → Auto-classify、Delete this result → Delete。全局扫描后保留了模型名称、保存目标和 onboarding 终点等确实承担辨识信息的长标签，没有为了短而牺牲含义。
+
+模拟器使用 iPhone 17 Pro / iOS 26.5 的签名无关 Release 包和明确标注的 QA synthetic data。Dark 模式下实际截图核对 Home、AI Management、Workspace detail、Note detail/Insights 与 Text-to-Speech Models：状态栏背景、导航栏和内容背景连续一致，状态图标为白色；native 返回区只显示 chevron；Workspace 只显示 `+`；Insights 三个动作在 Large text 设置下仍同排。Accessibility tree 同时确认这些图标控件仍有可读名称；点按 Note 返回箭头能返回 Workspace；点按 Copy 后用 `simctl pbpaste` 读回完整 Structured Note 文本。
+
+连接的 iPhone 16 Pro Max 使用同一源码重新完成 iPhoneOS Release 全量构建。产物为 `com.dhebhxh.speakspacelocalmobile` 1.4.0 (5)、arm64、有效 Personal Team 签名；`codesign --verify --deep --strict` 通过。通过 `devicectl` 用相同 Bundle ID 覆盖安装并启动后，设备清单仍只有一个 SpeakSpace，进程保持运行；覆盖安装保留现有测试数据，没有卸载 App、清理容器或安装 XCUITest runner，也没有使用 iPhone Mirroring。模拟器负责逐页视觉和触控验证，真机证据严格限定为构建、签名、安装、启动、唯一 App 与进程存活，避免把无法直接观察的真机 UI 冒充为已触控验收。手机运行 iOS 27.0 beta，而 Xcode 26.6 使用 iOS 26.5 SDK，当前 CoreDevice/DDI 链路可用，但这仍是后续系统 beta 更新时需要复查的兼容性边界。
+
+新增 `ios-interface-polish.test.mjs` 固定导航主题、status bar、minimal back、自定义返回、仅 `+` 的 New Note 入口、Insights 单行动作、translate icon、短标签和 spinner。最终质量门为 91 tests passed、0 failed；TypeScript 与 `git diff --check` 通过；Lint 为 0 error、12 个原有 Hook dependency warning；Expo Doctor 为 21/21。iOS simulator Release 和签名 iPhoneOS Release 均以退出码 0 完成，构建日志只保留 Expo/React Native 第三方依赖警告。
+
+> Evidence:
+> - Source: `src/app/_layout.tsx`, `src/app/(tabs)/ai/_layout.tsx`, `src/app/workspaces/[workspaceId]/index.tsx`, `src/app/notes/[noteId].tsx`, `src/app/getting-started.tsx`, `src/components/onboarding-model-back-button.tsx`, `src/components/speech-playback-button.tsx`, `tests/ios-interface-polish.test.mjs`
+> - Method: 路由与动作文案全量静态扫描、Node/TypeScript/Lint/Expo 检查、iOS 26.5 模拟器逐页 accessibility tree/截图/点按/剪贴板验证、iOS 27 beta 真机签名 Release 覆盖安装/启动/唯一 App/进程检查
+> - Confidence: High；截图所列 UI 已完成模拟器视觉与交互验证，真机仅声称可证实的安装启动范围
+
+### 12.13 Settings 横向主题选择与全局主题一致性复查
+
+Appearance 原来把 Light、Dark、System 做成三行卡片，每项还重复说明，既占高度也弱化了三者互斥的关系。本轮抽出通用 `SettingsSegmentedControl`，让 Appearance 与 Text Size 共用同一种横向三段结构。每段仍是独立 radio accessibility element，保存期间禁用整组并在对应段显示 spinner；Light/Dark/System 的逐项说明被删除，标题和页面级说明继续保留。这个改动没有改变存储键或既有偏好值，因此已有安装可以直接读取原值。
+
+顶部不一致的根因跨越 React 页面、UIKit navigation bar 和 iOS status bar，不能只改某个页面的背景色。全局扫描确认项目只有 Root Stack 与 AI nested Stack 两个原生导航器，于是把共同 header 规则集中到 `createThemedStackScreenOptions`：content 使用当前 token；iOS header background、title 和 tint 使用 `DynamicColorIOS`，即使 native-stack 缓存了配置，UIKit trait 改变后仍会解析为正确的 Light/Dark 颜色。`ThemeProvider` 在切换偏好时同步调用 `Appearance.setColorScheme`；System 使用 `unspecified` 恢复系统控制，写入失败时同时回滚 React state 与 native appearance。React Navigation theme 也映射到同一套 background、card、text、primary、border 和 notification token。
+
+状态栏采用明确的所有权拆分。Home、Workspaces 根列表和 Settings 所在的无 header Tab 只由根 `expo-status-bar` 控制，Root Stack 不再重复指定 `statusBarStyle`；AI 的 nested Stack 会在 push 模型二级页面时接管 native status bar，因此它显式传入当前模式。`UIViewControllerBasedStatusBarAppearance` 设为 `true`，让 Expo Router/native screen 可以通过 view controller 更新状态栏。开发中曾分别验证“只由 Root Stack 控制”会使 Tab 切换主题后保留旧图标，以及“只用全局 StatusBar”会使 AI 二级 Screen 覆盖成错误图标；最终职责拆分是基于这两次可复现失败得到的修复，不是只凭静态代码判断。
+
+Calendar 的问题来自第三方组件内部只在首次 render 创建 theme styles；更换 color props 本身不会重建那份样式。Home 因而把 calendar key 从仅语言扩展为 `language-themeMode`，主题改变时只重挂 Calendar，不重挂整页或清空数据库。传入的 theme 同时覆盖 calendar/background、month、weekday、day、inactive/disabled day、arrow、dot、today 与 selected day 文本，避免只修卡片外框却留下内部深色块。全局搜索还检查了 hard-coded white/black、StatusBar、Stack header 和所有 `useColorScheme` 调用；剩余固定白色只用于 accent 上的 checkmark、录音 pause glyph 等有意的高对比图形，不承担页面背景。
+
+模拟器使用 iPhone 17 Pro / iOS 26.5 的离线 Release 包和明确标注的 QA synthetic data。实际执行了 Dark → Light → Dark、Light → System（系统 Dark）、System 下系统 Dark → Light → Dark 的双向切换；每一步都重新读取 accessibility tree 和截图。Home、Settings、Workspace detail、AI Management、Text-to-Speech Models 的状态栏、原生 header、content 与 bottom tab 连续一致；Workspace detail 和 AI 二级页面在 System 模式下停留当前路由时也能随系统即时换色。完整 Calendar 在 Light 与 Dark 下分别滚动到 agenda 底部核对，内部背景、日期、inactive day、selected day、dot 与 agenda 均一致。Settings tree 同时确认 Appearance 为同一横排的三个 radio，并在 Light/Dark/System 间正确更新 checked state。
+
+本轮的结构回归补进 `ios-interface-polish.test.mjs`：固定 Root/AI 的状态栏所有权、动态 iOS header token、`UIViewControllerBasedStatusBarAppearance`、native appearance 同步和回滚、Appearance/Text Size 共用 segmented control，以及 Calendar 按 theme mode 重挂并覆盖关键颜色。这个测试用于防止以后把两个状态栏控制器重新叠加，或移除 Calendar key 后复发“外层已换色、内部仍保留旧主题”。
+
+连接的 iPhone 16 Pro Max 在构建前由 CoreDevice 确认已解锁。使用独立 `/tmp` DerivedData 对当前源码执行 iPhoneOS Release 全量构建，145 个原生 target 最终 `BUILD SUCCEEDED`；产物为 arm64、`com.dhebhxh.speakspacelocalmobile` 1.4.0 (5)、最低 iOS 16.4，且生成的 Info.plist 中 `UIViewControllerBasedStatusBarAppearance = true`。Personal Team 签名的 `.app` 经 `codesign --verify --deep --strict` 通过。使用同 Bundle ID 覆盖安装并 `--terminate-existing` 冷启动后，设备 App 清单仍只有一条 SpeakSpace 1.4.0 (5)，进程保持运行。本轮没有卸载或清除手机容器、没有安装测试 Runner，也没有使用 iPhone Mirroring；真机证据限定为签名、安装、启动、唯一 App 和进程存活，逐页主题视觉证据来自模拟器。
+
+最终质量门重新执行而不是复用局部结果：`npm test` 为 92 passed、0 failed；TypeScript 通过；Lint 为 0 error、12 个既有 Hook dependency warning；Expo dependency check 显示依赖已是当前版本；Expo Doctor 为 21/21；生成配置确认 1.4.0 (5) 和 status-bar controller 为 true；`git diff --check` 通过。production audit 没有 high/critical，仍是 13 个 Expo CLI/config plugin/Xcode/ngrok 工具链传递的 moderate `uuid` 公告；`--force` 会引入不兼容的 Expo 版本，因此没有执行破坏性强制修复。手机运行 iOS 27.0 beta，而 Xcode 26.6 的 SDK 为 iOS 26.5；当前 CoreDevice/DDI 构建、安装和启动链路可用，但系统 beta 后续升级仍需复查。
+
+> Evidence:
+> - Source: `app.json`, `src/providers/theme-provider.tsx`, `src/constants/themed-stack-options.ts`, `src/app/_layout.tsx`, `src/app/(tabs)/ai/_layout.tsx`, `src/app/(tabs)/settings.tsx`, `src/app/(tabs)/index.tsx`, `tests/ios-interface-polish.test.mjs`
+> - Method: Expo 57/React Native 官方约束核对、全局静态扫描、失败路径复现、iOS 26.5 simulator Release 冷启动、Light/Dark/System 双向切换、原生二级路由保留测试、Calendar 完整区域截图与 accessibility tree 核对、独立 iPhoneOS Release 全量构建、签名校验、真机覆盖安装/冷启动/唯一 App/进程检查、完整自动质量门
+> - Confidence: High；模拟器内可见主题矩阵已逐项验证，真机只声称可直接证明的签名安装启动范围；未把模拟器触控冒充为真机逐页 UI 验收
+
+### 12.14 Workspace 与 Note 信息层级重排
+
+Workspace 详情页原来把更新时间、编辑、删除和新增 Note 分散在多个高度层级中，导致真正的页面主题 Notes 反而离原生导航栏较远。本轮把 Notes 提升为导航栏后的第一个内容标题，并把新增入口保留为右侧 48×48 的 `+` 图标；下一行以 `N notes · Updated ...` 表示列表状态，Workspace 重命名和删除则作为同一行右侧的两个 44×44 图标操作。名称仍由原生导航栏承担，因而页面不再重复显示 Workspace 名称。长日期和较大的 Dynamic Type 会让元数据自然换行，危险操作继续使用独立 danger token 和确认弹窗。
+
+Note 详情页上半部改为“来源层级 + 统一命令栏”。Workspace 名称是主要来源信息，创建日期时间是次级元数据，分类仍可独立修改；Play/Pause Audio、Ask AI、Export PDF、Rename、Move 和 Delete 使用同一尺寸、同一圆角和同一状态模型的 SF Symbols 工具栏。音频不再独占一张横向卡片，PDF 生成等异步操作仍在原位显示 spinner，所有 icon-only 操作都有完整 VoiceOver label、busy/disabled/selected 状态和至少 44pt 的触控区域。这样压缩的是重复说明，不是功能或辅助功能语义。
+
+Insights 内的 Structured Note 标题右侧只保留 Translate、Copy、Read 三个图标。翻译和朗读准备阶段显示 spinner，翻译完成、复制完成、正在朗读及错误重试各有视觉与 accessibility 状态；缺少 TTS 模型时会在错误信息下提供可点击的模型管理入口。Summary、Key Points、Tasks 改成等宽文字标签加底部活动指示线，明确表达“切换当前内容视图”而不是三个独立提交按钮。Transcript / Insights / Knowledge 主切换栏和 Ask AI Conversations 区域按需求保持原布局与行为。
+
+> Evidence:
+> - Source: `src/app/workspaces/[workspaceId]/index.tsx`, `src/app/notes/[noteId].tsx`, `tests/ios-interface-polish.test.mjs`
+> - Method: 层级与动作语义代码审查、44pt 触控区与 VoiceOver 静态回归、iPhone 17 Pro 模拟器 accessibility tree 和逐项导航验证
+> - Confidence: High；本轮只重排 Note 页上半部与 Structured Note 内部导航，没有改动用户要求保留的下半部主切换栏和对话列表
+
+### 12.15 Home 跨资源搜索与长列表边界
+
+Home 的 Note 区域现在有固定最大高度 520pt 的内部纵向滚动容器；默认只渲染 20 条，滚动接近底部时再追加下一批 20 条。外层页面仍可继续滚到 Calendar，但 Note 数量增加时不会无限推远 Calendar。结果底部会明确显示已加载数量，内层滚动条保持可见。录音结束后的 Save transcription 弹窗也增加 Workspace 搜索框和 260pt 高的滚动列表；搜索使用 Unicode NFKC 归一化及大小写无关包含匹配，长 Workspace 名称最多两行，当前选择被搜索条件隐藏时 Save 会禁用并提示重新选择，避免把录音误存进不可见的旧选择。
+
+Home 搜索不再只查 Note 标题和 transcript，而是建立资源级搜索语料：Note 标题、Transcript、Structured Note 的 summary/key points/tasks/action items、每一份 Knowledge result，以及关联 Ask AI conversation 的名称与消息。一个 Note 命中多种资源时会显示多张带来源标签的结果卡；Structured Note 结果直达 Insights，Knowledge 结果直达对应历史输出，Ask AI 结果直达原对话。Ask AI 摘要先经过安全 Markdown 到纯文本转换，用户看到的是标题、列表和表格内容本身，不会看到 `#`、`**`、反引号等语法字符。精确词组与全词项命中优先；只有不存在可靠命中时才启用编辑距离容错，避免大量 Note 时一个精确结果被几十条模糊噪声淹没。
+
+搜索索引在内存中缓存，并对同一时刻的请求去重；Note、分类、Structured Note、Knowledge、Ask AI、Trash 恢复或永久删除等写路径都会使缓存失效。Home 使用 200ms 输入延迟和失效令牌避免旧异步结果覆盖新查询。原独立 Search 页面也在重新获得焦点以及相关服务发布变更时刷新。这里取代了 11.6 所记录的旧搜索范围：旧段落保留为当时版本的开发历史，当前范围以本节为准。
+
+> Evidence:
+> - Source: `src/app/(tabs)/index.tsx`, `src/app/transcription.tsx`, `src/services/note-fuzzy-search.ts`, `src/services/note-service.ts`, `src/repositories/note-repository.ts`, `src/application/app-container.ts`, `tests/home-search-long-lists.test.mjs`
+> - Method: 30 条明确标注 QA synthetic data 的长列表、精确尾部词搜索、同 Note 多资源命中、Markdown 对话摘要、结果直达路由与缓存失效代码路径复核
+> - Confidence: High；模拟器已覆盖 Home 长列表和资源搜索，录音保存弹窗由自动回归与代码审查覆盖，模拟器因没有 active STT 模型未伪造一次完整录音来冒充该弹窗的动态端到端证据
+
+### 12.16 Task-only 日历与桌面端提取策略对齐
+
+日历继续遵守 12.11 的产品边界：不恢复低准确率的 Reminder/Calendar entity 或 Insights tab，而是只显示 Structured Note 中尚未完成且带日期的 Task。针对“录音完成、LLM 已处理但 Calendar 为空”，移动端 Task prompt 对齐桌面端 `TodoExtractionPrompt` 的核心规则：每个真实承诺只生成一个任务；已完成事实和纯描述不生成；无日期任务保留但不猜今天；明确 reminder 语句若包含具体未完成动作，则生成底层 Task，并把可执行提醒时间放入 `dueAtExpression`；事件与提前提醒仍是一个任务。移动端保留自己的 JSON schema、自然语言 expression 和本地时间解析器，以适配现有 Structured Note 数据模型，不直接复制桌面端 Electron/SQLite 实现。
+
+确定性恢复层用于补偿小型本地模型漏项，并以减少误报为首要约束：支持英文和简繁中文日期、相对日期、重复任务、提前若干天以及提醒时间；同时排除完成态、否定提醒、无义务的说明、条件性假设和系统自动行为。日期由一次生成开始时捕获的设备本地 reference 与 timezone 解析，Task 存储 `dueAt` 或 `startsAt`，Home 与本地通知使用相同的 `dueAt ?? startsAt` 规则。严格的 `YYYY-MM-DD` 作为本地日历日直接使用；含时区的 datetime 先转成本地日期，避免 UTC 午夜和夏令时把圆点移动到前一天。
+
+Home 根据日期分组 Task，并为每个有待办的日期写入 `marked: true` 与主题 accent `dotColor`；选中日期会合并而不是覆盖已有圆点。点击 agenda 中的 Task 可返回来源 Note，完成 Task 后 Core service 发布变更，Home 会重新加载，圆点和 agenda 随当前未完成数据更新。
+
+> Evidence:
+> - Source: `/Users/yanqingpeng/speakspace-local-electron/src/main/dashboard/TodoExtractionPrompt.ts`, `src/services/core-note-insight-service.ts`, `src/services/core-note-insight-generation-policy.ts`, `src/services/core-note-time.ts`, `src/services/home-calendar-items.ts`, `src/services/note-notification-planner.ts`, `tests/core-note-insight-generation-policy.test.mjs`, `tests/selected-ios-features.test.mjs`
+> - Method: 桌面提示词逐条映射、英中任务/完成态/否定/相对日期/提前提醒/DST 回归矩阵、模拟器 Calendar accessibility 中“有条目”日期与 agenda 直达验证
+> - Confidence: High；规则对明确任务采取实用召回，对否定、条件和纯描述采取保守排除；自然语言和本地模型输出没有理论上的 100% 识别率，复杂语句仍应以 Structured Note 审核结果为准
+
+### 12.17 搜索数据库迁移与查询成本
+
+跨资源搜索仍以本地 SQLite 为唯一数据源，不上传 Note 或 AI 内容。数据库 schema 从 v12 升到 v13，只新增四个非破坏性索引：key point 的 `insight_id`、AI message 的 `conversation_id`、conversation context 的 `note_id` 和 Knowledge result 的 `note_id`。Task 与 action item 所需索引已由此前 migration 提供。语料构建使用四个批量查询后在内存按 Note 聚合，不执行每篇 Note 再查一次 Structured/Knowledge/Conversation 的 N+1 模式；关联对话用换行保留 Markdown 块边界，随后在显示层安全转换成普通文本。
+
+实际模拟器数据库已从 v12 自动迁移到 v13，`PRAGMA user_version` 为 13。对 Structured Note、Ask AI 和 Knowledge 子查询执行 `EXPLAIN QUERY PLAN` 时，SQLite 会使用对应索引。migration 使用 `CREATE INDEX IF NOT EXISTS`，因此重复启动是幂等的，也不会改写已有用户内容。
+
+> Evidence:
+> - Source: `src/database/migrations/note-search-index-migration.ts`, `src/database/index.ts`, `src/repositories/note-repository.ts`
+> - Method: 模拟器真实数据库 migration、`PRAGMA user_version`、索引清单和 `EXPLAIN QUERY PLAN`，以及搜索缓存并发失效审查
+> - Confidence: High；索引和批量查询路径已直接在本轮数据库上验证，不把小型 fixture 的速度等同于任意规模设备的性能上限
+
+### 12.18 本轮最终验证、真机覆盖安装与已知边界
+
+本轮完成代码后重新执行完整自动质量门：`npm test` 为 108 passed、0 failed；`npx tsc --noEmit` 通过；`npm run lint` 为 0 error、12 个既有 React Hook dependency warning；`npx expo-doctor` 为 21/21；`npx expo install --check` 确认依赖与 Expo SDK 57 一致；`git diff --check` 通过。额外的 12 组英中 Task/否定/明确计划样本也全部通过，覆盖“需要/必须/计划/打算”、已完成事实、否定提醒、条件句以及中英文日期表达。
+
+iPhone 17 Pro / iOS 26.5 模拟器使用最终源码重新构建 Release，结果为 0 error。模拟器真实数据库已迁移到 v13；Home 使用 30 条明确标注的临时 QA Note 验证 20 条首批渲染、容器内继续加载、精确尾部搜索、Structured Note Tasks 直达、Ask AI 对话独立结果与 Markdown 纯文本摘要。Calendar accessibility tree 对含 Task 的日期返回“有条目”语义，点击 Structured Note Tasks 结果会直接打开 Note 的 Insights / Tasks 内容。完成验证后仅删除 `qa-scroll-*` 这 30 条临时记录，模拟器保留原来的 2 条数据并重新启动应用，没有把测试夹具留在后续开发环境。
+
+连接的 iPhone 16 Pro Max 使用当前最终源码执行 Release 全量构建与同 Bundle ID 覆盖安装。构建为 0 error、3 warning；warning 来自重复 `-lc++` 以及 Expo Dev Launcher build phase 的依赖分析提示，不影响签名和安装。生成的 `.app` 经 `codesign --verify --deep --strict` 验证为有效，并满足 Designated Requirement。CoreDevice 的设备 App 清单只返回一条 `com.dhebhxh.speakspacelocalmobile`，版本 1.4.0、build 5；随后使用 `--terminate-existing` 启动成功，设备进程表确认 `speakspacelocalmobile` 进程 PID 14019 正在运行。因此手机上没有并存第二个 SpeakSpace 版本，也没有先卸载再制造额外数据容器。
+
+验证结论按证据边界表达：Workspace、Note 上半部、Structured Note tabs、Home 长列表/search 与 Calendar 圆点均有 iOS 模拟器 Release 的可见界面、accessibility tree、导航或数据库证据；所有相关状态和边界均有自动回归。当前模拟器没有 active STT 模型，因此没有伪造一次完整录音来声称动态到达 Workspace 选择弹窗；该弹窗的搜索、最大高度、滚动、长名称和选择隐藏保护由结构回归与独立代码审查覆盖。项目目前也没有 XCUITest target，所以真机证据限定为 Release 构建、签名、唯一覆盖安装、启动和进程存活，不把模拟器逐页触控冒充为真机自动化。手机为 iOS 27.0 beta，而本机 Xcode 26.6 / SDK 为 iOS 26.5；当前 CoreDevice 与 DDI 链路实际可用，但系统 beta 或 Xcode 更新后仍应重跑真机验证。
+
+> Evidence:
+> - Source: 本节前述 UI、搜索、Task、migration 文件，`tests/*.test.mjs`, `docs/ios-port-development-YQ.md`
+> - Method: 完整 Node/TypeScript/Lint/Expo 质量门、iOS 26.5 simulator Release 构建与 UI/accessibility/database 验证、测试夹具定向清理、iOS 27 beta 真机 Release 全量构建、严格签名校验、CoreDevice 唯一 App/启动/进程检查
+> - Confidence: High；已明确区分自动回归、模拟器可见交互和真机可直接证明的安装运行证据，并保留 STT 模型与 XCUITest 缺失造成的验证边界
+
+### 12.19 iOS 与 Windows 的 Task 日期语义对齐
+
+本轮针对“同一条 Note 在 Windows 日历日期正确、iOS 日期错误”的问题做了独立复现。根因不是先证明了某个本地 LLM 不合格，而是两端在模型调用之前使用了不同的日期管线：Windows 会先通过 `RelativeDateRewriter` 把“周五”“下周三”“一周后”“月底”等表达确定性标注为本地 `YYYY-MM-DD`，再要求模型原样复制；iOS 之前主要让 Structured Note 模型输出自然语言 expression，之后再由覆盖范围较窄的本地解析器解释。固定参考时间为 2026-08-26 时，旧 iOS 会把当天说出的“周三”落到当天，而 Windows 会按其既有规则落到下一个周三 2026-09-02；“一周后”“本周末”“本月底”和 `in 2 weeks` 等表达也存在旧 iOS 无法解析的情况。
+
+移动端现在把 Windows 的确定性日期重写规则完整移植为独立、无模型依赖的 `core-note-date-rewriter`，只处理送入 Task 提取的临时副本，不修改用户原始 Transcript。一次性日期使用 `phrase(YYYY-MM-DD)`，周期事项使用 `phrase(YYYY-MM-DD, REPEAT=kind)`；Task prompt 明确把这些标注视为权威结果，不允许本地模型自行计算星期或替换日期。iOS 的本地时间解析器也会识别这些标注：多日期提醒优先选择靠近“提醒/通知”的可执行日期，“提前 N 天”优先采用预先算好的提醒日期，避免再次扣减；标题、描述和 action item 在落库前统一移除内部标注并整理空格，因此用户界面不会显示实现用括号或 `REPEAT` 文本。
+
+生成 Structured Note 时使用 Note 的 `createdAt` 作为相对日期参考。正常的录音后自动生成仍与当时的本地日期一致，但用户几天后点击 Regenerate 时不会把“明天”“周五”等旧原文重新解释成新的日期。这个稳定参考是移动端为可重复结果保留的改进点；Windows 当前首次提取使用提取开始时的本地时间。已经落库的旧 Structured Note 不会在后台被静默改写，用户需在原 Note 的 Insights 中执行 Regenerate，或者用新录音验证新管线。
+
+验证分为三层：Windows 原仓库 `RelativeDateRewriter.test.ts` 的 57 条基准规则全部通过；移动端针对日期、Task 恢复、否定句、多日期提醒、提前提醒、周期和标注清理的专项套件为 33 passed，移动端完整自动套件为 122 passed、0 failed；两个日期重写源文件逐行比较后，语义差异仅为移动端本地日期格式辅助函数、导出函数名，以及额外兼容省略 `the` 的英文 `day after tomorrow`。TypeScript 与 `git diff --check` 通过，Lint 为 0 error、12 个既有 Hook dependency warning。这轮没有切换 LLM，也没有恢复低准确率的独立 Reminder/Calendar entity；先消除确定性管线差异，再用同一测试样本判断模型本身是否仍有差异。
+
+iPhone 17 Pro / iOS 26.5 模拟器以最终源码完成 Release 构建、安装和冷启动，构建为 0 error、2 warning，启动后正常进入 Home。连接的 iPhone 16 Pro Max 也以最终源码完成独立 Release device 构建和同 Bundle ID 覆盖安装，构建为 0 error、2 warning；CoreDevice 清单只检测到一个 `com.dhebhxh.speakspacelocalmobile`（1.4.0 build 5），`--terminate-existing` 冷启动成功且进程保持运行。设备验证证明最终 bundle 可构建、安装和启动；日期正确性的强证据来自上述固定 reference 自动回归，不把冷启动冒充成一次真实本地 LLM 端到端提取。日期修复完成时的快照中 Expo Doctor 为 20/21：Expo 57 当天又发布了一批仅差一个 patch 的依赖。本节先保持日期修复 diff 单一，随后在 12.20 的 v1.5.0 封版步骤中统一对齐并恢复到 21/21。
+
+> Evidence:
+> - Source: `/Users/yanqingpeng/speakspace-local-electron/src/main/dashboard/RelativeDateRewriter.ts`, `/Users/yanqingpeng/speakspace-local-electron/src/main/dashboard/TodoExtractionPrompt.ts`, `src/services/core-note-date-rewriter.ts`, `src/services/core-note-time.ts`, `src/services/core-note-insight-service.ts`, `src/app/notes/[noteId].tsx`, `tests/core-note-insight-generation-policy.test.mjs`
+> - Method: 固定本地 reference 的失败复现、Windows 57 条原生 Jest 基准、移动端专项回归、源文件语义 diff、内部 annotation 泄漏检查
+> - Confidence: High；确定性日期语义已与 Windows 基线对齐；最终 Task 是否被小模型识别仍取决于原文是否包含可执行承诺，不能把日期层对齐夸大为任意口语的 100% Task 召回
+
+### 12.20 iOS v1.5.0 封版、依赖对齐与发布
+
+本轮把 12.11 至 12.19 的界面收敛、长列表、搜索、Calendar task-only 语义和 Windows 日期规则对齐作为 `1.5.0` 封版。App version 从 1.4.0 更新为 1.5.0，iOS build number 从 5 更新为 6，Bundle ID 继续使用 `com.dhebhxh.speakspacelocalmobile`，最低版本仍为 iOS 16.4，且只声明 iPhone device family。`CHANGELOG.md`、README、Windows SideStore 指南、本机安装指南和独立的 `ios-release-v1.5.0-YQ.md` 同步更新，旧 `ios-v1.4.0` tag 和 Release 保留为回滚点。
+
+在封版质量门中，`npx expo-doctor` 先报告 20/21，原因是 Expo SDK 57 同日更新了一批推荐 patch。使用 Expo 57 CLI 的 `npx expo install --fix` 对齐 `expo`、`react-native`、Router、SQLite、Notifications、Sharing、Dev Client、System UI、`@expo/ui` 和 ESLint config 的 patch，并重新生成 iOS 工程与安装 CocoaPods；随后 `npx expo install --check` 返回 dependencies up to date，Expo Doctor 恢复为 21/21。该步骤没有升级 Expo major/minor，也没有修改本地模型格式或业务数据 schema。
+
+自动质量门在最终依赖和版本元数据上重新执行：Node 全量套件为 122 passed、0 failed；TypeScript 通过；Lint 为 0 error、12 个既有 React Hook dependency warning；`git diff --check` 通过。`npm audit --omit=dev --audit-level=high` 没有 high 或 critical，仍有 13 个由 Expo CLI、config plugin、Xcode/ngrok 工具链经 `uuid` 带入的 moderate 公告；强制修复会把 Expo 依赖降到不兼容版本，因此保留并在发布说明披露。
+
+原生层从干净 Expo Prebuild 和 CocoaPods 环境生成三种 Release：未签名 iPhoneOS、Personal Team 签名 iPhoneOS 和 iOS Simulator。三次 `xcodebuild` 均为退出码 0。模拟器成品安装后由系统清单确认版本 `1.5.0 (6)`，冷启动正常进入 Home，深色状态栏和页面背景一致。签名真机包通过 `codesign --verify --deep --strict` 以及项目 verifier；entitlement 没有 `aps-environment`，设备清单只返回一个同 Bundle ID 的 `1.5.0 (6)`，同 Bundle ID 覆盖安装成功。覆盖安装后的 CoreDevice 自动启动复检被 iOS 明确以 `Locked` 拒绝，因为设备在发布步骤中重新锁屏；因此本次没有把真机签名/安装证据夸大成最终版本已完成真机端到端运行验证。真机为 iPhone 16 Pro Max / iOS 27.0 beta，本机为 Xcode 26.6 / iOS 26.5 SDK；CoreDevice、DDI 和安装链路本次实际可用，但版本跨度仍记录为后续系统更新后的复验边界。
+
+SideStore 资产从未签名 Release `.app` 生成。packager 递归移除签名和 provisioning 材料后输出 `SpeakSpace-iOS-v1.5.0.ipa` 和同名 `.sha256`：IPA 为 34,283,918 bytes，包内 JavaScript bundle 为 4,878,210 bytes，SHA-256 为 `1d9b83bee57b9141d6d94cf34e84baa2f495327a77169e6ec452b52adb2e3596`。`unzip -t`、独立 checksum 复算和全部 archive entry 扫描通过；归档根只有 `Payload/`，没有 `_CodeSignature`、`embedded.mobileprovision`、其他 `.mobileprovision` 或 `__MACOSX`。公开 IPA 只供测试者使用自己的 Apple Account 重新签名，本机 Personal Team 签名包不会上传。
+
+发布顺序保持可回滚：先确认本地源码、文档、测试与产物一致，再提交并推送 `main`；创建 annotated tag `ios-v1.5.0` 后把 IPA 与 checksum 上传为 GitHub draft Release；从 GitHub 重新下载并比对文件大小、二进制和 SHA-256，最后才设为 latest。真正发布完成后的远端 commit、tag、latest 指针和资产仍需再次查询，避免把本地成功等同于 GitHub 已发布。
+
+> Evidence:
+> - Source: `app.json`, `package.json`, `package-lock.json`, `CHANGELOG.md`, `README.md`, `docs/ios-release-v1.5.0-YQ.md`, `scripts/verify-ios-release.mjs`, `scripts/package-ios-sidestore.mjs`
+> - Method: Expo patch 对齐、全量质量门、安全审计、干净 Prebuild/CocoaPods、模拟器与真机 Release 构建、严格签名检查、CoreDevice 覆盖安装、IPA 解包和 checksum 验证，以及发布后的 GitHub 回读
+> - Confidence: High；构建、产物、日期固定规则、模拟器冷启动和真机覆盖安装有直接证据；最终真机自动启动受锁屏限制，Windows SideStore 重签和任意自然口语的 LLM Task 召回仍需对应环境与样本验证
+
 ## 十三、参考资料
 
 - Expo SDK 57 app config：<https://docs.expo.dev/versions/v57.0.0/config/app/>
 - Expo CLI 依赖检查与自动修复：<https://docs.expo.dev/more/expo-cli/>
 - Expo dynamic app config：<https://docs.expo.dev/workflow/configuration/>
 - Expo SDK 57 safe area：<https://docs.expo.dev/versions/v57.0.0/sdk/safe-area-context/>
+- Expo SDK 57 StatusBar：<https://docs.expo.dev/versions/v57.0.0/sdk/status-bar/>
+- Expo Router Stack：<https://docs.expo.dev/versions/v57.0.0/sdk/router/stack/>
+- React Native Appearance：<https://reactnative.dev/docs/appearance>
 - Apple Personal Team 限制：<https://developer.apple.com/support/compare-memberships/>
 - SideStore 官方安装文档：<https://docs.sidestore.io/docs/installation/install>
 
@@ -840,8 +1003,8 @@ git diff --check
 | 本地模糊搜索 | `src/services/note-fuzzy-search.ts`, `src/app/notes/search.tsx` |
 | Custom Knowledge 与历史 | `src/services/knowledge-template-service.ts`, `src/repositories/knowledge-document-repository.ts`, `src/app/(tabs)/ai/knowledge-templates.tsx` |
 | Task recurrence 与 pin | `src/services/task-recurrence.ts`, `src/repositories/core-note-insight-repository.ts`, `src/components/home-task-list.tsx` |
-| Home 日期聚合与 transcript 兜底 | `src/services/home-calendar-items.ts`, `src/app/(tabs)/index.tsx` |
-| 本地 Task/Reminder 通知 | `src/services/note-notification-planner.ts`, `src/services/note-notification-service.ts`, `src/components/notification-coordinator.tsx`, `plugins/with-local-notifications-only.js` |
+| Home Task 日期聚合 | `src/services/home-calendar-items.ts`, `src/app/(tabs)/index.tsx` |
+| 本地 Task 通知 | `src/services/note-notification-planner.ts`, `src/services/note-notification-service.ts`, `src/components/notification-coordinator.tsx`, `plugins/with-local-notifications-only.js` |
 | 本地 AI deadline 与取消 | `src/services/inference-deadline.ts`, `src/services/local-llm-coordinator.ts`, `src/services/llm-inference-service.ts`, `src/services/core-note-insight-service.ts`, `src/services/knowledge-service.ts` |
 | 安全 Markdown 与 Ask AI 阶段 | `src/services/safe-markdown.ts`, `src/components/safe-markdown-text.tsx`, `src/app/ask-ai.tsx` |
 | Note PDF 与分享 | `src/services/note-pdf-document.ts`, `src/services/note-pdf-export-service.ts` |
@@ -849,6 +1012,12 @@ git diff --check
 | Workspace 名称建议 | `src/services/workspace-name-suggestion.ts`, `src/app/workspaces/index.tsx` |
 | iOS parity 数据迁移 | `src/database/migrations/ios-parity-schema-migration.ts` |
 | iPhone UI 与安全区域弹窗 | `src/components/safe-area-modal.tsx`, `src/app/(tabs)/_layout.tsx`, `src/app/transcription.tsx`, `src/app/workspaces/index.tsx` |
+| iOS 深色导航与紧凑动作 | `src/app/_layout.tsx`, `src/app/(tabs)/ai/_layout.tsx`, `src/app/notes/[noteId].tsx`, `tests/ios-interface-polish.test.mjs` |
+| iOS 主题同步、Settings 分段选择与 Calendar 换色 | `src/providers/theme-provider.tsx`, `src/constants/themed-stack-options.ts`, `src/app/(tabs)/settings.tsx`, `src/app/(tabs)/index.tsx`, `tests/ios-interface-polish.test.mjs` |
+| Workspace/Note 信息层级与 Structured Note tabs | `src/app/workspaces/[workspaceId]/index.tsx`, `src/app/notes/[noteId].tsx`, `src/components/speech-playback-button.tsx` |
+| Home 跨资源搜索与长列表边界 | `src/app/(tabs)/index.tsx`, `src/app/transcription.tsx`, `src/services/note-fuzzy-search.ts`, `src/repositories/note-repository.ts`, `tests/home-search-long-lists.test.mjs` |
+| Note 搜索 v13 索引迁移 | `src/database/migrations/note-search-index-migration.ts`, `src/database/index.ts` |
+| Windows/iOS Task 日期语义对齐 | `src/services/core-note-date-rewriter.ts`, `src/services/core-note-time.ts`, `src/services/core-note-insight-service.ts`, `tests/core-note-insight-generation-policy.test.mjs` |
 | Release 验证 | `scripts/verify-ios-release.mjs` |
 | SideStore 打包 | `scripts/package-ios-sidestore.mjs` |
 | 自动测试 | `tests/*.test.mjs` |

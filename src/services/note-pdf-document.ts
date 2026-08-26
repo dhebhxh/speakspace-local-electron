@@ -57,12 +57,6 @@ function structuredSection(insight: CoreNoteInsight | null): string {
   if (!insight) return '<section><h2>Structured Note</h2><p class="empty">No Structured Note has been generated.</p></section>';
   const tasks = insight.getTasks();
   const actions = insight.getUnassignedActionItems();
-  const reminders = insight.getCalendarIntents().filter((item) => item.kind === "reminder");
-  const events = insight.getCalendarIntents().filter((item) => item.kind === "calendar");
-  const timedItems = (items: typeof reminders, kind: "reminder" | "calendar") =>
-    items.length
-      ? `<ul>${items.map((item) => `<li><strong>${text(item.title)}</strong>${item.description ? `<div>${text(item.description)}</div>` : ""}<div class="meta">${kind === "reminder" ? "Reminder" : "Starts"}: ${text(kind === "reminder" ? item.remindAt ?? item.dueAt ?? item.startsAt : item.startsAt)}</div></li>`).join("")}</ul>`
-      : '<p class="empty">No items.</p>';
 
   return `<section>
     <h2>Structured Note</h2>
@@ -72,8 +66,6 @@ function structuredSection(insight: CoreNoteInsight | null): string {
     <h3>Tasks &amp; Action Plan</h3>
     ${tasks.length ? `<ol>${tasks.map((task) => `<li><strong>${text(task.title)}</strong>${task.description ? `<div>${text(task.description)}</div>` : ""}<div class="meta">Status: ${text(task.status)}${task.dueAt ? ` · Due: ${text(task.dueAt)}` : ""}</div>${task.actionItems.length ? `<ol>${task.actionItems.map((item) => `<li>${text(item.title)}${item.description ? ` — ${text(item.description)}` : ""}</li>`).join("")}</ol>` : ""}</li>`).join("")}</ol>` : '<p class="empty">No tasks.</p>'}
     ${actions.length ? `<h3>Other Action Items</h3><ul>${actions.map((item) => `<li>${text(item.title)}${item.description ? ` — ${text(item.description)}` : ""}</li>`).join("")}</ul>` : ""}
-    <h3>Reminders</h3>${timedItems(reminders, "reminder")}
-    <h3>Calendar Events</h3>${timedItems(events, "calendar")}
   </section>`;
 }
 

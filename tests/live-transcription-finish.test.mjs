@@ -34,6 +34,6 @@ test("finished transcription modal centers its card inside the safe area", async
   assert.doesNotMatch(source, /autoFocus/);
   assert.match(editorModal, /paddingTop: Spacing\.lg \+ insets\.top/);
   assert.match(editorModal, /paddingBottom: Spacing\.lg \+ insets\.bottom/);
-  assert.match(editorModal, /centeredViewport:[\s\S]*justifyContent: "center"/);
+  assert.match(editorModal, /centeredDismissArea:[\s\S]*justifyContent: "center"/);
   assert.match(editorModal, /accessibilityViewIsModal/);
 });

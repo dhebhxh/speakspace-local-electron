@@ -24,7 +24,7 @@ const MODEL_CONTEXT_SIZE = 6144;
 const MODEL_BATCH_SIZE = 128;
 const MAX_PREDICTED_TOKENS = 1792;
 const CONTEXT_SAFETY_TOKENS = 192;
-const SYSTEM_PROMPT = `Extract scenario-specific knowledge from NOTE. Core Note Insights separately handles summary, general key points, tasks/action items, reminders, and calendar intents; do not recreate those categories.
+const SYSTEM_PROMPT = `Extract scenario-specific knowledge from NOTE. Core Note Insights separately handles summary, general key points, and tasks/action items; do not recreate those categories.
 Use only information supported by NOTE. You may organize, combine repetition, and clearly restate supported relationships, but never add outside knowledge, new facts, opinions, conclusions, questions, or advice. Preserve uncertainty, attribution, and the note's primary language. A field with no evidence must be []. Return only JSON matching the schema.`;
 
 export class KnowledgeService {
@@ -32,6 +32,7 @@ export class KnowledgeService {
   private readonly activeGenerations = new Map<string, Promise<KnowledgeDocument>>();
   private readonly activeRequests = new Map<string, ActiveKnowledgeRequest>();
   private readonly listeners = new Map<string, Set<(state: KnowledgeGenerationState) => void>>();
+  private readonly changeListeners = new Set<() => void>();
 
   public constructor(private readonly repository: KnowledgeDocumentRepository, private readonly llmModelService: LlmModelService, private readonly coordinator: LocalLlmCoordinator) {}
 
@@ -43,8 +44,14 @@ export class KnowledgeService {
     return this.repository.findAllByNoteId(noteId);
   }
 
-  public deleteResult(noteId: string, resultId: string): Promise<void> {
-    return this.repository.deleteResult(resultId, noteId);
+  public async deleteResult(noteId: string, resultId: string): Promise<void> {
+    await this.repository.deleteResult(resultId, noteId);
+    this.publishChange();
+  }
+
+  public subscribeToChanges(listener: () => void): () => void {
+    this.changeListeners.add(listener);
+    return () => this.changeListeners.delete(listener);
   }
 
   public getGenerationState(noteId: string): KnowledgeGenerationState {
@@ -179,7 +186,7 @@ QUALITY RULES
 - Include relevant facts, explanation, relationship, rationale, attribution, examples, conditions, and context when they belong together.
 - Cover all meaningful supported material. There is no fixed item count or item length; adapt depth and coverage to NOTE's length and information density.
 - Keep distinct information distinct; merge only semantic duplicates. Do not omit useful detail merely to be concise.
-- Do not recreate a universal summary or key-points list, and do not output tasks, reminders, or calendar intents.
+- Do not recreate a universal summary or key-points list, and do not output tasks, action items, reminders, or calendar intents.
 - Use [] when NOTE does not support a field. Never fill a field by guessing.
 
 NOTE:
@@ -226,6 +233,7 @@ ${note}
       const itemCount = document.getSections().reduce((count, section) => count + section.items.length, 0);
       console.info("[Knowledge] Model output parsed", { requestId, sectionCount: document.getSections().length, itemCount });
       await this.repository.save(document);
+      this.publishChange();
       console.info("[Knowledge] Generation completed", { requestId, noteId, scenario, modelId: model.getId(), totalDurationMs: Date.now() - generationStartedAt, itemCount });
       return document;
     } catch (error) {
@@ -249,6 +257,10 @@ ${note}
     this.generationStates.set(noteId, state);
     console.info("[Knowledge] Generation state changed", { noteId, requestId: "requestId" in state ? state.requestId : null, scenario: "scenario" in state ? state.scenario : null, previousStatus, status: state.status, observerCount: this.listeners.get(noteId)?.size ?? 0 });
     this.listeners.get(noteId)?.forEach((listener) => listener(state));
+  }
+
+  private publishChange(): void {
+    this.changeListeners.forEach((listener) => listener());
   }
 
   private async countTokens(context: LlamaContext, messages: RNLlamaOAICompatibleMessage[], deadline: InferenceDeadline): Promise<number> {

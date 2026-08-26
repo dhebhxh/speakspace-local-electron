@@ -167,7 +167,6 @@ export class NoteTranslationService {
         task.actionItems.forEach((item, itemIndex) => { values.push({ key: `insight.task.${taskIndex}.action.${itemIndex}.title`, text: item.title }); if (item.description) values.push({ key: `insight.task.${taskIndex}.action.${itemIndex}.description`, text: item.description }); });
       });
       insight.getUnassignedActionItems().forEach((item, index) => { values.push({ key: `insight.action.${index}.title`, text: item.title }); if (item.description) values.push({ key: `insight.action.${index}.description`, text: item.description }); });
-      insight.getCalendarIntents().forEach((item, index) => { values.push({ key: `insight.calendar.${index}.title`, text: item.title }); if (item.description) values.push({ key: `insight.calendar.${index}.description`, text: item.description }); });
     }
     if (section === "knowledge") knowledge?.getSections().forEach((knowledgeSection, sectionIndex) => { values.push({ key: `knowledge.section.${sectionIndex}.title`, text: knowledgeSection.title }); knowledgeSection.items.forEach((text, itemIndex) => values.push({ key: `knowledge.section.${sectionIndex}.item.${itemIndex}`, text })); });
     return values.filter((item) => item.text.trim().length > 0);

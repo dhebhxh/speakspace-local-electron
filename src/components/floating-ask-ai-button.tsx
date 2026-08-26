@@ -112,8 +112,7 @@ export function FloatingAskAiButton() {
           pressed && styles.pressed,
         ]}
       >
-        <Text style={[styles.label, { color: colors.surface }]}>Ask</Text>
-        <Text style={[styles.ai, { color: colors.surface }]}>AI</Text>
+        <Text numberOfLines={1} style={[styles.aiLabel, { color: colors.surface }]}>AI</Text>
       </Pressable>
     </View>
   );
@@ -135,12 +134,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.22,
     shadowRadius: 12,
   },
-  label: {
-    fontSize: 13,
-    fontWeight: "800",
-    lineHeight: 16,
-  },
-  ai: {
+  aiLabel: {
     fontSize: 18,
     fontWeight: "900",
     lineHeight: 22,

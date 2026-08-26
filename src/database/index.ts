@@ -15,6 +15,7 @@ import { CoreNoteItemSyncLinkMigration } from "./migrations/core-note-item-sync-
 import { NoteTranslationSchemaMigration } from "./migrations/note-translation-schema-migration";
 import { NoteTranslationSectionsMigration } from "./migrations/note-translation-sections-migration";
 import { IosParitySchemaMigration } from "./migrations/ios-parity-schema-migration";
+import { NoteSearchIndexMigration } from "./migrations/note-search-index-migration";
 
 export { DatabaseConfig } from "./config/database-config";
 export { DatabaseManager } from "./core/database-manager";
@@ -30,10 +31,11 @@ export { CoreNoteTaskHierarchyMigration } from "./migrations/core-note-task-hier
 export { TtsModelSchemaMigration } from "./migrations/tts-model-schema-migration";
 export { CoreNoteItemSyncLinkMigration } from "./migrations/core-note-item-sync-link-migration";
 export { IosParitySchemaMigration } from "./migrations/ios-parity-schema-migration";
+export { NoteSearchIndexMigration } from "./migrations/note-search-index-migration";
 export { Repository } from "./repositories/repository";
 export type { DatabaseConnection } from "./types/database-types";
 
-export const databaseConfig = new DatabaseConfig("speakspace.db", 12);
+export const databaseConfig = new DatabaseConfig("speakspace.db", 13);
 
 export const migrationRunner = new MigrationRunner([
   new InitialSchemaMigration(),
@@ -48,6 +50,7 @@ export const migrationRunner = new MigrationRunner([
   new NoteTranslationSchemaMigration(),
   new NoteTranslationSectionsMigration(),
   new IosParitySchemaMigration(),
+  new NoteSearchIndexMigration(),
 ]);
 
 export const databaseManager = new DatabaseManager(

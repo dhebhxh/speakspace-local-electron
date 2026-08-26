@@ -40,7 +40,7 @@ function reminder(overrides = {}) {
   };
 }
 
-test("Home calendar prioritizes structured items and uses grounded transcript fallbacks", () => {
+test("Home calendar uses task due or start dates and ignores retired reminder, event, and transcript inference", () => {
   const items = calendar.buildHomeCalendarItems({
     notes: [
       note("note-1", "I need to submit the final report tomorrow."),
@@ -48,42 +48,41 @@ test("Home calendar prioritizes structured items and uses grounded transcript fa
       note("note-3", "We should do this later, perhaps next week."),
       note("note-4", "提醒我明天提交表格。"),
     ],
-    tasks: [task()],
-    calendarIntents: [],
+    tasks: [
+      task(),
+      task({ id: "task-start", sourceNoteId: "note-start", dueAt: null, startsAt: "2026-08-29T14:00:00+01:00" }),
+    ],
+    calendarIntents: [reminder()],
     reference: new Date("2026-08-25T12:00:00+01:00"),
   });
 
   assert.equal(items.filter((item) => item.sourceNoteId === "note-1" && item.dateKey === "2026-08-26").length, 1);
   assert.equal(items.find((item) => item.sourceNoteId === "note-1")?.source, "structured");
-  assert.ok(items.some((item) => item.sourceNoteId === "note-2" && item.kind === "reminder" && item.dateKey === "2026-08-26"));
-  assert.ok(items.some((item) => item.sourceNoteId === "note-2" && item.kind === "calendar" && item.dateKey === "2026-09-10"));
-  assert.ok(items.some((item) => item.sourceNoteId === "note-4" && item.kind === "reminder"));
+  assert.equal(items.find((item) => item.sourceNoteId === "note-start")?.dateKey, "2026-08-29");
+  assert.equal(items.some((item) => item.sourceNoteId === "note-2"), false);
+  assert.equal(items.some((item) => item.sourceNoteId === "note-4"), false);
   assert.equal(items.some((item) => item.sourceNoteId === "note-3"), false);
-
-  const timedMeeting = calendar.buildHomeCalendarItems({
-    notes: [note("note-5", "The client review meeting is on August 30, 2026 at 2:00 PM.")],
-    tasks: [],
-    calendarIntents: [],
-    reference: new Date("2026-08-25T12:00:00+01:00"),
-  });
-  assert.equal(timedMeeting[0]?.title, "The client review meeting at 2:00 PM");
-
-  const scheduledMeeting = calendar.buildHomeCalendarItems({
-    notes: [note("note-6", "The graduation project calendar review meeting is scheduled for August 30, 2026 at 2:00 PM.")],
-    tasks: [],
-    calendarIntents: [],
-    reference: new Date("2026-08-25T12:00:00+01:00"),
-  });
-  assert.equal(
-    scheduledMeeting[0]?.title,
-    "The graduation project calendar review meeting is scheduled at 2:00 PM",
-  );
 });
 
-test("local notifications include only future current tasks and explicit reminders", () => {
+test("Home calendar derives datetime keys in local time instead of truncating UTC", () => {
+  const previousTimezone = process.env.TZ;
+  process.env.TZ = "Europe/London";
+  try {
+    const items = calendar.buildHomeCalendarItems({
+      tasks: [task({ dueAt: "2026-08-31T23:30:00.000Z" })],
+    });
+    assert.equal(items[0]?.dateKey, "2026-09-01");
+  } finally {
+    if (previousTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTimezone;
+  }
+});
+
+test("local notifications include only future current tasks and ignore retired reminders", () => {
   const planned = notifications.planNoteNotifications({
     tasks: [
       task(),
+      task({ id: "scheduled", sourceNoteId: "note-start", dueAt: null, startsAt: "2026-08-29T14:00:00+01:00", metadata: { timeExpressions: { startsAt: { precision: "datetime" } } } }),
       task({ id: "done", status: "completed" }),
       task({ id: "old-series", isCurrent: false }),
       task({ id: "past", dueAt: "2026-08-24" }),
@@ -96,9 +95,34 @@ test("local notifications include only future current tasks and explicit reminde
     ],
   }, new Date("2026-08-25T12:00:00+01:00"));
 
-  assert.deepEqual(planned.map((item) => item.itemId), ["task-1", "reminder-1"]);
+  assert.deepEqual(planned.map((item) => item.itemId), ["task-1", "scheduled"]);
   assert.equal(planned[0].triggerAt.getHours(), 9);
+  assert.equal(planned[1].triggerAt.getHours(), 14);
   assert.equal(planned[0].identifier, "speakspace-task-task-1");
+});
+
+test("retired reminder and calendar insights and the duplicate TTS entry stay removed", async () => {
+  const [noteScreen, aiScreen, coreService, repository, homeCalendar, planner, pdf, settings] = await Promise.all([
+    read("src/app/notes/[noteId].tsx"),
+    read("src/app/(tabs)/ai/index.tsx"),
+    read("src/services/core-note-insight-service.ts"),
+    read("src/repositories/core-note-insight-repository.ts"),
+    read("src/services/home-calendar-items.ts"),
+    read("src/services/note-notification-planner.ts"),
+    read("src/services/note-pdf-document.ts"),
+    read("src/app/(tabs)/settings.tsx"),
+  ]);
+
+  assert.doesNotMatch(noteScreen, /key: "reminders"|key: "calendar"|<h2>Reminders|Calendar Intents/);
+  assert.doesNotMatch(coreService, /reminderProperties|calendarProperties|toCalendar\(/);
+  assert.doesNotMatch(repository, /SELECT \* FROM core_note_calendar_intents|SELECT calendar\.\*/);
+  assert.doesNotMatch(homeCalendar, /transcriptFallbacks|calendarIntents/);
+  assert.doesNotMatch(planner, /calendarIntents|kind: "reminder"/);
+  assert.doesNotMatch(pdf, /<h3>Reminders|<h3>Calendar Events/);
+  assert.doesNotMatch(settings, /Task & Reminder Notifications|AI & Reminders/);
+  assert.equal([...aiScreen.matchAll(/router\.push\("\/ai\/tts-models"/g)].length, 1);
+  assert.match(aiScreen, />TTS Models</);
+  assert.doesNotMatch(aiScreen, />Text-to-Speech Models</);
 });
 
 test("safe Markdown renders inert blocks, validates links, and produces plain speech", () => {

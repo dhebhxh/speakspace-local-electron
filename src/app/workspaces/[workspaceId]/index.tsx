@@ -1,13 +1,15 @@
 import { UiAlert as Alert } from "@/localization/ui-alert";
 import { UiTextInput as TextInput } from "@/components/ui-text-input";
 import { UiText as Text } from "@/components/ui-text";
+import { SymbolView } from "expo-symbols";
 import { Stack, type Href, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+    ActivityIndicator,
+    FlatList,
     InputAccessoryView,
     Keyboard,
     Pressable,
-    ScrollView,
     StyleSheet,
     View,
 } from "react-native";
@@ -15,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
+import { ModalCloseButton } from "@/components/modal-close-button";
 import { SafeAreaModal } from "@/components/safe-area-modal";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
@@ -23,9 +26,11 @@ import { NoteCard } from "@/components/note-card";
 import { CategoryFilter, type CategoryFilterValue } from "@/components/category-filter";
 import { NoteSelectionToolbar } from "@/components/note-selection-toolbar";
 import { Colors, Radius, Spacing } from "@/constants/theme";
+import type { Note } from "@/domain/note/note";
 import { ValidationError } from "@/errors/validation-error";
 import { useTheme } from "@/hooks/use-theme";
 import { useTrashUndo } from "@/providers/trash-undo-provider";
+import type { NoteSearchResult } from "@/services/note-fuzzy-search";
 
 type WorkspaceNotesState =
   | { status: "loading" }
@@ -39,6 +44,17 @@ type WorkspaceNotesState =
         ReturnType<typeof appContainer.noteService.getNotesByWorkspace>
       >;
     };
+
+type WorkspaceNoteListItem = {
+  note: Note;
+  match?: NoteSearchResult;
+};
+
+type WorkspaceNoteSearchState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "success"; results: NoteSearchResult[] };
 
 const TRANSCRIPT_INPUT_ACCESSORY_ID = "new-note-transcript-accessory";
 
@@ -55,16 +71,21 @@ export default function WorkspaceDetailScreen() {
   });
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalMode, setModalMode] = useState<"create-note" | "rename">("create-note");
-  const [noteName, setNoteName] = useState("");
-  const [transcript, setTranscript] = useState("");
+  const [newNoteTitle, setNewNoteTitle] = useState("");
+  const [newNoteTranscript, setNewNoteTranscript] = useState("");
+  const [renameWorkspaceDraft, setRenameWorkspaceDraft] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [pinningNoteId, setPinningNoteId] = useState<string | null>(null);
   const [category, setCategory] = useState<CategoryFilterValue>("all");
+  const [noteQuery, setNoteQuery] = useState("");
+  const [noteSearch, setNoteSearch] = useState<WorkspaceNoteSearchState>({ status: "idle" });
+  const [searchRevision, setSearchRevision] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [frozenIds, setFrozenIds] = useState<string[] | null>(null);
   const [batchBusy, setBatchBusy] = useState(false);
   const [destinationWorkspaces, setDestinationWorkspaces] = useState<Awaited<ReturnType<typeof workspaceService.getWorkspaces>>>([]);
+  const normalizedNoteQuery = noteQuery.trim();
 
   const categoryNotes = useMemo(
     () => state.status === "success"
@@ -72,9 +93,29 @@ export default function WorkspaceDetailScreen() {
       : [],
     [category, state],
   );
+  const filteredSearchResults = useMemo(
+    () => noteSearch.status === "success"
+      ? noteSearch.results.filter((result) => category === "all" || result.note.getCategory() === category)
+      : [],
+    [category, noteSearch],
+  );
+  const currentItems = useMemo<WorkspaceNoteListItem[]>(
+    () => normalizedNoteQuery
+      ? filteredSearchResults.map((match) => ({ note: match.note, match }))
+      : categoryNotes.map((note) => ({ note })),
+    [categoryNotes, filteredSearchResults, normalizedNoteQuery],
+  );
+  const visibleItems = useMemo<WorkspaceNoteListItem[]>(
+    () => frozenIds === null
+      ? currentItems
+      : frozenIds.flatMap((id) => state.status === "success"
+        ? state.notes.find((note) => note.getId() === id) ?? []
+        : []).map((note) => ({ note })),
+    [currentItems, frozenIds, state],
+  );
   const visibleNotes = useMemo(
-    () => frozenIds === null ? categoryNotes : frozenIds.flatMap((id) => state.status === "success" ? state.notes.find((note) => note.getId() === id) ?? [] : []),
-    [categoryNotes, frozenIds, state],
+    () => visibleItems.map((item) => item.note),
+    [visibleItems],
   );
   const selectedNotes = useMemo(
     () => visibleNotes.filter((note) => selectedIds.has(note.getId())),
@@ -100,6 +141,7 @@ export default function WorkspaceDetailScreen() {
         notes: loadedNotes,
       });
       setDestinationWorkspaces(await workspaceService.getWorkspaces());
+      setSearchRevision((value) => value + 1);
     } catch {
       setState({ status: "error", message: "Unable to load workspace." });
     }
@@ -114,17 +156,57 @@ export default function WorkspaceDetailScreen() {
   useEffect(() => noteService.subscribeToCategoryChanges(() => {
     void noteService.getNotesByWorkspace(workspaceId).then((notes) => {
       setState((current) => current.status === "success" ? { ...current, notes } : current);
+      setSearchRevision((value) => value + 1);
     });
   }), [noteService, workspaceId]);
+
+  useEffect(() => {
+    if (frozenIds !== null) return;
+    if (!normalizedNoteQuery) {
+      setNoteSearch({ status: "idle" });
+      return;
+    }
+
+    let active = true;
+    setNoteSearch({ status: "loading" });
+    const timer = setTimeout(() => {
+      void noteService.searchNoteResults(normalizedNoteQuery).then(
+        (results) => {
+          if (!active) return;
+          setNoteSearch({
+            status: "success",
+            results: results.filter((result) => result.note.getWorkspaceId() === workspaceId),
+          });
+        },
+        () => active && setNoteSearch({ status: "error" }),
+      );
+    }, 200);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [frozenIds, normalizedNoteQuery, noteService, searchRevision, workspaceId]);
+
+  useEffect(() => {
+    const refreshSearch = () => setSearchRevision((value) => value + 1);
+    const unsubscribers = [
+      noteService.subscribeToChanges(refreshSearch),
+      appContainer.coreNoteInsightService.subscribeToChanges(refreshSearch),
+      appContainer.knowledgeService.subscribeToChanges(refreshSearch),
+      appContainer.aiConversationService.subscribeToChanges(refreshSearch),
+    ];
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
+  }, [noteService]);
 
   const createNote = async () => {
     setFormError(null);
     setIsSaving(true);
 
     try {
-      await noteService.createNote(workspaceId, noteName, transcript);
-      setNoteName("");
-      setTranscript("");
+      await noteService.createNote(workspaceId, newNoteTitle, newNoteTranscript);
+      setNewNoteTitle("");
+      setNewNoteTranscript("");
       Keyboard.dismiss();
       setIsModalVisible(false);
       await loadWorkspace();
@@ -143,8 +225,8 @@ export default function WorkspaceDetailScreen() {
     setFormError(null);
     setIsSaving(true);
     try {
-      await workspaceService.renameWorkspace(workspaceId, noteName);
-      setNoteName("");
+      await workspaceService.renameWorkspace(workspaceId, renameWorkspaceDraft ?? "");
+      setRenameWorkspaceDraft(null);
       setIsModalVisible(false);
       await loadWorkspace();
     } catch (error) {
@@ -152,6 +234,26 @@ export default function WorkspaceDetailScreen() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const openNewNote = () => {
+    setModalMode("create-note");
+    setFormError(null);
+    setIsModalVisible(true);
+  };
+
+  const openRenameWorkspace = () => {
+    if (state.status !== "success") return;
+    setModalMode("rename");
+    setRenameWorkspaceDraft((current) => current ?? state.workspace.getName());
+    setFormError(null);
+    setIsModalVisible(true);
+  };
+
+  const closeWorkspaceModal = () => {
+    if (isSaving) return;
+    Keyboard.dismiss();
+    setIsModalVisible(false);
   };
 
   const togglePinned = async (noteId: string, isPinned: boolean) => {
@@ -179,7 +281,7 @@ export default function WorkspaceDetailScreen() {
   };
 
   const toggleSelected = (noteId: string) => {
-    if (frozenIds === null) setFrozenIds(categoryNotes.map((note) => note.getId()));
+    if (frozenIds === null) setFrozenIds(visibleNotes.map((note) => note.getId()));
     setSelectedIds((current) => {
       const next = new Set(current);
       if (next.has(noteId)) next.delete(noteId); else next.add(noteId);
@@ -227,6 +329,27 @@ export default function WorkspaceDetailScreen() {
     );
   };
 
+  const openSearchResult = (result: NoteSearchResult) => {
+    if (result.conversationId) {
+      router.push({ pathname: "/ask-ai", params: { conversationId: result.conversationId } });
+      return;
+    }
+    const section = result.source === "Knowledge"
+      ? "knowledge"
+      : result.source === "Structured Note"
+        ? "insights"
+        : "transcript";
+    router.push({
+      pathname: "/notes/[noteId]",
+      params: {
+        noteId: result.note.getId(),
+        section,
+        insightSection: result.insightSection,
+        knowledgeResultId: result.knowledgeResultId,
+      },
+    });
+  };
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <Stack.Screen
@@ -237,148 +360,171 @@ export default function WorkspaceDetailScreen() {
               : "Workspace",
         }}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: Spacing.xxl + insets.bottom },
-        ]}
-      >
-        {state.status === "loading" && <LoadingState />}
-        {state.status === "error" && (
-          <ErrorState
-            message={state.message}
-            onRetry={() => void loadWorkspace()}
-          />
-        )}
-        {state.status === "success" && (
-          <>
-            <View style={styles.header}>
-              <View style={styles.headerCopy}>
-                <Text style={[styles.meta, { color: colors.textMuted }]}>Updated {new Date(state.workspace.getUpdatedAt()).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</Text>
-              </View>
-              <View style={styles.actionRow}>
-                <Pressable accessibilityRole="button" accessibilityLabel="Rename workspace" onPress={() => {
-                  setModalMode("rename");
-                  setNoteName(state.workspace.getName());
-                  setFormError(null);
-                  setIsModalVisible(true);
-                }} style={({ pressed }) => [styles.iconButton, { backgroundColor: colors.accentSoft, borderColor: colors.border }, pressed && styles.pressed]}>
-                  <Text style={[styles.editIcon, { color: colors.accent }]}>✎</Text>
-                </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel="Delete workspace" onPress={confirmDeleteWorkspace} style={({ pressed }) => [styles.iconButton, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}>
-                  <Text style={[styles.deleteIcon, { color: colors.danger }]}>×</Text>
-                </Pressable>
-              </View>
-            </View>
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Menu
+          accessibilityLabel="More workspace actions"
+          disabled={isSaving || isModalVisible || batchBusy}
+          hidden={state.status !== "success"}
+          icon="ellipsis"
+        >
+          <Stack.Toolbar.MenuAction icon="pencil" onPress={openRenameWorkspace}>
+            Rename Workspace
+          </Stack.Toolbar.MenuAction>
+          <Stack.Toolbar.MenuAction destructive icon="trash" onPress={confirmDeleteWorkspace}>
+            Move to Trash
+          </Stack.Toolbar.MenuAction>
+        </Stack.Toolbar.Menu>
+      </Stack.Toolbar>
+      {state.status === "loading" && <View style={styles.stateContent}><LoadingState /></View>}
+      {state.status === "error" && (
+        <View style={styles.stateContent}>
+          <ErrorState message={state.message} onRetry={() => void loadWorkspace()} />
+        </View>
+      )}
+      {state.status === "success" && <>
+        <View style={[styles.fixedContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <View style={styles.workspaceHeading}>
             <View style={styles.sectionHeader}>
-              <View>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  Notes
-                </Text>
-                <Text style={[styles.meta, { color: colors.textMuted }]}>
-                  {state.notes.length}{" "}
-                  {state.notes.length === 1 ? "note" : "notes"}
-                </Text>
-              </View>
-              <AppButton
-                label="＋ New note"
-                onPress={() => {
-                  setModalMode("create-note");
-                  setNoteName("");
-                  setFormError(null);
-                  setIsModalVisible(true);
-                }}
-              />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Notes</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Create a new note"
+                onPress={openNewNote}
+                style={({ pressed }) => [
+                  styles.newNoteButton,
+                  { backgroundColor: colors.accent },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <SymbolView name="plus" size={22} tintColor={colors.surface} weight="bold" />
+              </Pressable>
             </View>
-            <CategoryFilter value={category} onChange={setCategory} />
-            {frozenIds !== null && (
-              <NoteSelectionToolbar
-                selectedNotes={selectedNotes}
-                allVisibleSelected={selectedIds.size === visibleNotes.length}
-                workspaces={destinationWorkspaces}
-                busy={batchBusy}
-                onToggleAll={() => {
-                  if (selectedIds.size === visibleNotes.length) clearSelection();
-                  else setSelectedIds(new Set(visibleNotes.map((note) => note.getId())));
-                }}
-                onCancel={clearSelection}
-                onMove={(destinationId) => runBatch(() => noteService.moveNotes([...selectedIds], destinationId))}
-                onTrash={() => runBatch(async () => {
-                  const ids = [...selectedIds];
-                  await noteService.trashNotes(ids);
-                  showTrashUndo({
-                    message: `${ids.length} notes moved to Trash`,
-                    undo: async () => {
-                      await noteService.restoreNotes(ids);
-                      await loadWorkspace();
-                    },
-                  });
-                })}
-                onPin={(pinned) => runBatch(() => noteService.setNotesPinned([...selectedIds], pinned))}
-                onAskAi={() => {
-                  const noteIds = [...selectedIds].sort().join(",");
-                  clearSelection();
-                  router.push({ pathname: "/ask-ai", params: { noteIds } } as unknown as Href);
-                }}
-              />
+            <View style={styles.workspaceMetaRow}>
+              <Text style={[styles.meta, { color: colors.textMuted }]}>
+                {state.notes.length} {state.notes.length === 1 ? "note" : "notes"}
+              </Text>
+              <Text style={[styles.metaSeparator, { color: colors.border }]}>•</Text>
+              <Text style={[styles.meta, { color: colors.textMuted }]}>Updated {new Date(state.workspace.getUpdatedAt()).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</Text>
+            </View>
+          </View>
+          <View style={[styles.searchField, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <SymbolView name="magnifyingglass" size={17} tintColor={colors.textMuted} weight="semibold" />
+            <TextInput
+              accessibilityLabel="Search notes and related content"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={frozenIds === null}
+              onChangeText={setNoteQuery}
+              onSubmitEditing={Keyboard.dismiss}
+              placeholder="Search transcripts, insights, Knowledge, or Ask AI"
+              placeholderTextColor={colors.textMuted}
+              returnKeyType="search"
+              style={[styles.searchInput, { color: colors.text }]}
+              value={noteQuery}
+            />
+            {noteSearch.status === "loading" && normalizedNoteQuery && (
+              <ActivityIndicator accessibilityLabel="Searching note content" color={colors.accent} size="small" />
             )}
-            {state.notes.length === 0 && (
-              <EmptyState
-                title="No notes yet"
-                action={
-                  <AppButton
-                    label="Create note"
-                    onPress={() => {
-                      setModalMode("create-note");
-                      setIsModalVisible(true);
-                    }}
-                  />
-                }
-              />
+            {noteQuery.length > 0 && (
+              <Pressable
+                accessibilityLabel="Clear note search"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: frozenIds !== null }}
+                disabled={frozenIds !== null}
+                onPress={() => setNoteQuery("")}
+                style={({ pressed }) => [styles.clearSearch, frozenIds !== null && styles.disabled, pressed && frozenIds === null && styles.pressed]}
+              >
+                <SymbolView name="xmark.circle.fill" size={18} tintColor={colors.textMuted} weight="semibold" />
+              </Pressable>
             )}
-            {state.notes.length > 0 && visibleNotes.length === 0 && <EmptyState title="No notes in this category" />}
-            {visibleNotes.length > 0 && (
-              <View style={styles.list}>
-                {visibleNotes.map((note) => (
-                  <NoteCard
-                    key={note.getId()}
-                    note={note}
-                    isPinning={pinningNoteId === note.getId()}
-                    onPinPress={frozenIds === null ? () => void togglePinned(note.getId(), note.getIsPinned()) : undefined}
-                    selectionMode={frozenIds !== null}
-                    selected={selectedIds.has(note.getId())}
-                    onLongPress={() => toggleSelected(note.getId())}
-                    onPress={() => frozenIds !== null
-                      ? toggleSelected(note.getId())
-                      : router.push({ pathname: "/notes/[noteId]", params: { noteId: note.getId() } })}
-                  />
-                ))}
-              </View>
-            )}
-          </>
-        )}
-      </ScrollView>
+          </View>
+          <CategoryFilter value={category} onChange={frozenIds === null ? setCategory : () => undefined} />
+          {frozenIds !== null && (
+            <NoteSelectionToolbar
+              selectedNotes={selectedNotes}
+              allVisibleSelected={selectedIds.size === visibleNotes.length}
+              workspaces={destinationWorkspaces}
+              busy={batchBusy}
+              onToggleAll={() => {
+                if (selectedIds.size === visibleNotes.length) clearSelection();
+                else setSelectedIds(new Set(visibleNotes.map((note) => note.getId())));
+              }}
+              onCancel={clearSelection}
+              onMove={(destinationId) => runBatch(() => noteService.moveNotes([...selectedIds], destinationId))}
+              onTrash={() => runBatch(async () => {
+                const ids = [...selectedIds];
+                await noteService.trashNotes(ids);
+                showTrashUndo({
+                  message: `${ids.length} notes moved to Trash`,
+                  undo: async () => {
+                    await noteService.restoreNotes(ids);
+                    await loadWorkspace();
+                  },
+                });
+              })}
+              onPin={(pinned) => runBatch(() => noteService.setNotesPinned([...selectedIds], pinned))}
+              onAskAi={() => {
+                const noteIds = [...selectedIds].sort().join(",");
+                clearSelection();
+                router.push({ pathname: "/ask-ai", params: { noteIds } } as unknown as Href);
+              }}
+            />
+          )}
+        </View>
+        <FlatList<WorkspaceNoteListItem>
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: Spacing.xxl + insets.bottom },
+            visibleItems.length === 0 && styles.emptyListContent,
+          ]}
+          contentInsetAdjustmentBehavior="automatic"
+          data={visibleItems}
+          extraData={[batchBusy, frozenIds, pinningNoteId, selectedIds]}
+          ItemSeparatorComponent={() => <View style={styles.listSeparator} />}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          keyExtractor={(item) => item.note.getId()}
+          ListEmptyComponent={noteSearch.status === "loading" && normalizedNoteQuery
+            ? <LoadingState />
+            : noteSearch.status === "error" && normalizedNoteQuery
+              ? <ErrorState message="Unable to search this workspace." onRetry={() => setSearchRevision((value) => value + 1)} />
+              : state.notes.length === 0
+                ? <EmptyState title="No notes yet" />
+                : normalizedNoteQuery
+                  ? <EmptyState title="No matching notes" description={`No Note, Structured Note, Knowledge result, or Ask AI conversation matches “${normalizedNoteQuery}” in this workspace.`} />
+                  : <EmptyState title="No notes in this category" />}
+          renderItem={({ item }) => (
+            <NoteCard
+              note={item.note}
+              match={item.match ? { source: item.match.source, excerpt: item.match.excerpt, query: normalizedNoteQuery, resourceTitle: item.match.resourceTitle } : undefined}
+              isPinning={pinningNoteId === item.note.getId()}
+              onPinPress={frozenIds === null ? () => void togglePinned(item.note.getId(), item.note.getIsPinned()) : undefined}
+              selectionMode={frozenIds !== null}
+              selected={selectedIds.has(item.note.getId())}
+              onLongPress={() => toggleSelected(item.note.getId())}
+              onPress={() => frozenIds !== null
+                ? toggleSelected(item.note.getId())
+                : item.match
+                  ? openSearchResult(item.match)
+                  : router.push({ pathname: "/notes/[noteId]", params: { noteId: item.note.getId() } })}
+            />
+          )}
+          showsVerticalScrollIndicator
+          style={styles.noteList}
+        />
+      </>}
 
       <SafeAreaModal
         androidKeyboardBehavior="height"
+        dismissDisabled={isSaving}
         visible={isModalVisible}
-        onRequestClose={() => setIsModalVisible(false)}
+        onRequestClose={closeWorkspaceModal}
       >
         <View style={styles.modalHeader}>
           <Text style={[styles.modalTitle, { color: colors.text }]}>
             {modalMode === "rename" ? "Rename workspace" : "New note"}
           </Text>
-          <Pressable
-            hitSlop={10}
-            onPress={() => {
-              Keyboard.dismiss();
-              setIsModalVisible(false);
-            }}
-            accessibilityLabel="Close"
-          >
-            <Text style={[styles.close, { color: colors.textMuted }]}>Close</Text>
-          </Pressable>
+          <ModalCloseButton disabled={isSaving} onPress={closeWorkspaceModal} tintColor={colors.textMuted} />
         </View>
         <Text style={[styles.label, { color: colors.textMuted }]}>
           {modalMode === "rename" ? "Workspace name" : "Title (optional)"}
@@ -386,8 +532,8 @@ export default function WorkspaceDetailScreen() {
         <TextInput
           placeholder={modalMode === "rename" ? "Workspace name" : "e.g. Team meeting"}
           placeholderTextColor={colors.textMuted}
-          value={noteName}
-          onChangeText={setNoteName}
+          value={modalMode === "rename" ? renameWorkspaceDraft ?? "" : newNoteTitle}
+          onChangeText={modalMode === "rename" ? setRenameWorkspaceDraft : setNewNoteTitle}
           style={[
             styles.input,
             { borderColor: colors.border, color: colors.text },
@@ -401,8 +547,8 @@ export default function WorkspaceDetailScreen() {
             placeholder="Write the note transcript..."
             placeholderTextColor={colors.textMuted}
             textAlignVertical="top"
-            value={transcript}
-            onChangeText={setTranscript}
+            value={newNoteTranscript}
+            onChangeText={setNewNoteTranscript}
             style={[
               styles.input,
               styles.transcriptInput,
@@ -452,13 +598,11 @@ export default function WorkspaceDetailScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { gap: Spacing.lg, padding: Spacing.lg },
-  header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  headerCopy: { gap: Spacing.xs },
-  actionRow: { flexDirection: "row", gap: Spacing.sm },
-  iconButton: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, height: 44, justifyContent: "center", width: 44 },
-  editIcon: { fontSize: 23, fontWeight: "700" },
-  deleteIcon: { fontSize: 30, fontWeight: "400", lineHeight: 32 },
+  stateContent: { flex: 1, padding: Spacing.lg },
+  fixedContent: { borderBottomWidth: StyleSheet.hairlineWidth, gap: Spacing.sm, paddingBottom: Spacing.md, paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  workspaceHeading: { gap: Spacing.sm },
+  workspaceMetaRow: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: Spacing.xs },
+  metaSeparator: { fontSize: 12 },
   pressed: { opacity: 0.65 },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   meta: { fontSize: 13 },
@@ -467,8 +611,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
+  searchField: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, flexDirection: "row", gap: Spacing.sm, minHeight: 48, paddingLeft: Spacing.sm },
+  searchInput: { flex: 1, fontSize: 15, minHeight: 46, minWidth: 0, paddingVertical: 0 },
+  clearSearch: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
+  disabled: { opacity: 0.5 },
+  newNoteButton: {
+    alignItems: "center",
+    borderCurve: "continuous",
+    borderRadius: Radius.sm,
+    height: 48,
+    justifyContent: "center",
+    width: 48,
+  },
   sectionTitle: { fontSize: 24, fontWeight: "800" },
-  list: { gap: Spacing.md },
+  noteList: { flex: 1 },
+  listContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  emptyListContent: { flexGrow: 1 },
+  listSeparator: { height: Spacing.md },
   inputAccessory: {
     alignItems: "flex-end",
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -482,7 +641,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   modalTitle: { fontSize: 23, fontWeight: "800" },
-  close: { fontSize: 14, fontWeight: "700" },
   label: { fontSize: 14, fontWeight: "700" },
   input: {
     borderRadius: Radius.sm,

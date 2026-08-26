@@ -2,13 +2,16 @@ import type { NoteCategory } from "@/constants/note-categories";
 import { Note } from "@/domain/note/note";
 import { NoteNotFoundError } from "@/errors/note-not-found-error";
 import { ValidationError } from "@/errors/validation-error";
-import { NoteRepository } from "@/repositories/note-repository";
+import { NoteRepository, type NoteSearchCorpus } from "@/repositories/note-repository";
 import { WorkspaceRepository } from "@/repositories/workspace-repository";
 import { NoteClassificationService, type NoteCategoryChange } from "@/services/note-classification-service";
-import { searchNoteCorpus, type NoteSearchResult } from "@/services/note-fuzzy-search";
+import { searchNoteCorpus, searchNoteResourceCorpus, type NoteSearchResult } from "@/services/note-fuzzy-search";
 
 export class NoteService {
   private readonly changeListeners = new Set<() => void>();
+  private searchCorpus: NoteSearchCorpus[] | null = null;
+  private searchCorpusLoad: Promise<NoteSearchCorpus[]> | null = null;
+  private searchCorpusRevision = 0;
   public constructor(
     private readonly noteRepository: NoteRepository,
     private readonly workspaceRepository: WorkspaceRepository,
@@ -42,7 +45,23 @@ export class NoteService {
   public async searchNoteResults(query: string): Promise<NoteSearchResult[]> {
     const normalizedQuery = query.trim();
     if (normalizedQuery.length === 0) return [];
-    return searchNoteCorpus(await this.noteRepository.getSearchCorpus(), normalizedQuery);
+    return searchNoteCorpus(await this.getSearchCorpus(), normalizedQuery);
+  }
+
+  public async searchNoteResourceResults(query: string): Promise<NoteSearchResult[]> {
+    const normalizedQuery = query.trim();
+    if (normalizedQuery.length === 0) return [];
+    return searchNoteResourceCorpus(await this.getSearchCorpus(), normalizedQuery);
+  }
+
+  public invalidateSearchIndex(): void {
+    this.searchCorpusRevision += 1;
+    this.searchCorpus = null;
+    this.searchCorpusLoad = null;
+  }
+
+  public notifyExternalContentChange(): void {
+    this.publishChange();
   }
 
   public async renameNote(id: string, name: string): Promise<void> {
@@ -166,6 +185,7 @@ export class NoteService {
   public async setCategory(id: string, category: NoteCategory): Promise<void> {
     await this.getNoteOrThrow(id);
     await this.noteRepository.updateCategory(id, category);
+    this.publishChange();
   }
 
   public async classifyNote(id: string): Promise<NoteCategory | null> {
@@ -183,7 +203,22 @@ export class NoteService {
   }
 
   private publishChange(): void {
+    this.invalidateSearchIndex();
     this.changeListeners.forEach((listener) => listener());
+  }
+
+  private getSearchCorpus(): Promise<NoteSearchCorpus[]> {
+    if (this.searchCorpus) return Promise.resolve(this.searchCorpus);
+    if (this.searchCorpusLoad) return this.searchCorpusLoad;
+    const revision = this.searchCorpusRevision;
+    const load = this.noteRepository.getSearchCorpus().then((corpus) => {
+      if (revision === this.searchCorpusRevision) this.searchCorpus = corpus;
+      return corpus;
+    }).finally(() => {
+      if (this.searchCorpusLoad === load) this.searchCorpusLoad = null;
+    });
+    this.searchCorpusLoad = load;
+    return load;
   }
 
   private async getNoteOrThrow(id: string): Promise<Note> {

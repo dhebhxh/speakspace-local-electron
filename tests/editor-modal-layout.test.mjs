@@ -18,7 +18,12 @@ test("all blocking dialogs use the shared safe-area modal", async () => {
 
   for (const [path, source] of sources) {
     assert.match(source, /<SafeAreaModal/, `${path} must use SafeAreaModal`);
-    assert.doesNotMatch(source, /\bautoFocus\b/, `${path} must open without forcing the keyboard`);
+    const firstModal = source.indexOf("<SafeAreaModal");
+    assert.doesNotMatch(
+      source.slice(firstModal),
+      /\bautoFocus\b/,
+      `${path} modal must open without forcing the keyboard`,
+    );
   }
 });
 
@@ -34,6 +39,25 @@ test("the shared modal centers every iOS overlay in the safe area and scrolls in
   assert.match(source, /keyboardShouldPersistTaps="handled"/);
   assert.match(source, /paddingTop: Spacing\.lg \+ insets\.top/);
   assert.match(source, /paddingBottom: Spacing\.lg \+ insets\.bottom/);
+});
+
+test("custom modal backdrops use the same guarded close path as system dismissal", async () => {
+  const [modalSource, closeButtonSource, recordingSource] = await Promise.all([
+    readFile(new URL("../src/components/safe-area-modal.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/modal-close-button.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/transcription.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(modalSource, /dismissOnBackdropPress = true/);
+  assert.match(modalSource, /dismissDisabled = false/);
+  assert.match(modalSource, /onRequestClose=\{requestClose\}/);
+  assert.match(modalSource, /disabled=\{!dismissOnBackdropPress \|\| dismissDisabled\}/);
+  assert.match(modalSource, /onPress=\{\(event\) => event\.stopPropagation\(\)\}/);
+  assert.match(closeButtonSource, /height: 44/);
+  assert.match(closeButtonSource, /width: 44/);
+  assert.match(closeButtonSource, /accessibilityLabel=\{label\}/);
+  assert.match(recordingSource, /dismissDisabled=\{isSaving\}/);
+  assert.match(recordingSource, /onRequestClose=\{confirmDiscardFinishedSession\}/);
 });
 
 test("raw React Native Modal is confined to the safe-area modal component", async () => {
@@ -72,4 +96,7 @@ test("move note and Ask AI pickers are centered by the shared iOS rule", async (
   assert.match(noteSource, /<SafeAreaModal[^>]*visible=\{actionModal === "move"\}/);
   assert.match(askAiSource, /<SafeAreaModal[^>]*visible=\{pickerVisible\}/);
   assert.match(askAiSource, /<SafeAreaModal[^>]*visible=\{historyVisible\}/);
+  assert.match(askAiSource, /const \[historyBusy, setHistoryBusy\] = useState/);
+  assert.match(askAiSource, /dismissDisabled=\{isBusy \|\| isHistoryBusy\}[\s\S]*visible=\{historyVisible\}/);
+  assert.match(askAiSource, /accessibilityRole="progressbar"[\s\S]*Loading history…/);
 });

@@ -1,6 +1,6 @@
 import { initLlama, type LlamaContext, type RNLlamaOAICompatibleMessage } from "llama.rn";
 
-import { CoreNoteInsight, type CoreActionItem, type CoreCalendarIntent, type CoreCalendarIntentKind, type CoreTask } from "@/domain/core-note-insight/core-note-insight";
+import { CoreNoteInsight, type CoreActionItem, type CoreTask } from "@/domain/core-note-insight/core-note-insight";
 import { CoreNoteInsightGenerationError } from "@/errors/core-note-insight-generation-error";
 import { CoreNoteInsightRepository } from "@/repositories/core-note-insight-repository";
 import {
@@ -13,7 +13,13 @@ import {
   type AdaptiveCompletionMode,
   type StructuredStageResult,
 } from "@/services/core-note-insight-generation-policy";
-import { getLocalReferenceTime, resolveCoreNoteTime, type ResolvedCoreNoteTime } from "@/services/core-note-time";
+import {
+  annotateCoreNoteDates,
+  getLocalReferenceTime,
+  resolveCoreNoteTime,
+  stripCoreNoteDateAnnotations,
+  type ResolvedCoreNoteTime,
+} from "@/services/core-note-time";
 import { LlmModelService } from "@/services/llm-model-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 import { InferenceDeadline, type InferenceAbortReason } from "@/services/inference-deadline";
@@ -23,26 +29,24 @@ import {
   normalizeTaskRecurrence,
   recurrenceValue,
   recurringSeriesKey,
-  stripTaskRecurrenceAnnotations,
 } from "@/services/task-recurrence";
 
 type OutputItem = { title?: unknown; description?: unknown; startsAtExpression?: unknown; dueAtExpression?: unknown };
-type OutputCalendar = OutputItem & { endsAtExpression?: unknown; remindAtExpression?: unknown; allDay?: unknown; timezone?: unknown };
 type OutputTask = OutputItem & { actionItems?: unknown; recurrence?: unknown };
 type ContentOutput = { summary?: unknown; keyPoints?: unknown };
-type IntentOutput = { tasks?: unknown; reminders?: unknown; calendarIntents?: unknown };
+type TaskOutput = { tasks?: unknown };
 type ActiveCoreRequest = { requestId: string; deadline: InferenceDeadline; context: LlamaContext | null };
 
 const CONTEXT_SIZE = 6144;
 const BATCH_SIZE = 128;
 const CONTENT_TOKENS = 1536;
 const CONTENT_RETRY_TOKENS = 2304;
-const INTENT_TOKENS = 1536;
-const INTENT_RETRY_TOKENS = 2304;
+const TASK_TOKENS = 1536;
+const TASK_RETRY_TOKENS = 2304;
 const SAFETY_TOKENS = 192;
 const EMPTY_VALUE_STRINGS = new Set(["null", "unknown", "undefined", "none", "n/a", "na", "not specified", "unspecified"]);
 const SYSTEM = `Perform grounded summarization and extraction from the user's NOTE.
-Use only information supported by NOTE. You may compress, reorder, merge repetition, and state relationships explicit in context. Never add outside knowledge or invent facts, people, commands, decisions, dates, times, places, tasks, reminders, or events. Preserve uncertainty and the note's primary language. Empty categories must stay empty. Return only JSON matching the schema.`;
+Use only information supported by NOTE. You may compress, reorder, merge repetition, and state relationships explicit in context. Never add outside knowledge or invent facts, people, commands, decisions, dates, times, places, or tasks. Preserve uncertainty and the note's primary language. Empty categories must stay empty. Return only JSON matching the schema.`;
 const CONTENT_PROMPT = `Produce an information summary and concrete key points.
 
 SUMMARY
@@ -59,13 +63,16 @@ KEY POINTS
 - Avoid semantic duplicates and do not turn examples into general facts.
 
 Silently identify important propositions and check coverage before answering. Do not output that analysis.`;
-const INTENT_PROMPT = `Classify only genuine action and time intent. Accuracy and empty arrays are more important than filling fields.
+const TASK_PROMPT = `Extract only genuine tasks. Accuracy and an empty array are more important than filling fields.
 
 TASKS
 - Include only an action the note explicitly assigns, requests, commits to, or clearly leaves to be done.
 - Exclude facts, explanations, unaccepted advice, examples, tutorials/demonstrations, completed actions, and descriptions of how something generally works.
-- A dated statement about work that already happened is still a fact, not a task or calendar event.
+- A dated statement about work that already happened is still a fact, not a task.
 - An action verb alone does not imply a task.
+- If NOTE says remind/remember and names a concrete unfinished action, represent the underlying action as a task and copy the stated reminder date or time into dueAtExpression. Do not create a separate reminder entity. Reminder wording without a concrete action is not a task.
+- Keep one task per underlying commitment even when NOTE repeats it. An event plus a reminder to act for that event is one task dated at the actionable reminder time, not two tasks.
+- Clearly unfinished obligations still count when phrased indirectly, but complaints, wishes, or vague aspirations without a concrete action do not.
 - actionItems may contain only distinct steps explicitly present in NOTE. Never invent a plan. Use [] when no separate steps were stated.
 - Do not duplicate a task title as an action item or create redundant parent/child wording.
 - For an explicitly recurring task, set recurrence to daily, weekdays, weekly,
@@ -74,17 +81,14 @@ TASKS
   Copy that date into dueAtExpression and kind into recurrence. Never invent a
   recurrence without this annotation, and omit the annotation from the title.
 
-REMINDERS
-- Include only an explicit intent to remember or be notified, not something that merely seems worth remembering.
-
-CALENDAR INTENTS
-- Include only an explicit event, appointment, meeting, or scheduling intent. A time expression alone is not an event and does not imply a meeting.
-- Never convert dated research, review, design, preparation, testing, or other completed work into calendar events.
-- Put each supported item in its single best-fitting category. Do not duplicate one fact across categories.
-
 TIME FIELDS
-- Copy the exact natural-language time phrase from NOTE into the matching *Expression field.
-- Do not calculate calendar dates or convert relative expressions to ISO; the application does that from REFERENCE TIME.
+- NOTE contains authoritative date annotations such as phrase(YYYY-MM-DD). Copy
+  the complete annotated phrase into the matching *Expression field. Never
+  calculate weekdays or dates yourself and never choose a different date.
+- If one sentence contains several commitments with different date annotations,
+  keep each date with its own task. An event plus a reminder to act for that
+  event remains one task and uses the actionable reminder annotation.
+- Do not include internal date or recurrence annotations in titles or descriptions.
 - Use JSON null when NOTE provides no expression for a field. Never invent a year, month, day, clock time, end time, or timezone.
 - Keep words such as "around", "afternoon", and "evening" in the copied expression.
 - For an unknown optional field, output the JSON literal null. Never output the strings "null", "unknown", "undefined", "N/A", or "none".
@@ -95,16 +99,12 @@ const nullableString = { anyOf: [{ type: "string" }, { type: "null" }] } as cons
 const itemProperties = { title: { type: "string" }, description: nullableString, startsAtExpression: nullableString, dueAtExpression: nullableString } as const;
 const itemRequired = ["title", "description", "startsAtExpression", "dueAtExpression"];
 const contentSchema = { type: "object", properties: { summary: { type: "string" }, keyPoints: { type: "array", items: { type: "string" } } }, required: ["summary", "keyPoints"], additionalProperties: false } as const;
-const reminderProperties = { title: { type: "string" }, description: nullableString, remindAtExpression: nullableString } as const;
-const calendarProperties = { title: { type: "string" }, description: nullableString, startsAtExpression: nullableString, endsAtExpression: nullableString, allDay: { type: "boolean" }, timezone: nullableString } as const;
-const intentSchema = {
+const taskSchema = {
   type: "object",
   properties: {
     tasks: { type: "array", items: { type: "object", properties: { ...itemProperties, recurrence: nullableString, actionItems: { type: "array", items: { type: "object", properties: itemProperties, required: itemRequired, additionalProperties: false } } }, required: [...itemRequired, "recurrence", "actionItems"], additionalProperties: false } },
-    reminders: { type: "array", items: { type: "object", properties: reminderProperties, required: ["title", "description", "remindAtExpression"], additionalProperties: false } },
-    calendarIntents: { type: "array", items: { type: "object", properties: calendarProperties, required: ["title", "description", "startsAtExpression", "endsAtExpression", "allDay", "timezone"], additionalProperties: false } },
   },
-  required: ["tasks", "reminders", "calendarIntents"], additionalProperties: false,
+  required: ["tasks"], additionalProperties: false,
 } as const;
 
 export class CoreNoteInsightService {
@@ -164,7 +164,7 @@ export class CoreNoteInsightService {
     };
   }
 
-  public generate(noteId: string, transcript: string): Promise<CoreNoteInsight> {
+  public generate(noteId: string, transcript: string, referenceTime?: string): Promise<CoreNoteInsight> {
     const state = this.getGenerationState(noteId);
     const existing = this.activeGenerations.get(noteId);
     if (existing && (state.status === "queued" || state.status === "generating" || state.status === "stopping")) {
@@ -187,7 +187,7 @@ export class CoreNoteInsightService {
     const promise = this.coordinator.runExclusive("core-insights", async () => {
       deadline.throwIfAborted((reason) => this.abortError(reason));
       this.publish(noteId, { status: "generating", requestId, startedAt });
-      return this.runGeneration(noteId, transcript, requestId, request);
+      return this.runGeneration(noteId, transcript, requestId, request, referenceTime);
     }, { signal: deadline.signal }).catch((error: unknown) => {
       if (deadline.reason) throw this.abortError(deadline.reason);
       throw error;
@@ -221,7 +221,7 @@ export class CoreNoteInsightService {
     await Promise.all([...this.activeRequests.keys()].map((noteId) => this.stopGeneration(noteId)));
   }
 
-  private async runGeneration(noteId: string, transcript: string, requestId: string, request: ActiveCoreRequest): Promise<CoreNoteInsight> {
+  private async runGeneration(noteId: string, transcript: string, requestId: string, request: ActiveCoreRequest, referenceTime?: string): Promise<CoreNoteInsight> {
     const startedAt = Date.now();
     const input = transcript.trim();
     request.deadline.throwIfAborted((reason) => this.abortError(reason));
@@ -234,20 +234,22 @@ export class CoreNoteInsightService {
 
     let context: LlamaContext | null = null;
     try {
-      console.info("[CoreInsights] Local LLM starting", { requestId, noteId, modelId: model.getId(), contextSize: CONTEXT_SIZE, pipeline: "content+batched-intents" });
+      console.info("[CoreInsights] Local LLM starting", { requestId, noteId, modelId: model.getId(), contextSize: CONTEXT_SIZE, pipeline: "content+batched-tasks" });
       context = await initLlama({ model: modelFile.uri, n_ctx: CONTEXT_SIZE, n_batch: BATCH_SIZE });
       request.context = context;
       request.deadline.throwIfAborted((reason) => this.abortError(reason));
-      const reference = getLocalReferenceTime();
+      const parsedReference = referenceTime ? new Date(referenceTime) : null;
+      const reference = getLocalReferenceTime(
+        parsedReference && !Number.isNaN(parsedReference.getTime()) ? parsedReference : new Date(),
+      );
       console.info("[CoreInsights] Local time reference captured", { requestId, referenceTime: reference.localIso, timezone: reference.timezone });
       const content = await this.generateContent(context, input, requestId, request.deadline);
-      const timeContext = `${INTENT_PROMPT}\n\nREFERENCE TIME (device local clock; context only, do not copy it unless NOTE contains that time):\n${reference.localIso}\nDEVICE TIMEZONE:\n${reference.timezone}`;
-      const annotatedIntentInput = annotateTaskRecurrences(input, reference.instant);
-      const intents = await this.generateIntents(context, timeContext, annotatedIntentInput, requestId, request.deadline);
-      const insight = this.parse(noteId, model.getId(), content, intents, requestId, reference.instant, reference.localIso, reference.timezone);
+      const timeContext = `${TASK_PROMPT}\n\nREFERENCE TIME (device local clock; context only, do not copy it unless NOTE contains that time):\n${reference.localIso}\nDEVICE TIMEZONE:\n${reference.timezone}`;
+      const annotatedTaskInput = annotateCoreNoteDates(annotateTaskRecurrences(input, reference.instant), reference.instant);
+      const tasks = await this.generateTasks(context, timeContext, annotatedTaskInput, requestId, request.deadline);
+      const insight = this.parse(noteId, model.getId(), content, tasks, requestId, reference.instant, reference.localIso, reference.timezone);
       request.deadline.throwIfAborted((reason) => this.abortError(reason));
-      const calendars = insight.getCalendarIntents();
-      console.info("[CoreInsights] Structured output parsed", { requestId, summaryLength: insight.getSummary().length, keyPointCount: insight.getKeyPoints().length, taskCount: insight.getTasks().length, actionItemCount: insight.getActionItems().length, reminderCount: calendars.filter((x) => x.kind === "reminder").length, calendarIntentCount: calendars.filter((x) => x.kind === "calendar").length });
+      console.info("[CoreInsights] Structured output parsed", { requestId, summaryLength: insight.getSummary().length, keyPointCount: insight.getKeyPoints().length, taskCount: insight.getTasks().length, actionItemCount: insight.getActionItems().length });
       await this.repository.save(insight);
       this.changeListeners.forEach((listener) => listener());
       console.info("[CoreInsights] Saved and ready for display", { requestId, noteId, durationMs: Date.now() - startedAt });
@@ -300,26 +302,26 @@ export class CoreNoteInsightService {
     return fallback;
   }
 
-  private async generateIntents(context: LlamaContext, instruction: string, input: string, requestId: string, deadline: InferenceDeadline): Promise<IntentOutput> {
+  private async generateTasks(context: LlamaContext, instruction: string, input: string, requestId: string, deadline: InferenceDeadline): Promise<TaskOutput> {
     const chunks = splitIntentTranscript(input);
-    console.info("[CoreInsights] Intent evidence batches ready", {
+    console.info("[CoreInsights] Task evidence batches ready", {
       requestId,
       batchCount: chunks.length,
       inputLength: input.length,
     });
-    const batches = await runAdaptiveStructuredBatches<IntentOutput>({
+    const batches = await runAdaptiveStructuredBatches<TaskOutput>({
       inputs: chunks,
-      complete: (chunk, mode) => this.runIntentStage(context, instruction, chunk, mode, requestId, deadline),
+      complete: (chunk, mode) => this.runTaskStage(context, instruction, chunk, mode, requestId, deadline),
       parse: (raw) => {
-        const parsed = this.parseJson<IntentOutput>(raw);
-        if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.reminders) || !Array.isArray(parsed.calendarIntents)) {
-          throw new CoreNoteInsightGenerationError("invalid-output", "Intent output did not contain all required arrays.");
+        const parsed = this.parseJson<TaskOutput>(raw);
+        if (!Array.isArray(parsed.tasks)) {
+          throw new CoreNoteInsightGenerationError("invalid-output", "Task output did not contain the required array.");
         }
         return parsed;
       },
     });
     if (batches.failures.length) {
-      console.warn("[CoreInsights] Intent batches exhausted structured retries", {
+      console.warn("[CoreInsights] Task batches exhausted structured retries", {
         requestId,
         failedBatchCount: batches.failures.length,
         reasons: batches.failures.map((failure) => failure.reason),
@@ -327,18 +329,16 @@ export class CoreNoteInsightService {
       });
     }
     const merged = sanitizeAdaptiveIntentBatches(batches);
-    console.info("[CoreInsights] Intent batches merged", {
+    console.info("[CoreInsights] Task batches merged", {
       requestId,
       successfulBatchCount: batches.values.length,
       failedBatchCount: batches.failures.length,
       taskCount: merged.tasks.length,
-      reminderCount: merged.reminders.length,
-      calendarIntentCount: merged.calendarIntents.length,
     });
     return merged;
   }
 
-  private runIntentStage(
+  private runTaskStage(
     context: LlamaContext,
     instruction: string,
     input: string,
@@ -347,16 +347,16 @@ export class CoreNoteInsightService {
     deadline: InferenceDeadline,
   ): Promise<StructuredStageResult> {
     const recovery = mode === "expanded"
-      ? "\n\nRECOVERY MODE: Return one minimal complete JSON object. Keep only directly supported pending actions, explicit reminders, and scheduled events. Empty arrays are correct. Close every string, array, and object."
+      ? "\n\nRECOVERY MODE: Return one minimal complete JSON object. Keep only directly supported pending tasks. An empty tasks array is correct. Close every string, array, and object."
       : "";
     return this.runStage(
       context,
       `${instruction}${recovery}`,
       input,
-      intentSchema,
-      mode === "expanded" ? INTENT_RETRY_TOKENS : INTENT_TOKENS,
+      taskSchema,
+      mode === "expanded" ? TASK_RETRY_TOKENS : TASK_TOKENS,
       requestId,
-      `intent-${mode}`,
+      `task-${mode}`,
       deadline,
     );
   }
@@ -438,24 +438,23 @@ export class CoreNoteInsightService {
     catch (error) { throw new CoreNoteInsightGenerationError("invalid-output", "The local model returned an unreadable result. Try again or select a stronger model.", { cause: error instanceof Error ? error : undefined }); }
   }
 
-  private parse(noteId: string, modelId: string, content: ContentOutput, parsed: IntentOutput, requestId: string, reference: Date, referenceIso: string, deviceTimezone: string): CoreNoteInsight {
-    if (typeof content.summary !== "string" || !Array.isArray(content.keyPoints) || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.reminders) || !Array.isArray(parsed.calendarIntents)) {
+  private parse(noteId: string, modelId: string, content: ContentOutput, parsed: TaskOutput, requestId: string, reference: Date, referenceIso: string, deviceTimezone: string): CoreNoteInsight {
+    if (typeof content.summary !== "string" || !Array.isArray(content.keyPoints) || !Array.isArray(parsed.tasks)) {
       console.warn("[CoreInsights] Incomplete structured output", { requestId });
       throw new CoreNoteInsightGenerationError("invalid-output", "The local model returned an incomplete result. Please try again.");
     }
     const now = new Date().toISOString();
     const insightId = `core-insight-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const tasks = parsed.tasks.flatMap((value, index) => this.toTask(value, noteId, insightId, index, reference, referenceIso, deviceTimezone));
-    const reminders = parsed.reminders.flatMap((value, index) => this.toCalendar(value, "reminder", noteId, insightId, index, reference, referenceIso, deviceTimezone));
-    const calendars = parsed.calendarIntents.flatMap((value, index) => this.toCalendar(value, "calendar", noteId, insightId, reminders.length + index, reference, referenceIso, deviceTimezone));
-    return new CoreNoteInsight(insightId, noteId, content.summary.trim(), this.uniqueStrings(content.keyPoints), tasks, [], [...reminders, ...calendars], modelId, now, now);
+    return new CoreNoteInsight(insightId, noteId, content.summary.trim(), this.uniqueStrings(content.keyPoints), tasks, [], modelId, now, now);
   }
 
   private toTask(value: unknown, noteId: string, insightId: string, index: number, reference: Date, referenceIso: string, deviceTimezone: string): CoreTask[] {
     if (!value || typeof value !== "object") return [];
     const item = value as OutputTask;
     if (typeof item.title !== "string" || !item.title.trim() || !Array.isArray(item.actionItems)) return [];
-    const taskTitle = stripTaskRecurrenceAnnotations(item.title).trim();
+    const taskTitle = stripCoreNoteDateAnnotations(item.title).trim();
+    if (!taskTitle) return [];
     const startsAt = resolveCoreNoteTime(item.startsAtExpression, reference);
     const dueAt = resolveCoreNoteTime(item.dueAtExpression, reference);
     const recurrenceKind = normalizeTaskRecurrence(
@@ -473,7 +472,7 @@ export class CoreNoteInsightService {
       return result;
     }).map((action, position) => ({ ...action, position }));
     return [{
-      id: taskId, title: taskTitle, description: this.optional(item.description), status: "pending",
+      id: taskId, title: taskTitle, description: this.cleanOptional(item.description), status: "pending",
       startsAt: startsAt?.normalized ?? null, dueAt: dueAt?.normalized ?? null, completedAt: null,
       sourceNoteId: noteId, externalSystem: null, externalId: null,
       metadata: this.timeMetadata({ startsAt, dueAt }, referenceIso, deviceTimezone, { generatedBy: "local-llm" }),
@@ -488,20 +487,11 @@ export class CoreNoteInsightService {
     if (!value || typeof value !== "object") return [];
     const item = value as OutputItem;
     if (typeof item.title !== "string" || !item.title.trim()) return [];
+    const title = stripCoreNoteDateAnnotations(item.title).trim();
+    if (!title) return [];
     const startsAt = resolveCoreNoteTime(item.startsAtExpression, reference);
     const dueAt = resolveCoreNoteTime(item.dueAtExpression, reference);
-    return [{ id: `${taskId}-action-${position}`, taskId, position, title: item.title.trim(), description: this.optional(item.description), status: "pending", startsAt: startsAt?.normalized ?? null, dueAt: dueAt?.normalized ?? null, completedAt: null, sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: this.timeMetadata({ startsAt, dueAt }, referenceIso, deviceTimezone, { generatedBy: "local-llm-explicit-step" }) }];
-  }
-
-  private toCalendar(value: unknown, kind: CoreCalendarIntentKind, noteId: string, insightId: string, index: number, reference: Date, referenceIso: string, deviceTimezone: string): CoreCalendarIntent[] {
-    if (!value || typeof value !== "object") return [];
-    const item = value as OutputCalendar;
-    if (typeof item.title !== "string" || !item.title.trim()) return [];
-    const startsAt = resolveCoreNoteTime(item.startsAtExpression, reference);
-    const endsAt = resolveCoreNoteTime(item.endsAtExpression, reference);
-    const dueAt = resolveCoreNoteTime(item.dueAtExpression, reference);
-    const remindAt = resolveCoreNoteTime(item.remindAtExpression, reference);
-    return [{ id: `${insightId}-${kind}-${index}`, kind, title: item.title.trim(), description: this.optional(item.description), status: "pending", startsAt: startsAt?.normalized ?? null, endsAt: endsAt?.normalized ?? null, dueAt: dueAt?.normalized ?? null, remindAt: remindAt?.normalized ?? null, allDay: item.allDay === true, timezone: this.optional(item.timezone) ?? deviceTimezone, sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: this.timeMetadata({ startsAt, endsAt, dueAt, remindAt }, referenceIso, deviceTimezone) }];
+    return [{ id: `${taskId}-action-${position}`, taskId, position, title, description: this.cleanOptional(item.description), status: "pending", startsAt: startsAt?.normalized ?? null, dueAt: dueAt?.normalized ?? null, completedAt: null, sourceNoteId: noteId, externalSystem: null, externalId: null, metadata: this.timeMetadata({ startsAt, dueAt }, referenceIso, deviceTimezone, { generatedBy: "local-llm-explicit-step" }) }];
   }
 
   private timeMetadata(values: Record<string, ResolvedCoreNoteTime | null>, referenceTime: string, deviceTimezone: string, base: Record<string, unknown> = {}): Record<string, unknown> {
@@ -513,6 +503,10 @@ export class CoreNoteInsightService {
     if (typeof value !== "string") return null;
     const trimmed = value.trim();
     return trimmed && !EMPTY_VALUE_STRINGS.has(trimmed.toLocaleLowerCase()) ? trimmed : null;
+  }
+  private cleanOptional(value: unknown): string | null {
+    const optional = this.optional(value);
+    return optional ? stripCoreNoteDateAnnotations(optional) : null;
   }
   private normalized(value: string): string { return value.toLocaleLowerCase().replace(/[\s\p{P}\p{S}]+/gu, ""); }
   private uniqueStrings(value: unknown[]): string[] {

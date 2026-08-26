@@ -23,6 +23,7 @@ import { AppButton } from "@/components/app-button";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
+import { ModalCloseButton } from "@/components/modal-close-button";
 import { SafeAreaModal } from "@/components/safe-area-modal";
 import { SafeMarkdownText } from "@/components/safe-markdown-text";
 import { SpeechPlaybackButton } from "@/components/speech-playback-button";
@@ -124,6 +125,7 @@ export default function AskAiScreen() {
   const [historyVisible, setHistoryVisible] = useState(false);
   const [history, setHistory] = useState<AiConversationHistoryItem[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyBusy, setHistoryBusy] = useState<"loading" | "trashing" | null>(null);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>("idle");
   const [voiceText, setVoiceText] = useState("");
@@ -158,6 +160,7 @@ export default function AskAiScreen() {
   const isAnyGenerationActive =
     isLocallyGenerating || generationSnapshot.status === "running";
   const isBusy = isAnyGenerationActive || voiceStatus !== "idle";
+  const isHistoryBusy = historyBusy !== null;
   const latestMessage =
     state.status === "ready" ? (state.messages.at(-1) ?? null) : null;
   const hasUnansweredUserMessage =
@@ -563,13 +566,17 @@ export default function AskAiScreen() {
   };
 
   const loadHistory = async () => {
+    if (isHistoryBusy) return;
     Keyboard.dismiss();
     setHistoryVisible(true);
     setHistoryError(null);
+    setHistoryBusy("loading");
     try {
       setHistory(await aiConversationService.getConversationHistory());
     } catch (error) {
       setHistoryError(errorMessage(error));
+    } finally {
+      setHistoryBusy(null);
     }
   };
 
@@ -582,7 +589,10 @@ export default function AskAiScreen() {
   };
 
   const trashHistoryItem = async (item: AiConversationHistoryItem) => {
+    if (isHistoryBusy) return;
     const id = item.conversation.getId();
+    setHistoryBusy("trashing");
+    setHistoryError(null);
     try {
       await appContainer.trashService.trashConversation(id);
       setHistory((current) => current.filter((entry) => entry.conversation.getId() !== id));
@@ -595,6 +605,8 @@ export default function AskAiScreen() {
       });
     } catch (error) {
       setHistoryError(errorMessage(error));
+    } finally {
+      setHistoryBusy(null);
     }
   };
 
@@ -1029,6 +1041,7 @@ export default function AskAiScreen() {
             </View>
 
             <SafeAreaModal
+              dismissDisabled={isBusy}
               visible={pickerVisible}
               onRequestClose={() => setPickerVisible(false)}
             >
@@ -1036,11 +1049,11 @@ export default function AskAiScreen() {
                 <Text style={[styles.modalTitle, { color: colors.text }]}>
                   Choose up to 3 transcripts
                 </Text>
-                <Pressable onPress={() => setPickerVisible(false)}>
-                  <Text style={[styles.close, { color: colors.textMuted }]}>
-                    Close
-                  </Text>
-                </Pressable>
+                <ModalCloseButton
+                  disabled={isBusy}
+                  onPress={() => setPickerVisible(false)}
+                  tintColor={colors.textMuted}
+                />
               </View>
               {state.transcriptNotes.map((note) => {
                 const selected = state.selectedNotes.some((item) => item.getId() === note.getId());
@@ -1079,14 +1092,10 @@ export default function AskAiScreen() {
                   </Pressable>
                 );
               })}
-              <AppButton
-                label="Done"
-                disabled={state.selectedNotes.length === 0}
-                onPress={() => setPickerVisible(false)}
-              />
             </SafeAreaModal>
 
             <SafeAreaModal
+              dismissDisabled={isBusy || isHistoryBusy}
               visible={historyVisible}
               onRequestClose={() => setHistoryVisible(false)}
             >
@@ -1094,18 +1103,31 @@ export default function AskAiScreen() {
                 <Text style={[styles.modalTitle, { color: colors.text }]}>
                   AI History
                 </Text>
-                <Pressable onPress={() => setHistoryVisible(false)}>
-                  <Text style={[styles.close, { color: colors.textMuted }]}>
-                    Close
-                  </Text>
-                </Pressable>
+                <ModalCloseButton
+                  disabled={isBusy || isHistoryBusy}
+                  onPress={() => setHistoryVisible(false)}
+                  tintColor={colors.textMuted}
+                />
               </View>
+              {isHistoryBusy && (
+                <View
+                  accessibilityLabel={historyBusy === "loading" ? "Loading AI history" : "Moving conversation to Trash"}
+                  accessibilityRole="progressbar"
+                  accessibilityState={{ busy: true }}
+                  style={styles.historyProgress}
+                >
+                  <ActivityIndicator color={colors.accent} />
+                  <Text style={[styles.pickMeta, { color: colors.textMuted }]}>
+                    {historyBusy === "loading" ? "Loading history…" : "Moving to Trash…"}
+                  </Text>
+                </View>
+              )}
               {historyError !== null && (
                 <Text style={[styles.errorText, { color: colors.danger }]}>
                   {historyError}
                 </Text>
               )}
-              {history.length === 0 && historyError === null && (
+              {history.length === 0 && historyError === null && !isHistoryBusy && (
                 <Text style={[styles.placeholder, { color: colors.textMuted }]}>
                   No Ask AI conversations yet.
                 </Text>
@@ -1114,6 +1136,8 @@ export default function AskAiScreen() {
                 <Pressable
                   key={item.conversation.getId()}
                   accessibilityRole="button"
+                  accessibilityState={{ disabled: isHistoryBusy }}
+                  disabled={isHistoryBusy}
                   onPress={() => openHistoryItem(item.conversation.getId())}
                   style={[
                     styles.pickRow,
@@ -1134,6 +1158,8 @@ export default function AskAiScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Move ${item.conversation.getName()} to Trash`}
+                    accessibilityState={{ disabled: isHistoryBusy }}
+                    disabled={isHistoryBusy}
                     onPress={(event) => {
                       event.stopPropagation();
                       void trashHistoryItem(item);
@@ -1232,7 +1258,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   modalTitle: { fontSize: 24, fontWeight: "800" },
-  close: { fontSize: 14, fontWeight: "700" },
   pickRow: {
     borderRadius: Radius.md,
     borderWidth: 1,
@@ -1242,5 +1267,6 @@ const styles = StyleSheet.create({
   pickTitle: { fontSize: 16, fontWeight: "800" },
   pickMeta: { fontSize: 13, lineHeight: 18 },
   historyTrash: { alignSelf: "flex-start", paddingVertical: Spacing.xs },
+  historyProgress: { alignItems: "center", flexDirection: "row", gap: Spacing.sm, justifyContent: "center", minHeight: 44 },
   pressed: { opacity: 0.7 },
 });

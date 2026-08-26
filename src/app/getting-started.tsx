@@ -1,7 +1,8 @@
 import { UiText as Text } from "@/components/ui-text";
 import { type Href, Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
@@ -27,7 +28,7 @@ const STEPS = [
   },
   {
     title: "Ready to Start",
-    body: "Start with a recording, then review its Structured Note, tasks, reminders, Knowledge results, and private Ask AI conversations.",
+    body: "Start with a recording, then review its Structured Note, tasks, Knowledge results, and private Ask AI conversations.",
   },
 ] as const;
 
@@ -152,7 +153,20 @@ export default function GettingStartedScreen() {
         )}
 
         <View style={styles.actions}>
-          {step > 0 && <AppButton label="Back" variant="secondary" onPress={() => setStep((current) => Math.max(0, current - 1))} />}
+          {step > 0 && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Previous step"
+              onPress={() => setStep((current) => Math.max(0, current - 1))}
+              style={({ pressed }) => [
+                styles.backButton,
+                { backgroundColor: colors.accentSoft, borderColor: colors.border },
+                pressed && styles.pressed,
+              ]}
+            >
+              <SymbolView name="chevron.left" size={20} tintColor={colors.accent} weight="bold" />
+            </Pressable>
+          )}
           <AppButton
             label={step === STEPS.length - 1 ? (isReplay ? "Close Guide" : "Start Using SpeakSpace") : "Continue"}
             onPress={() => step === STEPS.length - 1 ? void finish() : setStep((current) => Math.min(STEPS.length - 1, current + 1))}
@@ -191,4 +205,6 @@ const styles = StyleSheet.create({
   modelLabel: { fontSize: 12, fontWeight: "800", letterSpacing: 0.6 },
   modelValue: { fontSize: 15, fontWeight: "700" },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm, justifyContent: "flex-end" },
+  backButton: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, height: 46, justifyContent: "center", width: 46 },
+  pressed: { opacity: 0.65 },
 });

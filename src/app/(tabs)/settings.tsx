@@ -12,10 +12,12 @@ import { useAppPreferences } from "@/providers/app-preferences-provider";
 import type { ThemePreference } from "@/providers/theme-provider";
 import { TEXT_SIZE_PREFERENCES, type TextSizePreference } from "@/services/app-preferences-service";
 
-const APPEARANCE_OPTIONS: readonly { value: ThemePreference; label: string; detail: string }[] = [
-  { value: "light", label: "Light", detail: "Always use the light appearance." },
-  { value: "dark", label: "Dark", detail: "Always use the dark appearance." },
-  { value: "system", label: "System", detail: "Follow the iPhone appearance setting." },
+type SegmentOption<T extends string> = { value: T; label: string };
+
+const APPEARANCE_OPTIONS: readonly SegmentOption<ThemePreference>[] = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "system", label: "System" },
 ];
 
 const TEXT_SIZE_LABELS: Record<TextSizePreference, string> = {
@@ -23,6 +25,11 @@ const TEXT_SIZE_LABELS: Record<TextSizePreference, string> = {
   default: "Default",
   large: "Large",
 };
+const TEXT_SIZE_OPTIONS: readonly SegmentOption<TextSizePreference>[] =
+  TEXT_SIZE_PREFERENCES.map((value) => ({
+    value,
+    label: TEXT_SIZE_LABELS[value],
+  }));
 type ThemeColors = (typeof Colors)[keyof typeof Colors];
 
 export default function SettingsScreen() {
@@ -88,10 +95,10 @@ export default function SettingsScreen() {
         setNotificationDenied(true);
         setError("Notification permission is off. You can enable it in iPhone Settings.");
       } else if (result === "unavailable") {
-        setError("Task and reminder notifications are available on iPhone.");
+        setError("Task notifications are available on iPhone.");
       }
     } catch {
-      setError("Unable to update task and reminder notifications.");
+      setError("Unable to update task notifications.");
     } finally {
       setSavingNotifications(false);
     }
@@ -115,64 +122,28 @@ export default function SettingsScreen() {
         <Text style={[styles.subtitle, { color: colors.textMuted }]}>Choose how SpeakSpace looks on this iPhone.</Text>
       </View>
 
-      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        {APPEARANCE_OPTIONS.map((option, index) => {
-          const selected = theme.preference === option.value;
-          return (
-            <Pressable
-              key={option.value}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected, disabled: savingAppearance !== null }}
-              disabled={savingAppearance !== null}
-              onPress={() => void chooseAppearance(option.value)}
-              style={({ pressed }) => [
-                styles.option,
-                index > 0 && { borderTopColor: colors.border, borderTopWidth: 1 },
-                pressed && styles.pressed,
-              ]}
-            >
-              <View style={styles.optionCopy}>
-                <Text style={[styles.optionLabel, { color: colors.text }]}>{option.label}</Text>
-                <Text style={[styles.optionDetail, { color: colors.textMuted }]}>{option.detail}</Text>
-              </View>
-              {savingAppearance === option.value ? (
-                <ActivityIndicator color={colors.accent} />
-              ) : (
-                <View style={[styles.radio, { borderColor: selected ? colors.accent : colors.border }]}>
-                  {selected && <View style={[styles.radioDot, { backgroundColor: colors.accent }]} />}
-                </View>
-              )}
-            </Pressable>
-          );
-        })}
-      </View>
+      <SettingsSegmentedControl
+        accessibilityLabel="Appearance"
+        busyValue={savingAppearance}
+        colors={colors}
+        disabled={savingAppearance !== null}
+        onChange={(value) => void chooseAppearance(value)}
+        options={APPEARANCE_OPTIONS}
+        value={theme.preference}
+      />
 
       <SectionHeading title="Text Size" detail="Adjust app text while keeping iPhone Dynamic Type available." colors={colors} />
-      <View style={[styles.segmented, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
-        {TEXT_SIZE_PREFERENCES.map((option) => {
-          const selected = preferences.textSize === option;
-          return (
-            <Pressable
-              key={option}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected, disabled: savingTextSize !== null }}
-              disabled={savingTextSize !== null}
-              onPress={() => void chooseTextSize(option)}
-              style={({ pressed }) => [
-                styles.segment,
-                { backgroundColor: selected ? colors.surface : "transparent", borderColor: selected ? colors.accent : "transparent" },
-                pressed && styles.pressed,
-              ]}
-            >
-              {savingTextSize === option
-                ? <ActivityIndicator color={colors.accent} size="small" />
-                : <Text style={[styles.segmentLabel, { color: selected ? colors.accent : colors.text }]}>{TEXT_SIZE_LABELS[option]}</Text>}
-            </Pressable>
-          );
-        })}
-      </View>
+      <SettingsSegmentedControl
+        accessibilityLabel="Text Size"
+        busyValue={savingTextSize}
+        colors={colors}
+        disabled={savingTextSize !== null}
+        onChange={(value) => void chooseTextSize(value)}
+        options={TEXT_SIZE_OPTIONS}
+        value={preferences.textSize}
+      />
 
-      <SectionHeading title="AI & Reminders" detail="These preferences stay on this device." colors={colors} />
+      <SectionHeading title="AI & Notifications" detail="These preferences stay on this device." colors={colors} />
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <SettingSwitchRow
           label="Speak New AI Answers"
@@ -183,8 +154,8 @@ export default function SettingsScreen() {
           colors={colors}
         />
         <SettingSwitchRow
-          label="Task & Reminder Notifications"
-          detail="Schedule local alerts for dated open tasks and explicit reminders."
+          label="Task Notifications"
+          detail="Schedule local alerts for dated open tasks."
           value={preferences.notificationsEnabled}
           busy={savingNotifications}
           onValueChange={(value) => void toggleNotifications(value)}
@@ -225,6 +196,68 @@ function SectionHeading({ title, detail, colors }: { title: string; detail?: str
     <View style={styles.heading}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
       {detail && <Text style={[styles.subtitle, { color: colors.textMuted }]}>{detail}</Text>}
+    </View>
+  );
+}
+
+function SettingsSegmentedControl<T extends string>({
+  accessibilityLabel,
+  busyValue,
+  colors,
+  disabled,
+  onChange,
+  options,
+  value,
+}: {
+  accessibilityLabel: string;
+  busyValue: T | null;
+  colors: ThemeColors;
+  disabled: boolean;
+  onChange: (value: T) => void;
+  options: readonly SegmentOption<T>[];
+  value: T;
+}) {
+  return (
+    <View
+      accessibilityLabel={accessibilityLabel}
+      style={[
+        styles.segmented,
+        { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+      ]}
+    >
+      {options.map((option) => {
+        const selected = value === option.value;
+        return (
+          <Pressable
+            key={option.value}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: selected, disabled }}
+            disabled={disabled}
+            onPress={() => onChange(option.value)}
+            style={({ pressed }) => [
+              styles.segment,
+              {
+                backgroundColor: selected ? colors.surface : "transparent",
+                borderColor: selected ? colors.accent : "transparent",
+              },
+              pressed && styles.pressed,
+            ]}
+          >
+            {busyValue === option.value ? (
+              <ActivityIndicator color={colors.accent} size="small" />
+            ) : (
+              <Text
+                style={[
+                  styles.segmentLabel,
+                  { color: selected ? colors.accent : colors.text },
+                ]}
+              >
+                {option.label}
+              </Text>
+            )}
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -289,8 +322,6 @@ const styles = StyleSheet.create({
   optionCopy: { flex: 1, gap: 3, minWidth: 0 },
   optionLabel: { fontSize: 17, fontWeight: "800" },
   optionDetail: { fontSize: 13, lineHeight: 18 },
-  radio: { alignItems: "center", borderRadius: 11, borderWidth: 2, height: 22, justifyContent: "center", width: 22 },
-  radioDot: { borderRadius: 6, height: 12, width: 12 },
   segmented: { borderCurve: "continuous", borderRadius: Radius.md, borderWidth: 1, flexDirection: "row", gap: 4, padding: 4 },
   segment: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, flex: 1, justifyContent: "center", minHeight: 44 },
   segmentLabel: { fontSize: 14, fontWeight: "800" },

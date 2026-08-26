@@ -1,7 +1,7 @@
 import { UiTextInput as TextInput } from "@/components/ui-text-input";
 import { UiText as Text } from "@/components/ui-text";
-import { Stack, type Href, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { Stack, type Href, useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Keyboard, ScrollView, StyleSheet, View } from "react-native";
 import { UiAlert as Alert } from "@/localization/ui-alert";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,6 +36,7 @@ export default function NoteSearchScreen() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [frozenResults, setFrozenResults] = useState<NoteSearchResult[] | null>(null);
   const [batchBusy, setBatchBusy] = useState(false);
+  const [searchRevision, setSearchRevision] = useState(0);
 
   useEffect(() => { void appContainer.workspaceService.getWorkspaces().then(setWorkspaces); }, []);
 
@@ -55,15 +56,24 @@ export default function NoteSearchScreen() {
       );
     }, 200);
     return () => { active = false; clearTimeout(timer); };
-  }, [frozenResults, query]);
+  }, [frozenResults, query, searchRevision]);
 
-  useEffect(() => appContainer.noteService.subscribeToCategoryChanges(() => {
-    const normalized = query.trim();
-    if (!normalized || frozenResults !== null) return;
-    void appContainer.noteService.searchNoteResults(normalized).then((results) => {
-      setState({ status: "success", results });
-    });
-  }), [frozenResults, query]);
+  useFocusEffect(useCallback(() => {
+    setSearchRevision((value) => value + 1);
+  }, []));
+
+  useEffect(() => {
+    const refresh = () => setSearchRevision((value) => value + 1);
+    const unsubscribers = [
+      appContainer.noteService.subscribeToChanges(refresh),
+      appContainer.noteService.subscribeToCategoryChanges(refresh),
+      appContainer.workspaceService.subscribeToChanges(refresh),
+      appContainer.coreNoteInsightService.subscribeToChanges(refresh),
+      appContainer.knowledgeService.subscribeToChanges(refresh),
+      appContainer.aiConversationService.subscribeToChanges(refresh),
+    ];
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
+  }, []);
 
   const filtered = useMemo(() => {
     const results = frozenResults ?? (state.status === "success" ? state.results : []);
@@ -96,8 +106,12 @@ export default function NoteSearchScreen() {
   };
 
   const openResult = (result: NoteSearchResult) => {
+    if (result.conversationId) {
+      router.push({ pathname: "/ask-ai", params: { conversationId: result.conversationId } });
+      return;
+    }
     const section = result.source === "Knowledge" ? "knowledge" : result.source === "Structured Note" ? "insights" : "transcript";
-    router.push({ pathname: "/notes/[noteId]", params: { noteId: result.note.getId(), section, knowledgeResultId: result.knowledgeResultId } });
+    router.push({ pathname: "/notes/[noteId]", params: { noteId: result.note.getId(), section, insightSection: result.insightSection, knowledgeResultId: result.knowledgeResultId } });
   };
 
   return (
@@ -150,7 +164,7 @@ export default function NoteSearchScreen() {
             }}
           />
         )}
-        {state.status === "idle" && <EmptyState title="Search your notes" description="Search titles, transcripts, categories, Structured Notes, and Knowledge results." />}
+        {state.status === "idle" && <EmptyState title="Search your notes" description="Search titles, transcripts, categories, Structured Notes, Knowledge results, and linked Ask AI conversations." />}
         {state.status === "loading" && <LoadingState />}
         {state.status === "error" && <ErrorState message={state.message} onRetry={() => setQuery((value) => `${value} `)} />}
         {state.status === "success" && filtered.length === 0 && <EmptyState title="No notes found" description={`No active note matches “${query.trim()}”.`} />}
@@ -160,7 +174,7 @@ export default function NoteSearchScreen() {
             <NoteCard
               key={result.note.getId()}
               note={result.note}
-              match={{ source: result.source, excerpt: result.excerpt, query: query.trim() }}
+              match={{ source: result.source, excerpt: result.excerpt, query: query.trim(), resourceTitle: result.resourceTitle }}
               selectionMode={frozenResults !== null}
               selected={selectedIds.has(result.note.getId())}
               onLongPress={() => toggle(result.note.getId())}

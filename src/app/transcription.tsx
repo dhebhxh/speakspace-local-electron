@@ -7,7 +7,7 @@ import {
   deactivateKeepAwake,
 } from "expo-keep-awake";
 import { Stack, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   AppState,
@@ -44,6 +44,7 @@ export default function TranscriptionScreen() {
   const [finished, setFinished] = useState<FinishedSession | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
+  const [workspaceQuery, setWorkspaceQuery] = useState("");
   const [noteName, setNoteName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -156,6 +157,7 @@ export default function TranscriptionScreen() {
     setFinished(null);
     setTranscript("");
     setNoteName("");
+    setWorkspaceQuery("");
     setError(null);
   };
 
@@ -226,6 +228,7 @@ export default function TranscriptionScreen() {
       const all = await workspaceService.getWorkspaces();
       setWorkspaces(all);
       setSelectedWorkspaceId(defaultWorkspace.getId());
+      setWorkspaceQuery("");
       setFinished(result);
     } catch {
       setError("Unable to load workspaces.");
@@ -254,6 +257,17 @@ export default function TranscriptionScreen() {
       setIsSaving(false);
     }
   };
+
+  const filteredWorkspaces = useMemo(() => {
+    const query = workspaceQuery.normalize("NFKC").toLocaleLowerCase().trim();
+    if (!query) return workspaces;
+    return workspaces.filter((workspace) =>
+      workspace.getName().normalize("NFKC").toLocaleLowerCase().includes(query),
+    );
+  }, [workspaceQuery, workspaces]);
+  const selectedWorkspaceVisible = filteredWorkspaces.some(
+    (workspace) => workspace.getId() === selectedWorkspaceId,
+  );
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background, experimental_backgroundImage: Backgrounds[theme.mode] }]}>
@@ -313,6 +327,7 @@ export default function TranscriptionScreen() {
 
       <SafeAreaModal
         androidPresentation="center"
+        dismissDisabled={isSaving}
         visible={finished !== null}
         onRequestClose={confirmDiscardFinishedSession}
       >
@@ -329,21 +344,60 @@ export default function TranscriptionScreen() {
           </Pressable>
         </View>
         <Text style={[styles.label, { color: colors.textMuted }]}>Note name</Text>
-        <TextInput value={noteName} onChangeText={setNoteName} placeholder="e.g. Weekly planning" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
+        <TextInput accessibilityLabel="Note name" value={noteName} onChangeText={setNoteName} placeholder="e.g. Weekly planning" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
         <Text style={[styles.label, { color: colors.textMuted }]}>Workspace</Text>
-        <View style={styles.workspaceList}>
-          {workspaces.map((workspace) => {
-            const selected = workspace.getId() === selectedWorkspaceId;
-            return (
-              <Pressable key={workspace.getId()} onPress={() => setSelectedWorkspaceId(workspace.getId())} style={[styles.workspace, { borderColor: selected ? colors.accent : colors.border, backgroundColor: selected ? colors.accentSoft : colors.background }]}>
-                <Text style={{ color: colors.text, fontWeight: selected ? "800" : "500" }}>{workspace.getName()}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <TextInput
+          accessibilityLabel="Search workspaces"
+          autoCapitalize="none"
+          autoCorrect={false}
+          onChangeText={setWorkspaceQuery}
+          onSubmitEditing={Keyboard.dismiss}
+          placeholder="Search workspaces"
+          placeholderTextColor={colors.textMuted}
+          returnKeyType="search"
+          style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+          value={workspaceQuery}
+        />
+        <ScrollView
+          accessibilityLabel="Workspace choices"
+          contentContainerStyle={styles.workspaceList}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
+          showsVerticalScrollIndicator
+          style={styles.workspaceListScroll}
+        >
+          {filteredWorkspaces.length === 0 ? (
+            <View style={[styles.workspaceEmpty, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <Text style={[styles.workspaceEmptyText, { color: colors.textMuted }]}>No workspaces match “{workspaceQuery.trim()}”.</Text>
+            </View>
+          ) : filteredWorkspaces.map((workspace) => {
+              const selected = workspace.getId() === selectedWorkspaceId;
+              return (
+                <Pressable
+                  accessibilityLabel={`Choose ${workspace.getName()} workspace`}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  key={workspace.getId()}
+                  onPress={() => setSelectedWorkspaceId(workspace.getId())}
+                  style={({ pressed }) => [
+                    styles.workspace,
+                    { borderColor: selected ? colors.accent : colors.border, backgroundColor: selected ? colors.accentSoft : colors.background },
+                    pressed && styles.controlPressed,
+                  ]}
+                >
+                  <Text numberOfLines={2} style={[styles.workspaceName, { color: colors.text, fontWeight: selected ? "800" : "500" }]}>{workspace.getName()}</Text>
+                  <Text accessibilityElementsHidden style={[styles.workspaceSelection, { color: selected ? colors.accent : colors.textMuted }]}>{selected ? "✓" : ""}</Text>
+                </Pressable>
+              );
+            })}
+        </ScrollView>
+        {workspaceQuery.trim() && !selectedWorkspaceVisible && filteredWorkspaces.length > 0 && (
+          <Text style={[styles.workspaceSelectionHint, { color: colors.textMuted }]}>Choose a workspace from these results before saving.</Text>
+        )}
         {error && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
         {isSaving && <View style={styles.savingStatus}><ActivityIndicator color={colors.accent} /><Text style={[styles.controlHint, { color: colors.textMuted }]}>Saving the original Note first…</Text></View>}
-        <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0} onPress={() => void save()} />
+        <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0 || !selectedWorkspaceVisible} onPress={() => void save()} />
       </SafeAreaModal>
     </View>
   );
@@ -381,7 +435,13 @@ const styles = StyleSheet.create({
   discardLabel: { fontSize: 14, fontWeight: "800" },
   label: { fontSize: 14, fontWeight: "700" },
   input: { borderRadius: Radius.sm, borderWidth: 1, fontSize: 16, minHeight: 48, paddingHorizontal: Spacing.md },
-  workspaceList: { gap: Spacing.sm },
-  workspace: { borderRadius: Radius.sm, borderWidth: 1, padding: Spacing.md },
+  workspaceListScroll: { maxHeight: 260 },
+  workspaceList: { gap: Spacing.sm, paddingVertical: 1 },
+  workspace: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, flexDirection: "row", gap: Spacing.sm, justifyContent: "space-between", minHeight: 48, padding: Spacing.md },
+  workspaceName: { flex: 1, minWidth: 0 },
+  workspaceSelection: { fontSize: 16, fontWeight: "900", minWidth: 18, textAlign: "center" },
+  workspaceEmpty: { borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, justifyContent: "center", minHeight: 72, padding: Spacing.md },
+  workspaceEmptyText: { fontSize: 13, lineHeight: 19, textAlign: "center" },
+  workspaceSelectionHint: { fontSize: 12, lineHeight: 17 },
   savingStatus: { alignItems: "center", flexDirection: "row", gap: Spacing.sm },
 });

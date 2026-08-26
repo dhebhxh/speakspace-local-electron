@@ -19,9 +19,26 @@ type NoteRow = {
 
 export type NoteSearchCorpus = {
   note: Note;
-  structuredText: string;
-  knowledgeResults: { id: string; text: string }[];
+  structuredSections: { section: "summary" | "key-points" | "tasks"; text: string }[];
+  knowledgeResults: { id: string; title: string; text: string }[];
+  conversations: { id: string; title: string; text: string }[];
 };
+
+type StructuredSearchRow = {
+  note_id: string;
+  summary: string;
+  key_points: string;
+  tasks: string;
+  action_items: string;
+};
+type KnowledgeSearchRow = {
+  note_id: string;
+  id: string;
+  template_name: string;
+  summary: string;
+  sections_json: string;
+};
+type ConversationSearchRow = { note_id: string; id: string; name: string; text: string };
 
 const NOTE_COLUMNS = `n.id, n.workspace_id, n.name, n.audio_relative_path,
   n.transcript, n.is_pinned, n.pinned_at, n.category, n.trashed_at,
@@ -122,41 +139,77 @@ export class NoteRepository {
 
   public async getSearchCorpus(): Promise<NoteSearchCorpus[]> {
     try {
-      const notes = await this.findAll();
       const database = this.databaseManager.getDatabase();
-      return Promise.all(
-        notes.map(async (note) => {
-          const [structured, knowledge] = await Promise.all([
-            database.getFirstAsync<{ text: string | null }>(
-              `SELECT trim(
-                 COALESCE(i.summary, '') || ' ' ||
-                 COALESCE((SELECT group_concat(content, ' ') FROM core_note_key_points WHERE insight_id = i.id), '') || ' ' ||
-                 COALESCE((SELECT group_concat(title || ' ' || COALESCE(description, ''), ' ') FROM core_note_tasks WHERE source_note_id = n.id), '') || ' ' ||
-                 COALESCE((SELECT group_concat(title || ' ' || COALESCE(description, ''), ' ') FROM core_note_action_items WHERE source_note_id = n.id), '')
-               ) AS text
-               FROM notes n
-               LEFT JOIN core_note_insights i ON i.note_id = n.id
-               WHERE n.id = ?`,
-              note.getId(),
-            ),
-            database.getAllAsync<{ id: string; template_name: string; summary: string; sections_json: string }>(
-              `SELECT id, template_name, summary, sections_json
-               FROM knowledge_results WHERE note_id = ? ORDER BY created_at DESC`,
-              note.getId(),
-            ),
-          ]);
-          return {
-            note,
-            structuredText: structured?.text ?? "",
-            knowledgeResults: knowledge.map((result) => ({
-              id: result.id,
-              text: [result.template_name, result.summary, this.knowledgeSectionText(result.sections_json)]
-                .filter(Boolean)
-                .join(" "),
-            })),
-          };
-        }),
-      );
+      const [notes, structuredRows, knowledgeRows, conversationRows] = await Promise.all([
+        this.findAll(),
+        database.getAllAsync<StructuredSearchRow>(
+          `SELECT n.id AS note_id,
+             COALESCE(i.summary, '') AS summary,
+             COALESCE((SELECT group_concat(content, ' ') FROM core_note_key_points WHERE insight_id = i.id), '') AS key_points,
+             COALESCE((SELECT group_concat(title || ' ' || COALESCE(description, ''), ' ') FROM core_note_tasks WHERE insight_id = i.id), '') AS tasks,
+             COALESCE((SELECT group_concat(title || ' ' || COALESCE(description, ''), ' ') FROM core_note_action_items WHERE insight_id = i.id), '') AS action_items
+           FROM notes n
+           INNER JOIN workspaces w ON w.id = n.workspace_id
+           LEFT JOIN core_note_insights i ON i.note_id = n.id
+           WHERE n.trashed_at IS NULL AND w.trashed_at IS NULL`,
+        ),
+        database.getAllAsync<KnowledgeSearchRow>(
+          `SELECT kr.note_id, kr.id, kr.template_name, kr.summary, kr.sections_json
+           FROM knowledge_results kr
+           INNER JOIN notes n ON n.id = kr.note_id
+           INNER JOIN workspaces w ON w.id = n.workspace_id
+           WHERE n.trashed_at IS NULL AND w.trashed_at IS NULL
+           ORDER BY kr.created_at DESC`,
+        ),
+        database.getAllAsync<ConversationSearchRow>(
+          `SELECT cc.note_id, c.id, c.name,
+             trim(c.name || char(10) || COALESCE(group_concat(m.content, char(10) || char(10)), '')) AS text
+           FROM conversation_contexts cc
+           INNER JOIN ai_conversations c ON c.id = cc.conversation_id
+           INNER JOIN notes n ON n.id = cc.note_id
+           INNER JOIN workspaces w ON w.id = n.workspace_id
+           LEFT JOIN ai_messages m ON m.conversation_id = c.id
+           WHERE c.trashed_at IS NULL
+             AND n.trashed_at IS NULL
+             AND w.trashed_at IS NULL
+           GROUP BY cc.note_id, c.id, c.name
+           ORDER BY c.updated_at DESC`,
+        ),
+      ]);
+
+      const structuredByNoteId = new Map<string, NoteSearchCorpus["structuredSections"]>();
+      for (const row of structuredRows) {
+        structuredByNoteId.set(row.note_id, [
+          { section: "summary", text: row.summary },
+          { section: "key-points", text: row.key_points },
+          { section: "tasks", text: [row.tasks, row.action_items].filter(Boolean).join(" ") },
+        ]);
+      }
+      const knowledgeByNoteId = new Map<string, NoteSearchCorpus["knowledgeResults"]>();
+      for (const row of knowledgeRows) {
+        const items = knowledgeByNoteId.get(row.note_id) ?? [];
+        items.push({
+          id: row.id,
+          title: row.template_name,
+          text: [row.template_name, row.summary, this.knowledgeSectionText(row.sections_json)]
+            .filter(Boolean)
+            .join(" "),
+        });
+        knowledgeByNoteId.set(row.note_id, items);
+      }
+      const conversationsByNoteId = new Map<string, NoteSearchCorpus["conversations"]>();
+      for (const row of conversationRows) {
+        const items = conversationsByNoteId.get(row.note_id) ?? [];
+        items.push({ id: row.id, title: row.name, text: row.text });
+        conversationsByNoteId.set(row.note_id, items);
+      }
+
+      return notes.map((note) => ({
+        note,
+        structuredSections: structuredByNoteId.get(note.getId()) ?? [],
+        knowledgeResults: knowledgeByNoteId.get(note.getId()) ?? [],
+        conversations: conversationsByNoteId.get(note.getId()) ?? [],
+      }));
     } catch (error) {
       throw this.toDatabaseError("Unable to build the note search index.", error);
     }

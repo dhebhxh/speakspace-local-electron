@@ -3,9 +3,9 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
-  View,
   type KeyboardAvoidingViewProps,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,6 +17,8 @@ type SafeAreaModalProps = {
   androidKeyboardBehavior?: KeyboardAvoidingViewProps["behavior"];
   androidPresentation?: "center" | "sheet";
   children: ReactNode;
+  dismissDisabled?: boolean;
+  dismissOnBackdropPress?: boolean;
   onRequestClose: () => void;
   visible: boolean;
 };
@@ -32,6 +34,8 @@ export function SafeAreaModal({
   androidKeyboardBehavior,
   androidPresentation = "sheet",
   children,
+  dismissDisabled = false,
+  dismissOnBackdropPress = true,
   onRequestClose,
   visible,
 }: SafeAreaModalProps) {
@@ -39,11 +43,14 @@ export function SafeAreaModal({
   const theme = useTheme();
   const colors = Colors[theme.mode];
   const isCentered = Platform.OS === "ios" || androidPresentation === "center";
+  const requestClose = () => {
+    if (!dismissDisabled) onRequestClose();
+  };
 
   return (
     <Modal
       animationType="slide"
-      onRequestClose={onRequestClose}
+      onRequestClose={requestClose}
       transparent
       visible={visible}
     >
@@ -65,20 +72,32 @@ export function SafeAreaModal({
           showsVerticalScrollIndicator={false}
           style={!isCentered ? styles.sheetScroll : undefined}
         >
-          <View
-            accessibilityViewIsModal
+          <Pressable
+            accessible={false}
+            disabled={!dismissOnBackdropPress || dismissDisabled}
+            onPress={requestClose}
             style={[
-              styles.card,
-              isCentered ? styles.centeredCard : styles.sheetCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              },
-              !isCentered && { paddingBottom: Spacing.lg + insets.bottom },
+              styles.dismissArea,
+              isCentered ? styles.centeredDismissArea : styles.sheetDismissArea,
             ]}
           >
-            {children}
-          </View>
+            <Pressable
+              accessible={false}
+              accessibilityViewIsModal
+              onPress={(event) => event.stopPropagation()}
+              style={[
+                styles.card,
+                isCentered ? styles.centeredCard : styles.sheetCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+                !isCentered && { paddingBottom: Spacing.lg + insets.bottom },
+              ]}
+            >
+              {children}
+            </Pressable>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
@@ -90,15 +109,16 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.36)",
     flex: 1,
   },
+  dismissArea: { flexGrow: 1, width: "100%" },
+  centeredDismissArea: { justifyContent: "center" },
+  sheetDismissArea: { justifyContent: "flex-end" },
   sheetBackdrop: { justifyContent: "flex-end" },
   centeredViewport: {
     flexGrow: 1,
-    justifyContent: "center",
     paddingHorizontal: Spacing.lg,
   },
   sheetViewport: {
     flexGrow: 1,
-    justifyContent: "flex-end",
   },
   sheetScroll: { maxHeight: "92%" },
   card: {

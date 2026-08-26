@@ -23,6 +23,6 @@ test("new workspace form is a safe-area-aware centered dialog", async () => {
   assert.match(editorModal, /paddingTop: Spacing\.lg \+ insets\.top/);
   assert.match(editorModal, /paddingBottom: Spacing\.lg \+ insets\.bottom/);
   assert.match(editorModal, /accessibilityViewIsModal/);
-  assert.match(editorModal, /centeredViewport:[\s\S]*justifyContent: "center"/);
+  assert.match(editorModal, /centeredDismissArea:[\s\S]*justifyContent: "center"/);
   assert.match(editorModal, /centeredCard:[\s\S]*borderRadius: Radius\.lg/);
 });

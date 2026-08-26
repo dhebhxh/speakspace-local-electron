@@ -16,7 +16,7 @@ type NoteCardProps = {
   onLongPress?: () => void;
   selected?: boolean;
   selectionMode?: boolean;
-  match?: { source: NoteMatchSource; excerpt: string; query?: string };
+  match?: { source: NoteMatchSource; excerpt: string; query?: string; resourceTitle?: string };
 };
 
 export function NoteCard({
@@ -71,7 +71,11 @@ export function NoteCard({
           <View style={[styles.categoryBadge, { backgroundColor: colors.accentSoft }]}>
             <Text style={[styles.categoryText, { color: colors.accent }]}>{NOTE_CATEGORY_LABELS[note.getCategory()]}</Text>
           </View>
-          {match && <Text style={[styles.matchSource, { color: colors.textMuted }]}>{match.source}</Text>}
+          {match && (
+            <Text numberOfLines={1} style={[styles.matchSource, { color: colors.textMuted }]}>
+              {match.resourceTitle ? `${match.source} · ${match.resourceTitle}` : match.source}
+            </Text>
+          )}
         </View>
         <HighlightedPreview
           text={match?.excerpt || preview}
@@ -158,7 +162,7 @@ const styles = StyleSheet.create({
   badgeRow: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
   categoryBadge: { borderCurve: "continuous", borderRadius: Radius.sm, paddingHorizontal: 8, paddingVertical: 3 },
   categoryText: { fontSize: 11, fontWeight: "800" },
-  matchSource: { fontSize: 11, fontWeight: "700" },
+  matchSource: { flexShrink: 1, fontSize: 11, fontWeight: "700", minWidth: 0 },
   title: {
     flex: 1,
     fontSize: 17,

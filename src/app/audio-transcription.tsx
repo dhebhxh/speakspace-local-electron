@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
+import { ModalCloseButton } from "@/components/modal-close-button";
 import { SafeAreaModal } from "@/components/safe-area-modal";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import type { Workspace } from "@/domain/workspace/workspace";
@@ -26,6 +27,7 @@ export default function AudioTranscriptionScreen() {
   const colors = Colors[theme.mode];
   const { noteService, transcriptionService, workspaceService } = appContainer;
   const selectedRef = useRef<SelectedAudio | null>(null);
+  const saveDraftSourceUriRef = useRef<string | null>(null);
   const [selected, setSelected] = useState<SelectedAudio | null>(null);
   const [status, setStatus] = useState<Status>("empty");
   const [transcript, setTranscript] = useState("");
@@ -51,6 +53,11 @@ export default function AudioTranscriptionScreen() {
         fileName: selectedRef.current.name,
       });
       transcriptionService.deleteTemporaryImport(selectedRef.current.uri);
+    }
+    if (selectedRef.current?.uri !== audio?.uri) {
+      saveDraftSourceUriRef.current = null;
+      setNoteName("");
+      setSelectedWorkspaceId("");
     }
     selectedRef.current = audio;
     setSelected(audio);
@@ -161,8 +168,13 @@ export default function AudioTranscriptionScreen() {
       const defaultWorkspace = await workspaceService.getOrCreateDefaultWorkspace();
       const allWorkspaces = await workspaceService.getWorkspaces();
       setWorkspaces(allWorkspaces);
-      setSelectedWorkspaceId(defaultWorkspace.getId());
-      setNoteName(selected?.name.replace(/\.[^.]+$/, "") ?? "");
+      if (saveDraftSourceUriRef.current !== selected?.uri) {
+        setSelectedWorkspaceId(defaultWorkspace.getId());
+        setNoteName(selected?.name.replace(/\.[^.]+$/, "") ?? "");
+        saveDraftSourceUriRef.current = selected?.uri ?? null;
+      } else if (!allWorkspaces.some((workspace) => workspace.getId() === selectedWorkspaceId)) {
+        setSelectedWorkspaceId(defaultWorkspace.getId());
+      }
       setShowSave(true);
       console.info("[AudioImport] Save sheet ready", {
         workspaceCount: allWorkspaces.length,
@@ -280,8 +292,15 @@ export default function AudioTranscriptionScreen() {
         {error !== null && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
       </ScrollView>
 
-      <SafeAreaModal visible={showSave} onRequestClose={() => setShowSave(false)}>
-        <Text style={[styles.modalTitle, { color: colors.text }]}>Save transcription</Text>
+      <SafeAreaModal dismissDisabled={isSaving} visible={showSave} onRequestClose={() => setShowSave(false)}>
+        <View style={styles.modalHeader}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Save transcription</Text>
+          <ModalCloseButton
+            disabled={isSaving}
+            onPress={() => setShowSave(false)}
+            tintColor={colors.textMuted}
+          />
+        </View>
         <Text style={[styles.label, { color: colors.textMuted }]}>Note name</Text>
         <TextInput value={noteName} onChangeText={setNoteName} placeholder="e.g. Interview recording" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
         <Text style={[styles.label, { color: colors.textMuted }]}>Workspace</Text>
@@ -294,7 +313,6 @@ export default function AudioTranscriptionScreen() {
         {error !== null && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
         {isSaving && <View style={styles.savingStatus}><ActivityIndicator color={colors.accent} /><Text style={[styles.status, { color: colors.textMuted }]}>Saving the original Note first…</Text></View>}
         <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0} onPress={() => void save()} />
-        <AppButton label="Cancel" variant="quiet" disabled={isSaving} onPress={() => setShowSave(false)} />
       </SafeAreaModal>
     </View>
   );
@@ -316,6 +334,7 @@ const styles = StyleSheet.create({
   status: { fontSize: 14, fontWeight: "800" },
   body: { fontSize: 18, lineHeight: 29 },
   actions: { gap: Spacing.sm },
+  modalHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   modalTitle: { fontSize: 24, fontWeight: "800" },
   label: { fontSize: 14, fontWeight: "700" },
   input: { borderRadius: Radius.sm, borderWidth: 1, fontSize: 16, minHeight: 48, paddingHorizontal: Spacing.md },

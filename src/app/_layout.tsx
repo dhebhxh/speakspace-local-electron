@@ -1,16 +1,22 @@
 import { Stack, usePathname } from "expo-router";
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider as NavigationThemeProvider,
+} from "expo-router/react-navigation";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { AppState } from "react-native";
 
 import { FloatingAskAiButton } from "@/components/floating-ask-ai-button";
 import { appContainer } from "@/application";
 import { Colors } from "@/constants/theme";
+import { createThemedStackScreenOptions } from "@/constants/themed-stack-options";
 import { databaseConfig, initializeDatabase } from "@/database";
 import { useTheme } from "@/hooks/use-theme";
-import { ThemeProvider } from "@/providers/theme-provider";
+import { ThemeProvider as AppThemeProvider } from "@/providers/theme-provider";
 import { TrashUndoProvider } from "@/providers/trash-undo-provider";
 import {
   AppPreferencesProvider,
@@ -23,11 +29,11 @@ void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
+    <AppThemeProvider>
       <AppPreferencesProvider>
         <ThemedRootLayout />
       </AppPreferencesProvider>
-    </ThemeProvider>
+    </AppThemeProvider>
   );
 }
 
@@ -36,6 +42,25 @@ function ThemedRootLayout() {
   const colors = Colors[theme.mode];
   const pathname = usePathname();
   const { hasCompletedOnboarding } = useAppPreferences();
+  const stackScreenOptions = useMemo(
+    () => createThemedStackScreenOptions(theme.mode),
+    [theme.mode],
+  );
+  const navigationTheme = useMemo(() => {
+    const baseTheme = theme.mode === "dark" ? DarkTheme : DefaultTheme;
+    return {
+      ...baseTheme,
+      colors: {
+        ...baseTheme.colors,
+        background: colors.background,
+        border: colors.border,
+        card: colors.background,
+        notification: colors.danger,
+        primary: colors.accent,
+        text: colors.text,
+      },
+    };
+  }, [colors, theme.mode]);
 
   useEffect(() => {
     appContainer.speechPlaybackService.initialize();
@@ -52,34 +77,32 @@ function ThemedRootLayout() {
   }, []);
 
   return (
-    <SQLiteProvider
-      databaseName={databaseConfig.databaseName}
-      onInit={initializeDatabase}
-    >
-      <TrashUndoProvider>
-        <OnboardingGuard />
-        <NotificationCoordinator />
-        <StatusBar style={theme.mode === "dark" ? "light" : "dark"} />
-        <Stack
-        screenOptions={{
-          contentStyle: { backgroundColor: colors.background },
-          headerBackTitle: "Back",
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.accent,
-          headerTitleStyle: { color: colors.text },
-        }}
+    <NavigationThemeProvider value={navigationTheme}>
+      <SQLiteProvider
+        databaseName={databaseConfig.databaseName}
+        onInit={initializeDatabase}
       >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="ask-ai" options={{ title: "Ask AI" }} />
-        <Stack.Screen name="transcription" options={{ title: "Transcription" }} />
-        <Stack.Screen name="audio-transcription" options={{ title: "Transcribe audio file" }} />
-        <Stack.Screen name="getting-started" options={{ headerShown: false }} />
-        </Stack>
-        {hasCompletedOnboarding && pathname !== "/getting-started" && (
-          <FloatingAskAiButton />
-        )}
-      </TrashUndoProvider>
-    </SQLiteProvider>
+        <TrashUndoProvider>
+          <OnboardingGuard />
+          <NotificationCoordinator />
+          <StatusBar
+            animated
+            style={theme.mode === "dark" ? "light" : "dark"}
+          />
+          <Stack
+            screenOptions={stackScreenOptions}
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="ask-ai" options={{ title: "Ask AI" }} />
+            <Stack.Screen name="transcription" options={{ title: "Transcription" }} />
+            <Stack.Screen name="audio-transcription" options={{ title: "Transcribe audio file" }} />
+            <Stack.Screen name="getting-started" options={{ headerShown: false }} />
+          </Stack>
+          {hasCompletedOnboarding && pathname !== "/getting-started" && (
+            <FloatingAskAiButton />
+          )}
+        </TrashUndoProvider>
+      </SQLiteProvider>
+    </NavigationThemeProvider>
   );
 }

@@ -36,8 +36,8 @@ test("the calendar and all settings labels are fixed to English", async () => {
     read("src/localization/ui-copy.ts"),
   ]);
   assert.match(home, /const language = "en" as const/);
-  assert.match(home, /<Calendar key=\{language\}/);
-  for (const label of ["Appearance", "Text Size", "Speak New AI Answers", "Task & Reminder Notifications", "Getting Started"]) {
+  assert.match(home, /key=\{`\$\{language\}-\$\{theme\.mode\}`\}/);
+  for (const label of ["Appearance", "Text Size", "Speak New AI Answers", "Task Notifications", "Getting Started"]) {
     assert.ok(settings.includes(label), `missing English setting: ${label}`);
   }
   assert.match(uiCopy, /iOS interface is intentionally English-only/);

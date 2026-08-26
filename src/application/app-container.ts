@@ -69,8 +69,6 @@ export class AppContainer {
     const localLlmCoordinator = new LocalLlmCoordinator();
     const sharedLlmContextService = new SharedLlmContextService(localLlmCoordinator);
     const noteTranslationRepository = new NoteTranslationRepository(databaseManager);
-    this.trashService = new TrashService(databaseManager);
-
     this.llmModelService = new LlmModelService(llmModelRepository, localLlmCoordinator);
     this.noteTranslationService = new NoteTranslationService(noteTranslationRepository, this.llmModelService, localLlmCoordinator, sharedLlmContextService);
     const noteClassificationService = new NoteClassificationService(
@@ -83,6 +81,10 @@ export class AppContainer {
       noteRepository,
       workspaceRepository,
       noteClassificationService,
+    );
+    this.trashService = new TrashService(
+      databaseManager,
+      () => this.noteService.notifyExternalContentChange(),
     );
     this.knowledgeService = new KnowledgeService(knowledgeDocumentRepository, this.llmModelService, localLlmCoordinator);
     this.knowledgeTemplateService = new KnowledgeTemplateService(
@@ -107,6 +109,12 @@ export class AppContainer {
       conversationContextRepository,
       noteRepository,
     );
+    const invalidateNoteSearch = () => this.noteService.invalidateSearchIndex();
+    noteClassificationService.subscribe(invalidateNoteSearch);
+    this.workspaceService.subscribeToChanges(invalidateNoteSearch);
+    this.coreNoteInsightService.subscribeToChanges(invalidateNoteSearch);
+    this.knowledgeService.subscribeToChanges(invalidateNoteSearch);
+    this.aiConversationService.subscribeToChanges(invalidateNoteSearch);
     this.notePdfExportService = new NotePdfExportService(
       this.noteService,
       this.workspaceService,

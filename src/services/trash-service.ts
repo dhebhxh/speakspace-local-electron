@@ -30,7 +30,10 @@ type TrashRow = {
 };
 
 export class TrashService {
-  public constructor(private readonly databaseManager: DatabaseManager) {}
+  public constructor(
+    private readonly databaseManager: DatabaseManager,
+    private readonly onSearchContentChanged: () => void = () => undefined,
+  ) {}
 
   public async list(filter: TrashFilter = "all", query = ""): Promise<TrashItem[]> {
     try {
@@ -79,6 +82,7 @@ export class TrashService {
         id,
       );
       if (result.changes === 0) throw new Error("Trash item was not found.");
+      this.onSearchContentChanged();
     } catch (error) {
       throw new DatabaseError("Unable to restore this Trash item.", { cause: error instanceof Error ? error : undefined });
     }
@@ -160,6 +164,7 @@ export class TrashService {
       });
     }
     for (const relativePath of audioPaths) this.deleteAudio(relativePath);
+    this.onSearchContentChanged();
   }
 
   public async trashConversation(id: string): Promise<void> {
@@ -172,6 +177,7 @@ export class TrashService {
         id,
       );
       if (result.changes === 0) throw new Error("Conversation was not found.");
+      this.onSearchContentChanged();
     } catch (error) {
       throw new DatabaseError("Unable to move the conversation to Trash.", { cause: error instanceof Error ? error : undefined });
     }

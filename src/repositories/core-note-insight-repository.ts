@@ -2,8 +2,6 @@ import { DatabaseManager } from "@/database";
 import {
   CoreNoteInsight,
   type CoreActionItem,
-  type CoreCalendarIntent,
-  type CoreCalendarIntentKind,
   type CoreInsightStatus,
   type CoreTask,
 } from "@/domain/core-note-insight/core-note-insight";
@@ -15,9 +13,8 @@ type InsightRow = { id: string; note_id: string; summary: string; model_id: stri
 type KeyPointRow = { content: string };
 type ActionRow = { id: string; task_id: string | null; position: number; title: string; description: string | null; status: string; starts_at: string | null; due_at: string | null; completed_at: string | null; source_note_id: string; external_system: string | null; external_id: string | null; metadata_json: string };
 type TaskRow = { id: string; insight_id: string; position: number; title: string; description: string | null; status: string; starts_at: string | null; due_at: string | null; completed_at: string | null; source_note_id: string; external_system: string | null; external_id: string | null; metadata_json: string; is_pinned: number; pinned_at: string | null; recurrence_kind: string | null; recurrence_value: string | null; series_key: string | null; occurrence_index: number; is_current: number; ended_at: string | null };
-type CalendarRow = { id: string; kind: string; title: string; description: string | null; status: string; starts_at: string | null; ends_at: string | null; due_at: string | null; remind_at: string | null; all_day: number; timezone: string | null; source_note_id: string; external_system: string | null; external_id: string | null; metadata_json: string };
 
-export type CoreDashboardItems = { tasks: CoreTask[]; calendarIntents: CoreCalendarIntent[] };
+export type CoreDashboardItems = { tasks: CoreTask[] };
 
 export class CoreNoteInsightRepository {
   public constructor(private readonly databaseManager: DatabaseManager) {}
@@ -27,19 +24,18 @@ export class CoreNoteInsightRepository {
       const database = this.databaseManager.getDatabase();
       const row = await database.getFirstAsync<InsightRow>("SELECT * FROM core_note_insights WHERE note_id = ?", noteId);
       if (!row) return null;
-      const [keyPoints, taskRows, actionRows, calendarRows] = await Promise.all([
+      const [keyPoints, taskRows, actionRows] = await Promise.all([
         database.getAllAsync<KeyPointRow>("SELECT content FROM core_note_key_points WHERE insight_id = ? ORDER BY position", row.id),
         database.getAllAsync<TaskRow>(`SELECT * FROM core_note_tasks WHERE insight_id = ?
           ORDER BY is_current DESC, CASE status WHEN 'pending' THEN 0 ELSE 1 END,
             completed_at DESC, occurrence_index DESC, position`, row.id),
         database.getAllAsync<ActionRow>("SELECT * FROM core_note_action_items WHERE insight_id = ? ORDER BY position", row.id),
-        database.getAllAsync<CalendarRow>("SELECT * FROM core_note_calendar_intents WHERE insight_id = ? ORDER BY rowid", row.id),
       ]);
       return new CoreNoteInsight(
         row.id, row.note_id, row.summary, keyPoints.map((item) => item.content),
         taskRows.map((item) => this.mapTask(item, actionRows.filter((action) => action.task_id === item.id))),
         actionRows.filter((item) => item.task_id === null).map((item) => this.mapAction(item)),
-        calendarRows.map((item) => this.mapCalendar(item)), row.model_id, row.created_at, row.updated_at,
+        row.model_id, row.created_at, row.updated_at,
       );
     } catch (error) {
       throw this.databaseError("Unable to load Structured Note.", error);
@@ -49,24 +45,15 @@ export class CoreNoteInsightRepository {
   public async findDashboardItems(): Promise<CoreDashboardItems> {
     try {
       const database = this.databaseManager.getDatabase();
-      const [tasks, calendarRows] = await Promise.all([
-        database.getAllAsync<TaskRow>(
-          `SELECT tasks.* FROM core_note_tasks tasks
-           INNER JOIN core_note_insights insights ON insights.id = tasks.insight_id AND insights.note_id = tasks.source_note_id
-           INNER JOIN notes n ON n.id = tasks.source_note_id AND n.trashed_at IS NULL
-           INNER JOIN workspaces w ON w.id = n.workspace_id AND w.trashed_at IS NULL
-           WHERE ((tasks.status = 'pending' AND tasks.is_current = 1) OR tasks.status = 'completed')
-           ORDER BY tasks.is_pinned DESC, COALESCE(tasks.due_at, tasks.starts_at), tasks.completed_at DESC, tasks.position`,
-        ),
-        database.getAllAsync<CalendarRow>(
-          `SELECT calendar.* FROM core_note_calendar_intents calendar
-           INNER JOIN core_note_insights insights ON insights.id = calendar.insight_id AND insights.note_id = calendar.source_note_id
-           INNER JOIN notes n ON n.id = calendar.source_note_id AND n.trashed_at IS NULL
-           INNER JOIN workspaces w ON w.id = n.workspace_id AND w.trashed_at IS NULL
-           ORDER BY calendar.starts_at, calendar.due_at, calendar.remind_at`,
-        ),
-      ]);
-      return { tasks: tasks.map((task) => this.mapTask(task, [])), calendarIntents: calendarRows.map((item) => this.mapCalendar(item)) };
+      const tasks = await database.getAllAsync<TaskRow>(
+        `SELECT tasks.* FROM core_note_tasks tasks
+         INNER JOIN core_note_insights insights ON insights.id = tasks.insight_id AND insights.note_id = tasks.source_note_id
+         INNER JOIN notes n ON n.id = tasks.source_note_id AND n.trashed_at IS NULL
+         INNER JOIN workspaces w ON w.id = n.workspace_id AND w.trashed_at IS NULL
+         WHERE ((tasks.status = 'pending' AND tasks.is_current = 1) OR tasks.status = 'completed')
+         ORDER BY tasks.is_pinned DESC, COALESCE(tasks.due_at, tasks.starts_at), tasks.completed_at DESC, tasks.position`,
+      );
+      return { tasks: tasks.map((task) => this.mapTask(task, [])) };
     } catch (error) {
       throw this.databaseError("Unable to load dashboard insights.", error);
     }
@@ -170,14 +157,6 @@ export class CoreNoteInsightRepository {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             `${item.id}-${Date.now()}`, insightId, taskId, item.position, item.title, item.description, item.status,
             item.startsAt, item.dueAt, item.completedAt, item.sourceNoteId, item.externalSystem, item.externalId, JSON.stringify(item.metadata),
-          );
-        }
-        for (const item of insight.getCalendarIntents()) {
-          await database.runAsync(
-            `INSERT INTO core_note_calendar_intents (id, insight_id, kind, title, description, status, starts_at, ends_at, due_at, remind_at, all_day, timezone, source_note_id, external_system, external_id, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            item.id, insightId, item.kind, item.title, item.description, item.status, item.startsAt, item.endsAt, item.dueAt,
-            item.remindAt, item.allDay ? 1 : 0, item.timezone, item.sourceNoteId, item.externalSystem, item.externalId, JSON.stringify(item.metadata),
           );
         }
       });
@@ -284,10 +263,6 @@ export class CoreNoteInsightRepository {
 
   private mapTask(row: TaskRow, actions: ActionRow[]): CoreTask {
     return { id: row.id, title: row.title, description: row.description, status: row.status as CoreInsightStatus, startsAt: row.starts_at, dueAt: row.due_at, completedAt: row.completed_at, sourceNoteId: row.source_note_id, externalSystem: row.external_system, externalId: row.external_id, metadata: this.parseMetadata(row.metadata_json), actionItems: actions.map((item) => this.mapAction(item)), isPinned: row.is_pinned === 1, pinnedAt: row.pinned_at, recurrenceKind: row.recurrence_kind as TaskRecurrenceKind | null, recurrenceValue: row.recurrence_value, seriesKey: row.series_key, occurrenceIndex: row.occurrence_index, isCurrent: row.is_current === 1, endedAt: row.ended_at };
-  }
-
-  private mapCalendar(row: CalendarRow): CoreCalendarIntent {
-    return { id: row.id, kind: row.kind as CoreCalendarIntentKind, title: row.title, description: row.description, status: row.status as CoreInsightStatus, startsAt: row.starts_at, endsAt: row.ends_at, dueAt: row.due_at, remindAt: row.remind_at, allDay: row.all_day === 1, timezone: row.timezone, sourceNoteId: row.source_note_id, externalSystem: row.external_system, externalId: row.external_id, metadata: this.parseMetadata(row.metadata_json) };
   }
 
   private parseMetadata(value: string): Record<string, unknown> {

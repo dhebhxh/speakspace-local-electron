@@ -1,18 +1,36 @@
 import { NOTE_CATEGORY_LABELS } from "@/constants/note-categories";
 import type { Note } from "@/domain/note/note";
 import type { NoteSearchCorpus } from "@/repositories/note-repository";
+import { markdownToPlainText } from "@/services/safe-markdown";
 
-export type NoteMatchSource = "Title" | "Transcript" | "Structured Note" | "Knowledge" | "Category";
+export type NoteMatchSource = "Title" | "Transcript" | "Structured Note" | "Knowledge" | "Ask AI" | "Category";
+export type NoteInsightSearchSection = "summary" | "key-points" | "tasks";
 
 export type NoteSearchResult = {
   note: Note;
   score: number;
   source: NoteMatchSource;
   excerpt: string;
+  resourceTitle?: string;
+  insightSection?: NoteInsightSearchSection;
   knowledgeResultId?: string;
+  conversationId?: string;
 };
 
-type Field = { source: NoteMatchSource; text: string; knowledgeResultId?: string };
+type Field = {
+  source: NoteMatchSource;
+  text: string;
+  resourceTitle?: string;
+  insightSection?: NoteInsightSearchSection;
+  knowledgeResultId?: string;
+  conversationId?: string;
+};
+
+const INSIGHT_SECTION_LABELS: Record<NoteInsightSearchSection, string> = {
+  summary: "Summary",
+  "key-points": "Key points",
+  tasks: "Tasks",
+};
 
 function normalize(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase().replace(/\s+/g, " ").trim();
@@ -70,53 +88,98 @@ function excerptFor(text: string, query: string): string {
   return `${start > 0 ? "…" : ""}${clean.slice(start, end)}${end < clean.length ? "…" : ""}`;
 }
 
-export function searchNoteCorpus(corpus: readonly NoteSearchCorpus[], query: string): NoteSearchResult[] {
-  const phrase = normalize(query);
-  if (!phrase) return [];
-  const terms = termsFor(phrase);
-  const results: NoteSearchResult[] = [];
+function fieldsFor(entry: NoteSearchCorpus): Field[] {
+  return [
+    { source: "Title", text: entry.note.getName() ?? "" },
+    { source: "Transcript", text: entry.note.getTranscript() },
+    ...entry.structuredSections.map((section) => ({
+      source: "Structured Note" as const,
+      text: section.text,
+      resourceTitle: INSIGHT_SECTION_LABELS[section.section],
+      insightSection: section.section,
+    })),
+    ...entry.knowledgeResults.map((result) => ({
+      source: "Knowledge" as const,
+      text: result.text,
+      resourceTitle: result.title,
+      knowledgeResultId: result.id,
+    })),
+    ...entry.conversations.map((conversation) => ({
+      source: "Ask AI" as const,
+      text: markdownToPlainText(conversation.text),
+      resourceTitle: conversation.title,
+      conversationId: conversation.id,
+    })),
+    { source: "Category", text: NOTE_CATEGORY_LABELS[entry.note.getCategory()] },
+  ];
+}
 
-  for (const entry of corpus) {
-    const fields: Field[] = [
-      { source: "Title", text: entry.note.getName() ?? "" },
-      { source: "Transcript", text: entry.note.getTranscript() },
-      { source: "Structured Note", text: entry.structuredText },
-      ...entry.knowledgeResults.map((result) => ({ source: "Knowledge" as const, text: result.text, knowledgeResultId: result.id })),
-      { source: "Category", text: NOTE_CATEGORY_LABELS[entry.note.getCategory()] },
-    ];
-    const title = normalize(fields[0].text);
-    const all = normalize(fields.map((field) => field.text).join(" "));
-    let score = 0;
-    let best = fields[0];
+function scoreField(field: Field, phrase: string, terms: readonly string[]): number {
+  const text = normalize(field.text);
+  if (!text) return 0;
+  const isTitle = field.source === "Title";
+  if (text.includes(phrase)) return isTitle ? 500 : 300;
+  if (terms.every((term) => text.includes(term))) return isTitle ? 400 : 200;
+  return fuzzyContains(field.text, phrase) ? (isTitle ? 150 : 100) : 0;
+}
 
-    if (title.includes(phrase)) score = 500;
-    else if (terms.every((term) => title.includes(term))) score = 400;
-    else {
-      const exactField = fields.slice(1).find((field) => normalize(field.text).includes(phrase));
-      if (exactField) {
-        score = 300;
-        best = exactField;
-      } else if (terms.every((term) => all.includes(term))) {
-        score = 200;
-        best = fields.find((field) => terms.some((term) => normalize(field.text).includes(term))) ?? fields[1];
-      } else {
-        const fuzzyField = fields.find((field) => fuzzyContains(field.text, phrase));
-        if (fuzzyField) {
-          score = 100;
-          best = fuzzyField;
-        }
-      }
-    }
-    if (score === 0) continue;
-    if (best.source === "Title" && score < 400) {
-      best = fields.find((field) => normalize(field.text).includes(phrase)) ?? best;
-    }
-    results.push({ note: entry.note, score, source: best.source, excerpt: excerptFor(best.text, phrase), knowledgeResultId: best.knowledgeResultId });
-  }
+function matchesForEntry(entry: NoteSearchCorpus, phrase: string, terms: readonly string[]): NoteSearchResult[] {
+  return fieldsFor(entry).flatMap((field) => {
+    const score = scoreField(field, phrase, terms);
+    return score === 0 ? [] : [{
+      note: entry.note,
+      score,
+      source: field.source,
+      excerpt: excerptFor(field.text, phrase),
+      resourceTitle: field.resourceTitle,
+      insightSection: field.insightSection,
+      knowledgeResultId: field.knowledgeResultId,
+      conversationId: field.conversationId,
+    }];
+  }).sort((left, right) => right.score - left.score);
+}
 
+function sortResults(results: NoteSearchResult[]): NoteSearchResult[] {
   return results.sort((left, right) =>
     right.score - left.score ||
     Number(right.note.getIsPinned()) - Number(left.note.getIsPinned()) ||
     right.note.getUpdatedAt().localeCompare(left.note.getUpdatedAt()),
   );
+}
+
+export function noteSearchDestinationKey(result: NoteSearchResult): string {
+  if (result.conversationId) return `conversation:${result.conversationId}`;
+  if (result.knowledgeResultId) return `knowledge:${result.knowledgeResultId}`;
+  if (result.source === "Structured Note") {
+    return `structured:${result.note.getId()}:${result.insightSection ?? "summary"}`;
+  }
+  return `note:${result.note.getId()}`;
+}
+
+export function uniqueNoteSearchDestinations(results: readonly NoteSearchResult[]): NoteSearchResult[] {
+  const seen = new Set<string>();
+  return results.filter((result) => {
+    const key = noteSearchDestinationKey(result);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export function searchNoteResourceCorpus(corpus: readonly NoteSearchCorpus[], query: string): NoteSearchResult[] {
+  const phrase = normalize(query);
+  if (!phrase) return [];
+  const terms = termsFor(phrase);
+  const matches = corpus.flatMap((entry) => matchesForEntry(entry, phrase, terms));
+  const strongMatches = matches.filter((result) => result.score >= 200);
+  return sortResults(strongMatches.length > 0 ? strongMatches : matches);
+}
+
+export function searchNoteCorpus(corpus: readonly NoteSearchCorpus[], query: string): NoteSearchResult[] {
+  const phrase = normalize(query);
+  if (!phrase) return [];
+  const terms = termsFor(phrase);
+  const matches = corpus.flatMap((entry) => matchesForEntry(entry, phrase, terms).slice(0, 1));
+  const strongMatches = matches.filter((result) => result.score >= 200);
+  return sortResults(strongMatches.length > 0 ? strongMatches : matches);
 }

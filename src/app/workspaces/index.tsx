@@ -1,12 +1,14 @@
 import { UiTextInput as TextInput } from "@/components/ui-text-input";
 import { UiText as Text } from "@/components/ui-text";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Keyboard, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { SymbolView } from "expo-symbols";
+import { useCallback, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, FlatList, Keyboard, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
+import { ModalCloseButton } from "@/components/modal-close-button";
 import { SafeAreaModal } from "@/components/safe-area-modal";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
@@ -16,6 +18,8 @@ import { Colors, Radius, Spacing } from "@/constants/theme";
 import { ValidationError } from "@/errors/validation-error";
 import { useTheme } from "@/hooks/use-theme";
 import type { WorkspaceNameSuggestion } from "@/services/workspace-name-suggestion";
+
+type WorkspaceListItem = Awaited<ReturnType<typeof appContainer.workspaceService.getWorkspaces>>[number];
 
 type WorkspaceListState =
   | { status: "loading" }
@@ -43,6 +47,15 @@ export function WorkspaceListScreen({ embeddedInTab = false }: { embeddedInTab?:
   const [isSaving, setIsSaving] = useState(false);
   const [isApplyingSuggestion, setIsApplyingSuggestion] = useState(false);
   const [hideSuggestion, setHideSuggestion] = useState(false);
+  const [workspaceQuery, setWorkspaceQuery] = useState("");
+
+  const normalizedWorkspaceQuery = workspaceQuery.trim().toLocaleLowerCase("en");
+  const filteredWorkspaces = useMemo(
+    () => state.status === "success"
+      ? state.workspaces.filter((workspace) => workspace.getName().toLocaleLowerCase("en").includes(normalizedWorkspaceQuery))
+      : [],
+    [normalizedWorkspaceQuery, state],
+  );
 
   const loadWorkspaces = async () => {
     setState({ status: "loading" });
@@ -118,120 +131,135 @@ export function WorkspaceListScreen({ embeddedInTab = false }: { embeddedInTab?:
     }
   };
 
+  const closeCreateWorkspace = () => {
+    if (isSaving) return;
+    Keyboard.dismiss();
+    setIsModalVisible(false);
+  };
+
+  const openCreateWorkspace = () => {
+    setFormError(null);
+    setIsModalVisible(true);
+  };
+
+  const showSuggestion = state.status === "success"
+    && normalizedWorkspaceQuery.length === 0
+    && state.suggestion !== null
+    && !hideSuggestion;
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       {!embeddedInTab && <Stack.Screen options={{ title: "Workspaces" }} />}
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={[
-          styles.content,
+      <View
+        style={[
+          styles.fixedHeader,
           {
-            paddingBottom: Spacing.xxl + insets.bottom,
+            borderColor: colors.border,
             paddingTop: embeddedInTab ? insets.top + Spacing.md : Spacing.lg,
           },
         ]}
       >
-        <View style={styles.headingSection}>
-          {embeddedInTab && (
-            <View style={styles.heading}>
-              <Text style={[styles.title, { color: colors.text }]}>Workspaces</Text>
-              <Text style={[styles.workspaceSubtitle, { color: colors.textMuted }]}>Browse and organize your saved notes.</Text>
-            </View>
-          )}
-          <View style={styles.headingActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Search notes"
-              hitSlop={6}
-              onPress={() => router.push("/notes/search")}
-              style={({ pressed }) => [
-                styles.searchButton,
-                { backgroundColor: colors.accentSoft, borderColor: colors.border },
-                pressed && styles.pressed,
-              ]}
-            >
-              <View style={[styles.searchLens, { borderColor: colors.accent }]}>
-                <View style={[styles.searchHandle, { backgroundColor: colors.accent }]} />
-              </View>
-            </Pressable>
-            <View style={styles.headingAction}>
-              <AppButton
-                label="+ New workspace"
-                onPress={() => setIsModalVisible(true)}
-              />
-            </View>
+        {embeddedInTab && (
+          <View style={styles.heading}>
+            <Text style={[styles.title, { color: colors.text }]}>Workspaces</Text>
+            <Text style={[styles.workspaceSubtitle, { color: colors.textMuted }]}>Browse and organize your saved notes.</Text>
           </View>
-        </View>
-
-        {state.status === "loading" && <LoadingState />}
-        {state.status === "error" && (
-          <ErrorState
-            message={state.message}
-            onRetry={() => void loadWorkspaces()}
-          />
         )}
-        {state.status === "success" && state.suggestion && !hideSuggestion && (
+        <View style={styles.headingActions}>
+          <View style={[styles.searchField, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <SymbolView name="magnifyingglass" size={17} tintColor={colors.textMuted} weight="semibold" />
+            <TextInput
+              accessibilityLabel="Search workspaces by name"
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+              onChangeText={setWorkspaceQuery}
+              placeholder="Search workspaces"
+              placeholderTextColor={colors.textMuted}
+              returnKeyType="search"
+              style={[styles.searchInput, { color: colors.text }]}
+              value={workspaceQuery}
+            />
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="New workspace"
+            hitSlop={6}
+            onPress={openCreateWorkspace}
+            style={({ pressed }) => [
+              styles.newWorkspaceButton,
+              { backgroundColor: colors.accent },
+              pressed && styles.pressed,
+            ]}
+          >
+            <SymbolView name="plus" size={20} tintColor={colors.surface} weight="bold" />
+          </Pressable>
+        </View>
+      </View>
+
+      <FlatList<WorkspaceListItem>
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: Spacing.xxl + insets.bottom },
+          filteredWorkspaces.length === 0 && styles.emptyListContent,
+        ]}
+        contentInsetAdjustmentBehavior="automatic"
+        data={filteredWorkspaces}
+        ItemSeparatorComponent={() => <View style={styles.listSeparator} />}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        keyExtractor={(workspace) => workspace.getId()}
+        ListEmptyComponent={state.status === "loading"
+          ? <LoadingState />
+          : state.status === "error"
+            ? <ErrorState message={state.message} onRetry={() => void loadWorkspaces()} />
+            : <EmptyState title={state.workspaces.length === 0 ? "No workspaces yet" : "No matching workspaces"} />}
+        ListHeaderComponent={showSuggestion ? (
           <View style={[styles.suggestionCard, { backgroundColor: colors.accentSoft, borderColor: colors.border }]}>
             <View style={styles.suggestionCopy}>
               <Text style={[styles.suggestionKicker, { color: colors.accent }]}>ORGANISATION SUGGESTION</Text>
-              <Text style={[styles.suggestionTitle, { color: colors.text }]}>{state.suggestion.name}</Text>
-              <Text style={[styles.suggestionReason, { color: colors.textMuted }]}>{state.suggestion.reason}</Text>
+              <Text style={[styles.suggestionTitle, { color: colors.text }]}>{state.status === "success" ? state.suggestion?.name : ""}</Text>
+              <Text style={[styles.suggestionReason, { color: colors.textMuted }]}>{state.status === "success" ? state.suggestion?.reason : ""}</Text>
               <Text style={[styles.suggestionPrivacy, { color: colors.textMuted }]}>Calculated locally with fixed rules. Nothing is moved automatically.</Text>
             </View>
             <View style={styles.suggestionActions}>
               {isApplyingSuggestion && <ActivityIndicator accessibilityLabel="Applying workspace suggestion" color={colors.accent} />}
-              <AppButton label={state.suggestion.action === "rename" ? "Review rename" : "Use suggestion"} variant="secondary" disabled={isApplyingSuggestion} onPress={() => applySuggestion(state.suggestion!)} />
+              <AppButton
+                label={state.status === "success" && state.suggestion?.action === "rename" ? "Review rename" : "Use suggestion"}
+                variant="secondary"
+                disabled={isApplyingSuggestion}
+                onPress={() => {
+                  if (state.status === "success" && state.suggestion) applySuggestion(state.suggestion);
+                }}
+              />
               <AppButton label="Dismiss" variant="quiet" disabled={isApplyingSuggestion} onPress={() => setHideSuggestion(true)} />
             </View>
           </View>
-        )}
-        {state.status === "success" && state.workspaces.length === 0 && (
-          <EmptyState
-            title="No workspaces yet"
-            action={
-              <AppButton
-                label="Create workspace"
-                onPress={() => setIsModalVisible(true)}
-              />
+        ) : null}
+        renderItem={({ item: workspace }) => (
+          <WorkspaceCard
+            workspace={workspace}
+            onPress={() =>
+              router.push({
+                pathname: "/workspaces/[workspaceId]",
+                params: { workspaceId: workspace.getId() },
+              })
             }
           />
         )}
-        {state.status === "success" && state.workspaces.length > 0 && (
-          <View style={styles.list}>
-            {state.workspaces.map((workspace) => (
-              <WorkspaceCard
-                key={workspace.getId()}
-                workspace={workspace}
-                onPress={() =>
-                  router.push({
-                    pathname: "/workspaces/[workspaceId]",
-                    params: { workspaceId: workspace.getId() },
-                  })
-                }
-              />
-            ))}
-          </View>
-        )}
-      </ScrollView>
+        showsVerticalScrollIndicator
+        style={styles.listScroller}
+      />
 
       <SafeAreaModal
         androidPresentation="center"
+        dismissDisabled={isSaving}
         visible={isModalVisible}
-        onRequestClose={() => setIsModalVisible(false)}
+        onRequestClose={closeCreateWorkspace}
       >
         <View style={styles.modalHeader}>
           <Text style={[styles.modalTitle, { color: colors.text }]}>New workspace</Text>
-          <Pressable
-            accessibilityLabel="Close"
-            accessibilityRole="button"
-            hitSlop={10}
-            onPress={() => {
-              Keyboard.dismiss();
-              setIsModalVisible(false);
-            }}
-          >
-            <Text style={[styles.close, { color: colors.textMuted }]}>Close</Text>
-          </Pressable>
+          <ModalCloseButton disabled={isSaving} onPress={closeCreateWorkspace} tintColor={colors.textMuted} />
         </View>
         <Text style={[styles.label, { color: colors.textMuted }]}>Name</Text>
         <TextInput
@@ -263,20 +291,21 @@ export default function WorkspacesScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { gap: Spacing.xl, padding: Spacing.lg },
-  headingSection: { gap: Spacing.lg },
+  fixedHeader: { borderBottomWidth: StyleSheet.hairlineWidth, gap: Spacing.lg, paddingBottom: Spacing.md, paddingHorizontal: Spacing.lg },
   heading: { gap: Spacing.xs },
-  headingActions: { flexDirection: "row", gap: Spacing.sm, justifyContent: "flex-end", width: "100%" },
-  headingAction: { flex: 1, minWidth: 0 },
-  searchButton: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, height: 46, justifyContent: "center", width: 46 },
-  searchLens: { borderRadius: 8, borderWidth: 2.2, height: 16, position: "relative", width: 16 },
-  searchHandle: { borderRadius: 2, bottom: -6, height: 8, position: "absolute", right: -4, transform: [{ rotate: "-45deg" }], width: 2.2 },
+  headingActions: { alignItems: "center", flexDirection: "row", gap: Spacing.sm, width: "100%" },
+  searchField: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, flex: 1, flexDirection: "row", gap: Spacing.sm, minHeight: 46, paddingHorizontal: Spacing.sm },
+  searchInput: { flex: 1, fontSize: 15, minWidth: 0, paddingVertical: 0 },
+  newWorkspaceButton: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, height: 44, justifyContent: "center", width: 44 },
+  listScroller: { flex: 1 },
+  listContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  emptyListContent: { flexGrow: 1 },
+  listSeparator: { height: Spacing.md },
   pressed: { opacity: 0.72 },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 34, fontWeight: "800" },
   workspaceSubtitle: { fontSize: 14, lineHeight: 20 },
-  list: { gap: Spacing.md },
-  suggestionCard: { borderRadius: Radius.md, borderWidth: 1, gap: Spacing.md, padding: Spacing.md },
+  suggestionCard: { borderRadius: Radius.md, borderWidth: 1, gap: Spacing.md, marginBottom: Spacing.md, padding: Spacing.md },
   suggestionCopy: { flex: 1, gap: Spacing.xs },
   suggestionKicker: { fontSize: 11, fontWeight: "800", letterSpacing: 1 },
   suggestionTitle: { fontSize: 20, fontWeight: "800" },
@@ -289,7 +318,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   modalTitle: { fontSize: 23, fontWeight: "800" },
-  close: { fontSize: 14, fontWeight: "700" },
   label: { fontSize: 14, fontWeight: "700" },
   input: {
     borderRadius: Radius.sm,

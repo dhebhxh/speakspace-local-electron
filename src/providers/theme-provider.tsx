@@ -3,11 +3,15 @@ import {
   createContext,
   useCallback,
   useContext,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
-import { useColorScheme as useSystemColorScheme } from "react-native";
+import {
+  Appearance,
+  useColorScheme as useSystemColorScheme,
+} from "react-native";
 
 import { Colors } from "@/constants/theme";
 
@@ -38,11 +42,17 @@ function readInitialPreference(): ThemePreference {
   }
 }
 
+function applyNativeAppearance(preference: ThemePreference): void {
+  Appearance.setColorScheme(
+    preference === "system" ? "unspecified" : preference,
+  );
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const systemMode = useSystemColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>(
     readInitialPreference,
   );
+  const systemMode = useSystemColorScheme();
   const mode: ResolvedThemeMode =
     preference === "system"
       ? systemMode === "dark"
@@ -50,12 +60,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         : "light"
       : preference;
 
+  useLayoutEffect(() => {
+    applyNativeAppearance(preference);
+  }, [preference]);
+
   const setPreference = useCallback(async (next: ThemePreference) => {
     const previous = preference;
+    applyNativeAppearance(next);
     setPreferenceState(next);
     try {
       await Storage.setItem(THEME_PREFERENCE_KEY, next);
     } catch (error) {
+      applyNativeAppearance(previous);
       setPreferenceState(previous);
       throw new Error("Unable to save the appearance setting.", {
         cause: error instanceof Error ? error : undefined,

@@ -1,9 +1,9 @@
-import type { CoreCalendarIntent, CoreTask } from "@/domain/core-note-insight/core-note-insight";
+import type { CoreTask } from "@/domain/core-note-insight/core-note-insight";
 
 export type PlannedNoteNotification = {
   identifier: string;
   itemId: string;
-  kind: "task" | "reminder";
+  kind: "task";
   noteId: string;
   title: string;
   body: string;
@@ -12,7 +12,6 @@ export type PlannedNoteNotification = {
 
 type NotificationSource = {
   tasks: readonly CoreTask[];
-  calendarIntents: readonly CoreCalendarIntent[];
 };
 
 function precision(metadata: Record<string, unknown>, field: string): string | null {
@@ -39,9 +38,9 @@ function localTrigger(value: string, isDateOnly: boolean): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function stableIdentifier(kind: "task" | "reminder", itemId: string): string {
+function stableIdentifier(itemId: string): string {
   const safeId = itemId.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 160);
-  return `speakspace-${kind}-${safeId}`;
+  return `speakspace-task-${safeId}`;
 }
 
 export function planNoteNotifications(
@@ -50,33 +49,18 @@ export function planNoteNotifications(
 ): PlannedNoteNotification[] {
   const planned: PlannedNoteNotification[] = [];
   for (const task of source.tasks) {
-    if (task.status !== "pending" || task.isCurrent === false || !task.dueAt) continue;
-    const triggerAt = localTrigger(task.dueAt, precision(task.metadata, "dueAt") === "date");
+    const field = task.dueAt ? "dueAt" : "startsAt";
+    const value = task.dueAt ?? task.startsAt;
+    if (task.status !== "pending" || task.isCurrent === false || !value) continue;
+    const triggerAt = localTrigger(value, precision(task.metadata, field) === "date");
     if (!triggerAt || triggerAt.getTime() <= now.getTime()) continue;
     planned.push({
-      identifier: stableIdentifier("task", task.id),
+      identifier: stableIdentifier(task.id),
       itemId: task.id,
       kind: "task",
       noteId: task.sourceNoteId,
       title: task.title,
       body: "Task due — open the source Note in SpeakSpace.",
-      triggerAt,
-    });
-  }
-  for (const reminder of source.calendarIntents) {
-    if (reminder.kind !== "reminder" || reminder.status !== "pending" || !reminder.remindAt) continue;
-    const triggerAt = localTrigger(
-      reminder.remindAt,
-      precision(reminder.metadata, "remindAt") === "date",
-    );
-    if (!triggerAt || triggerAt.getTime() <= now.getTime()) continue;
-    planned.push({
-      identifier: stableIdentifier("reminder", reminder.id),
-      itemId: reminder.id,
-      kind: "reminder",
-      noteId: reminder.sourceNoteId,
-      title: reminder.title,
-      body: "Reminder — open the source Note in SpeakSpace.",
       triggerAt,
     });
   }

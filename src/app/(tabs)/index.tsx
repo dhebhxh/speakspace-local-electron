@@ -1,7 +1,9 @@
 import { UiText as Text } from "@/components/ui-text";
+import { UiTextInput as TextInput } from "@/components/ui-text-input";
+import { Image } from "expo-image";
 import { Link, type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Calendar, type DateData } from "react-native-calendars";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -14,17 +16,25 @@ import { NoteCard } from "@/components/note-card";
 import { HomeTaskList } from "@/components/home-task-list";
 import { CategoryFilter, type CategoryFilterValue } from "@/components/category-filter";
 import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme";
-import type { CoreCalendarIntent, CoreTask } from "@/domain/core-note-insight/core-note-insight";
+import type { CoreTask } from "@/domain/core-note-insight/core-note-insight";
 import type { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
 import { configureCalendarLocale } from "@/localization/calendar-locale";
 import { buildHomeCalendarItems, type HomeCalendarItem } from "@/services/home-calendar-items";
+import { noteSearchDestinationKey, uniqueNoteSearchDestinations, type NoteSearchResult } from "@/services/note-fuzzy-search";
 
 type OverviewState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "success"; notes: Note[]; tasks: CoreTask[]; calendarIntents: CoreCalendarIntent[]; loadedAt: number };
+  | { status: "success"; notes: Note[]; tasks: CoreTask[]; loadedAt: number };
 type NoteFilter = "all" | "pinned" | "todos";
+type NoteSearchState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "success"; results: NoteSearchResult[] };
+
+const NOTE_RESULT_BATCH_SIZE = 20;
 
 function toDateKey(value: string | null): string | null {
   if (!value) return null;
@@ -45,7 +55,12 @@ export default function HomeScreen() {
   const [overview, setOverview] = useState<OverviewState>({ status: "loading" });
   const [noteFilter, setNoteFilter] = useState<NoteFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilterValue>("all");
+  const [noteQuery, setNoteQuery] = useState("");
+  const [noteSearch, setNoteSearch] = useState<NoteSearchState>({ status: "idle" });
+  const [searchRevision, setSearchRevision] = useState(0);
+  const [noteResultLimit, setNoteResultLimit] = useState(NOTE_RESULT_BATCH_SIZE);
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date().toISOString())!);
+  const normalizedNoteQuery = noteQuery.trim();
 
   const loadOverview = useCallback(async () => {
     try {
@@ -62,9 +77,66 @@ export default function HomeScreen() {
   useFocusEffect(useCallback(() => { void loadOverview(); }, [loadOverview]));
 
   useEffect(
-    () => appContainer.noteService.subscribeToCategoryChanges(() => { void loadOverview(); }),
+    () => appContainer.noteService.subscribeToCategoryChanges(() => {
+      appContainer.noteService.invalidateSearchIndex();
+      void loadOverview();
+    }),
     [loadOverview],
   );
+
+  useEffect(
+    () => appContainer.noteService.subscribeToChanges(() => { void loadOverview(); }),
+    [loadOverview],
+  );
+
+  useEffect(
+    () => appContainer.coreNoteInsightService.subscribeToChanges(() => {
+      appContainer.noteService.invalidateSearchIndex();
+      void loadOverview();
+    }),
+    [loadOverview],
+  );
+
+  useEffect(
+    () => appContainer.knowledgeService.subscribeToChanges(() => {
+      appContainer.noteService.invalidateSearchIndex();
+      setSearchRevision((value) => value + 1);
+    }),
+    [],
+  );
+
+  useEffect(
+    () => appContainer.aiConversationService.subscribeToChanges(() => {
+      appContainer.noteService.invalidateSearchIndex();
+      setSearchRevision((value) => value + 1);
+    }),
+    [],
+  );
+
+  const overviewLoadedAt = overview.status === "success" ? overview.loadedAt : 0;
+  useEffect(() => {
+    const normalized = noteQuery.trim();
+    if (!normalized) {
+      setNoteSearch({ status: "idle" });
+      return;
+    }
+    let active = true;
+    setNoteSearch({ status: "loading" });
+    const timer = setTimeout(() => {
+      void appContainer.noteService.searchNoteResourceResults(normalized).then(
+        (results) => active && setNoteSearch({ status: "success", results }),
+        () => active && setNoteSearch({ status: "error" }),
+      );
+    }, 200);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [noteQuery, overviewLoadedAt, searchRevision]);
+
+  useEffect(() => {
+    setNoteResultLimit(NOTE_RESULT_BATCH_SIZE);
+  }, [categoryFilter, normalizedNoteQuery, noteFilter, overviewLoadedAt, searchRevision]);
 
   const overviewData = useMemo(() => {
     if (overview.status !== "success") return null;
@@ -77,10 +149,7 @@ export default function HomeScreen() {
     );
     const calendarByDate = new Map<string, HomeCalendarItem[]>();
     for (const item of buildHomeCalendarItems({
-      notes: overview.notes,
       tasks: overview.tasks,
-      calendarIntents: overview.calendarIntents,
-      reference: new Date(overview.loadedAt),
     })) {
       calendarByDate.set(item.dateKey, [...(calendarByDate.get(item.dateKey) ?? []), item]);
     }
@@ -105,6 +174,50 @@ export default function HomeScreen() {
 
   const selectedEvents = overviewData?.calendarByDate.get(selectedDate) ?? [];
   const toggleNoteFilter = (next: Exclude<NoteFilter, "all">) => setNoteFilter((current) => current === next ? "all" : next);
+  const visibleNoteResults = useMemo<({ note: Note; match?: NoteSearchResult })[]>(() => {
+    if (!overviewData) return [];
+    if (!normalizedNoteQuery) {
+      return overviewData.filteredNotes.map((note) => ({ note }));
+    }
+    if (noteSearch.status !== "success") return [];
+    const allowedIds = new Set(overviewData.filteredNotes.map((note) => note.getId()));
+    return uniqueNoteSearchDestinations(
+      noteSearch.results.filter((result) => allowedIds.has(result.note.getId())),
+    )
+      .map((match) => ({ note: match.note, match }));
+  }, [normalizedNoteQuery, noteSearch, overviewData]);
+  const renderedNoteResults = visibleNoteResults.slice(0, noteResultLimit);
+
+  const revealMoreNoteResults = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    if (layoutMeasurement.height + contentOffset.y < contentSize.height - 96) return;
+    setNoteResultLimit((current) => Math.min(current + NOTE_RESULT_BATCH_SIZE, visibleNoteResults.length));
+  };
+
+  const noteResultKey = (result: { note: Note; match?: NoteSearchResult }) => result.match
+    ? noteSearchDestinationKey(result.match)
+    : `note:${result.note.getId()}`;
+
+  const openNoteResult = (result: { note: Note; match?: NoteSearchResult }) => {
+    if (result.match?.conversationId) {
+      router.push({ pathname: "/ask-ai", params: { conversationId: result.match.conversationId } });
+      return;
+    }
+    const section = result.match?.source === "Knowledge"
+      ? "knowledge"
+      : result.match?.source === "Structured Note"
+        ? "insights"
+        : "transcript";
+    router.push({
+      pathname: "/notes/[noteId]",
+      params: {
+        noteId: result.note.getId(),
+        section,
+        insightSection: result.match?.insightSection,
+        knowledgeResultId: result.match?.knowledgeResultId,
+      },
+    });
+  };
 
   return (
     <ScrollView
@@ -176,22 +289,110 @@ export default function HomeScreen() {
           <View style={styles.notesSection}>
             <View style={styles.notesHeading}>
               <Text style={[styles.calendarTitle, { color: colors.text }]}>Notes</Text>
-              <Text style={[styles.notesCount, { color: colors.textMuted }]}>{`${overviewData.filteredNotes.length} shown`}</Text>
+              <Text style={[styles.notesCount, { color: colors.textMuted }]}>{normalizedNoteQuery ? `${visibleNoteResults.length} matches` : `${visibleNoteResults.length} shown`}</Text>
+            </View>
+            <View style={[styles.searchField, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Image accessibilityElementsHidden source="sf:magnifyingglass" style={styles.searchIcon} tintColor={colors.textMuted} />
+              <TextInput
+                accessibilityLabel="Search notes and related content"
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={setNoteQuery}
+                onSubmitEditing={Keyboard.dismiss}
+                placeholder="Search notes, insights, Knowledge, or Ask AI"
+                placeholderTextColor={colors.textMuted}
+                returnKeyType="search"
+                style={[styles.searchInput, { color: colors.text }]}
+                value={noteQuery}
+              />
+              {noteQuery.length > 0 && (
+                <Pressable
+                  accessibilityLabel="Clear note search"
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={() => setNoteQuery("")}
+                  style={({ pressed }) => [styles.clearSearch, { backgroundColor: colors.surfaceMuted }, pressed && styles.pressed]}
+                >
+                  <Text style={[styles.clearSearchText, { color: colors.textMuted }]}>×</Text>
+                </Pressable>
+              )}
             </View>
             <CategoryFilter value={categoryFilter} onChange={setCategoryFilter} />
-            {overviewData.filteredNotes.length === 0
-              ? <EmptyState title={noteFilter === "all" ? "No notes yet" : "No matching notes"} description={noteFilter === "todos" ? "Notes with unfinished Core Note tasks appear here." : undefined} />
-              : <View style={styles.noteList}>{overviewData.filteredNotes.map((note) => <NoteCard key={note.getId()} note={note} onPress={() => router.push({ pathname: "/notes/[noteId]", params: { noteId: note.getId() } })} />)}</View>}
+            {normalizedNoteQuery && noteSearch.status === "loading" && (
+              <View accessibilityLiveRegion="polite" style={styles.searchStatus}>
+                <ActivityIndicator color={colors.accent} />
+                <Text style={[styles.searchStatusText, { color: colors.textMuted }]}>Searching all related content…</Text>
+              </View>
+            )}
+            {normalizedNoteQuery && noteSearch.status === "error" && (
+              <ErrorState message="Unable to search notes." onRetry={() => setSearchRevision((value) => value + 1)} />
+            )}
+            {(!normalizedNoteQuery || noteSearch.status === "success") && visibleNoteResults.length === 0
+              ? <EmptyState
+                  title={normalizedNoteQuery ? "No matching notes" : noteFilter === "all" ? "No notes yet" : "No matching notes"}
+                  description={normalizedNoteQuery
+                    ? `No Note, Structured Note, Knowledge result, or Ask AI conversation matches “${normalizedNoteQuery}” with the current filters.`
+                    : noteFilter === "todos" ? "Notes with unfinished Core Note tasks appear here." : undefined}
+                />
+              : visibleNoteResults.length > 0 && (
+                <ScrollView
+                  accessibilityLabel="Note results"
+                  contentContainerStyle={styles.noteList}
+                  keyboardDismissMode="on-drag"
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled
+                  onScroll={revealMoreNoteResults}
+                  scrollEventThrottle={100}
+                  showsVerticalScrollIndicator
+                  style={styles.noteListScroll}
+                >
+                  {renderedNoteResults.map((result) => (
+                    <NoteCard
+                      key={noteResultKey(result)}
+                      note={result.note}
+                      match={result.match
+                        ? { source: result.match.source, excerpt: result.match.excerpt, query: normalizedNoteQuery, resourceTitle: result.match.resourceTitle }
+                        : undefined}
+                      onPress={() => openNoteResult(result)}
+                    />
+                  ))}
+                  {renderedNoteResults.length < visibleNoteResults.length && (
+                    <Text style={[styles.moreResults, { color: colors.textMuted }]}>{`${renderedNoteResults.length} of ${visibleNoteResults.length} loaded · scroll for more`}</Text>
+                  )}
+                </ScrollView>
+              )}
           </View>
           <View style={styles.calendarSection}>
             <Text style={[styles.calendarTitle, { color: colors.text }]}>Calendar</Text>
             <View style={[styles.calendarCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Calendar key={language} markedDates={markedDates} onDayPress={(day: DateData) => setSelectedDate(day.dateString)} theme={{ calendarBackground: colors.surface, dayTextColor: colors.text, monthTextColor: colors.text, textDisabledColor: colors.border, todayTextColor: colors.accent, arrowColor: colors.accent, selectedDayBackgroundColor: colors.accent, selectedDayTextColor: colors.surface }} />
+              <Calendar
+                key={`${language}-${theme.mode}`}
+                markedDates={markedDates}
+                onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
+                theme={{
+                  arrowColor: colors.accent,
+                  backgroundColor: colors.surface,
+                  calendarBackground: colors.surface,
+                  dayTextColor: colors.text,
+                  disabledArrowColor: colors.border,
+                  dotColor: colors.accent,
+                  indicatorColor: colors.accent,
+                  monthTextColor: colors.text,
+                  selectedDayBackgroundColor: colors.accent,
+                  selectedDayTextColor: theme.mode === "dark" ? colors.background : "#FFFFFF",
+                  selectedDotColor: theme.mode === "dark" ? colors.background : "#FFFFFF",
+                  textDisabledColor: colors.border,
+                  textInactiveColor: colors.border,
+                  textSectionTitleColor: colors.textMuted,
+                  textSectionTitleDisabledColor: colors.border,
+                  todayTextColor: colors.accent,
+                }}
+              />
               <View style={[styles.agenda, { borderTopColor: colors.border }]}>
                 <Text style={[styles.agendaDate, { color: colors.text }]}>{selectedDate}</Text>
                 {selectedEvents.length === 0
                   ? <Text style={[styles.agendaEmpty, { color: colors.textMuted }]}>No calendar items for this date.</Text>
-                  : selectedEvents.map((event) => <Link key={event.id} href={{ pathname: "/notes/[noteId]", params: { noteId: event.sourceNoteId } }} asChild><Pressable accessibilityRole="button" style={({ pressed }) => [styles.eventRow, { backgroundColor: colors.surfaceMuted }, pressed && styles.pressed]}><View style={[styles.eventDot, { backgroundColor: colors.accent }]} /><View style={styles.eventCopy}><Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text><Text style={[styles.eventKind, { color: colors.textMuted }]}>{event.source === "transcript" ? `From transcript · ${event.kind === "reminder" ? "Reminder" : event.kind === "calendar" ? "Event" : "Task"}` : event.kind === "reminder" ? "Reminder" : event.kind === "task" ? "Task due" : "Calendar event"}</Text></View></Pressable></Link>)}
+                  : selectedEvents.map((event) => <Link key={event.id} href={{ pathname: "/notes/[noteId]", params: { noteId: event.sourceNoteId } }} asChild><Pressable accessibilityRole="button" style={({ pressed }) => [styles.eventRow, { backgroundColor: colors.surfaceMuted }, pressed && styles.pressed]}><View style={[styles.eventDot, { backgroundColor: colors.accent }]} /><View style={styles.eventCopy}><Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text><Text style={[styles.eventKind, { color: colors.textMuted }]}>Task due</Text></View></Pressable></Link>)}
               </View>
             </View>
           </View>
@@ -276,7 +477,16 @@ const styles = StyleSheet.create({
   notesSection: { gap: Spacing.sm },
   notesHeading: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between" },
   notesCount: { fontSize: 12, fontWeight: "700" },
-  noteList: { gap: Spacing.sm },
+  searchField: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, flexDirection: "row", minHeight: 48, paddingHorizontal: Spacing.sm },
+  searchIcon: { height: 18, marginHorizontal: Spacing.xs, width: 18 },
+  searchInput: { flex: 1, fontSize: 15, minHeight: 46, minWidth: 0, paddingHorizontal: Spacing.xs },
+  clearSearch: { alignItems: "center", borderRadius: 14, height: 28, justifyContent: "center", width: 28 },
+  clearSearchText: { fontSize: 20, fontWeight: "600", lineHeight: 22 },
+  searchStatus: { alignItems: "center", flexDirection: "row", gap: Spacing.sm, justifyContent: "center", minHeight: 88 },
+  searchStatusText: { fontSize: 13, fontWeight: "600" },
+  noteListScroll: { maxHeight: 520 },
+  noteList: { gap: Spacing.sm, paddingVertical: 1 },
+  moreResults: { fontSize: 12, fontWeight: "600", padding: Spacing.sm, textAlign: "center" },
   calendarSection: { gap: Spacing.sm },
   calendarTitle: { fontSize: 19, fontWeight: "800" },
   calendarCard: { borderCurve: "continuous", borderRadius: Radius.lg, borderWidth: 1, boxShadow: Shadows.card, overflow: "hidden" },

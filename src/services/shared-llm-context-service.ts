@@ -16,14 +16,14 @@ export type ActivatedLlmCache = {
   clearMs: number;
 };
 
-/** Owns the single native context shared by short-lived Ask AI and translation work. */
+/** Owns the native context shared by short Ask AI, translation, and title work. */
 export class SharedLlmContextService {
   private context: LlamaContext | null = null;
   private modelId: string | null = null;
   private cacheIdentity: string | null = null;
 
   public constructor(coordinator: LocalLlmCoordinator) {
-    coordinator.registerIdleCleanup("shared-llm", () => this.release(), ["ask-ai", "translation"]);
+    coordinator.registerIdleCleanup("shared-llm", () => this.release(), ["ask-ai", "translation", "note-title"]);
   }
 
   public getLoadedModelId(): string | null { return this.modelId; }

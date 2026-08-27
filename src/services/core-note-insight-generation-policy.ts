@@ -337,6 +337,18 @@ const REMINDER_WORDING_EN = /\b(?:remind(?:er|\s+me|\s+us)?|remember\s+to|notify
 const REMINDER_WORDING_ZH = /(?:提醒|记得|記得|通知|闹钟|鬧鐘)/u;
 const REMINDER_TASK_ACTION_EN = /\b(?:attend|join|present|report|renew|submit|send|finish|complete|prepare|deliver|review|test|check|call|email|write|create|update|fix|implement|build|contact|confirm|bring|take|pay|study|practice|record)\b/iu;
 const REMINDER_TASK_ACTION_ZH = /(?:参加|參加|汇报|彙報|報告|续保|續保|续费|續費|提交|发送|發送|完成|准备|準備|交付|复习|複習|审核|審核|检查|檢查|测试|測試|打电话|打電話|致电|致電|联系|聯繫|确认|確認|携带|攜帶|支付|学习|學習|练习|練習|记录|記錄)/u;
+const INTERNAL_DATE_ANNOTATION = /\(\d{4}-\d{2}-\d{2}(?:,\s*REPEAT=(?:daily|weekdays|weekly|biweekly|monthly))?\)/giu;
+const REMINDER_DATE_ZH = /(?:(?:\d{4}|[〇零一二三四五六七八九]{4})\s*年\s*)?(?:\d{1,2}|[一二两兩三四五六七八九十]{1,3})\s*月\s*(?:\d{1,2}|[一二两兩三四五六七八九十]{1,3})\s*[日号號]/gu;
+const REMINDER_RELATIVE_DATE_ZH = /(?:今天|今日|明天|明日|后天|後天|大后天|大後天|下(?:个|個)?月|本月|这个月|這個月|月底|月末|(?:下下|下个|下個|下|这个|這個|本|这|這)?(?:周|週|星期|礼拜|禮拜)[一二三四五六日天1-7])/gu;
+const REMINDER_CLOCK_ZH = /(?:上午|早上|中午|下午|晚上)?\s*(?:\d{1,2}|[一二两兩三四五六七八九十]+)\s*[点點时時](?:\s*\d{1,2}\s*分)?/gu;
+const REMINDER_LEAD_ZH = /(?:提前|提早)\s*(?:\d+|[一二两兩三四五六七八九十]{1,3})\s*(?:个|個)?\s*(?:天|日|周|週|星期|礼拜|禮拜)/gu;
+const REMINDER_REQUEST_ZH = /(?:(?:请|請|麻烦|麻煩)\s*)?(?:提醒|通知)\s*(?:我|我们|我們)?|(?:记得|記得)|(?:(?:设置|設置|创建|創建|安排)\s*)?(?:闹钟|鬧鐘)/gu;
+const REMINDER_FILLER_ZH = /(?:请|請|麻烦|麻煩|谢谢|謝謝|多谢|多謝|我们|我們|我|你|有\s*(?:一\s*)?[场場个個]?|一\s*[场場个個]|设置|設置|创建|創建|安排|要\s*去|要|在|于|於|一下|届时|屆時|的)/gu;
+const REMINDER_DATE_EN = /\b(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)(?:,?\s+\d{4})?\b/giu;
+const REMINDER_RELATIVE_DATE_EN = /\b(?:today|tomorrow|tonight|the\s+day\s+after\s+tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next\s+month)\b|\b(?:in\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:days?|weeks?)\s*(?:before|earlier|from\s+now|later)?\b/giu;
+const REMINDER_CLOCK_EN = /\b(?:1[0-2]|0?\d)(?::[0-5]\d)?\s*(?:am|pm)\b|\b(?:[01]?\d|2[0-3]):[0-5]\d\b/giu;
+const REMINDER_REQUEST_EN = /\b(?:remind|notify|alert)\s+(?:me|us)\b|\bremember\s+to\b|\b(?:set|create|schedule)\s+(?:a\s+)?(?:reminder|notification|alert)\b/giu;
+const REMINDER_FILLER_EN = new Set(["a", "about", "alert", "an", "at", "create", "for", "have", "has", "i", "in", "is", "me", "my", "notification", "on", "our", "please", "reminder", "schedule", "set", "the", "there", "to", "us", "we", "will", "you"]);
 const TEMPORAL_EN = /\b(?:today|tomorrow|tonight|morning|afternoon|evening|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}:\d{2}|\d{4})\b/iu;
 const TEMPORAL_ZH = /(?:今天|今日|明天|明日|后天|後天|今晚|上午|下午|晚上|星期[一二三四五六日天]|[周週][一二三四五六日天]|\d{1,4}\s*年|(?:\d{1,2}|[一二两兩三四五六七八九十]{1,3})\s*月|(?:\d{1,2}|[一二两兩三四五六七八九十]{1,3})\s*[日号號点點时時])/u;
 const CLOCK_EN = /\b(?:1[0-2]|0?\d)(?::[0-5]\d)?\s*(?:am|pm)\b|\b(?:[01]?\d|2[0-3]):[0-5]\d\b/iu;
@@ -354,7 +366,7 @@ function hasTaskEvidence(clause: string): boolean {
   if (!clause) return false;
   const reminderWording = REMINDER_WORDING_EN.test(clause) || REMINDER_WORDING_ZH.test(clause);
   if (reminderWording) {
-    if (hasExplicitReminderRequest(clause)) return hasReminderTaskEvidence(clause);
+    if (hasExplicitReminderRequest(clause)) return hasReminderTaskEvidence(clause, true);
     if (completedFact(clause)) return false;
     return hasReminderTaskEvidence(clause);
   }
@@ -406,8 +418,31 @@ function clausePrefixBefore(clause: string, index: number): string {
   return clause.slice(previousBoundary + 1, index);
 }
 
-function hasReminderTaskEvidence(clause: string): boolean {
-  return REMINDER_TASK_ACTION_EN.test(clause) || REMINDER_TASK_ACTION_ZH.test(clause);
+function hasReminderTaskEvidence(clause: string, allowConcreteSubject = false): boolean {
+  return REMINDER_TASK_ACTION_EN.test(clause) || REMINDER_TASK_ACTION_ZH.test(clause) ||
+    (allowConcreteSubject && hasConcreteReminderSubject(clause));
+}
+
+function hasConcreteReminderSubject(clause: string): boolean {
+  const withoutSchedule = clause
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .replace(INTERNAL_DATE_ANNOTATION, " ")
+    .replace(REMINDER_DATE_ZH, " ")
+    .replace(REMINDER_RELATIVE_DATE_ZH, " ")
+    .replace(REMINDER_CLOCK_ZH, " ")
+    .replace(REMINDER_LEAD_ZH, " ")
+    .replace(REMINDER_REQUEST_ZH, " ")
+    .replace(REMINDER_FILLER_ZH, " ")
+    .replace(REMINDER_DATE_EN, " ")
+    .replace(REMINDER_RELATIVE_DATE_EN, " ")
+    .replace(REMINDER_CLOCK_EN, " ")
+    .replace(REMINDER_REQUEST_EN, " ");
+  const chineseContent = withoutSchedule.match(/\p{Script=Han}/gu) ?? [];
+  if (chineseContent.length >= 2) return true;
+
+  return (withoutSchedule.match(/[a-z]{2,}/gu) ?? [])
+    .some((word) => !REMINDER_FILLER_EN.has(word));
 }
 
 function hasRecurringTaskEvidence(clause: string): boolean {
@@ -415,7 +450,8 @@ function hasRecurringTaskEvidence(clause: string): boolean {
     !completedFact(clause) &&
     recurrenceEvidence(clause) !== null &&
     (RECURRING_TASK_ACTION_EN.test(clause) || RECURRING_TASK_ACTION_ZH.test(clause)) &&
-    (!(REMINDER_WORDING_EN.test(clause) || REMINDER_WORDING_ZH.test(clause)) || hasReminderTaskEvidence(clause));
+    (!(REMINDER_WORDING_EN.test(clause) || REMINDER_WORDING_ZH.test(clause)) ||
+      hasReminderTaskEvidence(clause, hasExplicitReminderRequest(clause)));
 }
 
 function isNegatedIntent(clause: string): boolean {

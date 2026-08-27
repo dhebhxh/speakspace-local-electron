@@ -27,8 +27,9 @@ type SafeAreaModalProps = {
  * The only blocking modal presentation used by the app.
  *
  * Every iOS overlay is centered inside the visible safe area and scrolls
- * internally when its content is too tall. Android may retain a centered or
- * bottom-sheet presentation per screen.
+ * internally when its content is too tall. The whole overlay fades so the
+ * backdrop never travels with the card. Android may retain a centered or
+ * bottom-sheet layout per screen.
  */
 export function SafeAreaModal({
   androidKeyboardBehavior,
@@ -49,7 +50,7 @@ export function SafeAreaModal({
 
   return (
     <Modal
-      animationType="slide"
+      animationType="fade"
       onRequestClose={requestClose}
       transparent
       visible={visible}

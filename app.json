@@ -2,7 +2,7 @@
   "expo": {
     "name": "speakspace-local-mobile",
     "slug": "speakspace-local-mobile",
-    "version": "1.5.0",
+    "version": "1.6.0",
     "backgroundColor": "#F3F7F5",
     "primaryColor": "#356F68",
     "orientation": "portrait",
@@ -13,7 +13,7 @@
       "icon": "./assets/expo.icon",
       "supportsTablet": false,
       "deploymentTarget": "16.4",
-      "buildNumber": "6",
+      "buildNumber": "7",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "SpeakSpace uses the microphone to create local transcripts and recordings.",
         "UIViewControllerBasedStatusBarAppearance": true

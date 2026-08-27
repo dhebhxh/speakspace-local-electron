@@ -1,40 +1,28 @@
 import { UiText as Text } from "@/components/ui-text";
-import { UiTextInput as TextInput } from "@/components/ui-text-input";
 import { Image } from "expo-image";
 import { Link, type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Calendar, type DateData } from "react-native-calendars";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
-import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
-import { NoteCard } from "@/components/note-card";
 import { HomeTaskList } from "@/components/home-task-list";
-import { CategoryFilter, type CategoryFilterValue } from "@/components/category-filter";
+import { SafeAreaModal } from "@/components/safe-area-modal";
 import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import type { CoreTask } from "@/domain/core-note-insight/core-note-insight";
 import type { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
 import { configureCalendarLocale } from "@/localization/calendar-locale";
 import { buildHomeCalendarItems, type HomeCalendarItem } from "@/services/home-calendar-items";
-import { noteSearchDestinationKey, uniqueNoteSearchDestinations, type NoteSearchResult } from "@/services/note-fuzzy-search";
 
 type OverviewState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "success"; notes: Note[]; tasks: CoreTask[]; loadedAt: number };
-type NoteFilter = "all" | "pinned" | "todos";
-type NoteSearchState =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "error" }
-  | { status: "success"; results: NoteSearchResult[] };
-
-const NOTE_RESULT_BATCH_SIZE = 20;
 
 function toDateKey(value: string | null): string | null {
   if (!value) return null;
@@ -53,14 +41,8 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [overview, setOverview] = useState<OverviewState>({ status: "loading" });
-  const [noteFilter, setNoteFilter] = useState<NoteFilter>("all");
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilterValue>("all");
-  const [noteQuery, setNoteQuery] = useState("");
-  const [noteSearch, setNoteSearch] = useState<NoteSearchState>({ status: "idle" });
-  const [searchRevision, setSearchRevision] = useState(0);
-  const [noteResultLimit, setNoteResultLimit] = useState(NOTE_RESULT_BATCH_SIZE);
+  const [overviewVisible, setOverviewVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date().toISOString())!);
-  const normalizedNoteQuery = noteQuery.trim();
 
   const loadOverview = useCallback(async () => {
     try {
@@ -97,56 +79,10 @@ export default function HomeScreen() {
     [loadOverview],
   );
 
-  useEffect(
-    () => appContainer.knowledgeService.subscribeToChanges(() => {
-      appContainer.noteService.invalidateSearchIndex();
-      setSearchRevision((value) => value + 1);
-    }),
-    [],
-  );
-
-  useEffect(
-    () => appContainer.aiConversationService.subscribeToChanges(() => {
-      appContainer.noteService.invalidateSearchIndex();
-      setSearchRevision((value) => value + 1);
-    }),
-    [],
-  );
-
-  const overviewLoadedAt = overview.status === "success" ? overview.loadedAt : 0;
-  useEffect(() => {
-    const normalized = noteQuery.trim();
-    if (!normalized) {
-      setNoteSearch({ status: "idle" });
-      return;
-    }
-    let active = true;
-    setNoteSearch({ status: "loading" });
-    const timer = setTimeout(() => {
-      void appContainer.noteService.searchNoteResourceResults(normalized).then(
-        (results) => active && setNoteSearch({ status: "success", results }),
-        () => active && setNoteSearch({ status: "error" }),
-      );
-    }, 200);
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [noteQuery, overviewLoadedAt, searchRevision]);
-
-  useEffect(() => {
-    setNoteResultLimit(NOTE_RESULT_BATCH_SIZE);
-  }, [categoryFilter, normalizedNoteQuery, noteFilter, overviewLoadedAt, searchRevision]);
-
   const overviewData = useMemo(() => {
     if (overview.status !== "success") return null;
     const weekAgo = overview.loadedAt - 7 * 24 * 60 * 60 * 1000;
     const recentNotes = overview.notes.filter((note) => new Date(note.getCreatedAt()).getTime() >= weekAgo);
-    const pendingNoteIds = new Set(overview.tasks.filter((task) => task.status === "pending").map((task) => task.sourceNoteId));
-    const filteredNotes = overview.notes.filter((note) =>
-      (noteFilter === "pinned" ? note.getIsPinned() : noteFilter === "todos" ? pendingNoteIds.has(note.getId()) : true) &&
-      (categoryFilter === "all" || note.getCategory() === categoryFilter),
-    );
     const calendarByDate = new Map<string, HomeCalendarItem[]>();
     for (const item of buildHomeCalendarItems({
       tasks: overview.tasks,
@@ -156,13 +92,12 @@ export default function HomeScreen() {
     return {
       pinnedCount: overview.notes.filter((note) => note.getIsPinned()).length,
       pendingCount: overview.tasks.filter((task) => task.status === "pending").length,
-      filteredNotes,
       transcriptCount: overview.notes.reduce((sum, note) => sum + note.getTranscript().length, 0),
       recentTranscriptCount: recentNotes.reduce((sum, note) => sum + note.getTranscript().length, 0),
       recentNoteCount: recentNotes.length,
       calendarByDate,
     };
-  }, [categoryFilter, noteFilter, overview]);
+  }, [overview]);
 
   const markedDates = useMemo(() => {
     if (!overviewData) return {};
@@ -173,107 +108,74 @@ export default function HomeScreen() {
   }, [colors.accent, overviewData, selectedDate]);
 
   const selectedEvents = overviewData?.calendarByDate.get(selectedDate) ?? [];
-  const toggleNoteFilter = (next: Exclude<NoteFilter, "all">) => setNoteFilter((current) => current === next ? "all" : next);
-  const visibleNoteResults = useMemo<({ note: Note; match?: NoteSearchResult })[]>(() => {
-    if (!overviewData) return [];
-    if (!normalizedNoteQuery) {
-      return overviewData.filteredNotes.map((note) => ({ note }));
-    }
-    if (noteSearch.status !== "success") return [];
-    const allowedIds = new Set(overviewData.filteredNotes.map((note) => note.getId()));
-    return uniqueNoteSearchDestinations(
-      noteSearch.results.filter((result) => allowedIds.has(result.note.getId())),
-    )
-      .map((match) => ({ note: match.note, match }));
-  }, [normalizedNoteQuery, noteSearch, overviewData]);
-  const renderedNoteResults = visibleNoteResults.slice(0, noteResultLimit);
-
-  const revealMoreNoteResults = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    if (layoutMeasurement.height + contentOffset.y < contentSize.height - 96) return;
-    setNoteResultLimit((current) => Math.min(current + NOTE_RESULT_BATCH_SIZE, visibleNoteResults.length));
-  };
-
-  const noteResultKey = (result: { note: Note; match?: NoteSearchResult }) => result.match
-    ? noteSearchDestinationKey(result.match)
-    : `note:${result.note.getId()}`;
-
-  const openNoteResult = (result: { note: Note; match?: NoteSearchResult }) => {
-    if (result.match?.conversationId) {
-      router.push({ pathname: "/ask-ai", params: { conversationId: result.match.conversationId } });
-      return;
-    }
-    const section = result.match?.source === "Knowledge"
-      ? "knowledge"
-      : result.match?.source === "Structured Note"
-        ? "insights"
-        : "transcript";
+  const openLibrary = () => {
+    setOverviewVisible(false);
     router.push({
-      pathname: "/notes/[noteId]",
-      params: {
-        noteId: result.note.getId(),
-        section,
-        insightSection: result.match?.insightSection,
-        knowledgeResultId: result.match?.knowledgeResultId,
-      },
+      pathname: "/(tabs)/library",
+      params: { section: "notes" },
     });
   };
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      style={{ backgroundColor: colors.background, experimental_backgroundImage: Backgrounds[theme.mode] }}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + Spacing.md, paddingBottom: insets.bottom + 76 }]}
-    >
-      <View style={styles.hero}>
-        <View style={[styles.brandMark, { backgroundColor: colors.accent }]}><Text style={styles.brandGlyph}>|||</Text></View>
-        <View style={styles.heroCopy}>
-          <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.eyebrow, { color: colors.accent }]}>SPEAKSPACE-LOCAL</Text>
-        </View>
-      </View>
-
-      <View style={styles.sectionHeading}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Start a transcription</Text>
-        <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>Choose live recording or upload an audio file.</Text>
-      </View>
-
-      <View style={styles.transcriptionChoices}>
-        <View style={[styles.transcriptionCard, styles.liveCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.cardHeader}>
-            <View style={[styles.iconTile, styles.liveIconTile, { backgroundColor: colors.accentSoft }]}><MicrophoneIcon color={colors.accent} /></View>
-            <View style={styles.cardCopy}>
-              <Text style={[styles.cardTitle, styles.liveTitle, { color: colors.text }]}>Live recording</Text>
-              <Text style={[styles.cardBody, { color: colors.textMuted }]}>Record and transcribe as you speak.</Text>
-            </View>
+    <>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        style={{ backgroundColor: colors.background, experimental_backgroundImage: Backgrounds[theme.mode] }}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + Spacing.md, paddingBottom: insets.bottom + 76 }]}
+      >
+        <View style={styles.hero}>
+          <View style={[styles.brandMark, { backgroundColor: colors.accent }]}><Text style={styles.brandGlyph}>|||</Text></View>
+          <View style={styles.heroCopy}>
+            <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.eyebrow, { color: colors.accent }]}>SPEAKSPACE-LOCAL</Text>
           </View>
-          <Link href="/transcription" asChild><AppButton label="Record now" /></Link>
+          <Pressable
+            accessibilityHint="Shows note and task statistics"
+            accessibilityLabel="Open overview"
+            accessibilityRole="button"
+            accessibilityState={{ expanded: overviewVisible }}
+            onPress={() => setOverviewVisible(true)}
+            style={({ pressed }) => [
+              styles.overviewTrigger,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Image accessibilityElementsHidden source="sf:chart.bar.xaxis" style={styles.overviewTriggerIcon} tintColor={colors.accent} />
+            <Text style={[styles.overviewTriggerLabel, { color: colors.accent }]}>Overview</Text>
+          </Pressable>
         </View>
 
-      </View>
-
-      <View style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={[styles.secondaryIcon, { backgroundColor: colors.accentSoft }]}><Text style={[styles.actionIcon, { color: colors.accent }]}>↑</Text></View>
-        <View style={styles.secondaryCopy}>
-          <Text style={[styles.actionTitle, { color: colors.text }]}>Upload audio</Text>
-          <Text style={[styles.actionBody, { color: colors.textMuted }]}>Choose a file and start transcribing.</Text>
+        <View style={styles.sectionHeading}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Start a transcription</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>Choose live recording or upload an audio file.</Text>
         </View>
-        <Link href={"/audio-transcription" as Href} asChild><AppButton label="Upload" variant="quiet" /></Link>
-      </View>
 
-      <View style={styles.overviewSection}>
-        <View style={styles.overviewHeading}>
-          <Text style={[styles.overviewTitle, { color: colors.text }]}>Overview</Text>
-          <Text style={[styles.overviewSubtitle, { color: colors.textMuted }]}>Your notes and upcoming moments at a glance.</Text>
+        <View style={styles.transcriptionChoices}>
+          <View style={[styles.transcriptionCard, styles.liveCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconTile, styles.liveIconTile, { backgroundColor: colors.accentSoft }]}><MicrophoneIcon color={colors.accent} /></View>
+              <View style={styles.cardCopy}>
+                <Text style={[styles.cardTitle, styles.liveTitle, { color: colors.text }]}>Live recording</Text>
+                <Text style={[styles.cardBody, { color: colors.textMuted }]}>Record and transcribe as you speak.</Text>
+              </View>
+            </View>
+            <Link href="/transcription" asChild><AppButton label="Record now" /></Link>
+          </View>
+
         </View>
+
+        <View style={[styles.secondaryActionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.secondaryIcon, { backgroundColor: colors.accentSoft }]}><Text style={[styles.actionIcon, { color: colors.accent }]}>↑</Text></View>
+          <View style={styles.secondaryCopy}>
+            <Text style={[styles.actionTitle, { color: colors.text }]}>Upload audio</Text>
+            <Text style={[styles.actionBody, { color: colors.textMuted }]}>Choose a file and start transcribing.</Text>
+          </View>
+          <Link href={"/audio-transcription" as Href} asChild><AppButton label="Upload" variant="quiet" /></Link>
+        </View>
+
         {overview.status === "loading" && <LoadingState />}
         {overview.status === "error" && <ErrorState message={overview.message} onRetry={() => void loadOverview()} />}
         {overview.status === "success" && overviewData && <>
-          <View style={styles.statsGrid}>
-            <HomeStatCard label="Total notes" value={overview.notes.length} detail={`+${overviewData.recentNoteCount} this week`} />
-            <HomeStatCard label="Pinned" value={overviewData.pinnedCount} detail={noteFilter === "pinned" ? "Show all notes" : "Filter pinned notes"} active={noteFilter === "pinned"} onPress={() => toggleNoteFilter("pinned")} />
-            <HomeStatCard label="Characters" value={overviewData.transcriptCount} detail={`+${formatNumber(overviewData.recentTranscriptCount)} this week`} />
-            <HomeStatCard label="Open tasks" value={overviewData.pendingCount} detail={noteFilter === "todos" ? "Show all notes" : "Filter unfinished notes"} active={noteFilter === "todos"} onPress={() => toggleNoteFilter("todos")} />
-          </View>
           <HomeTaskList
             tasks={overview.tasks}
             onOpenNote={(noteId) => router.push({ pathname: "/notes/[noteId]", params: { noteId } })}
@@ -286,82 +188,6 @@ export default function HomeScreen() {
               await loadOverview();
             }}
           />
-          <View style={styles.notesSection}>
-            <View style={styles.notesHeading}>
-              <Text style={[styles.calendarTitle, { color: colors.text }]}>Notes</Text>
-              <Text style={[styles.notesCount, { color: colors.textMuted }]}>{normalizedNoteQuery ? `${visibleNoteResults.length} matches` : `${visibleNoteResults.length} shown`}</Text>
-            </View>
-            <View style={[styles.searchField, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Image accessibilityElementsHidden source="sf:magnifyingglass" style={styles.searchIcon} tintColor={colors.textMuted} />
-              <TextInput
-                accessibilityLabel="Search notes and related content"
-                autoCapitalize="none"
-                autoCorrect={false}
-                onChangeText={setNoteQuery}
-                onSubmitEditing={Keyboard.dismiss}
-                placeholder="Search notes, insights, Knowledge, or Ask AI"
-                placeholderTextColor={colors.textMuted}
-                returnKeyType="search"
-                style={[styles.searchInput, { color: colors.text }]}
-                value={noteQuery}
-              />
-              {noteQuery.length > 0 && (
-                <Pressable
-                  accessibilityLabel="Clear note search"
-                  accessibilityRole="button"
-                  hitSlop={8}
-                  onPress={() => setNoteQuery("")}
-                  style={({ pressed }) => [styles.clearSearch, { backgroundColor: colors.surfaceMuted }, pressed && styles.pressed]}
-                >
-                  <Text style={[styles.clearSearchText, { color: colors.textMuted }]}>×</Text>
-                </Pressable>
-              )}
-            </View>
-            <CategoryFilter value={categoryFilter} onChange={setCategoryFilter} />
-            {normalizedNoteQuery && noteSearch.status === "loading" && (
-              <View accessibilityLiveRegion="polite" style={styles.searchStatus}>
-                <ActivityIndicator color={colors.accent} />
-                <Text style={[styles.searchStatusText, { color: colors.textMuted }]}>Searching all related content…</Text>
-              </View>
-            )}
-            {normalizedNoteQuery && noteSearch.status === "error" && (
-              <ErrorState message="Unable to search notes." onRetry={() => setSearchRevision((value) => value + 1)} />
-            )}
-            {(!normalizedNoteQuery || noteSearch.status === "success") && visibleNoteResults.length === 0
-              ? <EmptyState
-                  title={normalizedNoteQuery ? "No matching notes" : noteFilter === "all" ? "No notes yet" : "No matching notes"}
-                  description={normalizedNoteQuery
-                    ? `No Note, Structured Note, Knowledge result, or Ask AI conversation matches “${normalizedNoteQuery}” with the current filters.`
-                    : noteFilter === "todos" ? "Notes with unfinished Core Note tasks appear here." : undefined}
-                />
-              : visibleNoteResults.length > 0 && (
-                <ScrollView
-                  accessibilityLabel="Note results"
-                  contentContainerStyle={styles.noteList}
-                  keyboardDismissMode="on-drag"
-                  keyboardShouldPersistTaps="handled"
-                  nestedScrollEnabled
-                  onScroll={revealMoreNoteResults}
-                  scrollEventThrottle={100}
-                  showsVerticalScrollIndicator
-                  style={styles.noteListScroll}
-                >
-                  {renderedNoteResults.map((result) => (
-                    <NoteCard
-                      key={noteResultKey(result)}
-                      note={result.note}
-                      match={result.match
-                        ? { source: result.match.source, excerpt: result.match.excerpt, query: normalizedNoteQuery, resourceTitle: result.match.resourceTitle }
-                        : undefined}
-                      onPress={() => openNoteResult(result)}
-                    />
-                  ))}
-                  {renderedNoteResults.length < visibleNoteResults.length && (
-                    <Text style={[styles.moreResults, { color: colors.textMuted }]}>{`${renderedNoteResults.length} of ${visibleNoteResults.length} loaded · scroll for more`}</Text>
-                  )}
-                </ScrollView>
-              )}
-          </View>
           <View style={styles.calendarSection}>
             <Text style={[styles.calendarTitle, { color: colors.text }]}>Calendar</Text>
             <View style={[styles.calendarCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -397,13 +223,41 @@ export default function HomeScreen() {
             </View>
           </View>
         </>}
-      </View>
 
-      <View style={[styles.localBadge, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
-        <View style={[styles.statusDot, { backgroundColor: colors.accent }]} />
-        <Text style={[styles.localText, { color: colors.textMuted }]}>Local-first · Your data stays on this device</Text>
-      </View>
-    </ScrollView>
+      </ScrollView>
+
+      <SafeAreaModal
+        androidPresentation="center"
+        onRequestClose={() => setOverviewVisible(false)}
+        visible={overviewVisible}
+      >
+        <View style={styles.modalHeader}>
+          <View style={styles.modalHeading}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Overview</Text>
+          </View>
+          <Pressable
+            accessibilityLabel="Close overview"
+            accessibilityRole="button"
+            hitSlop={4}
+            onPress={() => setOverviewVisible(false)}
+            style={({ pressed }) => [styles.modalClose, { backgroundColor: colors.surfaceMuted }, pressed && styles.pressed]}
+          >
+            <Text style={[styles.modalCloseText, { color: colors.textMuted }]}>×</Text>
+          </Pressable>
+        </View>
+        {overview.status === "loading" && <LoadingState />}
+        {overview.status === "error" && <ErrorState message={overview.message} onRetry={() => void loadOverview()} />}
+        {overview.status === "success" && overviewData && (
+          <View style={styles.statsGrid}>
+            <HomeStatCard label="Total notes" value={overview.notes.length} detail={`+${overviewData.recentNoteCount} this week`} />
+            <HomeStatCard label="Pinned" value={overviewData.pinnedCount} detail="Saved for quick access" />
+            <HomeStatCard label="Characters" value={overviewData.transcriptCount} detail={`+${formatNumber(overviewData.recentTranscriptCount)} this week`} />
+            <HomeStatCard label="Open tasks" value={overviewData.pendingCount} detail="Still needs attention" />
+          </View>
+        )}
+        <AppButton label="Open Library" onPress={openLibrary} variant="secondary" />
+      </SafeAreaModal>
+    </>
   );
 }
 
@@ -418,17 +272,13 @@ function MicrophoneIcon({ color }: { color: string }) {
   );
 }
 
-function HomeStatCard({ label, value, detail, active = false, onPress }: { label: string; value: number; detail: string; active?: boolean; onPress?: () => void }) {
+function HomeStatCard({ label, value, detail }: { label: string; value: number; detail: string }) {
   const colors = Colors[useTheme().mode];
-  const content = <>
-    <Text style={[styles.statLabel, { color: active ? colors.accent : colors.textMuted }]}>{label}</Text>
+  return <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <Text style={[styles.statLabel, { color: colors.textMuted }]}>{label}</Text>
     <Text selectable style={[styles.statValue, { color: colors.text }]}>{formatNumber(value)}</Text>
-    <Text style={[styles.statDetail, { color: onPress ? colors.accent : colors.textMuted }]} numberOfLines={2}>{detail}{onPress ? "  →" : ""}</Text>
-  </>;
-  const cardStyle = [styles.statCard, { backgroundColor: active ? colors.accentSoft : colors.surface, borderColor: active ? colors.accent : colors.border }];
-  return onPress
-    ? <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress} style={({ pressed }) => [cardStyle, pressed && styles.pressed]}>{content}</Pressable>
-    : <View style={cardStyle}>{content}</View>;
+    <Text style={[styles.statDetail, { color: colors.textMuted }]} numberOfLines={2}>{detail}</Text>
+  </View>;
 }
 
 const styles = StyleSheet.create({
@@ -438,6 +288,9 @@ const styles = StyleSheet.create({
   brandGlyph: { color: "#FFFFFF", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
   heroCopy: { flex: 1, gap: Spacing.xs },
   eyebrow: { fontSize: 20, fontWeight: "800", letterSpacing: 0.6 },
+  overviewTrigger: { alignItems: "center", borderCurve: "continuous", borderRadius: 22, borderWidth: 1, boxShadow: Shadows.card, flexDirection: "row", gap: 6, minHeight: 44, paddingHorizontal: Spacing.sm },
+  overviewTriggerIcon: { height: 17, width: 17 },
+  overviewTriggerLabel: { fontSize: 13, fontWeight: "800" },
   sectionHeading: { gap: Spacing.xs },
   sectionTitle: { fontSize: 20, fontWeight: "800" },
   sectionSubtitle: { fontSize: 14, lineHeight: 20 },
@@ -462,31 +315,16 @@ const styles = StyleSheet.create({
   actionIcon: { fontSize: 26, fontWeight: "700" },
   actionTitle: { fontSize: 17, fontWeight: "800" },
   actionBody: { fontSize: 13, lineHeight: 18 },
-  localBadge: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.md, borderWidth: 1, flexDirection: "row", gap: Spacing.sm, padding: Spacing.md },
-  statusDot: { borderRadius: 5, height: 10, width: 10 },
-  localText: { flex: 1, fontSize: 13, fontWeight: "600" },
-  overviewSection: { gap: Spacing.md, paddingTop: Spacing.sm },
-  overviewHeading: { gap: Spacing.xs },
-  overviewTitle: { fontSize: 22, fontWeight: "800" },
-  overviewSubtitle: { fontSize: 14, lineHeight: 20 },
+  modalHeader: { alignItems: "flex-start", flexDirection: "row", gap: Spacing.md, justifyContent: "space-between" },
+  modalHeading: { flex: 1, gap: Spacing.xs, minWidth: 0 },
+  modalTitle: { fontSize: 22, fontWeight: "800" },
+  modalClose: { alignItems: "center", borderRadius: 22, height: 44, justifyContent: "center", width: 44 },
+  modalCloseText: { fontSize: 26, fontWeight: "500", lineHeight: 28 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
   statCard: { borderCurve: "continuous", borderRadius: Radius.md, borderWidth: 1, boxShadow: Shadows.card, flexBasis: "46%", flexGrow: 1, gap: 2, minHeight: 104, padding: Spacing.md },
   statLabel: { fontSize: 12, fontWeight: "700" },
   statValue: { fontSize: 25, fontVariant: ["tabular-nums"], fontWeight: "800" },
   statDetail: { fontSize: 11, lineHeight: 15 },
-  notesSection: { gap: Spacing.sm },
-  notesHeading: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between" },
-  notesCount: { fontSize: 12, fontWeight: "700" },
-  searchField: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, flexDirection: "row", minHeight: 48, paddingHorizontal: Spacing.sm },
-  searchIcon: { height: 18, marginHorizontal: Spacing.xs, width: 18 },
-  searchInput: { flex: 1, fontSize: 15, minHeight: 46, minWidth: 0, paddingHorizontal: Spacing.xs },
-  clearSearch: { alignItems: "center", borderRadius: 14, height: 28, justifyContent: "center", width: 28 },
-  clearSearchText: { fontSize: 20, fontWeight: "600", lineHeight: 22 },
-  searchStatus: { alignItems: "center", flexDirection: "row", gap: Spacing.sm, justifyContent: "center", minHeight: 88 },
-  searchStatusText: { fontSize: 13, fontWeight: "600" },
-  noteListScroll: { maxHeight: 520 },
-  noteList: { gap: Spacing.sm, paddingVertical: 1 },
-  moreResults: { fontSize: 12, fontWeight: "600", padding: Spacing.sm, textAlign: "center" },
   calendarSection: { gap: Spacing.sm },
   calendarTitle: { fontSize: 19, fontWeight: "800" },
   calendarCard: { borderCurve: "continuous", borderRadius: Radius.lg, borderWidth: 1, boxShadow: Shadows.card, overflow: "hidden" },

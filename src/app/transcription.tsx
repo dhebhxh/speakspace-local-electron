@@ -22,10 +22,12 @@ import { addAudioInterruptionListener } from "../../modules/audio-session-events
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
+import { ModalCloseButton } from "@/components/modal-close-button";
 import { SafeAreaModal } from "@/components/safe-area-modal";
 import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import type { Workspace } from "@/domain/workspace/workspace";
 import { useTheme } from "@/hooks/use-theme";
+import { createDefaultNoteTitle } from "@/services/note-title";
 
 type SessionStatus = "idle" | "starting" | "recording" | "paused" | "finishing";
 type FinishedSession = { transcript: string; audioRelativePath: string };
@@ -36,9 +38,16 @@ export default function TranscriptionScreen() {
   const theme = useTheme();
   const colors = Colors[theme.mode];
   const insets = useSafeAreaInsets();
-  const { transcriptionService, workspaceService, noteService } = appContainer;
+  const {
+    noteService,
+    noteTitleGenerationService,
+    transcriptionService,
+    workspaceService,
+  } = appContainer;
   const [status, setStatus] = useState<SessionStatus>("idle");
   const statusRef = useRef<SessionStatus>("idle");
+  const noteNameEditedRef = useRef(false);
+  const noteTitleRequestRef = useRef(0);
   const [transcript, setTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [finished, setFinished] = useState<FinishedSession | null>(null);
@@ -47,6 +56,8 @@ export default function TranscriptionScreen() {
   const [workspaceQuery, setWorkspaceQuery] = useState("");
   const [noteName, setNoteName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isGeneratingNoteTitle, setIsGeneratingNoteTitle] = useState(false);
+  const [isCompletingPausedTranscript, setIsCompletingPausedTranscript] = useState(false);
 
   useEffect(() => {
     const pauseForSystem = (message: string) => {
@@ -54,12 +65,17 @@ export default function TranscriptionScreen() {
 
       statusRef.current = "paused";
       setStatus("paused");
+      setIsCompletingPausedTranscript(true);
       void deactivateKeepAwake(LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG).catch(
         () => undefined,
       );
       void transcriptionService.pause().then(
-        () => setError(message),
         () => {
+          setIsCompletingPausedTranscript(false);
+          setError(message);
+        },
+        () => {
+          setIsCompletingPausedTranscript(false);
           setError(
             "SpeakSpace could not fully pause the recording. Return to the app and finish or discard it.",
           );
@@ -89,6 +105,7 @@ export default function TranscriptionScreen() {
 
   useEffect(() => () => {
     statusRef.current = "idle";
+    noteTitleRequestRef.current += 1;
     void deactivateKeepAwake(LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG).catch(
       () => undefined,
     );
@@ -101,6 +118,11 @@ export default function TranscriptionScreen() {
     setStatus("starting");
     setError(null);
     setTranscript("");
+    noteNameEditedRef.current = false;
+    noteTitleRequestRef.current += 1;
+    setNoteName("");
+    setIsGeneratingNoteTitle(false);
+    setIsCompletingPausedTranscript(false);
     try {
       const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) throw new Error("Microphone permission is required.");
@@ -114,7 +136,7 @@ export default function TranscriptionScreen() {
           );
         },
         onDurationLimitReached: () => {
-          void finish(true);
+          void finish();
         },
       });
       statusRef.current = "recording";
@@ -133,12 +155,17 @@ export default function TranscriptionScreen() {
     try {
       if (status === "recording") {
         statusRef.current = "paused";
-        await transcriptionService.pause();
         setStatus("paused");
+        setIsCompletingPausedTranscript(true);
         void deactivateKeepAwake(LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG).catch(
           () => undefined,
         );
-      } else if (status === "paused") {
+        try {
+          await transcriptionService.pause();
+        } finally {
+          setIsCompletingPausedTranscript(false);
+        }
+      } else if (status === "paused" && !isCompletingPausedTranscript) {
         await transcriptionService.resume();
         statusRef.current = "recording";
         setStatus("recording");
@@ -153,10 +180,13 @@ export default function TranscriptionScreen() {
   };
 
   const discardFinishedSession = (session: FinishedSession) => {
+    noteTitleRequestRef.current += 1;
+    noteNameEditedRef.current = false;
     transcriptionService.deleteRecording(session.audioRelativePath);
     setFinished(null);
     setTranscript("");
     setNoteName("");
+    setIsGeneratingNoteTitle(false);
     setWorkspaceQuery("");
     setError(null);
   };
@@ -178,9 +208,10 @@ export default function TranscriptionScreen() {
     );
   };
 
-  const finish = async (reachedDurationLimit = false) => {
+  const finish = async () => {
     statusRef.current = "finishing";
     setStatus("finishing");
+    setIsCompletingPausedTranscript(false);
     setError(null);
     void deactivateKeepAwake(LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG).catch(
       () => undefined,
@@ -205,16 +236,7 @@ export default function TranscriptionScreen() {
         );
         return;
       }
-      Alert.alert(reachedDurationLimit ? "Two-hour limit reached" : "Finish transcription?", reachedDurationLimit
-        ? "The recording finished safely. Save this note or discard the recording and transcript."
-        : "Save this note or discard the recording and transcript.", [
-        {
-          text: "Discard",
-          style: "destructive",
-          onPress: () => discardFinishedSession(result),
-        },
-        { text: "Save", onPress: () => void prepareSave(result) },
-      ], { cancelable: false });
+      void prepareSave(result);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to finish transcription.");
       statusRef.current = "idle";
@@ -226,13 +248,31 @@ export default function TranscriptionScreen() {
     try {
       const defaultWorkspace = await workspaceService.getOrCreateDefaultWorkspace();
       const all = await workspaceService.getWorkspaces();
+      const titleRequestId = noteTitleRequestRef.current + 1;
+      noteTitleRequestRef.current = titleRequestId;
+      noteNameEditedRef.current = false;
       setWorkspaces(all);
       setSelectedWorkspaceId(defaultWorkspace.getId());
       setWorkspaceQuery("");
+      setNoteName(createDefaultNoteTitle());
+      setIsGeneratingNoteTitle(true);
       setFinished(result);
+      void noteTitleGenerationService.generate(result.transcript).then((title) => {
+        if (titleRequestId !== noteTitleRequestRef.current) return;
+        if (title && !noteNameEditedRef.current) setNoteName(title);
+      }).finally(() => {
+        if (titleRequestId === noteTitleRequestRef.current) {
+          setIsGeneratingNoteTitle(false);
+        }
+      });
     } catch {
       setError("Unable to load workspaces.");
     }
+  };
+
+  const updateNoteName = (value: string) => {
+    noteNameEditedRef.current = true;
+    setNoteName(value);
   };
 
   const save = async () => {
@@ -246,6 +286,8 @@ export default function TranscriptionScreen() {
         finished.transcript,
         finished.audioRelativePath,
       );
+      noteTitleRequestRef.current += 1;
+      setIsGeneratingNoteTitle(false);
       setFinished(null);
       router.replace({
         pathname: "/notes/[noteId]",
@@ -284,8 +326,8 @@ export default function TranscriptionScreen() {
         </View>
         <View style={[styles.sessionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.transcript}>
-            <Text style={[styles.status, { color: status === "recording" ? colors.accent : colors.textMuted }]}>
-              {status === "recording" ? "●  Recording" : status === "paused" ? "Paused" : status === "starting" ? "Loading model…" : status === "finishing" ? "Finishing…" : "Ready to record"}
+            <Text style={[styles.status, { color: status === "recording" || isCompletingPausedTranscript ? colors.accent : colors.textMuted }]}>
+              {status === "recording" ? "●  Recording" : status === "paused" ? (isCompletingPausedTranscript ? "Paused • Completing transcript…" : "Paused • Transcript up to date") : status === "starting" ? "Loading model…" : status === "finishing" ? "Finishing…" : "Ready to record"}
             </Text>
             <Text selectable style={[styles.body, { color: transcript ? colors.text : colors.textMuted }]}>
               {transcript || "Your live transcript will appear here."}
@@ -309,14 +351,14 @@ export default function TranscriptionScreen() {
           </View>}
           {(status === "recording" || status === "paused") && (
             <View style={styles.activeControls}>
-              <Pressable accessibilityRole="button" accessibilityLabel={status === "paused" ? "Resume recording" : "Pause recording"} onPress={() => void togglePause()} style={({ pressed }) => [styles.pauseButton, { backgroundColor: colors.accentSoft, borderColor: colors.border }, pressed && styles.controlPressed]}>
-                <Text style={[styles.pauseIcon, { color: colors.accent }]}>{status === "paused" ? "▶" : "Ⅱ"}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel={status === "paused" ? "Resume recording" : "Pause recording"} accessibilityState={{ disabled: isCompletingPausedTranscript }} disabled={isCompletingPausedTranscript} onPress={() => void togglePause()} style={({ pressed }) => [styles.pauseButton, { backgroundColor: colors.accentSoft, borderColor: colors.border }, isCompletingPausedTranscript && styles.controlDisabled, pressed && styles.controlPressed]}>
+                {isCompletingPausedTranscript ? <ActivityIndicator color={colors.accent} /> : <Text style={[styles.pauseIcon, { color: colors.accent }]}>{status === "paused" ? "▶" : "Ⅱ"}</Text>}
               </Pressable>
               <View style={styles.activeCopy}>
                 <Text style={[styles.controlTitle, { color: colors.text }]}>{status === "paused" ? "Recording paused" : "Recording in progress"}</Text>
-                <Text style={[styles.controlHint, { color: colors.textMuted }]}>{status === "paused" ? "Resume when you are ready" : "Your words appear above as you speak"}</Text>
+                <Text style={[styles.controlHint, { color: colors.textMuted }]}>{status === "paused" ? (isCompletingPausedTranscript ? "Finishing text from audio already captured" : "Resume when you are ready") : "Your words appear above as you speak"}</Text>
               </View>
-              <Pressable accessibilityRole="button" onPress={() => void finish()} style={({ pressed }) => [styles.finishButton, { borderColor: colors.accent }, pressed && styles.controlPressed]}>
+              <Pressable accessibilityRole="button" accessibilityState={{ disabled: isCompletingPausedTranscript }} disabled={isCompletingPausedTranscript} onPress={() => void finish()} style={({ pressed }) => [styles.finishButton, { borderColor: colors.accent }, isCompletingPausedTranscript && styles.controlDisabled, pressed && styles.controlPressed]}>
                 <Text style={[styles.finishLabel, { color: colors.accent }]}>Finish</Text>
               </Pressable>
             </View>
@@ -333,18 +375,21 @@ export default function TranscriptionScreen() {
       >
         <View style={styles.modalHeader}>
           <Text style={[styles.modalTitle, { color: colors.text }]}>Save transcription</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Discard recording"
+          <ModalCloseButton
             disabled={isSaving}
-            hitSlop={10}
+            label="Close save transcription"
             onPress={confirmDiscardFinishedSession}
-          >
-            <Text style={[styles.discardLabel, { color: colors.danger }]}>Discard</Text>
-          </Pressable>
+            tintColor={colors.textMuted}
+          />
         </View>
         <Text style={[styles.label, { color: colors.textMuted }]}>Note name</Text>
-        <TextInput accessibilityLabel="Note name" value={noteName} onChangeText={setNoteName} placeholder="e.g. Weekly planning" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
+        <TextInput accessibilityLabel="Note name" value={noteName} onChangeText={updateNoteName} placeholder="e.g. Weekly planning" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
+        {isGeneratingNoteTitle && (
+          <View accessibilityLiveRegion="polite" style={styles.titleGenerationStatus}>
+            <ActivityIndicator color={colors.accent} size="small" />
+            <Text style={[styles.controlHint, { color: colors.textMuted }]}>Generating a title locally…</Text>
+          </View>
+        )}
         <Text style={[styles.label, { color: colors.textMuted }]}>Workspace</Text>
         <TextInput
           accessibilityLabel="Search workspaces"
@@ -430,11 +475,12 @@ const styles = StyleSheet.create({
   finishButton: { alignItems: "center", borderRadius: Radius.md, borderWidth: 1, justifyContent: "center", minHeight: 46, paddingHorizontal: Spacing.md },
   finishLabel: { fontSize: 14, fontWeight: "800" },
   controlPressed: { opacity: 0.72, transform: [{ scale: 0.98 }] },
+  controlDisabled: { opacity: 0.5 },
   modalHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   modalTitle: { fontSize: 24, fontWeight: "800" },
-  discardLabel: { fontSize: 14, fontWeight: "800" },
   label: { fontSize: 14, fontWeight: "700" },
   input: { borderRadius: Radius.sm, borderWidth: 1, fontSize: 16, minHeight: 48, paddingHorizontal: Spacing.md },
+  titleGenerationStatus: { alignItems: "center", flexDirection: "row", gap: Spacing.sm },
   workspaceListScroll: { maxHeight: 260 },
   workspaceList: { gap: Spacing.sm, paddingVertical: 1 },
   workspace: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, flexDirection: "row", gap: Spacing.sm, justifyContent: "space-between", minHeight: 48, padding: Spacing.md },

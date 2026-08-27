@@ -9,7 +9,7 @@ test("bottom tabs map the requested icons on iOS, Android, and web", async () =>
 
   assert.match(source, /ios: "rectangle\.grid\.2x2"/);
   assert.match(source, /android: "dashboard"/);
-  assert.match(source, /ios: "folder", android: "folder", web: "folder"/);
+  assert.match(source, /ios: "books\.vertical", android: "folder", web: "folder"/);
   assert.match(source, /ios: "cube"/);
   assert.match(source, /android: "deployed_code"/);
   assert.match(source, /import \{\s*SymbolView/);

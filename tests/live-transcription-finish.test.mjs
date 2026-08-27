@@ -16,12 +16,34 @@ test("empty live transcription cannot enter an unsavable modal", async () => {
   assert.match(source, /Discard recording/);
 });
 
+test("Finish opens the save modal directly without a redundant confirmation", async () => {
+  const source = await readFile(sourcePath, "utf8");
+
+  assert.match(source, /const result = await transcriptionService\.finish\(\);[\s\S]*void prepareSave\(result\);/);
+  assert.doesNotMatch(source, /Finish transcription\?/);
+  assert.doesNotMatch(source, /text: "Save", onPress: \(\) => void prepareSave\(result\)/);
+});
+
 test("finished transcription modal exposes a confirmed discard exit", async () => {
   const source = await readFile(sourcePath, "utf8");
 
   assert.match(source, /onRequestClose=\{confirmDiscardFinishedSession\}/);
-  assert.match(source, /accessibilityLabel="Discard recording"/);
+  assert.match(source, /<ModalCloseButton[\s\S]*label="Close save transcription"[\s\S]*onPress=\{confirmDiscardFinishedSession\}/);
+  assert.doesNotMatch(source, />Discard<\/Text>/);
   assert.match(source, /This permanently deletes the finished recording and transcript/);
+});
+
+test("finished transcription receives a local automatic title without overwriting edits", async () => {
+  const [source, container] = await Promise.all([
+    readFile(sourcePath, "utf8"),
+    readFile(new URL("../src/application/app-container.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(source, /createDefaultNoteTitle\(\)/);
+  assert.match(source, /noteTitleGenerationService\.generate\(result\.transcript\)/);
+  assert.match(source, /noteNameEditedRef\.current/);
+  assert.match(source, /Generating a title locally/);
+  assert.match(container, /new NoteTitleGenerationService\(/);
 });
 
 test("finished transcription modal centers its card inside the safe area", async () => {

@@ -27,6 +27,7 @@ import { MAX_IMPORTED_AUDIO_BYTES } from "@/domain/audio-import/audio-import";
 import { SttModelService } from "@/services/stt-model-service";
 import { ensureStorageAvailable } from "@/services/storage-safety-service";
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { flushCurrentTranscriptionSlice } from "@/services/realtime-transcription-drain";
 
 export const RECORDINGS_DIRECTORY_NAME = "recordings";
 export const MAX_AUDIO_DURATION_SECONDS = 2 * 60 * 60;
@@ -269,7 +270,7 @@ export class TranscriptionService {
     this.captureActiveRecordingDuration();
     this.clearDurationTimers();
     this.paused = true;
-    await this.transcriber.nextSlice();
+    await flushCurrentTranscriptionSlice(this.transcriber);
   }
 
   public async resume(): Promise<void> {

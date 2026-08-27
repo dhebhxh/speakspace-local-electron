@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("Home search covers related local content without per-note database queries", async () => {
-  const [home, repository, fuzzySearch, noteService, database, searchIndexes, appContainer, trashService, noteSearchScreen, noteDetail, noteCard] = await Promise.all([
-    readFile(new URL("../src/app/(tabs)/index.tsx", import.meta.url), "utf8"),
+test("Library search covers related local content without per-note database queries", async () => {
+  const [libraryNotes, repository, fuzzySearch, noteService, database, searchIndexes, appContainer, trashService, noteSearchScreen, noteDetail, noteCard] = await Promise.all([
+    readFile(new URL("../src/components/library-notes-pane.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/repositories/note-repository.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/services/note-fuzzy-search.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/services/note-service.ts", import.meta.url), "utf8"),
@@ -17,15 +17,13 @@ test("Home search covers related local content without per-note database queries
     readFile(new URL("../src/components/note-card.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(home, /accessibilityLabel="Search notes and related content"/);
-  assert.match(home, /searchNoteResourceResults\(normalized\)/);
-  assert.match(home, /noteListScroll: \{ maxHeight: 520 \}/);
-  assert.match(home, /NOTE_RESULT_BATCH_SIZE = 20/);
-  assert.match(home, /visibleNoteResults\.slice\(0, noteResultLimit\)/);
-  assert.match(home, /coreNoteInsightService\.subscribeToChanges/);
-  assert.match(home, /knowledgeService\.subscribeToChanges/);
-  assert.match(home, /aiConversationService\.subscribeToChanges/);
-  assert.match(home, /marked: true, dotColor: colors\.accent/);
+  assert.match(libraryNotes, /accessibilityLabel="Search notes and related content"/);
+  assert.match(libraryNotes, /searchNoteResourceResults\(normalized\)/);
+  assert.match(libraryNotes, /NOTE_RESULT_BATCH_SIZE = 20/);
+  assert.match(libraryNotes, /visibleNoteResults\.slice\(0, noteResultLimit\)/);
+  assert.match(libraryNotes, /coreNoteInsightService\.subscribeToChanges/);
+  assert.match(libraryNotes, /knowledgeService\.subscribeToChanges/);
+  assert.match(libraryNotes, /aiConversationService\.subscribeToChanges/);
   assert.match(repository, /conversation_contexts cc/);
   assert.match(repository, /group_concat\(m\.content/);
   assert.match(repository, /core_note_tasks WHERE insight_id = i\.id/);
@@ -44,8 +42,8 @@ test("Home search covers related local content without per-note database queries
   assert.match(fuzzySearch, /if \(result\.knowledgeResultId\) return `knowledge:/);
   assert.match(fuzzySearch, /result\.insightSection \?\? "summary"/);
   assert.match(fuzzySearch, /export function uniqueNoteSearchDestinations/);
-  assert.match(home, /uniqueNoteSearchDestinations\(\s*noteSearch\.results\.filter/);
-  assert.match(home, /insightSection: result\.match\?\.insightSection/);
+  assert.match(libraryNotes, /uniqueNoteSearchDestinations\(\s*noteSearch\.results\.filter/);
+  assert.match(libraryNotes, /insightSection: result\.match\?\.insightSection/);
   assert.match(repository, /AS summary[\s\S]*?AS key_points[\s\S]*?AS tasks[\s\S]*?AS action_items/);
   assert.match(repository, /\{ section: "tasks", text: \[row\.tasks, row\.action_items\]/);
   assert.match(repository, /SELECT cc\.note_id, c\.id, c\.name/);

@@ -31,6 +31,7 @@ import { KnowledgeTemplateService } from "@/services/knowledge-template-service"
 import { AppPreferencesService } from "@/services/app-preferences-service";
 import { NoteNotificationService } from "@/services/note-notification-service";
 import { NotePdfExportService } from "@/services/note-pdf-export-service";
+import { NoteTitleGenerationService } from "@/services/note-title-generation-service";
 
 export class AppContainer {
   public readonly workspaceService: WorkspaceService;
@@ -50,6 +51,7 @@ export class AppContainer {
   public readonly preferencesService: AppPreferencesService;
   public readonly noteNotificationService: NoteNotificationService;
   public readonly notePdfExportService: NotePdfExportService;
+  public readonly noteTitleGenerationService: NoteTitleGenerationService;
 
   public constructor(databaseManager: DatabaseManager) {
     this.preferencesService = new AppPreferencesService();
@@ -70,6 +72,11 @@ export class AppContainer {
     const sharedLlmContextService = new SharedLlmContextService(localLlmCoordinator);
     const noteTranslationRepository = new NoteTranslationRepository(databaseManager);
     this.llmModelService = new LlmModelService(llmModelRepository, localLlmCoordinator);
+    this.noteTitleGenerationService = new NoteTitleGenerationService(
+      this.llmModelService,
+      localLlmCoordinator,
+      sharedLlmContextService,
+    );
     this.noteTranslationService = new NoteTranslationService(noteTranslationRepository, this.llmModelService, localLlmCoordinator, sharedLlmContextService);
     const noteClassificationService = new NoteClassificationService(
       noteRepository,

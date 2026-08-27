@@ -2,6 +2,30 @@
 
 本文件记录 SpeakSpace Local Mobile 面向组内测试的稳定版本。iOS 安装包不发布到 App Store，二进制资产附在团队仓库对应的 GitHub Release 中。
 
+## [1.6.0] - 2026-08-28
+
+### Added
+
+- 录音完成后使用当前本地 LLM 自动生成与桌面端规则一致的 Note 标题；没有可用模型或生成失败时立即保留带时间戳的可编辑标题，不阻塞保存。
+- 原 Workspaces 底部入口升级为 Library，在同一页面内提供 Notes 与 Workspaces 两个一级视图；Notes 保留跨资源搜索、增量加载、置顶和未完成 Task 筛选。
+- Library Notes 使用两个独立的 iOS 原生下拉胶囊筛选器，分别选择 All Notes、Pinned、Open Tasks 和 All Category、具体分类。
+
+### Changed
+
+- 暂停录音只停止继续采集音频；已进入本地 STT 队列的音频会继续完成推理并更新文本，队列排空后才允许恢复或结束录音。
+- Finish 直接完成录音并打开 Save transcription，不再出现无实际作用的完成确认；保存弹窗使用关闭图标，弹窗与遮罩统一淡入淡出。
+- Home 移除 Note 列表，把 Overview 收进紧凑入口，并按 Start transcription、Tasks、Calendar 的顺序突出核心流程。
+- Note detail 的 Structured Note 标题与 Translate、Copy、Read 操作在竖直方向居中，并移除重复的说明文本。
+
+### Fixed
+
+- 修复真实 iPhone 转写中的中文日期空格、繁体字和名词型事件提醒可能被过滤的问题；“9 月 10 号开会，请提前 3 天提醒我”会稳定落到 9 月 7 日。
+- 修复暂停时 iOS 原生录音 stop 没有可等待完成边界，导致最后一段缓冲音频与 STT 切片竞争的问题。
+- 修复 Library 筛选器在真机上继承过宽容器并越过屏幕边界的问题；两个原生 Picker 现在按内容独立测量，不再嵌套外层筛选卡片。
+- 修复无效或仅有月份精度的日期可能被 Calendar 或本地通知误解释为具体日期的问题。
+
+发布记录：[SpeakSpace iOS v1.6.0](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.6.0)
+
 ## [1.5.0] - 2026-08-26
 
 ### Added

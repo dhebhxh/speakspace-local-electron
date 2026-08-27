@@ -39,6 +39,8 @@ test("the shared modal centers every iOS overlay in the safe area and scrolls in
   assert.match(source, /keyboardShouldPersistTaps="handled"/);
   assert.match(source, /paddingTop: Spacing\.lg \+ insets\.top/);
   assert.match(source, /paddingBottom: Spacing\.lg \+ insets\.bottom/);
+  assert.match(source, /animationType="fade"/);
+  assert.doesNotMatch(source, /animationType="slide"/);
 });
 
 test("custom modal backdrops use the same guarded close path as system dismissal", async () => {

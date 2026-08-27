@@ -71,6 +71,7 @@ TASKS
 - A dated statement about work that already happened is still a fact, not a task.
 - An action verb alone does not imply a task.
 - If NOTE says remind/remember and names a concrete unfinished action, represent the underlying action as a task and copy the stated reminder date or time into dueAtExpression. Do not create a separate reminder entity. Reminder wording without a concrete action is not a task.
+- A scheduled event named as a noun is still concrete when NOTE explicitly asks for a reminder. For example, "I have a work meeting" or "我有一场工作会议" is a task even without a verb such as attend.
 - Keep one task per underlying commitment even when NOTE repeats it. An event plus a reminder to act for that event is one task dated at the actionable reminder time, not two tasks.
 - Clearly unfinished obligations still count when phrased indirectly, but complaints, wishes, or vague aspirations without a concrete action do not.
 - actionItems may contain only distinct steps explicitly present in NOTE. Never invent a plan. Use [] when no separate steps were stated.

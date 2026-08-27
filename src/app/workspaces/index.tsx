@@ -32,7 +32,13 @@ type WorkspaceListState =
       suggestion: WorkspaceNameSuggestion | null;
     };
 
-export function WorkspaceListScreen({ embeddedInTab = false }: { embeddedInTab?: boolean }) {
+export function WorkspaceListScreen({
+  embeddedInLibrary = false,
+  embeddedInTab = false,
+}: {
+  embeddedInLibrary?: boolean;
+  embeddedInTab?: boolean;
+}) {
   const router = useRouter();
   const theme = useTheme();
   const colors = Colors[theme.mode];
@@ -149,7 +155,7 @@ export function WorkspaceListScreen({ embeddedInTab = false }: { embeddedInTab?:
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      {!embeddedInTab && <Stack.Screen options={{ title: "Workspaces" }} />}
+      {!embeddedInTab && !embeddedInLibrary && <Stack.Screen options={{ title: "Workspaces" }} />}
       <View
         style={[
           styles.fixedHeader,
@@ -157,6 +163,7 @@ export function WorkspaceListScreen({ embeddedInTab = false }: { embeddedInTab?:
             borderColor: colors.border,
             paddingTop: embeddedInTab ? insets.top + Spacing.md : Spacing.lg,
           },
+          embeddedInLibrary && styles.libraryHeader,
         ]}
       >
         {embeddedInTab && (
@@ -292,6 +299,7 @@ export default function WorkspacesScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   fixedHeader: { borderBottomWidth: StyleSheet.hairlineWidth, gap: Spacing.lg, paddingBottom: Spacing.md, paddingHorizontal: Spacing.lg },
+  libraryHeader: { paddingTop: Spacing.md },
   heading: { gap: Spacing.xs },
   headingActions: { alignItems: "center", flexDirection: "row", gap: Spacing.sm, width: "100%" },
   searchField: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, flex: 1, flexDirection: "row", gap: Spacing.sm, minHeight: 46, paddingHorizontal: Spacing.sm },

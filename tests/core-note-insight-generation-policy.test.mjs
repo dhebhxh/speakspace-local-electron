@@ -317,6 +317,7 @@ test("desktop date preprocessing remains idempotent across boundaries and recurr
   const cases = [
     ["每周五发周报", "每周五(2026-08-28, REPEAT=weekly)发周报"],
     ["九月十号汇报，提前三天提醒我", "九月十号(2026-09-10)汇报，提前三天(2026-09-07)提醒我"],
+    ["9 月 10 号开会，请提前 3 天提醒我", "9 月 10 号(2026-09-10)开会，请提前 3 天(2026-09-07)提醒我"],
     ["二月三十号提交", "二月三十号提交"],
     ["地点在三号楼会议室", "地点在三号楼会议室"],
     ["the day after tomorrow", "the day after tomorrow(2026-08-28)"],
@@ -401,6 +402,57 @@ test("remind wording keeps a concrete dated action as a task without restoring r
     sanitizeIntentOutput(emptyIntents(), "記得提交最終報告。").tasks.length,
     1,
   );
+  assert.equal(
+    sanitizeIntentOutput(emptyIntents(), "提醒我明天下午三点，谢谢。").tasks.length,
+    0,
+  );
+  assert.equal(
+    sanitizeIntentOutput(emptyIntents(), "请设置明天下午三点的闹钟。").tasks.length,
+    0,
+  );
+  assert.equal(
+    sanitizeIntentOutput(emptyIntents(), "Set a reminder for tomorrow at 3pm.").tasks.length,
+    0,
+  );
+  assert.equal(
+    sanitizeIntentOutput(emptyIntents(), "Remind me about the team meeting tomorrow.").tasks.length,
+    1,
+  );
+});
+
+test("a real iPhone work-meeting reminder survives sanitization and keeps the actionable date", async () => {
+  const { annotateCoreNoteDates } = await import("../src/services/core-note-time.ts");
+  const reference = new Date("2026-08-27T21:08:29+01:00");
+  const transcript = "我9月10號有一場工作會議請你麻煩提前3天 提醒我";
+  const annotated = annotateCoreNoteDates(transcript, reference);
+
+  assert.equal(
+    annotated,
+    "我9月10號(2026-09-10)有一場工作會議請你麻煩提前3天(2026-09-07) 提醒我",
+  );
+
+  const candidates = [
+    emptyIntents(),
+    {
+      tasks: [{
+        title: "參加工作會議",
+        description: null,
+        startsAtExpression: null,
+        dueAtExpression: "提前3天(2026-09-07) 提醒我",
+        recurrence: null,
+        actionItems: [],
+      }],
+    },
+  ];
+
+  for (const candidate of candidates) {
+    const sanitized = sanitizeIntentOutput(candidate, annotated);
+    assert.equal(sanitized.tasks.length, 1, "the explicit meeting reminder must not be discarded");
+    assert.equal(
+      resolveCoreNoteTime(sanitized.tasks[0].dueAtExpression, reference)?.normalized,
+      "2026-09-07",
+    );
+  }
 });
 
 test("desktop-style direct commitments and concrete unfinished obligations survive post-filtering", () => {
@@ -547,6 +599,17 @@ test("a stated lead time resolves to the actionable reminder date", () => {
   assert.match(
     resolveCoreNoteTime("At 9am three days before, remind me about September 10 at 2pm", reference)?.normalized ?? "",
     /^2026-09-07T09:00:00/u,
+  );
+});
+
+test("an explicit actionable date wins over next-month context", () => {
+  const reference = new Date("2026-08-26T10:00:00+01:00");
+  assert.equal(
+    resolveCoreNoteTime(
+      "我下个月九月十号要去客户现场做汇报，麻烦提前三天提醒我准备材料。",
+      reference,
+    )?.normalized,
+    "2026-09-07",
   );
 });
 

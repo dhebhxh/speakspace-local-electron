@@ -50,9 +50,10 @@ test("local inference stays FIFO while the first request clears speech playback"
 test("Ask AI and translation keep their shared native context warm", async () => {
   const coordinator = new localInference.LocalLlmCoordinator();
   let releases = 0;
-  coordinator.registerIdleCleanup("shared-llm", async () => { releases += 1; }, ["ask-ai", "translation"]);
+  coordinator.registerIdleCleanup("shared-llm", async () => { releases += 1; }, ["ask-ai", "translation", "note-title"]);
   await coordinator.runExclusive("ask-ai", async () => undefined);
   await coordinator.runExclusive("translation", async () => undefined);
+  await coordinator.runExclusive("note-title", async () => undefined);
   assert.equal(releases, 0);
   await coordinator.runExclusive("knowledge", async () => undefined);
   assert.equal(releases, 1);

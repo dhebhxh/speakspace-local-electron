@@ -24,6 +24,7 @@ function precision(metadata: Record<string, unknown>, field: string): string | n
 }
 
 function localTrigger(value: string, isDateOnly: boolean): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}(?:T|$)/u.test(value)) return null;
   if (isDateOnly || /^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (!match) return null;

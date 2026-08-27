@@ -805,7 +805,6 @@ export default function NoteDetailScreen() {
               <View style={styles.structuredNoteHeading}>
                 <View style={styles.headingCopy}>
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>Structured Note</Text>
-                  <Text style={[styles.supportingText, { color: colors.textMuted }]}>Summary, key points, and tasks.</Text>
                 </View>
                 {state.coreInsights && displayInsight && (
                   <CoreInsightActions
@@ -1914,7 +1913,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: Spacing.md,
   },
-  structuredNoteHeading: { alignItems: "flex-start", flexDirection: "row", gap: Spacing.sm, justifyContent: "space-between" },
+  structuredNoteHeading: { alignItems: "center", flexDirection: "row", gap: Spacing.sm, justifyContent: "space-between" },
   headingCopy: { flex: 1, gap: Spacing.xs },
   supportingText: { fontSize: 14, lineHeight: 20 },
   scenarioBadge: {

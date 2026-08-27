@@ -86,6 +86,8 @@ test("workspace and Structured Note actions are compact without losing accessibi
   assert.doesNotMatch(workspace, /label="＋ New note"/);
 
   assert.match(note, /<Stack\.Screen options=\{\{ title: "Note" \}\} \/>/);
+  assert.doesNotMatch(note, /Summary, key points, and tasks\./);
+  assert.match(note, /structuredNoteHeading: \{ alignItems: "center"/);
   assert.match(note, /<Stack\.Toolbar placement="right">[\s\S]*?<Stack\.Toolbar\.Menu[\s\S]*?accessibilityLabel="More note actions"[\s\S]*?icon="ellipsis"/);
   assert.match(note, /<Stack\.Toolbar\.MenuAction[\s\S]*?>\s*Export PDF\s*<\/Stack\.Toolbar\.MenuAction>[\s\S]*?>\s*Move to Workspace\s*<\/Stack\.Toolbar\.MenuAction>[\s\S]*?<Stack\.Toolbar\.MenuAction\s*destructive[\s\S]*?>\s*Move to Trash\s*<\/Stack\.Toolbar\.MenuAction>/);
   assert.match(note, /accessibilityLabel="Creating PDF"[\s\S]*?accessibilityRole="progressbar"/);

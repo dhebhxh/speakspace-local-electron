@@ -974,6 +974,81 @@ SideStore 资产从未签名 Release `.app` 生成。packager 递归移除签名
 > - Method: Expo patch 对齐、全量质量门、安全审计、干净 Prebuild/CocoaPods、模拟器与真机 Release 构建、严格签名检查、CoreDevice 覆盖安装、IPA 解包和 checksum 验证，以及发布后的 GitHub 回读
 > - Confidence: High；构建、产物、日期固定规则、模拟器冷启动和真机覆盖安装有直接证据；最终真机自动启动受锁屏限制，Windows SideStore 重签和任意自然口语的 LLM Task 召回仍需对应环境与样本验证
 
+### 12.21 真机中文会议提醒的最后一层语义修复
+
+v1.5.0 已经完成 Windows/iOS 的确定性日期规则对齐，但连接 iPhone 的真实录音转写暴露了两个“日期算对了、Task 仍可能丢失”的边界。第一，STT 会在数字、单位和提醒量之间插入空格，例如 `9 月 10 号`、`提前 3 天`，旧正则只覆盖连续书写。第二，用户说 `我9月10號有一場工作會議請你麻煩提前3天 提醒我` 时，事件主体以名词出现，没有“参加／开／attend”这类既有动作词；确定性 coverage 会把模型漏掉的显式 Task 恢复出来，但后置 evidence filter 又可能把这个会议当成没有动作的事实删除。
+
+修复没有简单地把所有“提醒我”都当成 Task。日期 rewriter 只给中文年月日与 lead time 增加 `\s*` 容错；policy 仅在检测到显式提醒请求时启用 `hasConcreteReminderSubject`。这个函数先移除内部日期标注、中英文日期、时钟、提前量、提醒请求和礼貌 filler，然后要求至少剩余两个汉字，或者一个不在 filler set 中的英文实词。这样“提醒我”本身仍不会生成空 Task，而“工作会议／team meeting”可以在本地模型返回空 tasks 或返回有效 task 两条路径中都保留。Structured Note prompt 同步说明名词型已排期事件属于 concrete action，减少依赖 fallback 的概率。
+
+测试把真机原句固定为 reference `2026-08-27T21:08:29+01:00`，确认中间标注为 2026-09-10 与 actionable 2026-09-07；模型空结果和模型显式结果最终都只保留一个 Task，且 `resolveCoreNoteTime` 都得到 2026-09-07。另有带空格简体句、繁体句、否定提醒、只有提醒词、多个日期与时间的矩阵，防止扩大召回时恢复虚假 Task。Calendar 和 notification planner 也在这一轮收紧输入：日期必须先满足 ISO date/datetime 形状，纯日期还要通过本地年月日 round-trip；month precision 或任意可被 `Date` 宽松解析的文本不再落到某一天。
+
+> Evidence:
+> - Source: `src/services/core-note-date-rewriter.ts`, `src/services/core-note-insight-generation-policy.ts`, `src/services/core-note-insight-service.ts`, `src/services/core-note-time.ts`, `src/services/home-calendar-items.ts`, `src/services/note-notification-planner.ts`, `tests/core-note-insight-generation-policy.test.mjs`, `tests/selected-ios-features.test.mjs`
+> - Method: 真实真机 transcript 固定 reference 复现、空模型结果与有效模型结果双路径、否定和空主题反例、Calendar/notification 非 ISO 与无效日期回归
+> - Confidence: High；指定样本和确定性边界有直接自动证据；本地模型面对未覆盖的新口语仍可能漏识别，不能把一个样本的闭环外推为 100% 召回
+
+### 12.22 暂停录音与 STT 排空状态拆分
+
+旧页面把 pause 等同于一次 `await transcriber.nextSlice()`。源码审查和最小复现表明，`nextSlice()` 只负责把当前 buffer 形成新的 transcription task，返回时 `whisper.rn` 的 `processingPromise` 或 `transcriptionQueue` 可能仍有内容。因此采集虽然暂停，页面却立即显示普通 paused，用户看到的 transcript 可能暂时少最后一段；更早版本把转写和录音一起视为暂停，则会直接违背“暂停只暂停录音”的交互含义。
+
+iOS capture 层还有一个更底层的竞态：`@fugood/react-native-audio-pcm-stream` 的 Objective-C `stop` 使用无返回值的 `RCT_EXPORT_METHOD`，JavaScript 侧即使写了 `await` 也无法知道 `AudioQueueStop(..., true)` 和 callback buffer 何时完成。本轮新增失败可见、可重复执行的 postinstall patch，把 stop 变成 Promise bridge，只在同步 stop、buffer free 与 dispose 后 resolve。patch 先匹配依赖锁定版本的完整旧实现；找不到旧实现或新实现时直接报错，避免升级依赖后静默失去暂停保证。
+
+`flushCurrentTranscriptionSlice` 在 native stop 边界后强制提交最后 slice，再观察当前锁定版 `RealtimeTranscriber` 的 `processingPromise`、`transcriptionQueue` 与 `isTranscribing`，三者都空闲才 resolve；若内部 API 形状改变，会给出明确错误。UI 则先把 recording state 切为 paused，停止 keep-awake，但用独立 `isCompletingPausedTranscript` 表达 STT 仍在完成，继续接受 `onText`；在这段时间禁用 Resume 与 Finish，显示 spinner 和 `Finishing text from audio already captured`。排空后文字完整保留，用户可恢复录音或结束。
+
+实现过程中没有只依赖静态断言。第一层 fake queue 证明 pause Promise 必须等待一个人工挂起的 inference；第二层直接实例化 `node_modules/whisper.rn` 当前版本的 `RealtimeTranscriber`，FakeAudioStream 输入 32,000 bytes 后验证常规 slice 与 pause 强制 slice 都先回调文本，排空才完成；第三层结构回归固定 postinstall 和页面 busy 状态。这样既覆盖我们自己的 loop，也能在依赖升级改变内部队列时尽早失败。
+
+> Evidence:
+> - Source: `scripts/patch-audio-pcm-stream-ios-stop.mjs`, `package.json`, `src/services/realtime-transcription-drain.ts`, `src/services/transcription-service.ts`, `src/app/transcription.tsx`, `tests/live-transcription-pause.test.mjs`
+> - Method: native bridge 源码审查、fake pending inference、真实锁定版 RealtimeTranscriber 双 slice 测试、页面状态与 postinstall 接线回归、iPhoneOS native compile
+> - Confidence: High；当前锁定依赖的暂停排空有直接自动与编译证据；不同 STT 模型的推理耗时只影响 Completing 状态持续时间，不改变等待边界
+
+### 12.23 Finish、Save transcription 与自动 Note 标题
+
+Finish 原来先弹“是否完成”的确认，但用户点击 Finish 本身已经表达完成意图，而且操作之后仍进入可关闭的保存流程。现在非空录音会直接 `transcriptionService.finish()` 并打开 Save transcription；空 transcript 仍保留不可取消的明确处理，因为它无法创建可用 Note。Save 弹窗右上角的文字 Discard 改为统一关闭 icon，但关闭会继续弹出永久删除录音和 transcript 的 destructive confirmation。这里删除的是冗余确认，不是删除真正的数据保护。
+
+标题生成对齐桌面端而不是另写移动端文案。`NOTE_TITLE_SYSTEM_PROMPT` 与 Studio prompt 逐字一致，输入截取前 2,000 字符，低 temperature、关闭 thinking，输出只取第一行、去包裹引号和结尾标点并限制 80 字符。`NoteTitleGenerationService` 以 `note-title` operation 加入 `LocalLlmCoordinator` FIFO，并复用 Ask AI/Translation 的 shared llama context；因此标题不会并发创建第二个大模型 context，也会在 Knowledge 等后续操作前参与既有 idle cleanup。
+
+弹窗不会等 LLM 才出现。`prepareSave` 先设置 `Recording DD/MM/YYYY, HH:mm` fallback、Workspace 与 finished session，再异步启动标题生成；没有激活模型、模型文件缺失或 completion 出错都会返回 null，用户仍可立即保存。request sequence 防止上一段录音的迟到结果写进下一段，`noteNameEditedRef` 防止覆盖用户已经输入的名字，保存或关闭时会使旧 request 失效。自动测试逐字固定 prompt、清理规则、fallback 格式，并确认屏幕 wiring 包含“先 fallback、后本地标题、编辑后不覆盖”。
+
+同一轮把 `SafeAreaModal` 的整体动画从 slide 改为 fade。React Native `Modal` 的 backdrop 与 card 属于同一个动画树，旧 slide 使灰色遮罩从底部随卡片上升并在关闭时一起下落；fade 让遮罩在原位改变透明度，既保留背景隔离，也消除用户指出的运动违和感。Overview 与 Save transcription 都继续使用统一 safe-area、backdrop press 和 dismissDisabled 规则。
+
+> Evidence:
+> - Source: `src/services/note-title.ts`, `src/services/note-title-generation-service.ts`, `src/services/local-llm-coordinator.ts`, `src/services/shared-llm-context-service.ts`, `src/application/app-container.ts`, `src/app/transcription.tsx`, `src/components/safe-area-modal.tsx`, `tests/note-title-generation.test.mjs`, `tests/live-transcription-finish.test.mjs`, `tests/editor-modal-layout.test.mjs`
+> - Method: 桌面 prompt 逐字比较、标题 sanitize/fallback 单元回归、过期 request 与手动编辑状态审查、Modal 动画结构回归、模拟器 Save flow 视觉复查
+> - Confidence: High；fallback 和不覆盖规则有确定性证据，本地标题内容质量仍取决于用户激活的 LLM
+
+### 12.24 Home、Library 与原生筛选器的反馈驱动重排
+
+第一次信息架构调整评估了“底部增加独立 Note tab”和“与 Workspace 合并”两条路径。最终没有增加第五个底部入口，而是把 Workspaces 改名为 Library，在 Library 内使用 Notes / Workspaces segmented control。理由是 Notes 与 Workspaces 都属于已采集内容的管理层，Home 则应保持录音、Task 和 Calendar 的工作概览。原 Home 的 Notes 搜索、过滤、分批加载和 result destination 逻辑被抽到 `LibraryNotesPane`，不是删功能；Home 只保留 Overview 入口弹窗，并把主体顺序固定为 Start transcription、Tasks、Calendar，同时移除 `Local-first · Your data stays on this device` 与 Overview 的重复副标题。
+
+筛选器经历了两次可验证的设计失败。第一版把 Show 与 Category 放在一个有阴影的大容器内，再把选中值放进内部胶囊；它虽然功能正确，但形成“方框套两个胶囊”的多余层级。第二版尝试把触发区组合成一个菜单，模拟器宽度正常，真机原生测量却让触发框横向超出屏幕。最终版本使用两个完全独立的 Expo SDK 57 SwiftUI `Picker`：各有一个 `Host`，`matchContents` 让 host 按 native control 内容收缩，Picker 使用 `menu + bordered + capsule + small`；外层 `filterRow` 只负责同一行布局，没有背景、border、shadow、固定 width 或二级菜单。左侧直接显示 All Notes/Pinned/Open Tasks，右侧显示 All Category/具体分类，符合用户最后确认的心智模型。
+
+Note detail 同步删除 Structured Note 下的说明句，并把 heading row 从 `alignItems: flex-start` 改为 `center`，从而让正常字号标题在三个 44pt icon action 的竖直区域居中，而不是把标题字号强行放大。所有改动都通过结构回归固定：底部仍只有四个 Tabs；Home 不含 NoteCard/search；Library 保留跨资源搜索和每批 20 条加载；筛选区恰好有两个 Host 与两个 Picker，且不存在旧 filter card、组合菜单、固定宽度或 window width 计算。
+
+最终 iPhone 17 Pro / iOS 26.5 Simulator Release 直接冷启动后，Home 可见录音、Tasks、Calendar 顺序和四个底部入口。筛选器的模拟器与真机差异不再依赖 React Native 估算宽度，交给两个独立 SwiftUI host 自行测量。真机最终 Release 已完成同 Bundle ID 清装；由于卸载最后一个 Personal Team App 会清除设备信任记录，首次自动 launch 被 iOS profile trust 门控。用户重新信任后最终 App 成功启动，CoreDevice 进程清单确认 `speakspacelocalmobile` PID 26718 正在运行，因此系统拒绝没有被误记为 UI 回归或应用崩溃。
+
+> Evidence:
+> - Source: `src/app/(tabs)/_layout.tsx`, `src/app/(tabs)/index.tsx`, `src/app/(tabs)/library.tsx`, `src/components/library-notes-pane.tsx`, `src/app/workspaces/index.tsx`, `src/app/notes/[noteId].tsx`, `src/components/safe-area-modal.tsx`, `tests/library-information-architecture.test.mjs`, `tests/bottom-tab-bar.test.mjs`, `tests/ios-interface-polish.test.mjs`
+> - Method: 用户反馈后的两轮失败样式复盘、Expo SDK 57 SwiftUI Picker 约束核对、结构回归、iOS 26.5 Simulator Release 截图与直接冷启动、iOS 27 beta 真机清装和系统 trust 错误归因
+> - Confidence: High；最终布局规则、模拟器可见结果与真机安装启动有直接证据；真机逐页视觉仍不以模拟器截图替代，早先宽度问题由独立 native content measurement 规则和回归共同约束
+
+### 12.25 iOS v1.6.0 封版与 SideStore 资产
+
+本轮把 12.21 至 12.24 的日期语义补齐、暂停排空、自动标题和信息架构调整封为 `1.6.0`。App version 从 1.5.0 提升为 1.6.0，iOS build number 从 6 提升为 7；Bundle ID 继续为 `com.dhebhxh.speakspacelocalmobile`，最低版本仍为 iOS 16.4，且只声明 iPhone device family。`app.json`、`package.json`、lockfile 根元数据、CHANGELOG、README、两份安装指南和独立 `ios-release-v1.6.0-YQ.md` 同步更新，`ios-v1.5.0` 保留为回滚点。
+
+最终质量门在版本更新后重新执行：139 tests passed、0 failed；TypeScript 通过；Lint 为 0 error、12 个既有 Hook dependency warning；Expo dependency check 为 up to date；Expo Doctor 为 21/21；生成配置确认 SDK 57 与 1.6.0 (7)。production audit 没有 high/critical，仍为 13 个 Expo CLI/config plugin/Xcode/ngrok 工具链的 moderate `uuid` 公告；`--force` 会安装不兼容的 Expo 版本，因此没有执行。diff whitespace、敏感材料、debug/TODO 和未跟踪文件范围也独立审计，仓库没有加入签名、provisioning、设备容器、DerivedData、测试截图或模型。
+
+原生层从干净 Expo Prebuild 与 127 个 CocoaPods dependencies 生成签名 iPhoneOS Release 和 iOS Simulator Release。两次构建都为 0 error、3 warning；业务 App 包含 5,136,121-byte 离线 bundle。真机 `.app` 为 arm64、最低 iOS 16.4、iPhone-only，项目 verifier 和 `codesign --verify --deep --strict` 通过。连接的 iPhone 16 Pro Max 先卸载旧 Bundle ID，确认清单 absent 后再安装 1.6.0 (7)，因此旧数据库和多版本残留均被清除；重新信任 Personal Team profile 后，CoreDevice 进程清单确认最终 App PID 26718 正在运行。模拟器最终 Release 使用 Bundle ID 直接 cold launch 返回 PID 58869，Home 正常显示，不依赖 Metro URL。
+
+SideStore packager 从签名真机 `.app` 复制后递归移除全部 `_CodeSignature` 与 provisioning 材料，生成 `SpeakSpace-iOS-v1.6.0.ipa` 和 checksum。IPA 为 33,085,602 bytes，SHA-256 为 `88c3d27422c7b8012a3f5029a310ba2aad883ba0002bde4eab4caf6894af597c`。`unzip -tqq`、从 checksum 所在目录执行的独立 `shasum -a 256 -c`、archive root 和 forbidden entry 扫描均通过；根只有 `Payload/`，归档内 Info.plist 复核为 1.6.0 (7)、iPhone-only、最低 iOS 16.4。checksum 文件自身 SHA-256 为 `01ac942399c7a621b42c66838ce2a96f95e58dea98cc718aae2f84d977650266`。
+
+发布仍使用可回滚门：先提交并推送 `main`，再创建 annotated tag `ios-v1.6.0`，把 IPA 与 checksum 上传为 draft Release；从 GitHub 下载资产复算大小、二进制与 SHA-256，最后设为 latest。只有远端 main、tag、Release target、latest 指针和资产 digest 全部回读一致，才把 GitHub 发布描述为完成。
+
+> Evidence:
+> - Source: `app.json`, `package.json`, `package-lock.json`, `CHANGELOG.md`, `README.md`, `docs/ios-release-v1.6.0-YQ.md`, `docs/ios-local-install.md`, `docs/ios-sidestore-windows.md`, `scripts/verify-ios-release.mjs`, `scripts/package-ios-sidestore.mjs`
+> - Method: 最终版本全量质量门、安全审计、干净 Prebuild/CocoaPods、签名真机与模拟器 Release、codesign/verifier、CoreDevice 清装、IPA ZIP/entry/plist/SHA-256 独立验证，以及发布后 GitHub API 回读
+> - Confidence: High；源码、自动质量门、构建、模拟器启动、真机清装与启动进程、IPA 有直接证据；Windows SideStore 重签仍需对应环境验收
+
 ## 十三、参考资料
 
 - Expo SDK 57 app config：<https://docs.expo.dev/versions/v57.0.0/config/app/>
@@ -1018,6 +1093,10 @@ SideStore 资产从未签名 Release `.app` 生成。packager 递归移除签名
 | Home 跨资源搜索与长列表边界 | `src/app/(tabs)/index.tsx`, `src/app/transcription.tsx`, `src/services/note-fuzzy-search.ts`, `src/repositories/note-repository.ts`, `tests/home-search-long-lists.test.mjs` |
 | Note 搜索 v13 索引迁移 | `src/database/migrations/note-search-index-migration.ts`, `src/database/index.ts` |
 | Windows/iOS Task 日期语义对齐 | `src/services/core-note-date-rewriter.ts`, `src/services/core-note-time.ts`, `src/services/core-note-insight-service.ts`, `tests/core-note-insight-generation-policy.test.mjs` |
+| 真机提醒语义与严格日历日期 | `src/services/core-note-insight-generation-policy.ts`, `src/services/home-calendar-items.ts`, `src/services/note-notification-planner.ts` |
+| 暂停录音后的 STT 排空 | `src/services/realtime-transcription-drain.ts`, `src/services/transcription-service.ts`, `scripts/patch-audio-pcm-stream-ios-stop.mjs`, `tests/live-transcription-pause.test.mjs` |
+| 本地自动 Note 标题 | `src/services/note-title.ts`, `src/services/note-title-generation-service.ts`, `src/app/transcription.tsx`, `tests/note-title-generation.test.mjs` |
+| Library 信息架构与原生筛选器 | `src/app/(tabs)/library.tsx`, `src/components/library-notes-pane.tsx`, `tests/library-information-architecture.test.mjs` |
 | Release 验证 | `scripts/verify-ios-release.mjs` |
 | SideStore 打包 | `scripts/package-ios-sidestore.mjs` |
 | 自动测试 | `tests/*.test.mjs` |

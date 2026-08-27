@@ -67,7 +67,7 @@ export function resolveCoreNoteTime(expression: unknown, reference: Date): Resol
     }
   }
 
-  if (/\bnext month\b|下(?:个|個)?月/u.test(lower)) {
+  if (!date && /\bnext month\b|下(?:个|個)?月/u.test(lower)) {
     const month = new Date(reference.getFullYear(), reference.getMonth() + 1, 1);
     return result(raw, formatMonth(month), null, "month", approximate);
   }

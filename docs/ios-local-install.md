@@ -136,8 +136,8 @@ The packager copies the app, removes the original `_CodeSignature` directories
 and provisioning profile, validates the IPA layout, and writes both files below:
 
 ```text
-dist/ios/SpeakSpace-iOS-v1.5.0.ipa
-dist/ios/SpeakSpace-iOS-v1.5.0.ipa.sha256
+dist/ios/SpeakSpace-iOS-v1.6.0.ipa
+dist/ios/SpeakSpace-iOS-v1.6.0.ipa.sha256
 ```
 
 Do not commit these binaries. Attach both files to the matching GitHub Release.

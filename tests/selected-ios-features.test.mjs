@@ -78,6 +78,14 @@ test("Home calendar derives datetime keys in local time instead of truncating UT
   }
 });
 
+test("Home calendar never turns month-precision task data into the first day of that month", () => {
+  const items = calendar.buildHomeCalendarItems({
+    tasks: [task({ dueAt: "2026-09" })],
+  });
+
+  assert.deepEqual(items, []);
+});
+
 test("local notifications include only future current tasks and ignore retired reminders", () => {
   const planned = notifications.planNoteNotifications({
     tasks: [
@@ -87,6 +95,7 @@ test("local notifications include only future current tasks and ignore retired r
       task({ id: "old-series", isCurrent: false }),
       task({ id: "past", dueAt: "2026-08-24" }),
       task({ id: "invalid", dueAt: "2026-02-31" }),
+      task({ id: "month-only", dueAt: "2026-09", metadata: { timeExpressions: { dueAt: { precision: "month" } } } }),
     ],
     calendarIntents: [
       reminder(),

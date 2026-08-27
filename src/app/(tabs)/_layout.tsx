@@ -55,12 +55,12 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="library"
         options={{
-          title: "Workspaces",
+          title: "Library",
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon
               color={color}
               focused={focused}
-              name={{ ios: "folder", android: "folder", web: "folder" }}
+              name={{ ios: "books.vertical", android: "folder", web: "folder" }}
             />
           ),
         }}

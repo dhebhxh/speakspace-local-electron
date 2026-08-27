@@ -3,6 +3,7 @@ export type LocalLlmOperation =
   | "knowledge"
   | "knowledge-template"
   | "note-classification"
+  | "note-title"
   | "ask-ai"
   | "translation"
   | "model-management";

@@ -42,8 +42,8 @@ export default function AiManagementScreen() {
             style={({ pressed }) => [styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
           >
             <View style={styles.cardText}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Knowledge Templates</Text>
-              <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>Create reusable extraction structures with local AI.</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{tr("Knowledge Templates")}</Text>
+              <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>{tr("Create reusable extraction structures with local AI.")}</Text>
             </View>
             <View style={styles.cardAction}><Text style={[styles.actionLabel, { color: colors.accent }]}>Manage</Text><Text style={[styles.chevron, { color: colors.accent }]}>›</Text></View>
           </Pressable>

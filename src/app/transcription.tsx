@@ -71,7 +71,7 @@ export default function TranscriptionScreen() {
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active" || statusRef.current !== "recording") return;
       pauseForSystem(
-        "Recording paused because SpeakSpace left the foreground or the iPhone was locked. Tap Resume when you are ready.",
+        "Recording paused because SpeakSpace left the foreground or the device was locked. Tap Resume when you are ready.",
       );
     });
     const interruptionSubscription = addAudioInterruptionListener((event) => {

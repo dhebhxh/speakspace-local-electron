@@ -8,6 +8,9 @@ test("UI language setting exposes exactly the eight supported locales", async ()
   const source = await read("src/localization/i18n.ts");
   assert.match(source, /UI_LANGUAGES = \["en", "zh-CN", "es", "fr", "de", "ja", "ko", "pt"\] as const/);
   assert.match(source, /UI_LANGUAGE_STORAGE_KEY = "settings\.ui-language"/);
+  assert.doesNotMatch(source, /iPhone/);
+  assert.match(source, /选择 SpeakSpace 在此设备上的显示方式。/);
+  assert.match(source, /跟随系统的外观设置。/);
 });
 
 test("UI locale remains isolated from STT, LLM, and TTS services", async () => {
@@ -114,5 +117,38 @@ test("core insight actions and knowledge scenario templates are localized", asyn
     "Discussion, decisions, alignment", "Concepts, explanations, examples",
   ]) {
     assert.ok(copy.includes(label), `missing localized knowledge copy: ${label}`);
+  }
+});
+
+test("Ask AI screen and floating button use localized UI copy", async () => {
+  const copy = await read("src/localization/ui-copy.ts");
+  const screen = await read("src/app/ask-ai.tsx");
+  const floatingButton = await read("src/components/floating-ask-ai-button.tsx");
+
+  for (const label of [
+    "Open Ask AI", "LOCAL TRANSCRIPT AI", "AI History", "New conversation",
+    "Choose up to 3 transcripts", "AI is working…", "Recording question",
+    "Ask about the selected transcripts...",
+  ]) {
+    assert.ok(copy.includes(label), `missing localized Ask AI copy: ${label}`);
+  }
+
+  assert.match(screen, /title: tr\("Ask AI"\)/);
+  assert.match(screen, /tr\("Ask about up to three transcripts\. Answers use only the selected note content\."\)/);
+  assert.match(screen, /label=\{tr\("History"\)\}/);
+  assert.match(screen, /tr\("Based on"\)/);
+  assert.match(screen, /contextLabel\(state\.selectedNotes, tr\)/);
+  assert.match(screen, /label=\{tr\("Change"\)\}/);
+  assert.match(screen, /tr\("Start with a question about the selected transcript\."\)/);
+  assert.match(screen, /placeholder=\{tr\("Ask about the selected transcripts\.\.\."\)\}/);
+  assert.match(screen, /label=\{tr\("Mic"\)\}/);
+  assert.match(floatingButton, /accessibilityLabel=\{tr\("Open Ask AI"\)\}/);
+
+  for (const translation of [
+    "本地转写 AI", "可针对最多三篇转写提问，回答仅使用所选笔记的内容。",
+    "历史记录", "依据", "更改", "先针对所选转写提出一个问题。",
+    "针对所选转写提问……", "麦克风", "发送", "已选择",
+  ]) {
+    assert.ok(copy.includes(translation), `missing Chinese Ask AI translation: ${translation}`);
   }
 });

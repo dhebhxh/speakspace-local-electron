@@ -4,6 +4,7 @@ import { requestRecordingPermissionsAsync } from "expo-audio";
 import { Stack, type Href, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useHeaderHeight } from "expo-router/react-navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Keyboard,
@@ -33,6 +34,8 @@ import { Colors, Radius, Spacing } from "@/constants/theme";
 import type { AiMessage } from "@/domain/ai-message/ai-message";
 import type { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
+import type { UiLanguage } from "@/localization/i18n";
+import { translateUiCopy } from "@/localization/ui-copy";
 import { useTrashUndo } from "@/providers/trash-undo-provider";
 import type { AiConversationHistoryItem } from "@/services/ai-conversation-service";
 import type { LlmGenerationSnapshot } from "@/services/llm-inference-service";
@@ -60,12 +63,12 @@ function firstParam(value: string | string[] | undefined): string | null {
   return value ?? null;
 }
 
-function noteTitle(note: Note | null): string {
-  return note?.getName()?.trim() || "Untitled transcript";
+function noteTitle(note: Note | null, tr: (value: string) => string): string {
+  return note?.getName()?.trim() || tr("Untitled transcript");
 }
 
-function contextLabel(notes: readonly Note[]): string {
-  return `${notes.length} selected ${notes.length === 1 ? "transcript" : "transcripts"}`;
+function contextLabel(notes: readonly Note[], tr: (value: string) => string): string {
+  return tr(`${notes.length} selected ${notes.length === 1 ? "transcript" : "transcripts"}`);
 }
 
 function errorMessage(error: unknown): string {
@@ -73,6 +76,9 @@ function errorMessage(error: unknown): string {
 }
 
 export default function AskAiScreen() {
+  const { i18n } = useTranslation();
+  const language = (i18n.resolvedLanguage ?? "en") as UiLanguage;
+  const tr = (value: string) => translateUiCopy(value, language);
   const params = useLocalSearchParams<{
     conversationId?: string;
     mode?: string;
@@ -238,7 +244,7 @@ export default function AskAiScreen() {
         sourcesAvailable: true,
       });
     } catch (error) {
-      setState({ status: "error", message: errorMessage(error) });
+      setState({ status: "error", message: tr(errorMessage(error)) });
     }
   };
 
@@ -397,19 +403,17 @@ export default function AskAiScreen() {
     if (!ignoreBusy && isBusy) return;
 
     if (hasUnansweredUserMessage) {
-      setNotice(
-        "Finish the current turn first. Retry the last question or start a new conversation.",
-      );
+      setNotice(tr("Finish the current turn first. Retry the last question or start a new conversation."));
       return;
     }
 
     if (state.selectedNotes.length === 0 && state.conversationId === null) {
-      setNotice("Select at least one transcript before asking.");
+      setNotice(tr("Select at least one transcript before asking."));
       return;
     }
 
     if (!state.sourcesAvailable) {
-      setNotice("Restore all source notes and workspaces before asking another question.");
+      setNotice(tr("Restore all source notes and workspaces before asking another question."));
       return;
     }
 
@@ -550,7 +554,7 @@ export default function AskAiScreen() {
   };
 
   const stopGeneration = async () => {
-    setNotice("Generation stopped.");
+    setNotice(tr("Generation stopped."));
     await llmInferenceService.stopGeneration();
   };
 
@@ -561,7 +565,7 @@ export default function AskAiScreen() {
     try {
       setHistory(await aiConversationService.getConversationHistory());
     } catch (error) {
-      setHistoryError(errorMessage(error));
+      setHistoryError(tr(errorMessage(error)));
     }
   };
 
@@ -579,14 +583,14 @@ export default function AskAiScreen() {
       await appContainer.trashService.trashConversation(id);
       setHistory((current) => current.filter((entry) => entry.conversation.getId() !== id));
       showTrashUndo({
-        message: `${item.conversation.getName()} moved to Trash`,
+        message: tr(`${item.conversation.getName()} moved to Trash`),
         undo: async () => {
           await appContainer.trashService.restore("conversation", id);
           setHistory(await aiConversationService.getConversationHistory());
         },
       });
     } catch (error) {
-      setHistoryError(errorMessage(error));
+      setHistoryError(tr(errorMessage(error)));
     }
   };
 
@@ -619,7 +623,7 @@ export default function AskAiScreen() {
     try {
       const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
-        throw new Error("Microphone permission is required.");
+        throw new Error(tr("Microphone permission is required."));
       }
       await transcriptionService.start({
         onText: setVoiceText,
@@ -627,7 +631,7 @@ export default function AskAiScreen() {
       });
       setVoiceStatus("recording");
     } catch (error) {
-      setNotice(errorMessage(error));
+      setNotice(tr(errorMessage(error)));
       setVoiceStatus("idle");
     }
   };
@@ -643,12 +647,12 @@ export default function AskAiScreen() {
       setVoiceStatus("idle");
       setVoiceText("");
       if (result.transcript.trim().length === 0) {
-        setNotice("Transcription did not produce a question.");
+        setNotice(tr("Transcription did not produce a question."));
         return;
       }
       await sendMessage(result.transcript, true);
     } catch (error) {
-      setNotice(errorMessage(error));
+      setNotice(tr(errorMessage(error)));
       setVoiceStatus("idle");
     }
   };
@@ -668,7 +672,7 @@ export default function AskAiScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: "Ask AI" }} />
+      <Stack.Screen options={{ title: tr("Ask AI") }} />
       {state.status === "loading" && <LoadingState />}
       {state.status === "error" && (
         <View style={styles.content}>
@@ -704,20 +708,20 @@ export default function AskAiScreen() {
             >
               <View style={styles.header}>
                 <Text style={[styles.kicker, { color: colors.accent }]}>
-                  LOCAL TRANSCRIPT AI
+                  {tr("LOCAL TRANSCRIPT AI")}
                 </Text>
-                <Text style={[styles.title, { color: colors.text }]}>Ask AI</Text>
+                <Text style={[styles.title, { color: colors.text }]}>{tr("Ask AI")}</Text>
                 <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-                  Ask about up to three transcripts. Answers use only the selected note content.
+                  {tr("Ask about up to three transcripts. Answers use only the selected note content.")}
                 </Text>
                 <View style={styles.headerActions}>
                   <AppButton
-                    label="History"
+                    label={tr("History")}
                     variant="secondary"
                     onPress={() => void loadHistory()}
                   />
                   <AppButton
-                    label="Large Language Models"
+                    label={tr("Large Language Models")}
                     variant="quiet"
                     onPress={() => router.push("/ai/llm-models" as Href)}
                   />
@@ -726,10 +730,10 @@ export default function AskAiScreen() {
 
               {state.transcriptNotes.length === 0 && !isPersisted ? (
                 <EmptyState
-                  title="You don't have any transcripts yet."
+                  title={tr("You don't have any transcripts yet.")}
                   action={
                     <AppButton
-                      label="Start recording"
+                      label={tr("Start recording")}
                       onPress={() => router.push("/transcription")}
                     />
                   }
@@ -743,20 +747,20 @@ export default function AskAiScreen() {
                 >
                   <View style={styles.contextText}>
                     <Text style={[styles.contextLabel, { color: colors.textMuted }]}>
-                      Based on
+                      {tr("Based on")}
                     </Text>
                     <Text style={[styles.contextTitle, { color: colors.text }]}>
-                      {contextLabel(state.selectedNotes)}
+                      {contextLabel(state.selectedNotes, tr)}
                     </Text>
                     {isPersisted && (
                       <Text style={[styles.locked, { color: colors.textMuted }]}>
-                        Context locked for this conversation
+                        {tr("Context locked for this conversation")}
                       </Text>
                     )}
                   </View>
                   {!isPersisted && (
                     <AppButton
-                      label="Change"
+                      label={tr("Change")}
                       variant="secondary"
                       disabled={isBusy}
                       onPress={() => {
@@ -767,7 +771,7 @@ export default function AskAiScreen() {
                   )}
                   {isPersisted && (
                     <AppButton
-                      label="New"
+                      label={tr("New")}
                       variant="secondary"
                       disabled={isBusy || !state.sourcesAvailable}
                       onPress={startNewConversation}
@@ -784,10 +788,10 @@ export default function AskAiScreen() {
                   ]}
                 >
                   <Text style={[styles.noticeText, { color: colors.text }]}>
-                    {modelNotice}
+                    {tr(modelNotice)}
                   </Text>
                   <AppButton
-                    label="Open models"
+                    label={tr("Open models")}
                     variant="quiet"
                     onPress={() => router.push("/ai/llm-models" as Href)}
                   />
@@ -795,13 +799,13 @@ export default function AskAiScreen() {
               )}
               {!state.sourcesAvailable && (
                 <View style={[styles.notice, { backgroundColor: colors.accentSoft, borderColor: colors.border }]}>
-                  <Text style={[styles.noticeText, { color: colors.text }]}>Restore all source notes and workspaces to continue this conversation. Saved messages remain readable.</Text>
+                  <Text style={[styles.noticeText, { color: colors.text }]}>{tr("Restore all source notes and workspaces to continue this conversation. Saved messages remain readable.")}</Text>
                 </View>
               )}
 
               {notice !== null && (
                 <Text selectable style={[styles.errorText, { color: colors.danger }]}>
-                  {notice}
+                  {tr(notice)}
                 </Text>
               )}
 
@@ -813,17 +817,17 @@ export default function AskAiScreen() {
                   ]}
                 >
                   <Text style={[styles.noticeText, { color: colors.text }]}>
-                    The last question has not received an assistant response yet.
+                    {tr("The last question has not received an assistant response yet.")}
                   </Text>
                   <View style={styles.composerActions}>
                     <AppButton
-                      label="New conversation"
+                      label={tr("New conversation")}
                       variant="secondary"
                       disabled={voiceStatus !== "idle" || !state.sourcesAvailable}
                       onPress={startNewConversation}
                     />
                     <AppButton
-                      label="Retry"
+                      label={tr("Retry")}
                       disabled={voiceStatus !== "idle" || modelNotice !== null || !state.sourcesAvailable}
                       onPress={() => void retryLastUserMessage()}
                     />
@@ -838,7 +842,7 @@ export default function AskAiScreen() {
                     <Text
                       style={[styles.placeholder, { color: colors.textMuted }]}
                     >
-                      Start with a question about the selected transcript.
+                      {tr("Start with a question about the selected transcript.")}
                     </Text>
                   )}
                 {visibleMessages.map((message) => (
@@ -873,7 +877,7 @@ export default function AskAiScreen() {
                     {message.getRole() === "assistant" && (
                       <SpeechPlaybackButton
                         speechId={`ask-ai:${message.getId()}`}
-                        label="AI answer"
+                        label={tr("AI answer")}
                         text={message.getContent()}
                       />
                     )}
@@ -904,13 +908,13 @@ export default function AskAiScreen() {
                     ]}
                   >
                     <ActivityIndicator
-                      accessibilityLabel="AI is working"
+                      accessibilityLabel={tr("AI is working")}
                       color={colors.accent}
                     />
                     <Text
                       style={[styles.workingText, { color: colors.textMuted }]}
                     >
-                      AI is working…
+                      {tr("AI is working…")}
                     </Text>
                   </View>
                 )}
@@ -924,11 +928,11 @@ export default function AskAiScreen() {
                   ]}
                 >
                   <Text style={[styles.contextLabel, { color: colors.textMuted }]}>
-                    {voiceStatus === "starting"
+                    {tr(voiceStatus === "starting"
                       ? "Starting microphone"
                       : voiceStatus === "finishing"
                         ? "Finishing transcription"
-                        : "Recording question"}
+                        : "Recording question")}
                   </Text>
                   <Text
                     selectable
@@ -937,16 +941,16 @@ export default function AskAiScreen() {
                       { color: voiceText ? colors.text : colors.textMuted },
                     ]}
                   >
-                    {voiceText || "Your spoken question will appear here."}
+                    {voiceText || tr("Your spoken question will appear here.")}
                   </Text>
                   <View style={styles.composerActions}>
                     <AppButton
-                      label="Cancel"
+                      label={tr("Cancel")}
                       variant="secondary"
                       onPress={() => void cancelVoice()}
                     />
                     <AppButton
-                      label="Finish"
+                      label={tr("Finish")}
                       disabled={voiceStatus !== "recording"}
                       onPress={() => void finishVoice()}
                     />
@@ -970,7 +974,7 @@ export default function AskAiScreen() {
               <TextInput
                 multiline
                 editable={!isBusy && !hasUnansweredUserMessage && state.sourcesAvailable}
-                placeholder="Ask about the selected transcripts..."
+                placeholder={tr("Ask about the selected transcripts...")}
                 placeholderTextColor={colors.textMuted}
                 value={input}
                 onChangeText={setInput}
@@ -982,13 +986,13 @@ export default function AskAiScreen() {
               <View style={styles.composerActions}>
                 {isGenerating ? (
                   <AppButton
-                    label="Stop"
+                    label={tr("Stop")}
                     variant="secondary"
                     onPress={() => void stopGeneration()}
                   />
                 ) : (
                   <AppButton
-                    label="Mic"
+                    label={tr("Mic")}
                     variant="secondary"
                     disabled={
                       voiceStatus !== "idle" ||
@@ -1001,13 +1005,13 @@ export default function AskAiScreen() {
                   />
                 )}
                 <AppButton
-                  label={
+                  label={tr(
                     isGenerating
                       ? "Sending..."
                       : hasUnansweredUserMessage
                         ? "Retry"
                         : "Send"
-                  }
+                  )}
                   disabled={
                     isBusy ||
                     state.transcriptNotes.length === 0 ||
@@ -1030,11 +1034,11 @@ export default function AskAiScreen() {
             >
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>
-                  Choose up to 3 transcripts
+                  {tr("Choose up to 3 transcripts")}
                 </Text>
                 <Pressable onPress={() => setPickerVisible(false)}>
                   <Text style={[styles.close, { color: colors.textMuted }]}>
-                    Close
+                    {tr("Close")}
                   </Text>
                 </Pressable>
               </View>
@@ -1067,7 +1071,7 @@ export default function AskAiScreen() {
                     ]}
                   >
                     <Text style={[styles.pickTitle, { color: colors.text }]}>
-                      {noteTitle(note)}
+                      {noteTitle(note, tr)}
                     </Text>
                     <Text style={[styles.pickMeta, { color: colors.textMuted }]}>
                       {formatDate(note.getUpdatedAt())}
@@ -1076,7 +1080,7 @@ export default function AskAiScreen() {
                 );
               })}
               <AppButton
-                label="Done"
+                label={tr("Done")}
                 disabled={state.selectedNotes.length === 0}
                 onPress={() => setPickerVisible(false)}
               />
@@ -1088,22 +1092,22 @@ export default function AskAiScreen() {
             >
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>
-                  AI History
+                  {tr("AI History")}
                 </Text>
                 <Pressable onPress={() => setHistoryVisible(false)}>
                   <Text style={[styles.close, { color: colors.textMuted }]}>
-                    Close
+                    {tr("Close")}
                   </Text>
                 </Pressable>
               </View>
               {historyError !== null && (
                 <Text style={[styles.errorText, { color: colors.danger }]}>
-                  {historyError}
+                  {tr(historyError)}
                 </Text>
               )}
               {history.length === 0 && historyError === null && (
                 <Text style={[styles.placeholder, { color: colors.textMuted }]}>
-                  No Ask AI conversations yet.
+                  {tr("No Ask AI conversations yet.")}
                 </Text>
               )}
               {history.map((item) => (
@@ -1129,14 +1133,14 @@ export default function AskAiScreen() {
                   )}
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Move ${item.conversation.getName()} to Trash`}
+                    accessibilityLabel={tr(`Move ${item.conversation.getName()} to Trash`)}
                     onPress={(event) => {
                       event.stopPropagation();
                       void trashHistoryItem(item);
                     }}
                     style={({ pressed }) => [styles.historyTrash, pressed && styles.pressed]}
                   >
-                    <Text style={[styles.pickMeta, { color: colors.danger }]}>Move to Trash</Text>
+                    <Text style={[styles.pickMeta, { color: colors.danger }]}>{tr("Move to Trash")}</Text>
                   </Pressable>
                 </Pressable>
               ))}

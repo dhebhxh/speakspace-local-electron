@@ -14,7 +14,7 @@ export type SendUserMessageInput =
       content: string;
     }
   | {
-      noteId: string;
+      noteIds: readonly string[];
       content: string;
       conversationName?: string | null;
     };
@@ -61,6 +61,21 @@ export class AiConversationService {
     return items;
   }
 
+  public async getResumeTargetForNote(
+    noteId: string,
+  ): Promise<AiConversation | null> {
+    const normalizedNoteId = noteId.trim();
+    if (normalizedNoteId.length === 0) {
+      throw new ValidationError("Note id cannot be empty.");
+    }
+    return this.conversationRepository.findLatestByNoteId(normalizedNoteId);
+  }
+
+  public async getResumeTargetForNotes(noteIds: readonly string[]): Promise<AiConversation | null> {
+    const normalized = this.normalizeNoteIds(noteIds);
+    return this.conversationRepository.findLatestByExactNoteIds(normalized);
+  }
+
   public async getConversationOrThrow(id: string): Promise<AiConversation> {
     const conversation = await this.conversationRepository.findById(id);
     if (conversation === null) {
@@ -88,12 +103,23 @@ export class AiConversationService {
     const noteIds = await this.getLinkedNoteIds(conversationId);
     const notes: Note[] = [];
     for (const noteId of noteIds) {
-      const note = await this.noteRepository.findById(noteId);
+      const note = await this.noteRepository.findByIdIncludingTrashed(noteId);
       if (note !== null) {
         notes.push(note);
       }
     }
     return notes;
+  }
+
+  public async canGenerate(conversationId: string): Promise<boolean> {
+    const ids = await this.getLinkedNoteIds(conversationId);
+    return this.noteRepository.areAllActive(ids);
+  }
+
+  public async assertCanGenerate(conversationId: string): Promise<void> {
+    if (!(await this.canGenerate(conversationId))) {
+      throw new ValidationError("Restore all source notes and workspaces before asking another question.");
+    }
   }
 
   public async linkNote(conversationId: string, noteId: string): Promise<void> {
@@ -141,6 +167,7 @@ export class AiConversationService {
     if ("conversationId" in input) {
       const conversationId = input.conversationId;
       await this.getConversationOrThrow(conversationId);
+      await this.assertCanGenerate(conversationId);
       await this.insertUserMessage(conversationId, content);
       return {
         conversationId,
@@ -148,18 +175,19 @@ export class AiConversationService {
       };
     }
 
-    const note = await this.noteRepository.findById(input.noteId);
-    if (note === null) {
-      throw new ValidationError("Note not found.");
-    }
-    if (note.getTranscript().trim().length === 0) {
-      throw new ValidationError("Note has no transcript.");
+    const noteIds = this.normalizeNoteIds(input.noteIds);
+    const notes: Note[] = [];
+    for (const noteId of noteIds) {
+      const note = await this.noteRepository.findById(noteId);
+      if (!note) throw new ValidationError("One or more selected notes are unavailable.");
+      if (!note.getTranscript().trim()) throw new ValidationError("Every selected note must have a transcript.");
+      notes.push(note);
     }
 
     const conversationId = await this.createConversationWithFirstMessage(
-      note,
+      notes,
       content,
-      input.conversationName ?? note.getName(),
+      input.conversationName ?? (notes.length === 1 ? notes[0].getName() : `${notes.length} notes`),
     );
 
     return {
@@ -200,7 +228,7 @@ export class AiConversationService {
   }
 
   private async createConversationWithFirstMessage(
-    note: Note,
+    notes: readonly Note[],
     userContent: string,
     conversationName: string | null,
   ): Promise<string> {
@@ -214,13 +242,20 @@ export class AiConversationService {
     );
     const userMessage = this.createMessage(conversationId, "user", userContent);
 
-    await this.conversationRepository.createWithContextAndFirstMessage(
+    await this.conversationRepository.createWithContextsAndFirstMessage(
       conversation,
-      note.getId(),
+      notes.map((note) => note.getId()),
       userMessage,
     );
 
     return conversationId;
+  }
+
+  private normalizeNoteIds(noteIds: readonly string[]): string[] {
+    const normalized = [...new Set(noteIds.map((id) => id.trim()).filter(Boolean))].sort();
+    if (normalized.length === 0) throw new ValidationError("Select at least one note.");
+    if (normalized.length > 3) throw new ValidationError("Select up to 3 notes.");
+    return normalized;
   }
 
   private createMessage(

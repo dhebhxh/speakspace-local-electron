@@ -11,6 +11,9 @@ import { Colors } from "@/constants/theme";
 import { databaseConfig, initializeDatabase } from "@/database";
 import { useTheme } from "@/hooks/use-theme";
 import { ThemeProvider } from "@/providers/theme-provider";
+import "@/localization/i18n";
+import { useTranslation } from "react-i18next";
+import { TrashUndoProvider } from "@/providers/trash-undo-provider";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -25,11 +28,15 @@ export default function RootLayout() {
 function ThemedRootLayout() {
   const theme = useTheme();
   const colors = Colors[theme.mode];
+  const { t } = useTranslation();
 
   useEffect(() => {
     appContainer.speechPlaybackService.initialize();
     const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState !== "active") appContainer.speechPlaybackService.pauseForBackground();
+      if (nextState !== "active") {
+        appContainer.speechPlaybackService.stopForBackground();
+        void appContainer.llmInferenceService.stopGeneration();
+      }
     });
     void SplashScreen.hideAsync();
     return () => subscription.remove();
@@ -40,11 +47,12 @@ function ThemedRootLayout() {
       databaseName={databaseConfig.databaseName}
       onInit={initializeDatabase}
     >
-      <StatusBar style={theme.mode === "dark" ? "light" : "dark"} />
-      <Stack
+      <TrashUndoProvider>
+        <StatusBar style={theme.mode === "dark" ? "light" : "dark"} />
+        <Stack
         screenOptions={{
           contentStyle: { backgroundColor: colors.background },
-          headerBackTitle: "Back",
+          headerBackTitle: t("nav.back"),
           headerShadowVisible: false,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.accent,
@@ -52,11 +60,12 @@ function ThemedRootLayout() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="ask-ai" options={{ title: "Ask AI" }} />
-        <Stack.Screen name="transcription" options={{ title: "Transcription" }} />
-        <Stack.Screen name="audio-transcription" options={{ title: "Transcribe audio file" }} />
-      </Stack>
-      <FloatingAskAiButton />
+        <Stack.Screen name="ask-ai" options={{ title: t("nav.askAi") }} />
+        <Stack.Screen name="transcription" options={{ title: t("nav.transcription") }} />
+        <Stack.Screen name="audio-transcription" options={{ title: t("nav.audioTranscription") }} />
+        </Stack>
+        <FloatingAskAiButton />
+      </TrashUndoProvider>
     </SQLiteProvider>
   );
 }

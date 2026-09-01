@@ -7,6 +7,7 @@ import {
 import androidRegular from "expo-symbols/androidWeights/regular";
 import androidSemiBold from "expo-symbols/androidWeights/semiBold";
 import type { ColorValue } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/theme";
@@ -14,6 +15,7 @@ import { useTheme } from "@/hooks/use-theme";
 
 export default function TabsLayout() {
   const theme = useTheme();
+  const { t } = useTranslation();
   const colors = Colors[theme.mode];
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 8);
@@ -38,7 +40,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: t("nav.home"),
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon
               color={color}
@@ -53,7 +55,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="library"
         options={{
-          title: "Workspaces",
+          title: t("nav.workspaces"),
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon
               color={color}
@@ -68,7 +70,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="ai"
         options={{
-          title: "AI",
+          title: t("nav.ai"),
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon
               color={color}
@@ -83,7 +85,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: t("nav.settings"),
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon
               color={color}

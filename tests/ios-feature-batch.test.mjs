@@ -47,6 +47,105 @@ test("local inference stays FIFO while the first request clears speech playback"
   assert.deepEqual(order, ["first", "second"]);
 });
 
+test("Ask AI and translation keep their shared native context warm", async () => {
+  const coordinator = new localInference.LocalLlmCoordinator();
+  let releases = 0;
+  coordinator.registerIdleCleanup("shared-llm", async () => { releases += 1; }, ["ask-ai", "translation"]);
+  await coordinator.runExclusive("ask-ai", async () => undefined);
+  await coordinator.runExclusive("translation", async () => undefined);
+  assert.equal(releases, 0);
+  await coordinator.runExclusive("knowledge", async () => undefined);
+  assert.equal(releases, 1);
+});
+
+test("queued inference cancellation never starts and does not lock the scheduler", async () => {
+  const coordinator = new localInference.LocalLlmCoordinator();
+  let releaseFirst;
+  const gate = new Promise((resolve) => { releaseFirst = resolve; });
+  const first = coordinator.runExclusive("ask-ai", () => gate);
+  let started = false;
+  const queued = coordinator.schedule("knowledge", async () => { started = true; });
+  await queued.cancel();
+  await assert.rejects(queued.promise, /cancelled/i);
+  assert.equal(started, false);
+  releaseFirst();
+  await first;
+  await coordinator.runExclusive("translation", async () => undefined);
+  assert.equal(coordinator.isBusy(), false);
+});
+
+test("completed inference tasks do not accumulate in scheduler snapshots", async () => {
+  const coordinator = new localInference.LocalLlmCoordinator();
+
+  for (let index = 0; index < 25; index += 1) {
+    await coordinator.runExclusive("translation", async () => index);
+  }
+
+  assert.deepEqual(coordinator.getSnapshot().tasks, []);
+});
+
+test("running inference cancellation invokes the registered native interrupt", async () => {
+  const coordinator = new localInference.LocalLlmCoordinator();
+  let interrupted = false;
+  let finish;
+  let markRegistered;
+  const registered = new Promise((resolve) => { markRegistered = resolve; });
+  const nativeWork = new Promise((resolve) => { finish = resolve; });
+  const task = coordinator.schedule("ask-ai", async (lifecycle) => {
+    lifecycle.setInterrupt(async () => { interrupted = true; finish(); });
+    markRegistered();
+    await nativeWork;
+  });
+  await registered;
+  await task.cancel();
+  await assert.rejects(task.promise, /cancelled/i);
+  assert.equal(interrupted, true);
+  assert.equal(coordinator.isBusy(), false);
+});
+
+test("running inference cancellation accepts a synchronous native interrupt", async () => {
+  const coordinator = new localInference.LocalLlmCoordinator();
+  let interrupted = false;
+  let finish;
+  let markRegistered;
+  const registered = new Promise((resolve) => { markRegistered = resolve; });
+  const nativeWork = new Promise((resolve) => { finish = resolve; });
+  const task = coordinator.schedule("translation", async (lifecycle) => {
+    lifecycle.setInterrupt(() => { interrupted = true; finish(); });
+    markRegistered();
+    await nativeWork;
+  });
+  await registered;
+  await task.cancel();
+  await assert.rejects(task.promise, /cancelled/i);
+  assert.equal(interrupted, true);
+  assert.equal(coordinator.isBusy(), false);
+});
+
+test("cancelling LLM work keeps the shared runtime compatible and reusable", async () => {
+  const coordinator = new localInference.LocalLlmCoordinator();
+  let releases = 0;
+  coordinator.registerIdleCleanup("shared-llm", async () => { releases += 1; }, [
+    "ask-ai", "translation", "knowledge", "knowledge-template", "note-classification", "core-insights", "tts",
+  ]);
+  let finish;
+  let markRegistered;
+  const registered = new Promise((resolve) => { markRegistered = resolve; });
+  const nativeWork = new Promise((resolve) => { finish = resolve; });
+  const task = coordinator.schedule("core-insights", async (lifecycle) => {
+    lifecycle.setInterrupt(() => { finish(); });
+    markRegistered();
+    await nativeWork;
+  });
+  await registered;
+  await task.cancel();
+  await assert.rejects(task.promise, /cancelled/i);
+  await coordinator.runExclusive("translation", async () => undefined);
+  await coordinator.runExclusive("tts", async () => undefined);
+  await coordinator.runExclusive("core-insights", async () => undefined);
+  assert.equal(releases, 0);
+});
+
 test("TTS model paths survive an iOS sandbox container UUID change", () => {
   const oldPath = "/old-container/Documents/sherpa-onnx/models/tts/model/model";
   const currentDocuments = "file:///new-container/Documents/";
@@ -109,7 +208,7 @@ test("Home groups only generated pending tasks and keeps completed separate", ()
   assert.deepEqual(grouped.completed.map((task) => task.id), ["done"]);
 });
 
-test("theme launch and speech pause keep their resolved state", async () => {
+test("theme launch and speech stop keep their resolved state", async () => {
   const [themeProvider, rootLayout, speechService, tabs] = await Promise.all([
     readFile(new URL("../src/providers/theme-provider.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/app/_layout.tsx", import.meta.url), "utf8"),
@@ -120,20 +219,33 @@ test("theme launch and speech pause keep their resolved state", async () => {
   assert.match(themeProvider, /Storage\.getItemSync\(THEME_PREFERENCE_KEY\)/);
   assert.match(themeProvider, /return "light"/);
   assert.match(rootLayout, /SplashScreen\.preventAutoHideAsync\(\)/);
-  assert.match(rootLayout, /pauseForBackground\(\)/);
-  assert.match(speechService, /session\.player\?\.pause\(\)/);
-  assert.match(speechService, /session\.player\.play\(\)/);
+  assert.match(rootLayout, /stopForBackground\(\)/);
+  assert.match(speechService, /cancelSpeechStream\(\)/);
+  assert.match(speechService, /pcmPlayback\.stopImmediately\(\)/);
   assert.doesNotMatch(tabs, /name="dashboard"/);
   assert.match(tabs, /name="settings"/);
 });
 
-test("Structured Note regeneration only carries exact completed task identities", async () => {
+test("Structured Note regeneration reconciles exact one-off and recurring identities", async () => {
   const repository = await readFile(
     new URL("../src/repositories/core-note-insight-repository.ts", import.meta.url),
     "utf8",
   );
 
   assert.match(repository, /status = 'completed'/);
-  assert.match(repository, /coreTaskIdentity\(task\.title, task\.due_at, task\.starts_at\)/);
-  assert.match(repository, /previousCompletedAt \? "completed" : task\.status/);
+  assert.match(repository, /coreTaskIdentity\(previous\.title, previous\.due_at, previous\.starts_at\)/);
+  assert.match(repository, /previous\.series_key === task\.seriesKey/);
+  assert.match(repository, /const taskId = matching\?\.id \?\? task\.id/);
+  assert.match(repository, /WHERE insight_id = \? AND is_current = 1/);
+});
+
+test("Structured Note keeps historical tasks out of the current view without showing a permanent spinner", async () => {
+  const noteDetail = await readFile(
+    new URL("../src/app/notes/[noteId].tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(noteDetail, /busy=\{busyIds\.has\(task\.id\)\}/);
+  assert.match(noteDetail, /disabled=\{task\.status === "completed" && !canRestore\}/);
+  assert.doesNotMatch(noteDetail, /busy=\{busyIds\.has\(task\.id\) \|\| \(task\.status === "completed" && !canRestore\)\}/);
 });

@@ -6,6 +6,12 @@ module.exports = defineConfig([
   expoConfig,
   {
     ignores: ["dist/*", ".agents/**"],
+    settings: {
+      "import/resolver": {
+        typescript: { project: "./tsconfig.json" },
+        node: true,
+      },
+    },
     rules: {
       // These React Compiler-oriented rules are not compatible with the
       // repository's existing async loading and PanResponder patterns yet.

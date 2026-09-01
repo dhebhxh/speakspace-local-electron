@@ -1,22 +1,22 @@
+import { UiText as Text } from "@/components/ui-text";
 import { type Href, usePathname, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import {
-  PanResponder,
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { useTranslation } from "react-i18next";
+import { PanResponder, Pressable, StyleSheet, useWindowDimensions, View,  } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Colors, Radius } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
+import type { UiLanguage } from "@/localization/i18n";
+import { translateUiCopy } from "@/localization/ui-copy";
 
 const BUTTON_SIZE = 72;
 const EDGE_PADDING = 16;
 
 export function FloatingAskAiButton() {
+  const { i18n } = useTranslation();
+  const language = (i18n.resolvedLanguage ?? "en") as UiLanguage;
+  const tr = (value: string) => translateUiCopy(value, language);
   const router = useRouter();
   const pathname = usePathname();
   const theme = useTheme();
@@ -52,6 +52,7 @@ export function FloatingAskAiButton() {
   const hidden =
     pathname === "/ask-ai" ||
     pathname === "/transcription" ||
+    (pathname.startsWith("/notes/") && pathname !== "/notes/search") ||
     pathname.startsWith("/ai/");
 
   const clampPosition = (x: number, y: number) => ({
@@ -100,7 +101,7 @@ export function FloatingAskAiButton() {
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Open Ask AI"
+        accessibilityLabel={tr("Open Ask AI")}
         onPress={() => {
           if (!didDrag.current) {
             router.push("/ask-ai" as Href);
@@ -116,7 +117,7 @@ export function FloatingAskAiButton() {
           pressed && styles.pressed,
         ]}
       >
-        <Text style={[styles.label, { color: colors.surface }]}>Ask</Text>
+        <Text style={[styles.label, { color: colors.surface }]}>{tr("Ask")}</Text>
         <Text style={[styles.ai, { color: colors.surface }]}>AI</Text>
       </Pressable>
     </View>

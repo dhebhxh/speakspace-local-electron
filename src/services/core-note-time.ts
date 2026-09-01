@@ -19,6 +19,34 @@ const WEEKDAYS: Record<string, number> = {
 const CHINESE_NUMBERS: Record<string, number> = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10, 十一: 11, 十二: 12 };
 const ENGLISH_NUMBERS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
 
+const EN_CLOCK_SOURCE = String.raw`(?:(?:1[0-2]|0?\d)(?::[0-5]\d)?\s*(?:am|pm)|(?:[01]?\d|2[0-3]):[0-5]\d)`;
+const EN_DATE_SOURCE = String.raw`(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4})`;
+const EN_WEEKDAY_SOURCE = String.raw`(?:(?:next|this)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)`;
+const CORE_TIME_PHRASE_PATTERNS = [
+  new RegExp(String.raw`\b(?:at\s+${EN_CLOCK_SOURCE}\s+)?(?:before|by|on|until|from)\s+${EN_DATE_SOURCE}(?:\s+at\s+${EN_CLOCK_SOURCE})?\b`, "iu"),
+  new RegExp(String.raw`\b(?:at\s+${EN_CLOCK_SOURCE}\s+on\s+)?${EN_DATE_SOURCE}(?:\s+at\s+${EN_CLOCK_SOURCE})?\b`, "iu"),
+  new RegExp(String.raw`\b(?:before|by|on|until|from|at)\s+${EN_WEEKDAY_SOURCE}(?:\s+at\s+${EN_CLOCK_SOURCE})?\b`, "iu"),
+  new RegExp(String.raw`\b${EN_WEEKDAY_SOURCE}(?:\s+at\s+${EN_CLOCK_SOURCE})?\b`, "iu"),
+  new RegExp(String.raw`\b(?:in\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+hours?(?:\s+(?:later|from now))?\b`, "iu"),
+  new RegExp(String.raw`\b(?:before|by|on|until|from|at)?\s*(?:the\s+)?(?:day after tomorrow|tomorrow|today|tonight|next month)(?:\s+at\s+${EN_CLOCK_SOURCE})?\b`, "iu"),
+  new RegExp(String.raw`\b(?:at\s+)?${EN_CLOCK_SOURCE}(?:\s+on\s+(?:the\s+)?same day)?\b`, "iu"),
+  /(?:在|于|截至|截止(?:到)?|之前|前|到)?\s*(?:\d{4}\s*年\s*)?\d{1,2}\s*月\s*\d{1,2}\s*[日号](?:\s*(?:上午|早上|中午|下午|晚上)?\s*(?:\d{1,2}|[一二三四五六七八九十]+)\s*[点时](?:\s*\d{1,2}\s*分?)?)?/u,
+  /(?:在|于|截至|截止(?:到)?|之前|前|到)?\s*(?:(?:下|本)?(?:周|星期)[一二三四五六日天]|今天|明天|后天|今晚|下个月)(?:\s*(?:上午|早上|中午|下午|晚上)?\s*(?:\d{1,2}|[一二三四五六七八九十]+)\s*[点时](?:\s*\d{1,2}\s*分?)?)?/u,
+  /(?:\d+|[一二两三四五六七八九十]+)\s*小时后/u,
+  /(?:上午|早上|中午|下午|晚上)?\s*(?:\d{1,2}|[一二三四五六七八九十]+)\s*[点时](?:\s*\d{1,2}\s*分?)?/u,
+] as const;
+
+/** Keeps the existing free-form time-field contract while removing surrounding task prose. */
+export function extractCoreNoteTimeExpression(expression: unknown): string | null {
+  if (typeof expression !== "string" || !expression.trim()) return null;
+  const matches = CORE_TIME_PHRASE_PATTERNS
+    .map((pattern) => expression.trim().match(pattern)?.[0]?.trim() ?? "")
+    .filter(Boolean)
+    .map((match) => match.replace(/^[,;，；]\s*|\s*[,.!?;，。！？；]+$/gu, "").trim());
+  if (!matches.length) return null;
+  return matches.reduce((best, candidate) => candidate.length > best.length ? candidate : best);
+}
+
 export function getLocalReferenceTime(now: Date = new Date()): { instant: Date; localIso: string; timezone: string } {
   return { instant: new Date(now), localIso: formatLocalDateTime(now), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "local" };
 }
@@ -88,10 +116,15 @@ function findWeekday(value: string): number | null {
 function parseExplicitDate(value: string, reference: Date): Date | null {
   const numeric = value.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
   const chinese = value.match(/(?:(\d{4})\s*年\s*)?(\d{1,2})\s*月\s*(\d{1,2})\s*[日號号]/);
-  if (!numeric && !chinese) return null;
-  const year = numeric ? Number(numeric[1]) : Number(chinese?.[1] ?? reference.getFullYear());
-  const month = Number(numeric?.[2] ?? chinese?.[2]);
-  const day = Number(numeric?.[3] ?? chinese?.[3]);
+  const english = value.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})\b/);
+  if (!numeric && !chinese && !english) return null;
+  const year = Number(
+    numeric?.[1] ?? chinese?.[1] ?? english?.[3] ?? reference.getFullYear(),
+  );
+  const month = english
+    ? ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"].indexOf(english[2]) + 1
+    : Number(numeric?.[2] ?? chinese?.[2]);
+  const day = Number(numeric?.[3] ?? chinese?.[3] ?? english?.[1]);
   const date = new Date(year, month - 1, day);
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
 }
@@ -101,6 +134,10 @@ function parseClockTime(value: string): { hour: number; minute: number } | null 
     let hour = Number(english[1]) % 12;
     if (english[3] === "pm") hour += 12;
     return { hour, minute: Number(english[2] ?? 0) };
+  }
+  const twentyFourHour = value.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  if (twentyFourHour) {
+    return { hour: Number(twentyFourHour[1]), minute: Number(twentyFourHour[2]) };
   }
   const chinese = value.match(/(上午|早上|中午|下午|晚上)?\s*(\d{1,2}|[一二兩两三四五六七八九十]+)\s*[點点時时](?:\s*(\d{1,2})\s*分?)?/);
   if (!chinese) return null;

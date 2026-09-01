@@ -14,6 +14,9 @@ export const ASK_AI_GENERATION_RESERVE = 320;
 /** Classifier output is a three-value JSON object, so a full answer budget is wasteful. */
 export const ASK_AI_CLASSIFIER_TOKENS = 48;
 
+/** Hard wall-clock deadline for one queued + running Ask AI turn. */
+export const ASK_AI_GENERATION_DEADLINE_MS = 90_000;
+
 /** Buffer for chat-template and special-token overhead. */
 export const ASK_AI_SAFETY_MARGIN = 64;
 

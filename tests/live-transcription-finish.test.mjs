@@ -4,6 +4,10 @@ import test from "node:test";
 
 const sourcePath = new URL("../src/app/transcription.tsx", import.meta.url);
 const servicePath = new URL("../src/services/transcription-service.ts", import.meta.url);
+const editorModalPath = new URL(
+  "../src/components/safe-area-modal.tsx",
+  import.meta.url,
+);
 
 test("finish waits for the final queued transcription before stopping", async () => {
   const source = await readFile(servicePath, "utf8");
@@ -32,7 +36,17 @@ test("short Whisper recordings replace redundant snapshots with one final pass",
   assert.match(source, /this\.collectRetainedAudio\(this\.transcriber\)/);
   assert.match(source, /await this\.cancelPendingTranscriptions\(this\.transcriber\)/);
   assert.match(source, /combinedAudio\.buffer as ArrayBuffer/);
-  assert.match(source, /this\.results\.set\(0, finalResult\.result\.trim\(\)\)/);
+  assert.match(source, /const previewText = this\.getTranscript\(\)/);
+  assert.match(source, /finalText\.length > 0 \|\| previewText\.length === 0/);
+  assert.match(source, /retainedPreview:/);
+});
+
+test("a live session keeps its original model through finalization", async () => {
+  const source = await readFile(servicePath, "utf8");
+
+  assert.match(source, /this\.sessionModel = model/);
+  assert.match(source, /const activeModel = this\.sessionModel/);
+  assert.match(source, /this\.sessionModel = null/);
 });
 
 test("empty live transcription cannot enter an unsavable modal", async () => {
@@ -52,20 +66,15 @@ test("finished transcription modal exposes a confirmed discard exit", async () =
 });
 
 test("finished transcription modal centers its card inside the safe area", async () => {
-  const source = await readFile(sourcePath, "utf8");
+  const [source, editorModal] = await Promise.all([
+    readFile(sourcePath, "utf8"),
+    readFile(editorModalPath, "utf8"),
+  ]);
 
-  assert.match(
-    source,
-    /contentContainerStyle=\{\[\s*styles\.modalViewport,/,
-  );
-  assert.match(source, /paddingTop: Spacing\.lg \+ insets\.top/);
-  assert.match(source, /paddingBottom: Spacing\.lg \+ insets\.bottom/);
-  assert.match(
-    source,
-    /modalViewport:\s*\{[^}]*flexGrow: 1,[^}]*justifyContent: "center"/s,
-  );
-  assert.match(
-    source,
-    /<View\s+accessibilityViewIsModal\s+style=\{\[\s*styles\.modal,/,
-  );
+  assert.match(source, /<SafeAreaModal[\s\S]*androidPresentation="center"/);
+  assert.doesNotMatch(source, /autoFocus/);
+  assert.match(editorModal, /paddingTop: Spacing\.lg \+ insets\.top/);
+  assert.match(editorModal, /paddingBottom: Spacing\.lg \+ insets\.bottom/);
+  assert.match(editorModal, /centeredViewport:[\s\S]*justifyContent: "center"/);
+  assert.match(editorModal, /accessibilityViewIsModal/);
 });

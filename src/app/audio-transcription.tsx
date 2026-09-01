@@ -1,27 +1,28 @@
+import { UiTextInput as TextInput } from "@/components/ui-text-input";
+import { UiText as Text } from "@/components/ui-text";
 import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
+import { SafeAreaModal } from "@/components/safe-area-modal";
+import { TranscriptionLanguageSelector } from "@/components/transcription-language-selector";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import type { Workspace } from "@/domain/workspace/workspace";
+import type { SttModelEngine } from "@/domain/stt-model/stt-model";
 import { validateImportedAudio } from "@/domain/audio-import/audio-import";
 import { useTheme } from "@/hooks/use-theme";
 import { formatBytes } from "@/utils/format-bytes";
+import { InferenceCancelledError } from "@/services/local-llm-coordinator";
+import {
+  readTranscriptionLanguage,
+  saveTranscriptionLanguage,
+  type TranscriptionLanguage,
+} from "@/services/transcription-language";
 
 type Status = "empty" | "selected" | "preparing" | "transcribing" | "complete";
 type SelectedAudio = { uri: string; name: string; size: number };
@@ -31,7 +32,12 @@ export default function AudioTranscriptionScreen() {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const colors = Colors[theme.mode];
-  const { noteService, transcriptionService, workspaceService } = appContainer;
+  const {
+    noteService,
+    transcriptionService,
+    workspaceService,
+    sttModelService,
+  } = appContainer;
   const selectedRef = useRef<SelectedAudio | null>(null);
   const [selected, setSelected] = useState<SelectedAudio | null>(null);
   const [status, setStatus] = useState<Status>("empty");
@@ -42,6 +48,10 @@ export default function AudioTranscriptionScreen() {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
   const [noteName, setNoteName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [language, setLanguage] = useState<TranscriptionLanguage>(
+    readTranscriptionLanguage,
+  );
+  const [activeEngine, setActiveEngine] = useState<SttModelEngine | null>(null);
 
   useEffect(() => () => {
     if (selectedRef.current !== null) {
@@ -51,6 +61,18 @@ export default function AudioTranscriptionScreen() {
       transcriptionService.deleteTemporaryImport(selectedRef.current.uri);
     }
   }, [transcriptionService]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void sttModelService.getActiveModel().then(
+      (model) => {
+        if (!cancelled) setActiveEngine(model?.getEngine() ?? null);
+      },
+      () => undefined,
+    );
+    void transcriptionService.ensureReady().catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [sttModelService, transcriptionService]);
 
   const replaceSelection = (audio: SelectedAudio | null) => {
     if (selectedRef.current !== null && selectedRef.current.uri !== audio?.uri) {
@@ -122,7 +144,9 @@ export default function AudioTranscriptionScreen() {
             durationMs: Date.now() - startedAt,
           });
         },
-      }, requestId);
+      }, requestId, {
+        language: activeEngine === "parakeet" ? "en" : language,
+      });
       if (text.length === 0) {
         throw new Error("The model did not detect any speech in this audio.");
       }
@@ -134,6 +158,10 @@ export default function AudioTranscriptionScreen() {
         transcriptLength: text.length,
       });
     } catch (caught) {
+      if (caught instanceof InferenceCancelledError) {
+        setStatus("selected");
+        return;
+      }
       console.error("[AudioImport] Imported audio transcription failed", {
         requestId,
         phase,
@@ -229,6 +257,12 @@ export default function AudioTranscriptionScreen() {
   };
 
   const busy = status === "preparing" || status === "transcribing";
+  const changeLanguage = (next: TranscriptionLanguage) => {
+    setLanguage(next);
+    void saveTranscriptionLanguage(next).catch(() => {
+      setError("Unable to save the speech language setting.");
+    });
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -239,6 +273,20 @@ export default function AudioTranscriptionScreen() {
       >
         <View style={styles.header}>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>Choose an audio file from anywhere on your device. It never leaves this device.</Text>
+        </View>
+
+        <View
+          style={[
+            styles.languageCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <TranscriptionLanguageSelector
+            value={activeEngine === "parakeet" ? "en" : language}
+            disabled={busy}
+            englishOnly={activeEngine === "parakeet"}
+            onChange={changeLanguage}
+          />
         </View>
 
         {selected === null ? (
@@ -256,7 +304,7 @@ export default function AudioTranscriptionScreen() {
               </View>
               {status !== "complete" && (
                 <View style={styles.actions}>
-                  <AppButton label={busy ? (status === "preparing" ? "Preparing audio…" : "Transcribing…") : "Start transcription"} disabled={busy} onPress={() => void startTranscription()} />
+                  <AppButton label={busy ? "Cancel transcription" : "Start transcription"} onPress={() => busy ? void transcriptionService.cancelFileTranscription() : void startTranscription()} />
                   <AppButton label="Choose another audio" variant="secondary" disabled={busy} onPress={() => void chooseAudio()} />
                 </View>
               )}
@@ -284,25 +332,21 @@ export default function AudioTranscriptionScreen() {
         {error !== null && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
       </ScrollView>
 
-      <Modal visible={showSave} animationType="slide" transparent onRequestClose={() => setShowSave(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalBackdrop}>
-          <ScrollView contentContainerStyle={[styles.modal, { backgroundColor: colors.surface, paddingBottom: Spacing.lg + insets.bottom }]} keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"} keyboardShouldPersistTaps="handled">
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Save transcription</Text>
-            <Text style={[styles.label, { color: colors.textMuted }]}>Note name</Text>
-            <TextInput value={noteName} onChangeText={setNoteName} placeholder="e.g. Interview recording" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
-            <Text style={[styles.label, { color: colors.textMuted }]}>Workspace</Text>
-            <View style={styles.workspaceList}>
-              {workspaces.map((workspace) => {
-                const active = workspace.getId() === selectedWorkspaceId;
-                return <Pressable key={workspace.getId()} onPress={() => setSelectedWorkspaceId(workspace.getId())} style={[styles.workspace, { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accentSoft : colors.background }]}><Text style={{ color: colors.text, fontWeight: active ? "800" : "500" }}>{workspace.getName()}</Text></Pressable>;
-              })}
-            </View>
-            {error !== null && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
-            <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0} onPress={() => void save()} />
-            <AppButton label="Cancel" variant="quiet" disabled={isSaving} onPress={() => setShowSave(false)} />
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Modal>
+      <SafeAreaModal visible={showSave} onRequestClose={() => setShowSave(false)}>
+        <Text style={[styles.modalTitle, { color: colors.text }]}>Save transcription</Text>
+        <Text style={[styles.label, { color: colors.textMuted }]}>Note name</Text>
+        <TextInput value={noteName} onChangeText={setNoteName} placeholder="e.g. Interview recording" placeholderTextColor={colors.textMuted} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
+        <Text style={[styles.label, { color: colors.textMuted }]}>Workspace</Text>
+        <View style={styles.workspaceList}>
+          {workspaces.map((workspace) => {
+            const active = workspace.getId() === selectedWorkspaceId;
+            return <Pressable key={workspace.getId()} onPress={() => setSelectedWorkspaceId(workspace.getId())} style={[styles.workspace, { borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accentSoft : colors.background }]}><Text style={{ color: colors.text, fontWeight: active ? "800" : "500" }}>{workspace.getName()}</Text></Pressable>;
+          })}
+        </View>
+        {error !== null && <Text selectable style={{ color: colors.danger }}>{error}</Text>}
+        <AppButton label={isSaving ? "Saving…" : "Save note"} disabled={isSaving || noteName.trim().length === 0} onPress={() => void save()} />
+        <AppButton label="Cancel" variant="quiet" disabled={isSaving} onPress={() => setShowSave(false)} />
+      </SafeAreaModal>
     </View>
   );
 }
@@ -314,6 +358,7 @@ const styles = StyleSheet.create({
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 36, fontWeight: "800", lineHeight: 42 },
   subtitle: { fontSize: 16, lineHeight: 24 },
+  languageCard: { borderRadius: Radius.md, borderWidth: 1, padding: Spacing.md },
   emptyCard: { borderRadius: Radius.md, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg },
   cardTitle: { fontSize: 20, fontWeight: "800" },
   fileCard: { borderRadius: Radius.md, borderWidth: 1, gap: Spacing.lg, padding: Spacing.lg },
@@ -323,8 +368,6 @@ const styles = StyleSheet.create({
   status: { fontSize: 14, fontWeight: "800" },
   body: { fontSize: 18, lineHeight: 29 },
   actions: { gap: Spacing.sm },
-  modalBackdrop: { backgroundColor: "rgba(0,0,0,0.36)", flex: 1, justifyContent: "flex-end" },
-  modal: { borderTopLeftRadius: Radius.lg, borderTopRightRadius: Radius.lg, gap: Spacing.md, padding: Spacing.lg },
   modalTitle: { fontSize: 24, fontWeight: "800" },
   label: { fontSize: 14, fontWeight: "700" },
   input: { borderRadius: Radius.sm, borderWidth: 1, fontSize: 16, minHeight: 48, paddingHorizontal: Spacing.md },

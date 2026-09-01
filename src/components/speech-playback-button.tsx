@@ -1,35 +1,35 @@
+import { UiText as Text } from "@/components/ui-text";
 import { type Href, useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useSpeechPlayback } from "@/hooks/use-speech-playback";
 import { useTheme } from "@/hooks/use-theme";
+import { useUiCopyTranslation } from "@/hooks/use-ui-copy-translation";
+import type { TtsLanguageCode } from "@/services/tts-language";
 
 export function SpeechPlaybackButton({
   speechId,
   label,
   text,
+  requestedLanguage,
 }: {
   speechId: string;
   label: string;
   text: string;
+  requestedLanguage?: TtsLanguageCode;
 }) {
   const colors = Colors[useTheme().mode];
+  const tr = useUiCopyTranslation();
   const router = useRouter();
   const { service, state } = useSpeechPlayback();
   const isActive = state.speechId === speechId;
   const disabled = !isActive && state.inferenceBusy;
-  const buttonLabel = isActive
-    ? state.phase === "playing"
-      ? "Pause"
-      : state.phase === "paused"
-        ? "Resume"
-        : state.phase === "preparing"
-          ? "Pause"
-          : state.phase === "error"
-            ? "Try again"
-            : "Read aloud"
-    : "Read aloud";
+  const buttonLabel = tr(isActive
+    ? state.phase === "error"
+      ? "Try again"
+      : "Stop"
+    : "Read aloud");
 
   return (
     <View style={styles.wrapper}>
@@ -39,7 +39,7 @@ export function SpeechPlaybackButton({
           accessibilityLabel={`${buttonLabel}: ${label}`}
           accessibilityState={{ disabled }}
           disabled={disabled}
-          onPress={() => void service.speak({ id: speechId, label, text })}
+          onPress={() => void service.speak({ id: speechId, label, text, requestedLanguage })}
           style={({ pressed }) => [
             styles.button,
             { backgroundColor: colors.accentSoft, borderColor: colors.border },
@@ -47,7 +47,7 @@ export function SpeechPlaybackButton({
             pressed && styles.pressed,
           ]}
         >
-          <Text style={[styles.glyph, { color: colors.accent }]}>{state.phase === "playing" && isActive ? "Ⅱ" : "▶"}</Text>
+          <Text style={[styles.glyph, { color: colors.accent }]}>{isActive && state.phase !== "error" ? "■" : "▶"}</Text>
           <Text style={[styles.label, { color: colors.accent }]}>{buttonLabel}</Text>
         </Pressable>
         {isActive && state.phase !== "idle" && state.phase !== "error" && (
@@ -64,7 +64,7 @@ export function SpeechPlaybackButton({
               onPress={() => router.push("/ai/tts-models" as Href)}
               style={({ pressed }) => pressed && styles.pressed}
             >
-              <Text style={[styles.modelsLink, { color: colors.accent }]}>Open TTS Models</Text>
+              <Text style={[styles.modelsLink, { color: colors.accent }]}>Open Text-to-Speech Models</Text>
             </Pressable>
           )}
         </View>

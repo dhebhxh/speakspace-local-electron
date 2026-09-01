@@ -1,26 +1,18 @@
+import { UiTextInput as TextInput } from "@/components/ui-text-input";
+import { UiText as Text } from "@/components/ui-text";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Keyboard, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
+import { SafeAreaModal } from "@/components/safe-area-modal";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 import { WorkspaceCard } from "@/components/workspace-card";
-import { Colors, Radius, Shadows, Spacing } from "@/constants/theme";
+import { Colors, Radius, Spacing } from "@/constants/theme";
 import { ValidationError } from "@/errors/validation-error";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -168,85 +160,45 @@ export function WorkspaceListScreen({ embeddedInTab = false }: { embeddedInTab?:
         )}
       </ScrollView>
 
-      <Modal
-        animationType="slide"
-        transparent
+      <SafeAreaModal
+        androidPresentation="center"
         visible={isModalVisible}
         onRequestClose={() => setIsModalVisible(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.modalBackdrop}
-        >
-          <ScrollView
-            contentInsetAdjustmentBehavior="never"
-            contentContainerStyle={[
-              styles.modalViewport,
-              {
-                paddingBottom: Spacing.lg + insets.bottom,
-                paddingTop: Spacing.lg + insets.top,
-              },
-            ]}
-            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+        <View style={styles.modalHeader}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>New workspace</Text>
+          <Pressable
+            accessibilityLabel="Close"
+            accessibilityRole="button"
+            hitSlop={10}
+            onPress={() => {
+              Keyboard.dismiss();
+              setIsModalVisible(false);
+            }}
           >
-            <View
-              accessibilityViewIsModal
-              style={[
-                styles.modal,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>
-                  New workspace
-                </Text>
-                <Pressable
-                  accessibilityLabel="Close"
-                  accessibilityRole="button"
-                  hitSlop={10}
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    setIsModalVisible(false);
-                  }}
-                >
-                  <Text style={[styles.close, { color: colors.textMuted }]}>
-                    Close
-                  </Text>
-                </Pressable>
-              </View>
-              <Text style={[styles.label, { color: colors.textMuted }]}>
-                Name
-              </Text>
-              <TextInput
-                autoFocus
-                placeholder="e.g. Personal"
-                placeholderTextColor={colors.textMuted}
-                value={name}
-                onChangeText={setName}
-                style={[
-                  styles.input,
-                  { borderColor: colors.border, color: colors.text },
-                ]}
-              />
-              {formError && (
-                <Text style={[styles.formError, { color: colors.danger }]}>
-                  {formError}
-                </Text>
-              )}
-              <AppButton
-                label={isSaving ? "Creating..." : "Create workspace"}
-                disabled={isSaving}
-                onPress={() => void createWorkspace()}
-              />
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Modal>
+            <Text style={[styles.close, { color: colors.textMuted }]}>Close</Text>
+          </Pressable>
+        </View>
+        <Text style={[styles.label, { color: colors.textMuted }]}>Name</Text>
+        <TextInput
+          placeholder="e.g. Personal"
+          placeholderTextColor={colors.textMuted}
+          value={name}
+          onChangeText={setName}
+          style={[
+            styles.input,
+            { borderColor: colors.border, color: colors.text },
+          ]}
+        />
+        {formError && (
+          <Text style={[styles.formError, { color: colors.danger }]}>{formError}</Text>
+        )}
+        <AppButton
+          label={isSaving ? "Creating..." : "Create workspace"}
+          disabled={isSaving}
+          onPress={() => void createWorkspace()}
+        />
+      </SafeAreaModal>
     </View>
   );
 }
@@ -270,22 +222,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 34, fontWeight: "800" },
   workspaceSubtitle: { fontSize: 14, lineHeight: 20 },
   list: { gap: Spacing.md },
-  modalBackdrop: {
-    backgroundColor: "rgba(0, 0, 0, 0.36)",
-    flex: 1,
-  },
-  modalViewport: { flexGrow: 1, justifyContent: "center", paddingHorizontal: Spacing.lg },
-  modal: {
-    alignSelf: "center",
-    borderCurve: "continuous",
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    boxShadow: Shadows.raised,
-    gap: Spacing.md,
-    maxWidth: 560,
-    padding: Spacing.lg,
-    width: "100%",
-  },
   modalHeader: {
     alignItems: "center",
     flexDirection: "row",

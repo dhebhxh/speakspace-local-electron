@@ -1,4 +1,5 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { UiText as Text } from "@/components/ui-text";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { AppButton } from "@/components/app-button";
 import { Colors, Radius, Shadows, Spacing } from "@/constants/theme";

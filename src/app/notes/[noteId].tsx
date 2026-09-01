@@ -1,45 +1,47 @@
+import { UiAlert as Alert } from "@/localization/ui-alert";
+import { UiTextInput as TextInput } from "@/components/ui-text-input";
+import { UiText as Text } from "@/components/ui-text";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import * as Clipboard from "expo-clipboard";
 import { File, Paths } from "expo-file-system";
 import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { useEffect, useState, type ReactNode } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
+import { SafeAreaModal } from "@/components/safe-area-modal";
 import { SpeechPlaybackButton } from "@/components/speech-playback-button";
+import type { UiLanguage } from "@/localization/i18n";
+import { normalizeTtsLanguage } from "@/services/tts-language";
 import {
   KNOWLEDGE_SCENARIO_DEFINITIONS,
-  getKnowledgeScenarioDefinition,
 } from "@/constants/knowledge-scenarios";
 import { Colors, Radius, Spacing } from "@/constants/theme";
-import type {
+import {
   KnowledgeDocument,
   KnowledgeScenario,
+  type KnowledgeSection,
 } from "@/domain/knowledge/knowledge-document";
-import type {
+import { NOTE_CATEGORY_KEYS, NOTE_CATEGORY_LABELS, type NoteCategory } from "@/constants/note-categories";
+import type { KnowledgeTemplate } from "@/domain/knowledge/knowledge-template";
+import {
   CoreNoteInsight,
   CoreTask,
 } from "@/domain/core-note-insight/core-note-insight";
 import { CoreNoteInsightGenerationError } from "@/errors/core-note-insight-generation-error";
 import { KnowledgeGenerationError } from "@/errors/knowledge-generation-error";
 import { useTheme } from "@/hooks/use-theme";
+import { useTrashUndo } from "@/providers/trash-undo-provider";
 import { formatDate } from "@/utils/format-date";
+import type { NoteTranslation, NoteTranslationPayload, NoteTranslationSection } from "@/domain/note-translation/note-translation";
+import { useNoteTranslationCopy } from "@/hooks/use-note-translation-copy";
+import type { NoteTranslationCopy } from "@/localization/note-translation-copy";
+import { InferenceCancelledError } from "@/services/local-llm-coordinator";
+import type { CoreInsightPreview } from "@/services/core-note-insight-service";
 
 type NoteDetailState =
   | { status: "loading" }
@@ -51,30 +53,42 @@ type NoteDetailState =
       >;
       workspaceName: string | null;
       knowledge: KnowledgeDocument | null;
+      knowledgeHistory: KnowledgeDocument[];
+      knowledgeTemplates: KnowledgeTemplate[];
       coreInsights: CoreNoteInsight | null;
+      translation: NoteTranslation | null;
     };
 
 type GenerationState =
   | { status: "idle" }
   | { status: "selecting"; scenario: KnowledgeScenario }
-  | { status: "queued" | "generating"; scenario: KnowledgeScenario }
+  | { status: "queued"; scenario: KnowledgeScenario }
+  | { status: "generating"; scenario: KnowledgeScenario; partialSections: KnowledgeSection[] }
   | { status: "error"; scenario: KnowledgeScenario; message: string };
 
 type CoreInsightGenerationState =
   | { status: "idle" }
-  | { status: "queued" | "generating" }
+  | { status: "queued" }
+  | { status: "generating"; partial: CoreInsightPreview }
   | { status: "error"; message: string };
+
+type TranslationState =
+  | { status: "idle" }
+  | { status: "translating"; requestId?: string; section: NoteTranslationSection | null; targetLanguage: string; partialPayload?: NoteTranslationPayload }
+  | { status: "error"; section: NoteTranslationSection; message: string };
 
 type NoteSection = "transcript" | "insights" | "knowledge";
 type InsightSectionKey = "summary" | "key-points" | "tasks" | "reminders" | "calendar";
 
 export default function NoteDetailScreen() {
-  const { noteId } = useLocalSearchParams<{ noteId: string }>();
+  const { noteId, section, knowledgeResultId } = useLocalSearchParams<{ noteId: string; section?: string; knowledgeResultId?: string }>();
   const theme = useTheme();
   const colors = Colors[theme.mode];
-  const { noteService, workspaceService, knowledgeService, coreNoteInsightService } = appContainer;
+  const { noteService, workspaceService, knowledgeService, coreNoteInsightService, noteTranslationService } = appContainer;
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { language: translationLanguage, copy: translationCopy } = useNoteTranslationCopy();
+  const { showTrashUndo } = useTrashUndo();
   const [state, setState] = useState<NoteDetailState>({
     status: "loading",
   });
@@ -89,6 +103,9 @@ export default function NoteDetailScreen() {
   const [coreGeneration, setCoreGeneration] = useState<CoreInsightGenerationState>({ status: "idle" });
   const [coreItemError, setCoreItemError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<NoteSection>("transcript");
+  const [translationState, setTranslationState] = useState<TranslationState>({ status: "idle" });
+  const firstRenderedTranslationRequest = useRef<string | null>(null);
+  const [categoryVisible, setCategoryVisible] = useState(false);
   const audioRelativePath =
     state.status === "success" ? state.note.getAudioRelativePath() : null;
   const audioUri = audioRelativePath
@@ -96,6 +113,10 @@ export default function NoteDetailScreen() {
     : null;
   const player = useAudioPlayer(audioUri);
   const playerStatus = useAudioPlayerStatus(player);
+
+  useEffect(() => {
+    void coreNoteInsightService.ensureReady().catch(() => undefined);
+  }, [coreNoteInsightService]);
 
   const loadNote = async () => {
     setState({ status: "loading" });
@@ -108,7 +129,7 @@ export default function NoteDetailScreen() {
         return;
       }
 
-      const [workspace, knowledge, coreInsights] = await Promise.all([
+      const [workspace, knowledgeHistory, knowledgeTemplates, coreInsights, translation] = await Promise.all([
         workspaceService
           .getWorkspace(loadedNote.getWorkspaceId())
           .catch((error) => {
@@ -121,15 +142,20 @@ export default function NoteDetailScreen() {
             );
             return null;
           }),
-        knowledgeService.getForNote(loadedNote.getId()).catch((error) => {
+        knowledgeService.getHistoryForNote(loadedNote.getId()).catch((error) => {
           console.warn("[NoteDetail] Saved knowledge could not be loaded", {
             noteId: loadedNote.getId(),
             error,
           });
-          return null;
+          return [];
         }),
+        appContainer.knowledgeTemplateService.getTemplates().catch(() => []),
         coreNoteInsightService.getForNote(loadedNote.getId()).catch((error) => {
           console.warn("[NoteDetail] Saved core insights could not be loaded", { noteId: loadedNote.getId(), error });
+          return null;
+        }),
+        noteTranslationService.getForNote(loadedNote.getId()).catch((error) => {
+          console.warn("[NoteDetail] Saved translation could not be loaded", { noteId: loadedNote.getId(), error });
           return null;
         }),
       ]);
@@ -137,8 +163,11 @@ export default function NoteDetailScreen() {
         status: "success",
         note: loadedNote,
         workspaceName: workspace?.getName() ?? null,
-        knowledge,
+        knowledge: knowledgeHistory[0] ?? null,
+        knowledgeHistory,
+        knowledgeTemplates,
         coreInsights,
+        translation,
       });
     } catch (error) {
       console.error("[NoteDetail] Unable to load note", { noteId, error });
@@ -150,9 +179,27 @@ export default function NoteDetailScreen() {
     void loadNote();
   }, [noteId]);
 
+  useEffect(() => () => {
+    void appContainer.speechPlaybackService.stop();
+  }, [noteId]);
+
+  useEffect(() => noteService.subscribeToCategoryChanges((change) => {
+    if (change.noteId !== noteId) return;
+    void noteService.getNote(noteId).then((note) => {
+      if (!note) return;
+      setState((current) => current.status === "success" ? { ...current, note } : current);
+    });
+  }), [noteId, noteService]);
+
+  useEffect(() => {
+    if (section === "transcript" || section === "insights" || section === "knowledge") setActiveSection(section);
+  }, [section]);
+
   useEffect(() => coreNoteInsightService.subscribeToGeneration(noteId, (generationState) => {
     if (generationState.status === "queued" || generationState.status === "generating") {
-      setCoreGeneration({ status: generationState.status });
+      setCoreGeneration(generationState.status === "generating"
+        ? { status: "generating", partial: generationState.partial }
+        : { status: "queued" });
       return;
     }
     if (generationState.status === "failed") {
@@ -169,7 +216,9 @@ export default function NoteDetailScreen() {
 
   useEffect(() => knowledgeService.subscribeToGeneration(noteId, (generationState) => {
     if (generationState.status === "queued" || generationState.status === "generating") {
-      setGeneration({ status: generationState.status, scenario: generationState.scenario });
+      setGeneration(generationState.status === "generating"
+        ? { status: "generating", scenario: generationState.scenario, partialSections: generationState.partialSections }
+        : { status: "queued", scenario: generationState.scenario });
       return;
     }
     if (generationState.status === "failed") {
@@ -178,11 +227,34 @@ export default function NoteDetailScreen() {
     }
     setGeneration({ status: "idle" });
     if (generationState.status === "completed") {
-      void knowledgeService.getForNote(noteId).then((knowledge) => {
-        if (knowledge) setState((current) => current.status === "success" ? { ...current, knowledge } : current);
+      void knowledgeService.getHistoryForNote(noteId).then((knowledgeHistory) => {
+        setState((current) => current.status === "success" ? { ...current, knowledge: knowledgeHistory[0] ?? null, knowledgeHistory } : current);
       });
     }
   }), [knowledgeService, noteId]);
+
+  useEffect(() => noteTranslationService.subscribe((operation) => {
+    if (operation.status === "translating") {
+      setTranslationState({ status: "translating", requestId: operation.requestId, section: operation.noteId === noteId ? operation.section : null, targetLanguage: operation.targetLanguage, partialPayload: operation.noteId === noteId ? operation.partialPayload : undefined });
+      return;
+    }
+    if (operation.status === "failed" && operation.noteId === noteId) {
+      setTranslationState({ status: "error", section: operation.section, message: translationCopy.genericError });
+      return;
+    }
+    setTranslationState({ status: "idle" });
+    if (operation.status === "completed" && operation.noteId === noteId) {
+      void noteTranslationService.getForNote(noteId).then((translation) => {
+        setState((current) => current.status === "success" ? { ...current, translation } : current);
+      });
+    }
+  }), [noteId, noteTranslationService, translationCopy.genericError]);
+
+  useEffect(() => {
+    if (translationState.status !== "translating" || !translationState.requestId || !translationState.partialPayload || firstRenderedTranslationRequest.current === translationState.requestId) return;
+    firstRenderedTranslationRequest.current = translationState.requestId;
+    console.info("[Translation] First token rendered", { requestId: translationState.requestId, noteId, section: translationState.section });
+  }, [noteId, translationState]);
 
   const generateKnowledge = async (scenario: KnowledgeScenario) => {
     if (state.status !== "success") return;
@@ -191,14 +263,15 @@ export default function NoteDetailScreen() {
       noteId: state.note.getId(),
       scenario,
     });
-    setGeneration({ status: "generating", scenario });
+    setGeneration({ status: "generating", scenario, partialSections: [] });
     try {
       const knowledge = await knowledgeService.generate(
         state.note.getId(),
         state.note.getTranscript(),
         scenario,
       );
-      setState((current) => current.status === "success" && current.note.getId() === state.note.getId() ? { ...current, knowledge } : current);
+      const knowledgeHistory = await knowledgeService.getHistoryForNote(state.note.getId());
+      setState((current) => current.status === "success" && current.note.getId() === state.note.getId() ? { ...current, knowledge, knowledgeHistory } : current);
       setGeneration({ status: "idle" });
       console.info("[NoteDetail] Knowledge generation displayed", {
         noteId: state.note.getId(),
@@ -206,6 +279,10 @@ export default function NoteDetailScreen() {
         durationMs: Date.now() - startedAt,
       });
     } catch (error) {
+      if (error instanceof InferenceCancelledError) {
+        setGeneration({ status: "idle" });
+        return;
+      }
       const message =
         error instanceof KnowledgeGenerationError
           ? error.message
@@ -220,6 +297,37 @@ export default function NoteDetailScreen() {
       });
       setGeneration({ status: "error", scenario, message });
     }
+  };
+
+  const generateCustomKnowledge = async (template: KnowledgeTemplate) => {
+    if (state.status !== "success") return;
+    setGeneration({ status: "generating", scenario: "general", partialSections: [] });
+    try {
+      const knowledge = await knowledgeService.generateCustom(
+        state.note.getId(), state.note.getTranscript(), template,
+      );
+      const knowledgeHistory = await knowledgeService.getHistoryForNote(state.note.getId());
+      setState((current) => current.status === "success" ? { ...current, knowledge, knowledgeHistory } : current);
+      setGeneration({ status: "idle" });
+    } catch (error) {
+      if (error instanceof InferenceCancelledError) {
+        setGeneration({ status: "idle" });
+        return;
+      }
+      setGeneration({ status: "error", scenario: "general", message: error instanceof Error ? error.message : "Knowledge generation did not finish." });
+    }
+  };
+
+  const deleteKnowledgeResult = (result: KnowledgeDocument) => {
+    Alert.alert("Delete this Knowledge result?", "This permanently removes this saved snapshot. It will not enter Trash.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => {
+        void knowledgeService.deleteResult(noteId, result.getId()).then(async () => {
+          const knowledgeHistory = await knowledgeService.getHistoryForNote(noteId);
+          setState((current) => current.status === "success" ? { ...current, knowledge: knowledgeHistory[0] ?? null, knowledgeHistory } : current);
+        }, (error: unknown) => Alert.alert("Unable to delete result", error instanceof Error ? error.message : "Please try again."));
+      }},
+    ]);
   };
 
   const openMove = async () => {
@@ -260,14 +368,38 @@ export default function NoteDetailScreen() {
     }
   };
 
+  const chooseCategory = async (category: NoteCategory | "auto") => {
+    setIsSaving(true);
+    try {
+      if (category === "auto") await noteService.classifyNote(noteId);
+      else await noteService.setCategory(noteId, category);
+      setCategoryVisible(false);
+      await loadNote();
+    } catch (error) {
+      Alert.alert("Unable to update category", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const confirmDeleteNote = () => {
     if (state.status !== "success") return;
     const workspaceId = state.note.getWorkspaceId();
-    Alert.alert("Delete note?", "This permanently deletes the note and its related insights, knowledge, and AI context.", [
+    const name = state.note.getName()?.trim() || "Untitled note";
+    Alert.alert("Move note to Trash?", "The note, audio, insights, and Knowledge history will be kept until you permanently delete it from Settings → Trash.", [
       { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => {
+      { text: "Move to Trash", style: "destructive", onPress: () => {
         void noteService.deleteNote(noteId).then(
-          () => router.replace({ pathname: "/workspaces/[workspaceId]", params: { workspaceId } }),
+          () => {
+            showTrashUndo({
+              message: `${name} moved to Trash`,
+              undo: async () => {
+                await noteService.restoreNotes([noteId]);
+                router.replace({ pathname: "/notes/[noteId]", params: { noteId } });
+              },
+            });
+            router.replace({ pathname: "/workspaces/[workspaceId]", params: { workspaceId } });
+          },
           () => Alert.alert("Unable to delete note", "Please try again."),
         );
       }},
@@ -278,13 +410,17 @@ export default function NoteDetailScreen() {
     if (state.status !== "success") return;
     const startedAt = Date.now();
     console.info("[NoteDetail] Core insights generation started", { noteId: state.note.getId() });
-    setCoreGeneration({ status: "generating" });
+    setCoreGeneration({ status: "generating", partial: { phase: "content", summary: "", keyPoints: [], tasks: [], reminders: [], calendarIntents: [] } });
     try {
       const coreInsights = await coreNoteInsightService.generate(state.note.getId(), state.note.getTranscript());
       setState((current) => current.status === "success" && current.note.getId() === state.note.getId() ? { ...current, coreInsights } : current);
       setCoreGeneration({ status: "idle" });
       console.info("[NoteDetail] Core insights displayed", { noteId: state.note.getId(), durationMs: Date.now() - startedAt });
     } catch (error) {
+      if (error instanceof InferenceCancelledError) {
+        setCoreGeneration({ status: "idle" });
+        return;
+      }
       const message = error instanceof CoreNoteInsightGenerationError ? error.message : "Structured Note did not finish. Please try again.";
       console.error("[NoteDetail] Core insights generation failed", { noteId: state.note.getId(), durationMs: Date.now() - startedAt, error });
       setCoreGeneration({ status: "error", message });
@@ -305,6 +441,55 @@ export default function NoteDetailScreen() {
     }
   };
 
+  const translateSection = async (section: NoteTranslationSection) => {
+    if (state.status !== "success" || translationState.status === "translating") return;
+    setTranslationState({ status: "translating", section, targetLanguage: translationCopy.languageName });
+    try {
+      const translation = await noteTranslationService.translate(
+        state.note.getId(), section, translationLanguage, translationCopy.languageName, state.note.getTranscript(), state.coreInsights, state.knowledge,
+      );
+      setState((current) => current.status === "success" ? { ...current, translation } : current);
+      setTranslationState({ status: "idle" });
+    } catch (error) {
+      if (error instanceof InferenceCancelledError) { setTranslationState({ status: "idle" }); return; }
+      console.warn("[NoteDetail] Section translation failed", { section, error });
+      setTranslationState({ status: "error", section, message: translationCopy.genericError });
+    }
+  };
+
+  const restoreOriginal = async (section: NoteTranslationSection) => {
+    if (state.status !== "success") return;
+    try {
+      const translation = await noteTranslationService.restoreOriginal(state.note.getId(), section);
+      setState((current) => current.status === "success" ? { ...current, translation } : current);
+      setTranslationState({ status: "idle" });
+    } catch (error) {
+      console.warn("[NoteDetail] Original section restore failed", { section, error });
+      setTranslationState({ status: "error", section, message: translationCopy.restoreError });
+    }
+  };
+
+  const savedTranslation = state.status === "success" ? state.translation : null;
+  const liveSection = translationState.status === "translating" ? translationState.section : null;
+  const livePayload = translationState.status === "translating" ? translationState.partialPayload : undefined;
+  const transcriptTranslated = savedTranslation?.isSectionActive("transcript") ?? false;
+  const insightsTranslated = savedTranslation?.isSectionActive("insights") ?? false;
+  const knowledgeTranslated = savedTranslation?.isSectionActive("knowledge") ?? false;
+  const knowledgeTranslationVisible = liveSection === "knowledge" || knowledgeTranslated;
+  const displayInsight = state.status === "success" ? translateCoreInsight(state.coreInsights, liveSection === "insights" ? livePayload?.strings : insightsTranslated ? savedTranslation?.getPayload().strings : undefined) : null;
+  const displayKnowledge = state.status === "success" ? translateKnowledge(state.knowledge, liveSection === "knowledge" ? livePayload?.strings : knowledgeTranslated ? savedTranslation?.getPayload().strings : undefined) : null;
+
+  const setCoreTaskPinned = async (taskId: string, pinned: boolean) => {
+    if (state.status !== "success") return;
+    setCoreItemError(null);
+    try {
+      const coreInsights = await coreNoteInsightService.setTaskPinned(state.note.getId(), taskId, pinned);
+      setState((current) => current.status === "success" ? { ...current, coreInsights } : current);
+    } catch (error) {
+      setCoreItemError(error instanceof Error ? error.message : "Unable to pin this task.");
+      throw error;
+    }
+  };
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <Stack.Screen
@@ -345,6 +530,14 @@ export default function NoteDetailScreen() {
                     </Text>
                   )}
                 </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Change note category"
+                  onPress={() => setCategoryVisible(true)}
+                  style={({ pressed }) => [styles.categoryButton, { backgroundColor: colors.accentSoft }, pressed && styles.pressed]}
+                >
+                  <Text style={[styles.categoryButtonText, { color: colors.accent }]}>{NOTE_CATEGORY_LABELS[state.note.getCategory()]}</Text>
+                </Pressable>
                 <View style={styles.noteActionRow}>
                   <NoteIconAction label="Rename note" symbol="✎" color={colors.accent} backgroundColor={colors.accentSoft} onPress={() => {
                     setTitleInput(state.note.getName() ?? "");
@@ -411,8 +604,9 @@ export default function NoteDetailScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Transcript
               </Text>
+              <TranslationControl section="transcript" translated={transcriptTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} onCancel={() => noteTranslationService.cancel()} />
               <Text style={[styles.body, { color: colors.text }]}>
-                {state.note.getTranscript()}
+                {liveSection === "transcript" && livePayload?.transcript ? livePayload.transcript : transcriptTranslated ? savedTranslation?.getPayload().transcript : state.note.getTranscript()}
               </Text>
             </View>}
             {activeSection === "insights" && <View style={[styles.knowledgeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -420,24 +614,40 @@ export default function NoteDetailScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Structured Note</Text>
                 <Text style={[styles.supportingText, { color: colors.textMuted }]}>Summary, key points, tasks, reminders, and calendar events.</Text>
               </View>
+              {state.coreInsights && <TranslationControl section="insights" translated={insightsTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} onCancel={() => noteTranslationService.cancel()} />}
               {coreGeneration.status === "generating" || coreGeneration.status === "queued" ? (
                 <View style={[styles.generationStatus, { backgroundColor: colors.surfaceMuted }]}>
                   <ActivityIndicator color={colors.accent} />
                   <View style={styles.headingCopy}>
-                    <Text style={[styles.statusTitle, { color: colors.text }]}>{coreGeneration.status === "queued" ? "Waiting for local AI…" : "Extracting core insights…"}</Text>
+                    <Text style={[styles.statusTitle, { color: colors.text }]}>{coreGeneration.status === "queued" ? "Waiting for local AI…" : coreGeneration.partial.phase === "structured" ? "Structuring note…" : coreGeneration.partial.phase === "content" ? "Writing summary and key points…" : "Extracting tasks and dates…"}</Text>
                     <Text style={[styles.supportingText, { color: colors.textMuted }]}>Running privately on this device.</Text>
                   </View>
+                  <AppButton label="Cancel" variant="secondary" onPress={() => void coreNoteInsightService.cancelGeneration(noteId)} />
+                  {coreGeneration.status === "generating" && (coreGeneration.partial.summary || coreGeneration.partial.keyPoints.length > 0 || coreGeneration.partial.tasks.length > 0 || coreGeneration.partial.reminders.length > 0 || coreGeneration.partial.calendarIntents.length > 0) && (
+                    <View style={styles.streamPreview}>
+                      {coreGeneration.partial.summary && <Text selectable style={[styles.body, { color: colors.text }]}>{coreGeneration.partial.summary}</Text>}
+                      {coreGeneration.partial.keyPoints.map((point, index) => <Text selectable key={`${index}-${point}`} style={[styles.body, { color: colors.text }]}>• {point}</Text>)}
+                      {coreGeneration.partial.tasks.length > 0 && <Text style={[styles.statusTitle, { color: colors.text }]}>Tasks</Text>}
+                      {coreGeneration.partial.tasks.map((item, index) => <Text selectable key={`task-${index}-${item}`} style={[styles.body, { color: colors.text }]}>• {item}</Text>)}
+                      {coreGeneration.partial.reminders.length > 0 && <Text style={[styles.statusTitle, { color: colors.text }]}>Reminders</Text>}
+                      {coreGeneration.partial.reminders.map((item, index) => <Text selectable key={`reminder-${index}-${item}`} style={[styles.body, { color: colors.text }]}>• {item}</Text>)}
+                      {coreGeneration.partial.calendarIntents.length > 0 && <Text style={[styles.statusTitle, { color: colors.text }]}>Calendar</Text>}
+                      {coreGeneration.partial.calendarIntents.map((item, index) => <Text selectable key={`calendar-${index}-${item}`} style={[styles.body, { color: colors.text }]}>• {item}</Text>)}
+                    </View>
+                  )}
                 </View>
               ) : (
                 <>
-                  {state.coreInsights && <CoreInsightResult
-                    insight={state.coreInsights}
+                  {displayInsight && <CoreInsightResult
+                    insight={displayInsight}
+                    requestedLanguage={insightsTranslated ? normalizeTtsLanguage(savedTranslation?.getPayload().languageCode ?? savedTranslation?.getTargetLanguage()) ?? translationLanguage : undefined}
                     textColor={colors.text}
                     mutedColor={colors.textMuted}
                     borderColor={colors.border}
                     accentColor={colors.accent}
                     surfaceMutedColor={colors.surfaceMuted}
                     onTaskCompletedChange={setCoreTaskCompleted}
+                    onTaskPinnedChange={setCoreTaskPinned}
                   />}
                   {coreItemError && <Text selectable style={[styles.errorText, { color: colors.danger }]}>{coreItemError}</Text>}
                   {coreGeneration.status === "error" && <Text selectable style={[styles.errorText, { color: colors.danger }]}>{coreGeneration.message}</Text>}
@@ -476,15 +686,12 @@ export default function NoteDetailScreen() {
                         { color: colors.accent },
                       ]}
                     >
-                      {
-                        getKnowledgeScenarioDefinition(
-                          state.knowledge.getScenario(),
-                        ).name
-                      }
+                      {state.knowledge.getTemplateName()}{state.knowledge.getTemplateDeleted() ? " · Deleted template" : ""}
                     </Text>
                   </View>
                 )}
               </View>
+              {state.knowledge && <TranslationControl section="knowledge" translated={knowledgeTranslated} targetLanguage={savedTranslation?.getTargetLanguage() ?? translationCopy.languageName} state={translationState} copy={translationCopy} dangerColor={colors.danger} mutedColor={colors.textMuted} onTranslate={translateSection} onRestore={restoreOriginal} onCancel={() => noteTranslationService.cancel()} />}
 
               {generation.status === "generating" || generation.status === "queued" ? (
                 <View
@@ -507,12 +714,23 @@ export default function NoteDetailScreen() {
                       Running privately on this device. This can take a moment.
                     </Text>
                   </View>
+                  <AppButton label="Cancel" variant="secondary" onPress={() => void knowledgeService.cancelGeneration(noteId)} />
+                  {generation.status === "generating" && generation.partialSections.length > 0 && (
+                    <View style={styles.streamPreview}>
+                      {generation.partialSections.map((section) => (
+                        <View key={section.key} style={styles.headingCopy}>
+                          <Text style={[styles.statusTitle, { color: colors.text }]}>{section.title}</Text>
+                          {section.items.map((item, index) => <Text selectable key={`${index}-${item}`} style={[styles.body, { color: colors.text }]}>• {item}</Text>)}
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
               ) : generation.status === "selecting" ||
                 generation.status === "error" ? (
                 <View style={styles.selector}>
                   <Text style={[styles.selectorTitle, { color: colors.text }]}>
-                    Choose a scene
+                    Built-in templates
                   </Text>
                   <View style={styles.scenarioGrid}>
                     {KNOWLEDGE_SCENARIO_DEFINITIONS.map((scenario) => {
@@ -561,6 +779,22 @@ export default function NoteDetailScreen() {
                       );
                     })}
                   </View>
+                  <Text style={[styles.selectorTitle, { color: colors.text }]}>Custom templates</Text>
+                  <View style={styles.scenarioGrid}>
+                    {state.knowledgeTemplates.map((template) => (
+                      <Pressable
+                        key={template.getId()}
+                        accessibilityRole="button"
+                        onPress={() => void generateCustomKnowledge(template)}
+                        style={({ pressed }) => [styles.scenarioOption, { backgroundColor: colors.background, borderColor: colors.border }, pressed && styles.pressed]}
+                      >
+                        <Text style={[styles.scenarioTitle, { color: colors.text }]}>{template.getName()}</Text>
+                        <Text numberOfLines={2} style={[styles.scenarioDescription, { color: colors.textMuted }]}>{template.getRequirement()}</Text>
+                      </Pressable>
+                    ))}
+                    {state.knowledgeTemplates.length === 0 && <Text style={[styles.supportingText, { color: colors.textMuted }]}>No custom templates yet.</Text>}
+                  </View>
+                  <AppButton label="Manage Templates" variant="quiet" onPress={() => router.push("/ai/knowledge-templates" as Href)} />
                   {generation.status === "error" && (
                     <Text
                       selectable
@@ -585,14 +819,35 @@ export default function NoteDetailScreen() {
                     />
                   </View>
                 </View>
-              ) : state.knowledge ? (
+              ) : knowledgeTranslationVisible && displayKnowledge ? (
                 <View style={styles.document}>
                   <KnowledgeResult
-                    document={state.knowledge}
+                    document={displayKnowledge}
+                    requestedLanguage={knowledgeTranslated ? normalizeTtsLanguage(savedTranslation?.getPayload().languageCode ?? savedTranslation?.getTargetLanguage()) ?? translationLanguage : undefined}
                     textColor={colors.text}
                     mutedColor={colors.textMuted}
                     borderColor={colors.border}
                   />
+                  <AppButton
+                    label="Generate again"
+                    variant="secondary"
+                    onPress={() => setGeneration({ status: "selecting", scenario: state.knowledge!.getScenario() })}
+                  />
+                </View>
+              ) : state.knowledgeHistory.length > 0 ? (
+                <View style={styles.document}>
+                  {state.knowledgeHistory.map((document, index) => (
+                    <KnowledgeHistoryResult
+                      key={document.getId()}
+                      document={document}
+                      initiallyExpanded={index === 0 || document.getId() === knowledgeResultId}
+                      textColor={colors.text}
+                      mutedColor={colors.textMuted}
+                      borderColor={colors.border}
+                      accentColor={colors.accent}
+                      onDelete={() => deleteKnowledgeResult(document)}
+                    />
+                  ))}
                   <AppButton
                     label="Generate again"
                     variant="secondary"
@@ -616,44 +871,62 @@ export default function NoteDetailScreen() {
           </>
         )}
       </ScrollView>
-      <Modal transparent animationType="slide" visible={actionModal !== null} onRequestClose={() => setActionModal(null)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalBackdrop}>
-          <ScrollView keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.modal, { backgroundColor: colors.surface }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>{actionModal === "rename" ? "Rename note" : "Move note"}</Text>
-              <Pressable onPress={() => setActionModal(null)}><Text style={{ color: colors.textMuted }}>Close</Text></Pressable>
-            </View>
-            {actionModal === "rename" ? <>
-              <TextInput autoFocus value={titleInput} onChangeText={setTitleInput} placeholder="Note title" placeholderTextColor={colors.textMuted} style={[styles.input, { borderColor: colors.border, color: colors.text }]} />
-              <AppButton label={isSaving ? "Saving..." : "Save title"} disabled={isSaving} onPress={() => void renameNote()} />
-            </> : <View style={styles.workspaceChoices}>
-              {workspaces.filter((workspace) => state.status === "success" && workspace.getId() !== state.note.getWorkspaceId()).map((workspace) => (
-                <AppButton key={workspace.getId()} label={workspace.getName()} variant="secondary" disabled={isSaving} onPress={() => void moveNote(workspace.getId())} />
-              ))}
-              {!actionError && workspaces.filter((workspace) => state.status === "success" && workspace.getId() !== state.note.getWorkspaceId()).length === 0 && <Text style={{ color: colors.textMuted }}>No other workspace is available.</Text>}
-            </View>}
-            {actionError && <Text selectable style={{ color: colors.danger }}>{actionError}</Text>}
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Modal>
+      <SafeAreaModal visible={actionModal === "rename"} onRequestClose={() => setActionModal(null)}>
+        <View style={styles.modalHeader}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Rename note</Text>
+          <Pressable onPress={() => setActionModal(null)}><Text style={{ color: colors.textMuted }}>Close</Text></Pressable>
+        </View>
+        <TextInput value={titleInput} onChangeText={setTitleInput} placeholder="Note title" placeholderTextColor={colors.textMuted} style={[styles.input, { borderColor: colors.border, color: colors.text }]} />
+        <AppButton label={isSaving ? "Saving..." : "Save title"} disabled={isSaving} onPress={() => void renameNote()} />
+        {actionError && <Text selectable style={{ color: colors.danger }}>{actionError}</Text>}
+      </SafeAreaModal>
+      <SafeAreaModal visible={actionModal === "move"} onRequestClose={() => setActionModal(null)}>
+        <View style={styles.modalHeader}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Move note</Text>
+          <Pressable onPress={() => setActionModal(null)}><Text style={{ color: colors.textMuted }}>Close</Text></Pressable>
+        </View>
+        <View style={styles.workspaceChoices}>
+          {workspaces.filter((workspace) => state.status === "success" && workspace.getId() !== state.note.getWorkspaceId()).map((workspace) => (
+            <AppButton key={workspace.getId()} label={workspace.getName()} variant="secondary" disabled={isSaving} onPress={() => void moveNote(workspace.getId())} />
+          ))}
+          {!actionError && workspaces.filter((workspace) => state.status === "success" && workspace.getId() !== state.note.getWorkspaceId()).length === 0 && <Text style={{ color: colors.textMuted }}>No other workspace is available.</Text>}
+        </View>
+        {actionError && <Text selectable style={{ color: colors.danger }}>{actionError}</Text>}
+      </SafeAreaModal>
+      <SafeAreaModal visible={categoryVisible} onRequestClose={() => setCategoryVisible(false)}>
+        <View style={styles.modalHeader}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>Note category</Text>
+          <Pressable onPress={() => setCategoryVisible(false)}><Text style={{ color: colors.textMuted }}>Close</Text></Pressable>
+        </View>
+        <View style={styles.workspaceChoices}>
+          {NOTE_CATEGORY_KEYS.map((category) => (
+            <AppButton key={category} label={NOTE_CATEGORY_LABELS[category]} variant={state.status === "success" && state.note.getCategory() === category ? "secondary" : "quiet"} disabled={isSaving} onPress={() => void chooseCategory(category)} />
+          ))}
+          <AppButton label="Classify Automatically" variant="secondary" disabled={isSaving} onPress={() => void chooseCategory("auto")} />
+        </View>
+      </SafeAreaModal>
     </View>
   );
 }
 
-function CoreInsightResult({ insight, textColor, mutedColor, borderColor, accentColor, surfaceMutedColor, onTaskCompletedChange }: {
+function CoreInsightResult({ insight, requestedLanguage, textColor, mutedColor, borderColor, accentColor, surfaceMutedColor, onTaskCompletedChange, onTaskPinnedChange }: {
   insight: CoreNoteInsight;
+  requestedLanguage?: UiLanguage;
   textColor: string;
   mutedColor: string;
   borderColor: string;
   accentColor: string;
   surfaceMutedColor: string;
   onTaskCompletedChange: (taskId: string, completed: boolean) => Promise<void>;
+  onTaskPinnedChange: (taskId: string, pinned: boolean) => Promise<void>;
 }) {
   const [activeSection, setActiveSection] = useState<InsightSectionKey>("summary");
   const reminders = insight.getCalendarIntents().filter((item) => item.kind === "reminder");
   const calendarIntents = insight.getCalendarIntents().filter((item) => item.kind === "calendar");
   const empty = "No relevant information found.";
   const formattedHtml = formatCoreInsightsAsHtml(insight);
+  const latestCompletedBySeries = new Map<string, number>();
+  for (const task of insight.getTasks()) if (task.status === "completed" && task.seriesKey) latestCompletedBySeries.set(task.seriesKey, Math.max(latestCompletedBySeries.get(task.seriesKey) ?? -1, task.occurrenceIndex ?? 0));
   return (
     <View style={styles.document}>
       <CopyInsightsButton html={formattedHtml} position="top" />
@@ -661,6 +934,7 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor, accent
         speechId={`structured-note:${insight.getId()}:${insight.getUpdatedAt()}`}
         label="Structured Note"
         text={formatCoreInsightsAsSpeech(insight)}
+        requestedLanguage={requestedLanguage}
       />
       <InsightTabs activeSection={activeSection} onChange={setActiveSection} accentColor={accentColor} borderColor={borderColor} mutedColor={mutedColor} surfaceMutedColor={surfaceMutedColor} />
       {activeSection === "summary" && <InsightSection title="Summary" borderColor={borderColor} textColor={textColor} first>
@@ -683,6 +957,8 @@ function CoreInsightResult({ insight, textColor, mutedColor, borderColor, accent
           <InteractiveTask key={task.id} task={task} index={taskIndex} textColor={textColor}
             mutedColor={mutedColor} borderColor={borderColor} accentColor={accentColor}
             surfaceMutedColor={surfaceMutedColor} onTaskCompletedChange={onTaskCompletedChange}
+            onTaskPinnedChange={onTaskPinnedChange}
+            canRestore={!task.endedAt && (!task.seriesKey || latestCompletedBySeries.get(task.seriesKey) === (task.occurrenceIndex ?? 0))}
           />
         )) : <EmptyInsight text={empty} color={mutedColor} />}
         {insight.getUnassignedActionItems().map((item) => <InsightRow key={item.id} title={item.title} detail={item.description} time={coreTimeDisplay(item.metadata, item.dueAt ? "dueAt" : "startsAt", item.dueAt ?? item.startsAt)} textColor={textColor} mutedColor={mutedColor} />)}
@@ -763,7 +1039,7 @@ function NoteIconAction({ label, symbol, color, backgroundColor, onPress }: {
   </Pressable>;
 }
 
-function InteractiveTask({ task, index, textColor, mutedColor, borderColor, accentColor, surfaceMutedColor, onTaskCompletedChange }: {
+function InteractiveTask({ task, index, textColor, mutedColor, borderColor, accentColor, surfaceMutedColor, onTaskCompletedChange, onTaskPinnedChange, canRestore }: {
   task: CoreTask;
   index: number;
   textColor: string;
@@ -772,6 +1048,8 @@ function InteractiveTask({ task, index, textColor, mutedColor, borderColor, acce
   accentColor: string;
   surfaceMutedColor: string;
   onTaskCompletedChange: (taskId: string, completed: boolean) => Promise<void>;
+  onTaskPinnedChange: (taskId: string, pinned: boolean) => Promise<void>;
+  canRestore: boolean;
 }) {
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const toggle = async (id: string, completed: boolean, update: (id: string, completed: boolean) => Promise<void>) => {
@@ -790,12 +1068,22 @@ function InteractiveTask({ task, index, textColor, mutedColor, borderColor, acce
 
   return (
     <View style={[styles.taskCard, { backgroundColor: surfaceMutedColor, borderColor }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={task.isPinned ? "Unpin task" : "Pin task"}
+        disabled={busyIds.has(task.id)}
+        onPress={() => void toggle(task.id, !task.isPinned, onTaskPinnedChange)}
+        style={({ pressed }) => [styles.taskPin, pressed && styles.pressed]}
+      >
+        <Text style={[styles.taskPinText, { color: accentColor }]}>{task.isPinned ? "★" : "☆"}</Text>
+      </Pressable>
       <ChecklistRow
         title={`${index + 1}. ${task.title}`}
         description={task.description}
         time={coreTimeDisplay(task.metadata, "dueAt", task.dueAt)}
         completed={task.status === "completed"}
         busy={busyIds.has(task.id)}
+        disabled={task.status === "completed" && !canRestore}
         emphasized
         textColor={textColor}
         mutedColor={mutedColor}
@@ -803,6 +1091,9 @@ function InteractiveTask({ task, index, textColor, mutedColor, borderColor, acce
         accentColor={accentColor}
         onPress={() => void toggle(task.id, task.status !== "completed", onTaskCompletedChange)}
       />
+      {task.recurrenceKind && (
+        <Text style={[styles.structuredMeta, { color: mutedColor }]}>Repeats {task.recurrenceKind}{task.endedAt ? " · Ended series" : task.isCurrent === false ? " · History" : ""}</Text>
+      )}
       <View style={styles.actionSteps}>
         {task.actionItems.length ? task.actionItems.map((item, actionIndex) => (
           <View key={item.id} style={styles.actionStep}>
@@ -821,12 +1112,13 @@ function InteractiveTask({ task, index, textColor, mutedColor, borderColor, acce
   );
 }
 
-function ChecklistRow({ title, description, time, completed, busy, emphasized = false, textColor, mutedColor, borderColor, accentColor, onPress }: {
+function ChecklistRow({ title, description, time, completed, busy, disabled = false, emphasized = false, textColor, mutedColor, borderColor, accentColor, onPress }: {
   title: string;
   description: string | null;
   time: string | null;
   completed: boolean;
   busy: boolean;
+  disabled?: boolean;
   emphasized?: boolean;
   textColor: string;
   mutedColor: string;
@@ -837,9 +1129,9 @@ function ChecklistRow({ title, description, time, completed, busy, emphasized = 
   return (
     <Pressable
       accessibilityRole="checkbox"
-      accessibilityState={{ checked: completed, disabled: busy }}
+      accessibilityState={{ checked: completed, disabled: busy || disabled }}
       accessibilityLabel={`${completed ? "Mark incomplete" : "Mark complete"}: ${title}`}
-      disabled={busy}
+      disabled={busy || disabled}
       onPress={onPress}
       style={({ pressed }) => [styles.checklistRow, pressed && styles.pressed]}
     >
@@ -984,13 +1276,60 @@ function EmptyInsight({ text, color }: { text: string; color: string }) {
   return <Text selectable style={[styles.emptyInsight, { color }]}>{text}</Text>;
 }
 
+function KnowledgeHistoryResult({
+  document,
+  initiallyExpanded,
+  textColor,
+  mutedColor,
+  borderColor,
+  accentColor,
+  onDelete,
+}: {
+  document: KnowledgeDocument;
+  initiallyExpanded: boolean;
+  textColor: string;
+  mutedColor: string;
+  borderColor: string;
+  accentColor: string;
+  onDelete: () => void;
+}) {
+  const [expanded, setExpanded] = useState(initiallyExpanded);
+  useEffect(() => setExpanded(initiallyExpanded), [initiallyExpanded]);
+  return (
+    <View style={[styles.historyResult, { borderColor }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={() => setExpanded((current) => !current)}
+        style={({ pressed }) => [styles.historyHeading, pressed && styles.pressed]}
+      >
+        <View style={styles.headingCopy}>
+          <Text style={[styles.scenarioTitle, { color: textColor }]}>{document.getTemplateName()}</Text>
+          <Text style={[styles.generatedMeta, { color: mutedColor }]}>{document.getTemplateDeleted() ? "Deleted template · " : ""}{formatDate(document.getCreatedAt())}</Text>
+        </View>
+        <Text style={[styles.scenarioTitle, { color: accentColor }]}>{expanded ? "⌃" : "⌄"}</Text>
+      </Pressable>
+      {expanded && (
+        <>
+          <KnowledgeResult document={document} textColor={textColor} mutedColor={mutedColor} borderColor={borderColor} />
+          <Pressable accessibilityRole="button" onPress={onDelete} style={({ pressed }) => [styles.deleteResult, pressed && styles.pressed]}>
+            <Text style={[styles.meta, { color: mutedColor }]}>Delete this result</Text>
+          </Pressable>
+        </>
+      )}
+    </View>
+  );
+}
+
 function KnowledgeResult({
   document,
+  requestedLanguage,
   textColor,
   mutedColor,
   borderColor,
 }: {
   document: KnowledgeDocument;
+  requestedLanguage?: UiLanguage;
   textColor: string;
   mutedColor: string;
   borderColor: string;
@@ -1006,6 +1345,7 @@ function KnowledgeResult({
           document.getSummary(),
           ...visibleSections.flatMap((section) => [section.title, ...section.items]),
         ].filter(Boolean).join(". ")}
+        requestedLanguage={requestedLanguage}
       />
       {visibleSections.length === 0 && (
         <Text selectable style={[styles.emptyInsight, { color: mutedColor }]}>No supported scenario-specific information was found in this note.</Text>
@@ -1044,15 +1384,96 @@ function KnowledgeResult({
   );
 }
 
+function TranslationControl({ section, translated, targetLanguage, state, copy, dangerColor, mutedColor, onTranslate, onRestore, onCancel }: {
+  section: NoteTranslationSection;
+  translated: boolean;
+  targetLanguage: string;
+  state: TranslationState;
+  copy: NoteTranslationCopy;
+  dangerColor: string;
+  mutedColor: string;
+  onTranslate: (section: NoteTranslationSection) => Promise<void>;
+  onRestore: (section: NoteTranslationSection) => Promise<void>;
+  onCancel: () => Promise<void>;
+}) {
+  const translating = state.status === "translating" && state.section === section;
+  const error = state.status === "error" && state.section === section ? state.message : null;
+  return (
+    <View style={styles.translationControl}>
+      <Text selectable style={[styles.supportingText, { color: mutedColor }]}>
+        {translated ? copy.translatedInto(targetLanguage) : copy.translateInto(copy.languageName)}
+      </Text>
+      <Text selectable style={[styles.supportingText, { color: mutedColor }]}>{copy.localHint}</Text>
+      <AppButton
+        label={translating ? "Cancel" : translated ? copy.restore : copy.translate}
+        variant="secondary"
+        disabled={state.status === "translating" && !translating}
+        onPress={() => translating ? void onCancel() : translated ? void onRestore(section) : void onTranslate(section)}
+      />
+      {error && <Text selectable style={[styles.errorText, { color: dangerColor }]}>{error}</Text>}
+    </View>
+  );
+}
+
+function translateCoreInsight(insight: CoreNoteInsight | null, strings?: Record<string, string>): CoreNoteInsight | null {
+  if (!insight || !strings) return insight;
+  const text = (key: string, original: string) => strings[key] ?? original;
+  const tasks = insight.getTasks().map((task, taskIndex) => ({
+    ...task,
+    title: text(`insight.task.${taskIndex}.title`, task.title),
+    description: task.description ? text(`insight.task.${taskIndex}.description`, task.description) : null,
+    actionItems: task.actionItems.map((item, itemIndex) => ({
+      ...item,
+      title: text(`insight.task.${taskIndex}.action.${itemIndex}.title`, item.title),
+      description: item.description ? text(`insight.task.${taskIndex}.action.${itemIndex}.description`, item.description) : null,
+    })),
+  }));
+  const unassigned = insight.getUnassignedActionItems().map((item, index) => ({
+    ...item,
+    title: text(`insight.action.${index}.title`, item.title),
+    description: item.description ? text(`insight.action.${index}.description`, item.description) : null,
+  }));
+  const calendars = insight.getCalendarIntents().map((item, index) => ({
+    ...item,
+    title: text(`insight.calendar.${index}.title`, item.title),
+    description: item.description ? text(`insight.calendar.${index}.description`, item.description) : null,
+  }));
+  return new CoreNoteInsight(
+    insight.getId(), insight.getNoteId(), text("insight.summary", insight.getSummary()),
+    insight.getKeyPoints().map((item, index) => text(`insight.keyPoint.${index}`, item)),
+    tasks, unassigned, calendars, insight.getModelId(), insight.getCreatedAt(), insight.getUpdatedAt(),
+  );
+}
+
+function translateKnowledge(document: KnowledgeDocument | null, strings?: Record<string, string>): KnowledgeDocument | null {
+  if (!document || !strings) return document;
+  const text = (key: string, original: string) => strings[key] ?? original;
+  return new KnowledgeDocument(
+    document.getId(), document.getNoteId(), document.getScenario(), text("knowledge.summary", document.getSummary()),
+    document.getSections().map((section, sectionIndex) => ({
+      ...section,
+      title: text(`knowledge.section.${sectionIndex}.title`, section.title),
+      items: section.items.map((item, itemIndex) => text(`knowledge.section.${sectionIndex}.item.${itemIndex}`, item)),
+    })),
+    document.getModelId(), document.getCreatedAt(), document.getUpdatedAt(),
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { gap: Spacing.lg, padding: Spacing.lg },
   header: { gap: Spacing.md },
+  translationControl: { gap: Spacing.xs },
   headerUtilityRow: { alignItems: "center", flexDirection: "row", gap: Spacing.md, justifyContent: "space-between" },
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 36, fontWeight: "800", lineHeight: 42 },
   metaRow: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
   meta: { fontSize: 13 },
+  categoryButton: { borderCurve: "continuous", borderRadius: Radius.sm, paddingHorizontal: Spacing.sm, paddingVertical: 6 },
+  categoryButtonText: { fontSize: 12, fontWeight: "800" },
+  historyResult: { borderRadius: Radius.sm, borderWidth: 1, gap: Spacing.sm, padding: Spacing.md },
+  historyHeading: { alignItems: "center", flexDirection: "row", gap: Spacing.md, justifyContent: "space-between" },
+  deleteResult: { alignSelf: "flex-start", paddingVertical: Spacing.xs },
   audioPlayer: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.md, borderWidth: 1, flexDirection: "row", gap: Spacing.md, minHeight: 64, padding: Spacing.sm },
   audioControl: { alignItems: "center", borderRadius: 20, height: 40, justifyContent: "center", width: 40 },
   audioCopy: { flex: 1, gap: 2, minWidth: 0 },
@@ -1091,6 +1512,7 @@ const styles = StyleSheet.create({
   scenarioBadgeText: { fontSize: 12, fontWeight: "800" },
   generationStatus: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     borderRadius: Radius.sm,
     gap: Spacing.md,
@@ -1131,13 +1553,12 @@ const styles = StyleSheet.create({
   insightTabs: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
   insightTab: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, flexBasis: "30%", flexGrow: 1, justifyContent: "center", minHeight: 42, paddingHorizontal: Spacing.sm },
   insightTabText: { fontSize: 13, fontWeight: "800", textAlign: "center" },
-  modalBackdrop: { backgroundColor: "rgba(0,0,0,0.36)", flex: 1, justifyContent: "flex-end" },
-  modal: { borderTopLeftRadius: Radius.lg, borderTopRightRadius: Radius.lg, gap: Spacing.md, padding: Spacing.lg },
   modalHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   modalTitle: { fontSize: 23, fontWeight: "800" },
   input: { borderRadius: Radius.sm, borderWidth: 1, fontSize: 16, minHeight: 48, paddingHorizontal: Spacing.md },
   workspaceChoices: { gap: Spacing.sm },
   document: { gap: Spacing.lg },
+  streamPreview: { flexBasis: "100%", gap: Spacing.sm },
   knowledgeSection: { gap: Spacing.sm },
   dividedSection: { borderTopWidth: 1, paddingTop: Spacing.lg },
   resultTitle: { fontSize: 19, fontWeight: "800" },
@@ -1152,7 +1573,9 @@ const styles = StyleSheet.create({
   structuredItem: { gap: Spacing.xs, paddingVertical: Spacing.xs },
   structuredMeta: { fontSize: 12, fontVariant: ["tabular-nums"] },
   emptyInsight: { fontSize: 14, fontStyle: "italic", lineHeight: 20 },
-  taskCard: { borderCurve: "continuous", borderRadius: Radius.md, borderWidth: 1, gap: Spacing.sm, padding: Spacing.sm },
+  taskCard: { borderCurve: "continuous", borderRadius: Radius.md, borderWidth: 1, gap: Spacing.sm, padding: Spacing.sm, position: "relative" },
+  taskPin: { alignItems: "center", justifyContent: "center", minHeight: 34, minWidth: 34, position: "absolute", right: Spacing.sm, top: Spacing.sm, zIndex: 2 },
+  taskPinText: { fontSize: 21, fontWeight: "700" },
   taskTitle: { fontSize: 17, fontWeight: "800", lineHeight: 24 },
   actionSteps: { gap: Spacing.xs, paddingLeft: Spacing.lg },
   actionStep: { alignItems: "flex-start", flexDirection: "row", gap: Spacing.sm, paddingVertical: Spacing.xs },

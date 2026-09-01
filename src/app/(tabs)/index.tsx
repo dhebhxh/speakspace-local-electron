@@ -1,7 +1,9 @@
+import { UiText as Text } from "@/components/ui-text";
 import { Link, type Href, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Calendar, type DateData } from "react-native-calendars";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
@@ -11,10 +13,13 @@ import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 import { NoteCard } from "@/components/note-card";
 import { HomeTaskList } from "@/components/home-task-list";
+import { CategoryFilter, type CategoryFilterValue } from "@/components/category-filter";
 import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import type { CoreCalendarIntent, CoreTask } from "@/domain/core-note-insight/core-note-insight";
 import type { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
+import type { UiLanguage } from "@/localization/i18n";
+import { configureCalendarLocale } from "@/localization/calendar-locale";
 import { groupHomeCalendarItems, toLocalDateKey } from "@/services/home-calendar-items";
 
 type OverviewState =
@@ -27,12 +32,18 @@ const formatNumber = (value: number) => new Intl.NumberFormat("en-GB").format(va
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const { i18n } = useTranslation();
+  const language = (i18n.resolvedLanguage ?? "en") as UiLanguage;
+  configureCalendarLocale(language);
   const colors = Colors[theme.mode];
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [overview, setOverview] = useState<OverviewState>({ status: "loading" });
   const [noteFilter, setNoteFilter] = useState<NoteFilter>("all");
-  const [selectedDate, setSelectedDate] = useState(() => toLocalDateKey(new Date().toISOString())!);
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilterValue>("all");
+  const [selectedDate, setSelectedDate] = useState(
+    () => toLocalDateKey(new Date().toISOString())!,
+  );
 
   const loadOverview = useCallback(async () => {
     try {
@@ -48,13 +59,38 @@ export default function HomeScreen() {
 
   useFocusEffect(useCallback(() => { void loadOverview(); }, [loadOverview]));
 
+  useEffect(
+    () => appContainer.noteService.subscribeToCategoryChanges(() => { void loadOverview(); }),
+    [loadOverview],
+  );
+
+  useEffect(() => {
+    // Warm the active speech model after the home screen settles so tapping
+    // Record usually starts the microphone without a cold model-load spinner.
+    const timer = setTimeout(() => {
+      if (!appContainer.inferenceScheduler.isBusy()) {
+        void appContainer.transcriptionService.ensureReady().catch(
+          () => undefined,
+        );
+      }
+    }, 750);
+    return () => clearTimeout(timer);
+  }, []);
+
   const overviewData = useMemo(() => {
     if (overview.status !== "success") return null;
     const weekAgo = overview.loadedAt - 7 * 24 * 60 * 60 * 1000;
     const recentNotes = overview.notes.filter((note) => new Date(note.getCreatedAt()).getTime() >= weekAgo);
     const pendingNoteIds = new Set(overview.tasks.filter((task) => task.status === "pending").map((task) => task.sourceNoteId));
-    const filteredNotes = overview.notes.filter((note) => noteFilter === "pinned" ? note.getIsPinned() : noteFilter === "todos" ? pendingNoteIds.has(note.getId()) : true);
-    const calendarByDate = groupHomeCalendarItems(overview.tasks, overview.calendarIntents, overview.notes);
+    const filteredNotes = overview.notes.filter((note) =>
+      (noteFilter === "pinned" ? note.getIsPinned() : noteFilter === "todos" ? pendingNoteIds.has(note.getId()) : true) &&
+      (categoryFilter === "all" || note.getCategory() === categoryFilter),
+    );
+    const calendarByDate = groupHomeCalendarItems(
+      overview.tasks,
+      overview.calendarIntents,
+      overview.notes,
+    );
     return {
       pinnedCount: overview.notes.filter((note) => note.getIsPinned()).length,
       pendingCount: overview.tasks.filter((task) => task.status === "pending").length,
@@ -64,7 +100,7 @@ export default function HomeScreen() {
       recentNoteCount: recentNotes.length,
       calendarByDate,
     };
-  }, [noteFilter, overview]);
+  }, [categoryFilter, noteFilter, overview]);
 
   const markedDates = useMemo(() => {
     if (!overviewData) return {};
@@ -139,12 +175,17 @@ export default function HomeScreen() {
               await appContainer.coreNoteInsightService.setTaskCompleted(task.sourceNoteId, task.id, completed);
               await loadOverview();
             }}
+            onTaskPinnedChange={async (task, pinned) => {
+              await appContainer.coreNoteInsightService.setTaskPinned(task.sourceNoteId, task.id, pinned);
+              await loadOverview();
+            }}
           />
           <View style={styles.notesSection}>
             <View style={styles.notesHeading}>
               <Text style={[styles.calendarTitle, { color: colors.text }]}>Notes</Text>
-              <Text style={[styles.notesCount, { color: colors.textMuted }]}>{overviewData.filteredNotes.length} shown</Text>
+              <Text style={[styles.notesCount, { color: colors.textMuted }]}>{`${overviewData.filteredNotes.length} shown`}</Text>
             </View>
+            <CategoryFilter value={categoryFilter} onChange={setCategoryFilter} />
             {overviewData.filteredNotes.length === 0
               ? <EmptyState title={noteFilter === "all" ? "No notes yet" : "No matching notes"} description={noteFilter === "todos" ? "Notes with unfinished Core Note tasks appear here." : undefined} />
               : <View style={styles.noteList}>{overviewData.filteredNotes.map((note) => <NoteCard key={note.getId()} note={note} onPress={() => router.push({ pathname: "/notes/[noteId]", params: { noteId: note.getId() } })} />)}</View>}
@@ -152,7 +193,7 @@ export default function HomeScreen() {
           <View style={styles.calendarSection}>
             <Text style={[styles.calendarTitle, { color: colors.text }]}>Calendar</Text>
             <View style={[styles.calendarCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Calendar markedDates={markedDates} onDayPress={(day: DateData) => setSelectedDate(day.dateString)} theme={{ calendarBackground: colors.surface, dayTextColor: colors.text, monthTextColor: colors.text, textDisabledColor: colors.border, todayTextColor: colors.accent, arrowColor: colors.accent, selectedDayBackgroundColor: colors.accent, selectedDayTextColor: colors.surface }} />
+              <Calendar key={language} markedDates={markedDates} onDayPress={(day: DateData) => setSelectedDate(day.dateString)} theme={{ calendarBackground: colors.surface, dayTextColor: colors.text, monthTextColor: colors.text, textDisabledColor: colors.border, todayTextColor: colors.accent, arrowColor: colors.accent, selectedDayBackgroundColor: colors.accent, selectedDayTextColor: colors.surface }} />
               <View style={[styles.agenda, { borderTopColor: colors.border }]}>
                 <Text style={[styles.agendaDate, { color: colors.text }]}>{selectedDate}</Text>
                 {selectedEvents.length === 0

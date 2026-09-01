@@ -80,7 +80,10 @@ export default function WorkspaceNoteCard({
           ) : null}
           <h2>
             {note.name
-              ? renderInline(parseInline(note.name))
+              ? renderInline(
+                  parseInline(note.name),
+                  `workspace-note-${note.id}`,
+                )
               : t('workspace.note.unnamed')}
           </h2>
         </div>

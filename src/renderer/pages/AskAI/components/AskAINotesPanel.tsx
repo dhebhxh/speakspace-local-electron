@@ -102,7 +102,7 @@ export default function AskAINotesPanel({
         type="button"
       >
         <strong className="ask-ai-note-title">
-          {renderInline(parseInline(note.name))}
+          {renderInline(parseInline(note.name), `ask-ai-note-${note.id}`)}
         </strong>
         <span>
           {note.transcriptPreview || t('askAI.notesPanel.noSummaryShort')}

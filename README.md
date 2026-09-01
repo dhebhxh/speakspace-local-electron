@@ -57,6 +57,10 @@ SpeakSpace Local is an Electron desktop application that brings recording, audio
 
 ![SpeakSpace Local system architecture](docs/readme/system-architecture.png)
 
+The original diagram above preserves the repository's process-boundary view. The following implementation view adds the current model, persistence, and core-flow summary without replacing it.
+
+![SpeakSpace Local technical implementation](docs/readme/tech-implementation.png)
+
 ### Process boundaries
 
 | Layer | Responsibilities | Must not |
@@ -130,7 +134,11 @@ Semantic search caches vectors in `note_embeddings` and uses `content_hash` to d
 
 Ask AI is designed for question answering over a fixed scope. Agent mode lets the local model call tools within a bounded loop. When users link notes explicitly, those notes are loaded deterministically before the first inference step, and `search_notes` is removed from the available tool set so the model cannot ignore the requested scope.
 
-![Bounded Agent execution workflow](docs/readme/agent-workflow.png)
+![Original Agent request sequence](docs/readme/agent-workflow.png)
+
+The sequence diagram shows interactions over time; the controller view below highlights the decision point, bounded tool loop, evidence return path, and final response.
+
+![Bounded Agent controller workflow](docs/readme/bounded-agent-workflow.png)
 
 Code-level Agent bounds:
 

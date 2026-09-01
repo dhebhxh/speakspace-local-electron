@@ -57,7 +57,11 @@ SpeakSpace Local 是一个 Electron 桌面应用，将录音、文件导入、�
 
 ## 系统架构
 
-![SpeakSpace Local 系统架构](docs/readme/system-architecture.png)
+![SpeakSpace Local 原有系统架构](docs/readme/system-architecture-zh.png)
+
+上图保留了 README 原有的进程边界视图；下面的新图补充当前模型、持久化与核心数据流，但不再替代原图。
+
+![SpeakSpace Local 技术实现概览](docs/readme/tech-implementation.png)
 
 ### 进程边界
 
@@ -75,7 +79,7 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 
 转写完成后不会先生成一份独立摘要，再重复生成结构化笔记。当前链路只做一次结构化提取，复核弹窗直接显示其中的 `summary`；保存时将草稿绑定真实 `noteId` 并持久化。
 
-![录音到知识的处理流水线](docs/readme/recording-to-knowledge.png)
+![录音到知识的原有处理流水线](docs/readme/recording-to-knowledge-zh.png)
 
 关键约束：
 
@@ -132,7 +136,11 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 
 Ask AI 适合固定范围问答；Agent 则允许本地模型在有界循环里调用工具。用户手动关联笔记时，这些笔记会在第一轮推理前确定性载入，同时从可用工具中移除 `search_notes`，防止模型忽略用户指定范围。
 
-![有界 Agent 执行工作流](docs/readme/agent-workflow.png)
+![原有 Agent 请求时序图](docs/readme/agent-workflow-zh.png)
+
+时序图展示各组件随时间发生的交互；下面的控制器视图则补充决策分支、有界工具循环、证据回传和最终回答之间的关系。
+
+![有界 Agent 控制器工作流](docs/readme/bounded-agent-workflow.png)
 
 Agent 的代码级边界：
 

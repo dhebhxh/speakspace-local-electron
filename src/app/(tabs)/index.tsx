@@ -1,4 +1,5 @@
 import { UiText as Text } from "@/components/ui-text";
+import { UiAlert as Alert } from "@/localization/ui-alert";
 import { Link, type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
@@ -20,7 +21,7 @@ import type { Note } from "@/domain/note/note";
 import { useTheme } from "@/hooks/use-theme";
 import type { UiLanguage } from "@/localization/i18n";
 import { configureCalendarLocale } from "@/localization/calendar-locale";
-import { groupHomeCalendarItems, toLocalDateKey } from "@/services/home-calendar-items";
+import { getOpenTaskNoteIds, groupHomeCalendarItems, toLocalDateKey } from "@/services/home-calendar-items";
 
 type OverviewState =
   | { status: "loading" }
@@ -39,6 +40,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [overview, setOverview] = useState<OverviewState>({ status: "loading" });
+  const [pinningNoteId, setPinningNoteId] = useState<string | null>(null);
   const [noteFilter, setNoteFilter] = useState<NoteFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilterValue>("all");
   const [selectedDate, setSelectedDate] = useState(
@@ -81,19 +83,19 @@ export default function HomeScreen() {
     if (overview.status !== "success") return null;
     const weekAgo = overview.loadedAt - 7 * 24 * 60 * 60 * 1000;
     const recentNotes = overview.notes.filter((note) => new Date(note.getCreatedAt()).getTime() >= weekAgo);
-    const pendingNoteIds = new Set(overview.tasks.filter((task) => task.status === "pending").map((task) => task.sourceNoteId));
-    const filteredNotes = overview.notes.filter((note) =>
-      (noteFilter === "pinned" ? note.getIsPinned() : noteFilter === "todos" ? pendingNoteIds.has(note.getId()) : true) &&
-      (categoryFilter === "all" || note.getCategory() === categoryFilter),
-    );
     const calendarByDate = groupHomeCalendarItems(
       overview.tasks,
       overview.calendarIntents,
       overview.notes,
     );
+    const openTaskNoteIds = getOpenTaskNoteIds(calendarByDate);
+    const filteredNotes = overview.notes.filter((note) =>
+      (noteFilter === "pinned" ? note.getIsPinned() : noteFilter === "todos" ? openTaskNoteIds.has(note.getId()) : true) &&
+      (categoryFilter === "all" || note.getCategory() === categoryFilter),
+    );
     return {
       pinnedCount: overview.notes.filter((note) => note.getIsPinned()).length,
-      pendingCount: overview.tasks.filter((task) => task.status === "pending").length,
+      openTaskNoteCount: openTaskNoteIds.size,
       filteredNotes,
       transcriptCount: overview.notes.reduce((sum, note) => sum + note.getTranscript().length, 0),
       recentTranscriptCount: recentNotes.reduce((sum, note) => sum + note.getTranscript().length, 0),
@@ -112,6 +114,19 @@ export default function HomeScreen() {
 
   const selectedEvents = overviewData?.calendarByDate.get(selectedDate) ?? [];
   const toggleNoteFilter = (next: Exclude<NoteFilter, "all">) => setNoteFilter((current) => current === next ? "all" : next);
+  const togglePinned = async (note: Note) => {
+    if (pinningNoteId !== null) return;
+    const wasPinned = note.getIsPinned();
+    setPinningNoteId(note.getId());
+    try {
+      await appContainer.noteService.setNotePinned(note.getId(), !wasPinned);
+      await loadOverview();
+    } catch {
+      Alert.alert(wasPinned ? "Unable to unpin note" : "Unable to pin note", "Please try again.");
+    } finally {
+      setPinningNoteId(null);
+    }
+  };
 
   return (
     <ScrollView
@@ -166,7 +181,7 @@ export default function HomeScreen() {
             <HomeStatCard label="Total notes" value={overview.notes.length} detail={`+${overviewData.recentNoteCount} this week`} />
             <HomeStatCard label="Pinned" value={overviewData.pinnedCount} detail={noteFilter === "pinned" ? "Show all notes" : "Filter pinned notes"} active={noteFilter === "pinned"} onPress={() => toggleNoteFilter("pinned")} />
             <HomeStatCard label="Characters" value={overviewData.transcriptCount} detail={`+${formatNumber(overviewData.recentTranscriptCount)} this week`} />
-            <HomeStatCard label="Open tasks" value={overviewData.pendingCount} detail={noteFilter === "todos" ? "Show all notes" : "Filter unfinished notes"} active={noteFilter === "todos"} onPress={() => toggleNoteFilter("todos")} />
+            <HomeStatCard label="Open tasks" value={overviewData.openTaskNoteCount} detail={noteFilter === "todos" ? "Show all notes" : "Filter unfinished notes"} active={noteFilter === "todos"} onPress={() => toggleNoteFilter("todos")} />
           </View>
           <HomeTaskList
             tasks={overview.tasks}
@@ -187,8 +202,8 @@ export default function HomeScreen() {
             </View>
             <CategoryFilter value={categoryFilter} onChange={setCategoryFilter} />
             {overviewData.filteredNotes.length === 0
-              ? <EmptyState title={noteFilter === "all" ? "No notes yet" : "No matching notes"} description={noteFilter === "todos" ? "Notes with unfinished Core Note tasks appear here." : undefined} />
-              : <View style={styles.noteList}>{overviewData.filteredNotes.map((note) => <NoteCard key={note.getId()} note={note} onPress={() => router.push({ pathname: "/notes/[noteId]", params: { noteId: note.getId() } })} />)}</View>}
+              ? <EmptyState title={noteFilter === "all" ? "No notes yet" : "No matching notes"} description={noteFilter === "todos" ? "Notes with unfinished to-dos on the calendar appear here." : undefined} />
+              : <View style={styles.noteList}>{overviewData.filteredNotes.map((note) => <NoteCard key={note.getId()} note={note} isPinning={pinningNoteId === note.getId()} onPinPress={() => void togglePinned(note)} onPress={() => router.push({ pathname: "/notes/[noteId]", params: { noteId: note.getId() } })} />)}</View>}
           </View>
           <View style={styles.calendarSection}>
             <Text style={[styles.calendarTitle, { color: colors.text }]}>Calendar</Text>

@@ -4,7 +4,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { appContainer } from "@/application";
@@ -316,9 +316,18 @@ export default function AudioTranscriptionScreen() {
 
             {(busy || status === "complete") && (
               <View style={[styles.transcript, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.status, { color: busy ? colors.accent : colors.textMuted }]}>
-                  {status === "preparing" ? "Preparing audio" : status === "transcribing" ? "Transcribing" : "Transcription complete"}
-                </Text>
+                <View accessibilityLiveRegion="polite" style={styles.statusRow}>
+                  {busy && (
+                    <ActivityIndicator
+                      accessibilityLabel={status === "preparing" ? "Preparing audio" : "Transcribing"}
+                      color={colors.accent}
+                      size="large"
+                    />
+                  )}
+                  <Text style={[styles.status, { color: busy ? colors.accent : colors.textMuted }]}>
+                    {status === "preparing" ? "Preparing audio" : status === "transcribing" ? "Transcribing" : "Transcription complete"}
+                  </Text>
+                </View>
                 <Text selectable style={[styles.body, { color: transcript ? colors.text : colors.textMuted }]}>
                   {transcript || (status === "preparing" ? "Converting audio locally when needed…" : "The full transcript will appear here.")}
                 </Text>
@@ -369,6 +378,7 @@ const styles = StyleSheet.create({
   fileDetails: { gap: Spacing.xs },
   fileName: { fontSize: 18, fontWeight: "800" },
   transcript: { borderRadius: Radius.md, borderWidth: 1, gap: Spacing.md, minHeight: 260, padding: Spacing.lg },
+  statusRow: { alignItems: "center", flexDirection: "row", gap: Spacing.md, minHeight: 40 },
   status: { fontSize: 14, fontWeight: "800" },
   body: { fontSize: 18, lineHeight: 29 },
   actions: { gap: Spacing.sm },

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-const { groupHomeCalendarItems, toLocalDateKey } = await import(
+const { getOpenTaskNoteIds, groupHomeCalendarItems, toLocalDateKey } = await import(
   "../src/services/home-calendar-items.ts"
 );
 
@@ -63,4 +63,34 @@ test("stored Structured Note items take precedence over note-content fallbacks",
 
   assert.equal(grouped.get("2026-08-25")?.length, 1);
   assert.equal(grouped.get("2026-08-25")?.[0].id, "stored-reminder");
+});
+
+test("Open tasks counts calendar to-do notes once instead of counting task rows", () => {
+  const tasks = [
+    { id: "task-1", title: "交報告", status: "pending", dueAt: "2026-08-29", startsAt: null, sourceNoteId: "note-1" },
+    { id: "task-2", title: "寄電郵", status: "pending", dueAt: "2026-08-30", startsAt: null, sourceNoteId: "note-1" },
+  ];
+  const grouped = groupHomeCalendarItems(tasks, [], [note({
+    id: "note-2",
+    transcript: "8月31號要提交報告",
+  })]);
+
+  assert.deepEqual([...getOpenTaskNoteIds(grouped)].sort(), ["note-1", "note-2"]);
+});
+
+test("a completed stored task cannot reappear through transcript fallback", () => {
+  const tasks = [{
+    id: "task-complete",
+    title: "交報告",
+    status: "completed",
+    dueAt: "2026-08-29",
+    startsAt: null,
+    sourceNoteId: "note-zh",
+  }];
+  const grouped = groupHomeCalendarItems(tasks, [], [note({
+    transcript: "8月29號要提交報告",
+  })]);
+
+  assert.equal(grouped.has("2026-08-29"), false);
+  assert.equal(getOpenTaskNoteIds(grouped).size, 0);
 });

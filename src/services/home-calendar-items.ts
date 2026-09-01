@@ -51,16 +51,28 @@ export function groupHomeCalendarItems(
 ): Map<string, HomeCalendarItem[]> {
   const itemsByDate = new Map<string, HomeCalendarItem[]>();
   const coveredNoteDates = new Set<string>();
+  const markCovered = (
+    sourceNoteId: string,
+    kind: HomeCalendarItem["kind"],
+    scheduledAt: string,
+  ) => {
+    const dateKey = toLocalDateKey(scheduledAt);
+    if (dateKey) coveredNoteDates.add(`${sourceNoteId}|${kind}|${dateKey}`);
+  };
   const add = (item: HomeCalendarItem) => {
     const dateKey = toLocalDateKey(item.scheduledAt);
     if (!dateKey) return;
-    coveredNoteDates.add(`${item.sourceNoteId}|${item.kind}|${dateKey}`);
+    markCovered(item.sourceNoteId, item.kind, item.scheduledAt);
     itemsByDate.set(dateKey, [...(itemsByDate.get(dateKey) ?? []), item]);
   };
 
   for (const task of tasks) {
     const scheduledAt = task.dueAt ?? task.startsAt;
-    if (task.status !== "pending" || !scheduledAt) continue;
+    if (!scheduledAt) continue;
+    // A completed stored task must also suppress transcript fallback. Without
+    // this, its original date wording makes the finished task reappear.
+    markCovered(task.sourceNoteId, "task", scheduledAt);
+    if (task.status !== "pending") continue;
     add({
       id: task.id,
       kind: "task",
@@ -74,7 +86,9 @@ export function groupHomeCalendarItems(
     const scheduledAt = intent.kind === "reminder"
       ? intent.remindAt ?? intent.dueAt ?? intent.startsAt
       : intent.startsAt ?? intent.dueAt ?? intent.remindAt;
-    if (intent.status !== "pending" || !scheduledAt) continue;
+    if (!scheduledAt) continue;
+    markCovered(intent.sourceNoteId, intent.kind, scheduledAt);
+    if (intent.status !== "pending") continue;
     add({
       id: intent.id,
       kind: intent.kind,
@@ -97,6 +111,23 @@ export function groupHomeCalendarItems(
   }
 
   return itemsByDate;
+}
+
+/**
+ * Returns one entry per note that contributes an unfinished to-do to the
+ * calendar. A note with several dated tasks still counts as one open-task
+ * note, matching the Notes filter shown by the dashboard card.
+ */
+export function getOpenTaskNoteIds(
+  itemsByDate: ReadonlyMap<string, readonly HomeCalendarItem[]>,
+): Set<string> {
+  const noteIds = new Set<string>();
+  for (const items of itemsByDate.values()) {
+    for (const item of items) {
+      if (item.kind === "task") noteIds.add(item.sourceNoteId);
+    }
+  }
+  return noteIds;
 }
 
 export function extractNoteCalendarItems(note: HomeCalendarNoteSource): HomeCalendarItem[] {

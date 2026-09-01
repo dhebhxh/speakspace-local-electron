@@ -43,3 +43,14 @@ test("the audio picker passes the provider MIME type into validation", async () 
     /validateImportedAudio\(\s*asset\.name,\s*sizeBytes,\s*asset\.mimeType,?\s*\)/s,
   );
 });
+
+test("imported-audio preparation and transcription show an animated progress indicator", async () => {
+  const screen = await readFile(
+    new URL("../src/app/audio-transcription.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(screen, /import \{ ActivityIndicator,/);
+  assert.match(screen, /\{busy && \([\s\S]*?<ActivityIndicator/);
+  assert.match(screen, /accessibilityLiveRegion="polite"/);
+});

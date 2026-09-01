@@ -100,6 +100,7 @@ export default function NoteDetailScreen() {
   const [workspaces, setWorkspaces] = useState<Awaited<ReturnType<typeof workspaceService.getWorkspaces>>>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPinning, setIsPinning] = useState(false);
   const [coreGeneration, setCoreGeneration] = useState<CoreInsightGenerationState>({ status: "idle" });
   const [coreItemError, setCoreItemError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<NoteSection>("transcript");
@@ -382,6 +383,25 @@ export default function NoteDetailScreen() {
     }
   };
 
+  const togglePinnedNote = async () => {
+    if (state.status !== "success" || isPinning) return;
+    const nextPinned = !state.note.getIsPinned();
+    setIsPinning(true);
+    try {
+      await noteService.setNotePinned(noteId, nextPinned);
+      const note = await noteService.getNote(noteId);
+      if (note === null) throw new Error("Note not found.");
+      setState((current) => current.status === "success" ? { ...current, note } : current);
+    } catch (error) {
+      Alert.alert(
+        nextPinned ? "Unable to pin note" : "Unable to unpin note",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setIsPinning(false);
+    }
+  };
+
   const confirmDeleteNote = () => {
     if (state.status !== "success") return;
     const workspaceId = state.note.getWorkspaceId();
@@ -539,6 +559,14 @@ export default function NoteDetailScreen() {
                   <Text style={[styles.categoryButtonText, { color: colors.accent }]}>{NOTE_CATEGORY_LABELS[state.note.getCategory()]}</Text>
                 </Pressable>
                 <View style={styles.noteActionRow}>
+                  <NoteIconAction
+                    label={state.note.getIsPinned() ? "Unpin note" : "Pin note"}
+                    symbol={isPinning ? "…" : state.note.getIsPinned() ? "★" : "☆"}
+                    color={colors.accent}
+                    backgroundColor={colors.accentSoft}
+                    busy={isPinning}
+                    onPress={() => void togglePinnedNote()}
+                  />
                   <NoteIconAction label="Rename note" symbol="✎" color={colors.accent} backgroundColor={colors.accentSoft} onPress={() => {
                     setTitleInput(state.note.getName() ?? "");
                     setActionError(null);
@@ -1027,14 +1055,15 @@ function InsightTabs({ activeSection, onChange, accentColor, borderColor, mutedC
   );
 }
 
-function NoteIconAction({ label, symbol, color, backgroundColor, onPress }: {
+function NoteIconAction({ label, symbol, color, backgroundColor, busy = false, onPress }: {
   label: string;
   symbol: string;
   color: string;
   backgroundColor: string;
+  busy?: boolean;
   onPress: () => void;
 }) {
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} hitSlop={6} onPress={onPress} style={({ pressed }) => [styles.noteIconAction, { backgroundColor }, pressed && styles.pressed]}>
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ busy, disabled: busy }} disabled={busy} hitSlop={6} onPress={onPress} style={({ pressed }) => [styles.noteIconAction, { backgroundColor }, pressed && styles.pressed, busy && styles.disabledAction]}>
     <Text style={[styles.noteIconSymbol, { color }]}>{symbol}</Text>
   </Pressable>;
 }
@@ -1547,6 +1576,7 @@ const styles = StyleSheet.create({
     width: 42,
   },
   noteIconSymbol: { fontSize: 23, fontWeight: "700", lineHeight: 27 },
+  disabledAction: { opacity: 0.5 },
   sectionTabs: { borderCurve: "continuous", borderRadius: Radius.md, flexDirection: "row", gap: 4, padding: 4 },
   sectionTab: { alignItems: "center", borderCurve: "continuous", borderRadius: Radius.sm, borderWidth: 1, flex: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: Spacing.xs },
   sectionTabText: { fontSize: 13, fontWeight: "800" },

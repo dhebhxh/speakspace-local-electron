@@ -1,9 +1,16 @@
 # 在一台新机器上跑基准
 
-## 推荐：Windows 双击运行
+## 推荐：Windows / macOS 双击运行
 
-直接双击仓库根目录的 **`一键跨机硬件测速.cmd`**。它会在窗口里询问机器标签和测速范围，
-自动处理依赖检查、Ollama 启动、硬件基准和 ZIP 打包。除 Node.js LTS 外，不需要手工拼命令。
+Windows 直接双击仓库根目录的 **`一键跨机硬件测速.cmd`**；macOS 在 Finder 中双击
+**`一键跨机硬件测速-Mac.command`**。两者都会询问机器标签和测速范围，自动处理依赖检查、
+Ollama 启动、硬件基准和 ZIP 打包。除 Node.js LTS 外，不需要手工拼命令。
+
+如果 macOS 提示脚本没有执行权限，在仓库根目录运行一次：
+
+```bash
+chmod +x 一键跨机硬件测速-Mac.command scripts/benchmark/run-cross-machine-benchmark-macos.sh
+```
 
 下面的命令行步骤保留给需要定制运行范围或排查环境问题的开发者。
 
@@ -80,7 +87,7 @@ npm run bench:charts      # 生成跨机器对比图
 | TTS 模型 | TTS 的三项基准 | `npm run bench:tts:fetch`（约 910 MiB，按应用内 catalog 下载并校验 sha256） |
 | Ollama 在跑 | LLM 吞吐与 GPU | 启动应用自带的 `runtimes/llm/bin/ollama serve`，`OLLAMA_MODELS` 指向应用模型目录 |
 | whisper 运行时 + STT 模型 | STT 转写速度 | 通过应用本身的模型管理页下载至少一个 whisper 模型；没有独立的命令行安装方式 |
-| STT 录音文件 | STT 转写速度 | `docs/testing/datasets/stt-human-recordings/` 目前没有随仓库分发，需要手动从已有机器拷过去，见下方「常见问题」 |
+| STT 录音文件 | STT 转写速度 | 已随仓库保存在 `docs/testing/datasets/stt-human-recordings/` |
 | `nvidia-smi` | 显存与驱动信息 | 无 N 卡时自动降级，不影响其他指标 |
 
 ## 默认跑什么、不跑什么
@@ -134,12 +141,10 @@ npm run bench:charts      # 生成跨机器对比图
 **结果占多大地方，提交前要注意什么？**
 JSON 数据本身很小，但 TTS 基准会把合成出来的 WAV 音频也存进 `docs/testing/results/wav/`
 （几个模型跑下来上百 MB），是刻意保留的——为了以后能直接拿这些音频做人工听测评分，
-不是需要清理的冗余文件。真正的临时文件是 `asr-work/`、`stt-human-work/` 这两个目录
-（重采样出来的音频副本 + whisper 逐条输出，内容跟已经保存的 JSON 完全重复），
-已经写进 `.gitignore`，正常 `git add` 不会带上它们。
+不是需要清理的冗余文件。为保持整个 `docs/` 可复核，重采样音频和 whisper 逐条输出也跟随
+测试报告一起提交；模型权重和运行时仍然只保存在用户目录，不进入 Git。
 
 **新机器上 STT 步骤被跳过了？**
-`docs/testing/datasets/stt-human-recordings/`（56 段真人录音）目前没有提交进 git，
-新克隆的仓库里没有这些文件，`stt` 这一步会自动跳过（不报错）。要在新机器上跑这一步，
-把这个目录从已有机器整个拷过去（约 22 MiB），再确认应用的模型管理页里至少装了一个
-whisper 模型。这一步只影响转写**速度**——CER 不受影响，因为它压根不在跨机器测试范围内。
+仓库已经包含 56 段真人录音；请确认应用的模型管理页里至少装了一个 whisper 模型和对应运行时。
+依赖缺失时 `stt` 会自动跳过（不报错）。这一步只影响转写**速度**——CER 不受影响，
+因为它不在跨机器测试范围内。

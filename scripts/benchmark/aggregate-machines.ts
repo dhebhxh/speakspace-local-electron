@@ -87,7 +87,10 @@ export function loadMachines(): MachineBundle[] {
 function machineLabel(bundle: MachineBundle): string {
   const { profile } = bundle;
   const gpu = profile.gpu as Json | null;
-  return gpu ? `${bundle.id}（${gpu.name}）` : `${bundle.id}（无独立 GPU）`;
+  if (gpu) return `${bundle.id}（${gpu.name}）`;
+  return profile.accelerator_class === 'apple-silicon'
+    ? `${bundle.id}（Apple Silicon 统一内存）`
+    : `${bundle.id}（无独立 GPU）`;
 }
 
 function main(): void {

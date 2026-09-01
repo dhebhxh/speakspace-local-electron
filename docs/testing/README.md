@@ -22,7 +22,8 @@
 | 入口 | `npm run bench -- --machine <标签>` | `npm run bench:sweep` 等，只在主控机跑一次 |
 
 在新机器上跑基准，看 **[multi-machine-benchmark-guide.md](./multi-machine-benchmark-guide.md)**；
-Windows 上最快的方式是直接双击仓库根目录的 `一键跨机硬件测速.cmd`，细节也在那份文档里。
+Windows 双击根目录的 `一键跨机硬件测速.cmd`，macOS 双击
+`一键跨机硬件测速-Mac.command`，细节也在那份文档里。
 
 ## 目录里有什么
 
@@ -63,8 +64,7 @@ results/                            生成  各评测脚本的原始输出，报
 
 `results/` 跟其他「生成」文件不一样的地方：它**提交进 git**，跟着仓库分享到 GitHub——
 这是刻意的，测试结果需要所有人能看到，不能只留在跑测试那个人的本地缓存里。
-唯一例外是两个纯中间产物目录（`asr-work/`、`stt-human-work/`，重采样音频副本 + whisper
-逐条输出，内容跟已保存的 JSON 完全重复），写进了 `.gitignore`，不会被提交。
+重采样音频和 whisper 逐条输出也保留在 `results/` 中，确保整个 `docs/` 都能被复核。
 下载的 TTS/STT 模型二进制文件体积太大（几百 MB 到近 1 GiB），不放进这里，
 仍然留在系统缓存目录，见 [multi-machine-benchmark-guide.md](./multi-machine-benchmark-guide.md)。
 

@@ -169,11 +169,12 @@ function Ensure-Ollama {
 }
 
 function Get-BenchmarkResultsRoot {
-  if ($env:TTS_BENCHMARK_ROOT) {
-    return Join-Path ([IO.Path]::GetFullPath($env:TTS_BENCHMARK_ROOT)) 'results'
-  }
+  return Join-Path $projectRoot 'docs\testing\results'
+}
+
+function Get-BenchmarkBundleRoot {
   $localAppData = [Environment]::GetFolderPath('LocalApplicationData')
-  return Join-Path $localAppData 'SpeakSpace-TTS-Benchmark\results'
+  return Join-Path $localAppData 'SpeakSpace-TTS-Benchmark\bundles'
 }
 
 function New-ResultBundle {
@@ -186,7 +187,7 @@ function New-ResultBundle {
     return $null
   }
 
-  $bundleDirectory = Join-Path $resultsRoot 'bundles'
+  $bundleDirectory = Get-BenchmarkBundleRoot
   New-Item -ItemType Directory -Path $bundleDirectory -Force | Out-Null
   $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
   $bundlePath = Join-Path $bundleDirectory "speakspace-hardware-$MachineLabel-$timestamp.zip"
@@ -226,7 +227,7 @@ try {
 
   if (-not $NonInteractive -and -not $PSBoundParameters.ContainsKey('Mode')) {
     Write-Host ''
-    Write-Host '[1] 完整硬件测速：TTS + LLM（约 1–1.5 小时，推荐）'
+    Write-Host '[1] 完整硬件测速：TTS + LLM + STT（约 1–2 小时，推荐）'
     Write-Host '[2] 快速测速：只测 LLM（约 2 分钟/模型）'
     Write-Host '[3] 只测 TTS（约 1–1.5 小时）'
     $choice = Read-Host '请选择（直接回车选 1）'
@@ -297,7 +298,7 @@ try {
     if ($bundlePath) {
       Write-Host "可拷走的结果包：$bundlePath" -ForegroundColor Green
     }
-    Write-Host '把 ZIP 拷回主控机并解压到 results\machines 后，即可汇总多机对比。'
+    Write-Host '结果已经位于仓库 docs\testing\results\machines，可直接提交或拷回主控机汇总。'
   }
 } catch {
   $exitCode = 1

@@ -17,12 +17,18 @@ export type ModelOption = {
   recommended?: boolean;
 };
 
+export type ModelOptionOperation = {
+  busy: boolean;
+  progress: { message: string; percent: number | null } | null;
+  error: string;
+};
+
 export type ModelSelectProps = {
   label: string;
   options: ModelOption[];
   placeholder: string;
-  /** 正在执行操作的模型 id，用于在该行显示转圈图标。 */
-  busyId: string | null;
+  /** 每个模型独立的下载、切换或删除状态。 */
+  operations: Partial<Record<string, ModelOptionOperation>>;
   onSelect: (id: string) => void;
   /** 传 null 表示该模块没有对应操作，下拉里就不显示这个图标。 */
   onDownload: ((id: string) => void) | null;
@@ -37,7 +43,7 @@ export default function ModelSelect({
   label,
   options,
   placeholder,
-  busyId,
+  operations,
   onSelect,
   onDownload,
   onDelete,
@@ -66,7 +72,7 @@ export default function ModelSelect({
   const isDisabled = options.length === 0;
 
   function handleRowClick(option: ModelOption) {
-    if (busyId) return;
+    if (operations[option.id]?.busy) return;
     if (option.downloaded) {
       if (!option.active) onSelect(option.id);
       setOpen(false);
@@ -98,7 +104,8 @@ export default function ModelSelect({
       {open && (
         <ul aria-label={label} className="model-select-list" role="listbox">
           {options.map((option) => {
-            const busy = busyId === option.id;
+            const operation = operations[option.id];
+            const busy = Boolean(operation?.busy);
             let stateIcon = ModelIcons.cloud;
             if (option.active) stateIcon = ModelIcons.active;
             else if (option.downloaded) stateIcon = ModelIcons.check;
@@ -113,7 +120,7 @@ export default function ModelSelect({
               >
                 <button
                   className="model-option-main"
-                  disabled={busyId !== null}
+                  disabled={busy}
                   onClick={() => handleRowClick(option)}
                   title={option.description}
                   type="button"
@@ -144,6 +151,45 @@ export default function ModelSelect({
                         ))}
                       </span>
                     )}
+                    {operation?.progress && (
+                      <span
+                        className="model-option-progress"
+                        title={operation.progress.message}
+                      >
+                        <span className="model-option-progress-line">
+                          <span className="model-option-progress-message">
+                            {operation.progress.message}
+                          </span>
+                          {operation.progress.percent !== null && (
+                            <span className="model-option-progress-value">
+                              {operation.progress.percent}%
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          aria-label={`${option.name} ${operation.progress.message}`}
+                          aria-valuemax={100}
+                          aria-valuemin={0}
+                          aria-valuenow={
+                            operation.progress.percent ?? undefined
+                          }
+                          className="model-option-progress-track"
+                          role="progressbar"
+                        >
+                          <span
+                            className="model-option-progress-bar"
+                            style={{
+                              width: `${operation.progress.percent ?? 15}%`,
+                            }}
+                          />
+                        </span>
+                      </span>
+                    )}
+                    {operation?.error && (
+                      <span className="model-option-error" role="alert">
+                        {operation.error}
+                      </span>
+                    )}
                   </span>
                 </button>
 
@@ -152,7 +198,7 @@ export default function ModelSelect({
                     <button
                       aria-label={`${t('modelManager.action.download')} ${option.name}`}
                       className="model-icon-button"
-                      disabled={busyId !== null}
+                      disabled={busy}
                       onClick={() => onDownload(option.id)}
                       title={t('modelManager.action.download')}
                       type="button"
@@ -164,7 +210,7 @@ export default function ModelSelect({
                     <button
                       aria-label={`${t('modelManager.action.delete')} ${option.name}`}
                       className="model-icon-button is-danger"
-                      disabled={busyId !== null || option.active}
+                      disabled={busy || option.active}
                       onClick={() => onDelete(option.id)}
                       title={
                         option.active

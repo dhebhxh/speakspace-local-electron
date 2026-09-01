@@ -23,9 +23,12 @@ function getCapabilityTag(
     if (identity.includes('tiny')) return '最快';
     if (identity.includes('turbo')) return '快且准';
     if (identity.includes('base')) return '较快';
-    if (identity.includes('small')) return '均衡';
+    // 本机实测（单一说话人、4 档模型）small 的转写准确率与 large-v1 相当甚至更好，
+    // 体积却小 6 倍，不再沿用「small=均衡、large=最准」这个未经验证的默认假设。
+    // 详见 docs/testing/stt-human-eval.md。
+    if (identity.includes('small')) return '最准';
     if (identity.includes('medium')) return '较准';
-    if (identity.includes('large')) return '最准';
+    if (identity.includes('large')) return '全面';
     return '通用';
   }
 
@@ -36,10 +39,18 @@ function getCapabilityTag(
     return '离线';
   }
 
-  if (identity.includes('qwen')) return '中文强';
-  if (identity.includes('phi')) return '英文强';
-  if (identity.includes('granite')) return '英文强';
-  if (identity.includes('ministral')) return '均衡';
+  // 本机实测（待办提取 + Agent 工具调用，5 模型横向扫描）结果：
+  //  - qwen2.5:3b 把陈述句误判成待办的概率是 5 个模型里最低的（0%）；
+  //  - phi4-mini 在待办提取和 Agent 两项任务上的准确率都是最低的，不再标「英文强」；
+  //  - granite4 的 Agent 完成率最高，但待办提取误报率高达 54.5%，标签体现它的强项而非泛泛的语言能力；
+  //  - ministral-3 是两项任务综合表现最好的模型。
+  // 详见 docs/testing/llm-model-sweep.md。
+  if (identity.includes('qwen') && identity.includes('3b')) return '零误报';
+  if (identity.includes('qwen')) return '轻量';
+  // phi4-mini 体积 2.5 GB，并不小，不能标「轻量」；本机实测两项任务准确率都是最低的。
+  if (identity.includes('phi')) return '一般';
+  if (identity.includes('granite')) return '工具强';
+  if (identity.includes('ministral')) return '实测优';
   return '通用';
 }
 
@@ -91,8 +102,7 @@ export function getModelTags(
     Boolean((model as { quantization?: string | null }).quantization);
   if (quantized) tags.push('省内存');
 
-  // 能力标签已经点明语种时不再重复一个语言标签。
-  if (model.language === 'en' && capability !== '英文强') tags.push('英文');
+  if (model.language === 'en') tags.push('英文');
   else if (model.language && model.language !== 'en') tags.push('多语言');
 
   return tags.slice(0, 3);

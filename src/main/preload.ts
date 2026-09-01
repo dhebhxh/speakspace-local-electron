@@ -15,6 +15,7 @@ import type {
   TrashActionTarget,
   TrashListQuery,
 } from '@shared/types/TrashTypes';
+import type { ModelDownloadProgressEvent } from '@shared/types/ModelManagementTypes';
 import { AgentEvent, AgentRunRequest } from './agent/AgentTypes';
 
 export type Channels = 'ipc-example';
@@ -50,6 +51,19 @@ const electronHandler = {
         modelType,
         modelId,
       );
+    },
+
+    onDownloadProgress(
+      listener: (progress: ModelDownloadProgressEvent) => void,
+    ) {
+      const wrapped = (
+        _event: IpcRendererEvent,
+        progress: ModelDownloadProgressEvent,
+      ) => listener(progress);
+      ipcRenderer.on('ModelManagement:downloadProgress', wrapped);
+      return () => {
+        ipcRenderer.removeListener('ModelManagement:downloadProgress', wrapped);
+      };
     },
 
     deleteModel(modelType: string, modelId: string) {

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Model } from '@shared/models/Model';
+import type { ModelDownloadProgressEvent } from '@shared/types/ModelManagementTypes';
 import type { RuntimeStatusSummary } from '@shared/types/RuntimeTypes';
 import type { EmbeddingModelStatus } from '@shared/types/SemanticTypes';
 import {
@@ -10,6 +11,16 @@ import {
 export type ModuleKey = 'stt' | 'tts' | 'embedding' | 'llm';
 
 export type ModuleProgress = { message: string; percent: number | null };
+
+export type ModelOperationState = {
+  busy: boolean;
+  progress: ModuleProgress | null;
+  error: string;
+};
+
+export type ModelOperations = Partial<
+  Record<ModuleKey, Record<string, ModelOperationState>>
+>;
 
 type ByteProgress = {
   message?: string;
@@ -41,7 +52,9 @@ export default function useModelManager() {
   const [initialLoading, setInitialLoading] = useState(true);
   // 推荐单独一个标志：内容已经渲染出来了，只是「推荐」标签还没算完。
   const [recommendationLoading, setRecommendationLoading] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const activeOperations = useRef(new Set<string>());
+  const [busyKeys, setBusyKeys] = useState<string[]>([]);
+  const [modelOperations, setModelOperations] = useState<ModelOperations>({});
   const [errors, setErrors] = useState<Partial<Record<ModuleKey, string>>>({});
   const [progress, setProgress] = useState<
     Partial<Record<ModuleKey, ModuleProgress | null>>
@@ -166,6 +179,38 @@ export default function useModelManager() {
       };
 
     const unsubscribes = [
+      window.electron.modelManagement.onDownloadProgress(
+        (value: ModelDownloadProgressEvent) => {
+          setModelOperations((current) => {
+            const moduleOperations = current[value.modelType] ?? {};
+            const operation = moduleOperations[value.modelId];
+            const operationKey = `${value.modelType}:${value.modelId}`;
+            if (
+              !operation?.busy &&
+              !activeOperations.current.has(operationKey)
+            ) {
+              return current;
+            }
+            return {
+              ...current,
+              [value.modelType]: {
+                ...moduleOperations,
+                [value.modelId]: {
+                  busy: true,
+                  error: operation?.error ?? '',
+                  progress: {
+                    message: value.message,
+                    percent: toPercent(
+                      value.receivedBytes,
+                      value.totalBytes ?? undefined,
+                    ),
+                  },
+                },
+              },
+            };
+          });
+        },
+      ),
       window.electron.runtime.onInstallProgress(track('stt')),
       window.electron.runtime.onFfmpegInstallProgress(track('stt')),
       window.electron.runtime.onOllamaInstallProgress(track('llm')),
@@ -195,24 +240,54 @@ export default function useModelManager() {
       key: string,
       operation: () => Promise<unknown>,
       fallbackMessage: string,
+      modelId?: string,
     ) => {
-      if (busyId) return;
-      setBusyId(key);
-      setErrors((current) => ({ ...current, [module]: '' }));
+      const operationKey = `${module}:${key}`;
+      if (activeOperations.current.has(operationKey)) return;
+      activeOperations.current.add(operationKey);
+      setBusyKeys([...activeOperations.current]);
+      if (modelId) {
+        setModelOperations((current) => ({
+          ...current,
+          [module]: {
+            ...current[module],
+            [modelId]: { busy: true, progress: null, error: '' },
+          },
+        }));
+      } else {
+        setErrors((current) => ({ ...current, [module]: '' }));
+      }
+      let failureMessage: string | null = null;
       try {
         await operation();
         await refreshAll();
       } catch (reason) {
-        setError(
-          module,
-          reason instanceof Error ? reason.message : fallbackMessage,
-        );
+        failureMessage =
+          reason instanceof Error ? reason.message : fallbackMessage;
+        if (!modelId) setError(module, failureMessage);
       } finally {
-        setBusyId(null);
-        setProgress((current) => ({ ...current, [module]: null }));
+        activeOperations.current.delete(operationKey);
+        setBusyKeys([...activeOperations.current]);
+        if (modelId) {
+          setModelOperations((current) => {
+            const moduleOperations = { ...current[module] };
+            if (failureMessage) {
+              moduleOperations[modelId] = {
+                busy: false,
+                progress: null,
+                error: failureMessage,
+              };
+            } else {
+              delete moduleOperations[modelId];
+            }
+            return { ...current, [module]: moduleOperations };
+          });
+        } else {
+          setProgress((current) => ({ ...current, [module]: null }));
+        }
       }
     },
-    [busyId, refreshAll, setError],
+    [refreshAll, setError],
   );
 
   const modelActions = useCallback(
@@ -223,6 +298,7 @@ export default function useModelManager() {
           id,
           () => window.electron.modelManagement.activateModel(module, id),
           '切换模型失败',
+          id,
         ),
       download: (id: string) =>
         run(
@@ -230,6 +306,7 @@ export default function useModelManager() {
           id,
           () => window.electron.modelManagement.downloadModel(module, id),
           '下载模型失败',
+          id,
         ),
       remove: (id: string) =>
         run(
@@ -237,6 +314,7 @@ export default function useModelManager() {
           id,
           () => window.electron.modelManagement.deleteModel(module, id),
           '删除模型失败',
+          id,
         ),
     }),
     [run],
@@ -251,7 +329,8 @@ export default function useModelManager() {
     runtime,
     embedding,
     recommendation,
-    busyId,
+    busyKeys,
+    modelOperations,
     errors,
     progress,
     refreshAll,

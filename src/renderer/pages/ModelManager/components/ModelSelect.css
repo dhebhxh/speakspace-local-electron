@@ -179,6 +179,54 @@
   padding-left: 0.4rem;
 }
 
+.model-option-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.model-option-progress-line {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.model-option-progress-message {
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.model-option-progress-value {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.model-option-progress-track {
+  display: block;
+  height: 0.25rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.model-option-progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+  transition: width 240ms ease;
+}
+
+.model-option-error {
+  color: var(--danger);
+  font-size: var(--fs-xs);
+}
+
 .model-option-actions {
   display: flex;
   flex: none;

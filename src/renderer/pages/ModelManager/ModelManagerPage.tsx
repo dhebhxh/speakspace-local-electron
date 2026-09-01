@@ -65,7 +65,8 @@ export function ModelManagerPage() {
     }
   }, [speech?.activeModelId, speech?.speakers]);
 
-  const busy = manager.busyId !== null;
+  const isModuleBusy = (module: 'stt' | 'tts' | 'embedding' | 'llm') =>
+    manager.busyKeys.some((key) => key.startsWith(`${module}:`));
   const runtimes = buildModuleRuntimes(manager.runtime, manager.embedding, {
     installWhisper: manager.installWhisper,
     installFfmpeg: manager.installFfmpeg,
@@ -142,7 +143,7 @@ export function ModelManagerPage() {
         <div className="model-module-list anim-stagger">
           <ModelModule
             actions={null}
-            busy={busy}
+            busy={isModuleBusy('stt')}
             error={manager.errors.stt}
             hint={t('modelManager.stt.hint')}
             icon="stt"
@@ -157,18 +158,18 @@ export function ModelManagerPage() {
             runtimes={runtimes.stt}
           >
             <ModelSelect
-              busyId={manager.busyId}
               label={t('modelManager.stt.label')}
               onDelete={manager.stt.remove}
               onDownload={manager.stt.download}
               onSelect={manager.stt.select}
               options={sttOptions}
+              operations={manager.modelOperations.stt ?? {}}
               placeholder={t('modelManager.select.placeholder')}
             />
           </ModelModule>
 
           <ModelModule
-            busy={busy}
+            busy={isModuleBusy('tts')}
             error={manager.errors.tts}
             hint={t('modelManager.tts.hint')}
             icon="tts"
@@ -213,22 +214,22 @@ export function ModelManagerPage() {
           >
             <div className="model-selectors">
               <ModelSelect
-                busyId={manager.busyId}
                 label={t('modelManager.tts.label')}
                 onDelete={manager.tts.remove}
                 onDownload={manager.tts.download}
                 onSelect={manager.tts.select}
                 options={ttsOptions}
+                operations={manager.modelOperations.tts ?? {}}
                 placeholder={t('modelManager.select.placeholder')}
               />
               {speech?.runtimeReady && speakerOptions.length > 0 && (
                 <ModelSelect
-                  busyId={null}
                   label={t('modelManager.tts.roleLabel')}
                   onDelete={null}
                   onDownload={null}
                   onSelect={selectSpeaker}
                   options={speakerOptions}
+                  operations={{}}
                   placeholder={t('modelManager.tts.rolePlaceholder')}
                 />
               )}
@@ -237,7 +238,7 @@ export function ModelManagerPage() {
 
           <ModelModule
             actions={null}
-            busy={busy}
+            busy={isModuleBusy('embedding')}
             error={manager.errors.embedding}
             hint={t('modelManager.embedding.hint')}
             icon="embedding"
@@ -252,19 +253,29 @@ export function ModelManagerPage() {
             runtimes={runtimes.embedding}
           >
             <ModelSelect
-              busyId={manager.busyId}
               label={t('modelManager.embedding.label')}
               onDelete={null}
               onDownload={manager.installEmbedding}
               onSelect={() => {}}
               options={embeddingOptions}
+              operations={
+                manager.embedding && isModuleBusy('embedding')
+                  ? {
+                      [manager.embedding.modelName]: {
+                        busy: true,
+                        progress: null,
+                        error: '',
+                      },
+                    }
+                  : {}
+              }
               placeholder={t('modelManager.embedding.placeholder')}
             />
           </ModelModule>
 
           <ModelModule
             actions={null}
-            busy={busy}
+            busy={isModuleBusy('llm')}
             error={manager.errors.llm}
             hint={t('modelManager.llm.hint')}
             icon="llm"
@@ -279,12 +290,12 @@ export function ModelManagerPage() {
             runtimes={runtimes.llm}
           >
             <ModelSelect
-              busyId={manager.busyId}
               label={t('modelManager.llm.label')}
               onDelete={manager.llm.remove}
               onDownload={manager.llm.download}
               onSelect={manager.llm.select}
               options={llmOptions}
+              operations={manager.modelOperations.llm ?? {}}
               placeholder={t('modelManager.select.placeholder')}
             />
           </ModelModule>

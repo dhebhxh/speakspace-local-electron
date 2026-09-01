@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" viewBox="0 0 860 420" role="img">
 <rect width="860" height="420" fill="#FFFFFF" rx="8"/>
 <rect x="0.5" y="0.5" width="859" height="419" fill="none" stroke="#E3E8EF" rx="8"/>
-<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">真人 STT 字符错误率（CER）：安静朗读 vs 背景噪音</text>
-<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">真人朗读 · 中文母语者 · whisper.cpp 4 个模型对比 · docs/testing/stt-recording-protocol.md</text>
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">Human-recorded STT CER: quiet speech vs background noise</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Human recordings · Chinese-native speaker · 4 whisper.cpp models · docs/testing/stt-recording-protocol.md</text>
 <rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">tiny</text><rect x="88.4" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="104.4" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">base</text><rect x="152.8" y="63" width="11" height="11" rx="2" fill="#B5446E"/><text x="168.8" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">small</text><rect x="223.8" y="63" width="11" height="11" rx="2" fill="#4C9F70"/><text x="239.8" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">large-v1</text>
 <line x1="64" y1="346" x2="836" y2="346" stroke="#E3E8EF"/>
 <text x="56" y="350" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">0%</text>
@@ -16,7 +16,7 @@
 <text x="56" y="146.79999999999998" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">40%</text>
 <line x1="64" y1="92" x2="836" y2="92" stroke="#E3E8EF"/>
 <text x="56" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">50%</text>
-<text x="18" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 219)">CER（越低越好）</text>
+<text x="18" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 219)">CER (lower is better)</text>
 <rect x="189.0" y="176.5" width="31.0" height="169.5" fill="#2E86AB" rx="2"/>
 <text x="204.5" y="171.50016371381244" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">33%</text>
 <rect x="223.0" y="210.8" width="31.0" height="135.2" fill="#E8871A" rx="2"/>
@@ -25,7 +25,7 @@
 <text x="272.5" y="253.25556853084987" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">17%</text>
 <rect x="291.0" y="253.0" width="31.0" height="93.0" fill="#4C9F70" rx="2"/>
 <text x="306.5" y="248.025031988958" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">18%</text>
-<text x="257" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">A 段 · 安静朗读</text>
+<text x="257" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">Segment A · quiet</text>
 <rect x="575.0" y="99.4" width="31.0" height="246.6" fill="#2E86AB" rx="2"/>
 <text x="590.5" y="94.41359032498318" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">49%</text>
 <rect x="609.0" y="199.7" width="31.0" height="146.3" fill="#E8871A" rx="2"/>
@@ -34,7 +34,7 @@
 <text x="658.5" y="260.0324673548473" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">16%</text>
 <rect x="677.0" y="260.3" width="31.0" height="85.7" fill="#4C9F70" rx="2"/>
 <text x="692.5" y="255.28194167538317" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">17%</text>
-<text x="643" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">C 段 · 有背景噪音</text>
+<text x="643" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">Segment C · background noise</text>
 <line x1="64" y1="346" x2="836" y2="346" stroke="#6B7280"/>
-<text x="24" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">C 段的 9 条文本是 A 段 36 条里的一个子集，同一人读，条件差异是背景噪音。但每条只录了一次，差值里混着噪音影响和单次朗读的自然波动，不能拆开看。</text>
+<text x="24" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">Segment C is a nine-text subset of segment A, read by the same speaker with background noise. Each text was recorded once, so noise and natural reading variation cannot be separated.</text>
 </svg>

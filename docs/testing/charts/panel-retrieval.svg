@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1636" height="915" viewBox="0 0 1636 915" role="img">
 <rect width="1636" height="915" fill="#F7F8FA" rx="10"/>
-<text x="26" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="19" fill="#1F2933" text-anchor="start" font-weight="600">检索质量总览（跳过 LLM，直接查询）</text>
-<text x="26" y="56" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12.5" fill="#6B7280" text-anchor="start" font-weight="400">bge-m3 · 24 个有金标的任务 · 直接用任务原文查询，不经过 Agent/LLM</text>
+<text x="26" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="19" fill="#1F2933" text-anchor="start" font-weight="600">Retrieval quality overview (direct query, no LLM)</text>
+<text x="26" y="56" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12.5" fill="#6B7280" text-anchor="start" font-weight="400">bge-m3 · 24 gold-labelled tasks · task text queried directly without Agent/LLM</text>
 <svg x="20.0" y="74.0" width="791.2" height="386.4" viewBox="0 0 860 420">
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" viewBox="0 0 860 420" role="img">
 <rect width="860" height="420" fill="#FFFFFF" rx="8"/>
 
-<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">检索质量：开发集 vs 保留集（跳过 LLM，直接查询）</text>
-<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">bge-m3 · 24 个有金标的任务（直接用 instruction 当查询词，跳过 LLM）</text>
-<rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">开发集 dev（12 个）</text><rect x="181.6" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="197.64" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">保留集 holdout（12 个）</text>
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">Retrieval quality: development vs holdout (direct query)</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">bge-m3 · 24 gold-labelled tasks · instruction used directly as query · no LLM</text>
+<rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Development (12)</text><rect x="167.6" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="183.59999999999997" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Holdout (12)</text>
 <line x1="64" y1="346" x2="836" y2="346" stroke="#E3E8EF"/>
 <text x="56" y="350" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">0%</text>
 <line x1="64" y1="295.2" x2="836" y2="295.2" stroke="#E3E8EF"/>
@@ -21,7 +21,7 @@
 <text x="56" y="146.79999999999998" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">80%</text>
 <line x1="64" y1="92" x2="836" y2="92" stroke="#E3E8EF"/>
 <text x="56" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">100%</text>
-<text x="18" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 219)">比例</text>
+<text x="18" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 219)">Rate</text>
 <rect x="94.3" y="176.7" width="31.0" height="169.3" fill="#2E86AB" rx="2"/>
 <text x="109.83333333333331" y="171.66666666666669" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">67%</text>
 <rect x="128.3" y="134.3" width="31.0" height="211.7" fill="#E8871A" rx="2"/>
@@ -53,7 +53,7 @@
 <text x="787.1666666666666" y="87" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">100%</text>
 <text x="771.6666666666666" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">nDCG@8</text>
 <line x1="64" y1="346" x2="836" y2="346" stroke="#6B7280"/>
-<text x="24" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">语料设计时 dev/holdout 就是配对的（各 12 条），这里的差距反映检索算法本身在未见过的笔记和查询上是否稳定，不掺杂 LLM 会不会调用检索这一层。</text>
+<text x="24" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">Development and holdout were paired at corpus design (12 each). The gap measures retrieval stability on unseen notes and queries without LLM tool-use effects.</text>
 </svg>
 
 </svg>
@@ -61,9 +61,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" viewBox="0 0 860 420" role="img">
 <rect width="860" height="420" fill="#FFFFFF" rx="8"/>
 
-<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">检索质量：分场景</text>
-<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">bge-m3 · 24 个有金标的任务（直接用 instruction 当查询词，跳过 LLM）</text>
-<rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">retrieval（16 个，单一正确笔记）</text><rect x="263.6" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="279.6" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">ambiguous（8 个，多个相关笔记）</text>
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">Retrieval quality by scenario</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">bge-m3 · 24 gold-labelled tasks · instruction used directly as query · no LLM</text>
+<rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Retrieval (16, one relevant note)</text><rect x="279.8" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="295.79999999999984" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Ambiguous (8, multiple relevant notes)</text>
 <line x1="64" y1="346" x2="836" y2="346" stroke="#E3E8EF"/>
 <text x="56" y="350" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">0%</text>
 <line x1="64" y1="295.2" x2="836" y2="295.2" stroke="#E3E8EF"/>
@@ -76,7 +76,7 @@
 <text x="56" y="146.79999999999998" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">80%</text>
 <line x1="64" y1="92" x2="836" y2="92" stroke="#E3E8EF"/>
 <text x="56" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">100%</text>
-<text x="18" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 219)">比例</text>
+<text x="18" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 219)">Rate</text>
 <rect x="94.3" y="115.8" width="31.0" height="230.2" fill="#2E86AB" rx="2"/>
 <text x="109.83333333333331" y="110.8125" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">91%</text>
 <rect x="128.3" y="234.9" width="31.0" height="111.1" fill="#E8871A" rx="2"/>
@@ -108,7 +108,7 @@
 <text x="787.1666666666666" y="107.67870364176213" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">92%</text>
 <text x="771.6666666666666" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">nDCG@8</text>
 <line x1="64" y1="346" x2="836" y2="346" stroke="#6B7280"/>
-<text x="24" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">ambiguous 场景的金标是多条相关笔记（比如 Atlas 和 Phoenix 两个相似项目），Recall@K 在这里天然更难打满分，不能直接跟 retrieval 场景比高低。</text>
+<text x="24" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">Ambiguous tasks have multiple gold notes (for example, similar Atlas and Phoenix projects), making perfect Recall@K inherently harder.</text>
 </svg>
 
 </svg>
@@ -116,9 +116,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" viewBox="0 0 860 420" role="img">
 <rect width="860" height="420" fill="#FFFFFF" rx="8"/>
 
-<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">检索质量：直接查询 vs 经 LLM 调用</text>
-<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">同一套混合检索算法（关键词 + bge-m3 + RRF），唯一变量是查询词谁写的</text>
-<rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">直接用任务 instruction 查询（本表）</text><rect x="282.4" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="298.44" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">经 Agent/LLM 决定是否搜索、怎么搜（qwen2.5:3b-instruct）</text>
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">Retrieval quality: direct query vs LLM-mediated use</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Same mixed retrieval (keyword + bge-m3 + RRF); only query generation differs</text>
+<rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Direct task instruction query</text><rect x="253.4" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="269.39999999999986" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Agent/LLM search decision and query (qwen2.5:3b-instruct)</text>
 <line x1="64" y1="346" x2="836" y2="346" stroke="#E3E8EF"/>
 <text x="56" y="350" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">0%</text>
 <line x1="64" y1="295.2" x2="836" y2="295.2" stroke="#E3E8EF"/>
@@ -131,7 +131,7 @@
 <text x="56" y="146.79999999999998" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">80%</text>
 <line x1="64" y1="92" x2="836" y2="92" stroke="#E3E8EF"/>
 <text x="56" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">100%</text>
-<text x="18" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 219)">比例</text>
+<text x="18" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 219)">Rate</text>
 <rect x="94.3" y="155.5" width="31.0" height="190.5" fill="#2E86AB" rx="2"/>
 <text x="109.83333333333331" y="150.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">75%</text>
 <rect x="128.3" y="240.2" width="31.0" height="105.8" fill="#E8871A" rx="2"/>
@@ -163,9 +163,9 @@
 <text x="787.1666666666666" y="235.16666666666666" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">42%</text>
 <text x="771.6666666666666" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">nDCG@8</text>
 <line x1="64" y1="346" x2="836" y2="346" stroke="#6B7280"/>
-<text x="24" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">两者分母不同（本表只统计有金标的任务，Agent 那组只统计它真正调用了 search_notes 的任务），差距提示的是「LLM 会不会用好检索」而不是「检索算法本身弱」。</text>
+<text x="24" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">The denominators differ: direct evaluation uses gold-labelled tasks, while the Agent series requires a real search_notes call. The gap diagnoses LLM retrieval use, not ranking alone.</text>
 </svg>
 
 </svg>
-<text x="26" y="900.8000000000001" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">测的是检索算法本身（关键词 + 向量 + RRF），不测 LLM 会不会调用检索、会不会拼查询词；后者看 panel-agent 里的检索一栏。</text>
+<text x="26" y="900.8000000000001" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">This measures keyword + vector + RRF ranking, not whether an LLM invokes search or formulates a good query; see the Agent panel for that layer.</text>
 </svg>

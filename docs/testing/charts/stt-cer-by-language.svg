@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" viewBox="0 0 860 420" role="img">
 <rect width="860" height="420" fill="#FFFFFF" rx="8"/>
 <rect x="0.5" y="0.5" width="859" height="419" fill="none" stroke="#E3E8EF" rx="8"/>
-<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">真人 STT CER：分语言（仅统计 A+C 逐字朗读段）</text>
-<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">真人朗读 · 中文母语者 · whisper.cpp 4 个模型对比 · docs/testing/stt-recording-protocol.md</text>
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">Human-recorded STT CER by language (verbatim segments A+C)</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Human recordings · Chinese-native speaker · 4 whisper.cpp models · docs/testing/stt-recording-protocol.md</text>
 <rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">tiny</text><rect x="88.4" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="104.4" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">base</text><rect x="152.8" y="63" width="11" height="11" rx="2" fill="#B5446E"/><text x="168.8" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">small</text><rect x="223.8" y="63" width="11" height="11" rx="2" fill="#4C9F70"/><text x="239.8" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">large-v1</text>
 <line x1="64" y1="346" x2="836" y2="346" stroke="#E3E8EF"/>
 <text x="56" y="350" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">0%</text>
@@ -16,7 +16,7 @@
 <text x="56" y="146.79999999999998" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">40%</text>
 <line x1="64" y1="92" x2="836" y2="92" stroke="#E3E8EF"/>
 <text x="56" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">50%</text>
-<text x="18" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 219)">CER（越低越好）</text>
+<text x="18" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 219)">CER (lower is better)</text>
 <rect x="124.7" y="146.7" width="31.0" height="199.3" fill="#2E86AB" rx="2"/>
 <text x="140.16666666666666" y="141.69447965328575" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">39%</text>
 <rect x="158.7" y="191.3" width="31.0" height="154.7" fill="#E8871A" rx="2"/>
@@ -25,7 +25,7 @@
 <text x="208.16666666666666" y="261.8400460232674" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">16%</text>
 <rect x="226.7" y="250.6" width="31.0" height="95.4" fill="#4C9F70" rx="2"/>
 <text x="242.16666666666666" y="245.61781415866426" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">19%</text>
-<text x="192.66666666666666" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">中文</text>
+<text x="192.66666666666666" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">Chinese</text>
 <rect x="382.0" y="207.2" width="31.0" height="138.8" fill="#2E86AB" rx="2"/>
 <text x="397.5" y="202.197858270421" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">27%</text>
 <rect x="416.0" y="221.8" width="31.0" height="124.2" fill="#E8871A" rx="2"/>
@@ -34,7 +34,7 @@
 <text x="465.5" y="233.68081500073765" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">21%</text>
 <rect x="484.0" y="252.5" width="31.0" height="93.5" fill="#4C9F70" rx="2"/>
 <text x="499.5" y="247.48554073453664" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">18%</text>
-<text x="450" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">英文</text>
+<text x="450" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">English</text>
 <rect x="639.3" y="127.4" width="31.0" height="218.6" fill="#2E86AB" rx="2"/>
 <text x="654.8333333333333" y="122.36916358039787" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">43%</text>
 <rect x="673.3" y="211.4" width="31.0" height="134.6" fill="#E8871A" rx="2"/>
@@ -43,7 +43,7 @@
 <text x="722.8333333333333" y="268.88428236243755" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">14%</text>
 <rect x="741.3" y="260.2" width="31.0" height="85.8" fill="#4C9F70" rx="2"/>
 <text x="756.8333333333333" y="255.1654056968419" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">17%</text>
-<text x="707.3333333333333" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">中英混合</text>
+<text x="707.3333333333333" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">Chinese-English</text>
 <line x1="64" y1="346" x2="836" y2="346" stroke="#6B7280"/>
-<text x="24" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">朗读者是中文母语者，英文朗读存在自然的发音与用词偏差 —— 这里测的是真实使用场景，不是朗读标准度。</text>
+<text x="24" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">The speaker is a native Chinese speaker; natural pronunciation and wording variation in English reflect the intended real-use setting.</text>
 </svg>

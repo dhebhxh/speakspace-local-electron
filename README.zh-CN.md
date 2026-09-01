@@ -57,41 +57,7 @@ SpeakSpace Local 是一个 Electron 桌面应用，将录音、文件导入、�
 
 ## 系统架构
 
-```mermaid
-flowchart LR
-  User["用户"] --> Renderer
-
-  subgraph Window["Electron BrowserWindow"]
-    Renderer["React Renderer<br/>页面、状态、i18n、响应式 UI"]
-    Preload["Preload / contextBridge<br/>window.electron 类型化 API"]
-    Renderer -->|"受控 API 调用"| Preload
-  end
-
-  subgraph Main["Electron Main Process"]
-    IPC["18 个 IPC 能力模块"]
-    Services["领域服务<br/>Workspace / Knowledge / Agent / Export"]
-    Repositories["10 个 Repository"]
-    Runtime["本地模型与运行时<br/>STT / Ollama / TTS / FFmpeg"]
-    Background["托盘、快捷键、HUD、单实例"]
-    Preload -->|"ipcRenderer.invoke"| IPC
-    IPC --> Services
-    Services --> Repositories
-    Services --> Runtime
-    Background -. "窗口事件" .-> Renderer
-  end
-
-  subgraph Local["本机 userData"]
-    SQLite[("speakspace.db")]
-    Recordings["blobs/recordings"]
-    Models["models / runtimes / cache / output"]
-    Settings["app-settings.json / model-state"]
-  end
-
-  Repositories --> SQLite
-  Services --> Recordings
-  Runtime --> Models
-  Services --> Settings
-```
+![SpeakSpace Local 系统架构](docs/readme/system-architecture.png)
 
 ### 进程边界
 
@@ -109,31 +75,7 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 
 转写完成后不会先生成一份独立摘要，再重复生成结构化笔记。当前链路只做一次结构化提取，复核弹窗直接显示其中的 `summary`；保存时将草稿绑定真实 `noteId` 并持久化。
 
-```mermaid
-flowchart LR
-  Source{"声音来源"} -->|麦克风| Capture["MediaRecorder"]
-  Source -->|本地音频| Import["文件选择与格式检查"]
-  Capture --> STT
-  Import --> STT
-
-  STT["Whisper / Parakeet<br/>必要时经 FFmpeg 预处理"] --> Transcript["Transcript"]
-  Transcript --> Draft["本地 LLM 生成<br/>Structured Note Draft"]
-  Draft --> Review["复核弹窗<br/>显示 draft.summary 与原文"]
-
-  Review -->|"确认保存"| Save["Workspace:saveTranscriptionNote"]
-  Capture -->|"保存录音"| Audio["blobs/recordings"]
-  Import -->|"导入录音"| Audio
-
-  Save --> Note[("notes")]
-  Save --> Structured[("structured_notes")]
-  Save -. "后台提取" .-> Todo[("todos")]
-  Note --> Search["全文 / 语义索引"]
-  Structured --> Search
-
-  Note --> Scenario["选择内置或自定义模板"]
-  Scenario --> ScenarioOutput[("scenario_knowledge")]
-  ScenarioOutput --> Search
-```
+![录音到知识的处理流水线](docs/readme/recording-to-knowledge.png)
 
 关键约束：
 
@@ -166,93 +108,7 @@ flowchart LR
 
 ### SQLite 关系模型
 
-```mermaid
-erDiagram
-  WORKSPACES ||--o{ NOTES : contains
-  NOTES ||--o{ SUBNOTES : has
-  NOTES ||--o| STRUCTURED_NOTES : has
-  NOTES ||--o| SCENARIO_KNOWLEDGE : has
-  NOTES ||--o{ TODOS : produces
-  NOTES ||--o{ NOTE_EMBEDDINGS : indexes
-  NOTES ||--o{ KNOWLEDGE_OUTPUTS : generates
-  KNOWLEDGE_TEMPLATES ||--o{ KNOWLEDGE_OUTPUTS : defines
-  AI_CONVERSATIONS ||--o{ AI_MESSAGES : contains
-  AI_CONVERSATIONS ||--o{ CONVERSATION_CONTEXTS : links
-  NOTES ||--o{ CONVERSATION_CONTEXTS : provides
-
-  WORKSPACES {
-    INTEGER id PK
-    TEXT name
-    TEXT last_opened_at
-    TEXT trashed_at
-  }
-  NOTES {
-    INTEGER id PK
-    INTEGER workspace_id FK
-    TEXT transcript
-    TEXT audio_relative_path
-    TEXT type_category
-    TEXT trashed_at
-  }
-  STRUCTURED_NOTES {
-    INTEGER note_id PK,FK
-    TEXT payload
-    TEXT model_id
-  }
-  SCENARIO_KNOWLEDGE {
-    INTEGER note_id PK,FK
-    TEXT scenario
-    TEXT payload
-    TEXT model_id
-  }
-  KNOWLEDGE_TEMPLATES {
-    INTEGER id PK
-    TEXT prompt
-    TEXT scenario_definition
-    TEXT normalized_at
-    TEXT trashed_at
-  }
-  KNOWLEDGE_OUTPUTS {
-    INTEGER id PK
-    INTEGER note_id FK
-    INTEGER template_id FK
-    TEXT content
-  }
-  NOTE_EMBEDDINGS {
-    INTEGER note_id PK,FK
-    TEXT model_name PK
-    TEXT embedding
-    TEXT content_hash
-  }
-  TODOS {
-    INTEGER id PK
-    INTEGER note_id FK
-    TEXT title
-    TEXT date_string
-    INTEGER is_completed
-  }
-  AI_CONVERSATIONS {
-    INTEGER id PK
-    TEXT name
-    TEXT trashed_at
-  }
-  AI_MESSAGES {
-    INTEGER id PK
-    INTEGER conversation_id FK
-    TEXT role
-    TEXT content
-  }
-  CONVERSATION_CONTEXTS {
-    INTEGER conversation_id PK,FK
-    INTEGER note_id PK,FK
-  }
-  SUBNOTES {
-    INTEGER id PK
-    INTEGER note_id FK
-    TEXT content_type
-    TEXT content
-  }
-```
+![SQLite 关系模型](docs/readme/data-model.png)
 
 工作空间、笔记、AI 会话和自定义模板使用 `trashed_at` 实现软删除；只有回收站中的“永久删除”才会物理移除记录及其级联数据。
 
@@ -276,42 +132,7 @@ erDiagram
 
 Ask AI 适合固定范围问答；Agent 则允许本地模型在有界循环里调用工具。用户手动关联笔记时，这些笔记会在第一轮推理前确定性载入，同时从可用工具中移除 `search_notes`，防止模型忽略用户指定范围。
 
-```mermaid
-sequenceDiagram
-  actor User as 用户
-  participant UI as Agent UI
-  participant Agent as AgentOrchestrator
-  participant DB as SQLite / Note Tools
-  participant LLM as Local Ollama
-  participant History as AI Conversation
-
-  User->>UI: 问题 + workspaceId + linkedNoteIds
-  UI->>Agent: IPC 请求
-  Agent->>Agent: 限长、去重、保留最近历史
-
-  alt 显式关联笔记
-    Agent->>DB: 并行 read_note（最多 8 篇）
-    DB-->>Agent: 最多 8000 字符的确定性上下文
-    Note over Agent: 移除 search_notes
-  else 未指定笔记
-    Note over Agent: 可在工作区或全库使用 search_notes
-  end
-
-  loop 最多 6 步
-    Agent->>LLM: 系统提示 + 运行状态 + 已有证据
-    alt 模型调用工具
-      LLM-->>Agent: search_notes / read_note / extract_todos
-      Agent->>DB: 执行已注册工具
-      DB-->>Agent: 工具结果
-    else 模型给出答案
-      LLM-->>Agent: final
-    end
-  end
-
-  Note over Agent: 重复工具调用会短路，最后一步不再提供工具
-  Agent->>History: 保存问答与关联来源
-  Agent-->>UI: 步骤时间线 + 最终答案
-```
+![有界 Agent 执行工作流](docs/readme/agent-workflow.png)
 
 Agent 的代码级边界：
 
@@ -334,43 +155,58 @@ Agent 的代码级边界：
 | TTS | Kokoro / MeloTTS / MOSS-TTS-Nano | 主进程推理，Renderer 分段流水播放 |
 | Runtime | 应用受管或系统已安装 | 状态统一由主进程检测，Renderer 不自行猜测文件是否存在 |
 
-### TTS 基准摘要
+## 测试与评测证据
 
-以下是 2026-08-13 在 Apple M4、CPU 推理、每条文本重复 3 次后的中位结果。RTF 小于 1 表示生成速度快于实时播放。
+目前的评测已经覆盖四个本地 AI 子系统——TTS、STT、LLM 和基于 Embedding 的检索，同时覆盖有界 Agent 行为与确定性的回归测试。原始 JSON、真人 STT 录音、生成报告和图表来源都保存在 [`docs/testing`](docs/testing/README.md)，可以直接复核。
 
-| 模型 | 加载时间 | 峰值 RSS | 平均中位 RTF | 结果 |
-| --- | ---: | ---: | ---: | --- |
-| Kokoro | 1.260 s | 779.8 MiB | 0.978 | 中文/英文实时，混合文本较慢 |
-| MeloTTS | 1.344 s | 663.5 MiB | 0.652 | 三类文本均实时 |
-| MOSS-TTS-Nano | 4.024 s | 1,248.2 MiB | 0.529 | 最快，但加载和内存最高 |
+| 领域 | 当前证据 | 重要边界 |
+| --- | --- | --- |
+| TTS | 3 个引擎 × 36 条中英及混合文本 × 3 次重复；RTF、峰值内存、长度扫描和 ASR 回转录 | CER 只是代理指标，不能替代人工 MOS 盲听 |
+| STT | 4 档 Whisper、56 段真人录音；CER、内容覆盖率、噪声切片和 RTF | 只有一位中文母语朗读者，不能代表所有用户 |
+| LLM / 待办 | 5 个本地模型、54 条用例，严格拆分 22 条开发集和 32 条保留集 | 只覆盖当前提示词与 1.5B–3.8B 模型 |
+| Embedding 检索 | 生产环境的关键词 + BGE-M3 向量 + RRF，隔离 LLM 单独评测 | 只有一个 Embedding 模型、24 条带检索金标的任务 |
+| Agent | 80 条固定笔记、90 个任务，开发集/保留集各 45 条；严格检查工具、范围和终止行为 | 当前 Agent 尚未达到产品可用目标 |
+| 回归测试 | 可按功能域复核的 Jest 机器可读清单 | 回归测试不衡量模型准确率 |
 
-完整方法、逐文本结果、CER 代理指标和跨平台限制见 [TTS 模型基准报告](docs/testing/tts-model-benchmark-2026-08-13.md)。Windows 运行时兼容不等同于 Windows 实机基准。
+<table>
+  <tr>
+    <td width="50%"><img src="docs/testing/charts/panel-tts-speed.svg" alt="TTS 速度评测面板" /></td>
+    <td width="50%"><img src="docs/testing/charts/panel-stt.svg" alt="STT 真人录音评测面板" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/testing/charts/llm-accuracy-vs-speed.svg" alt="LLM 速度与准确率权衡" /></td>
+    <td width="50%"><img src="docs/testing/charts/panel-retrieval.svg" alt="Embedding 混合检索评测面板" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/testing/charts/panel-agent.svg" alt="Agent 端到端评测面板" /></td>
+    <td width="50%"><img src="docs/testing/charts/jest-by-area.svg" alt="按功能域划分的 Jest 回归测试" /></td>
+  </tr>
+</table>
+
+核心方法只有一条：开发集用于选择提示词和脚手架，冻结的保留集才用于验收；延迟、吞吐、内存和 GPU 卸载等硬件敏感指标则通过一键跨机器基准单独采集。引用任何数字前，请先看[测试覆盖与限制清单](docs/testing/test-coverage-gaps.md)。
 
 ## 工程指标
 
-源码规模按 2026-08-23 当前工作树统计：
+2026-09-01 生成的评测与测试清单：
 
 | 指标 | 数量 |
 | --- | ---: |
-| TypeScript / TSX / JavaScript / JSX 源文件 | 388 |
-| 主进程文件 | 190 |
-| Renderer 文件 | 135 |
-| Shared 文件 | 21 |
-| 测试文件 | 67 |
-| IPC 能力模块 | 18 |
-| SQLite 表 | 12 |
-| 具体 Repository | 10 |
+| 自动生成的评测报告 | 8 |
+| 可重复生成的 SVG 图表 | 46 |
+| Jest 测试套件 | 76 |
+| Jest 测试用例 | 634 |
+| 固定 Agent 语料 | 80 条笔记 / 90 个任务 |
+| 已归档机器快照 | 1 台（等待更多机器结果） |
 
-最近一次完整质量门禁：
+已发布的自动化测试清单与最近一次合并验证：
 
 | 检查 | 结果 |
 | --- | --- |
 | TypeScript | 通过 |
-| ESLint | 0 error，29 个既有 warning |
 | Webpack main / renderer build | 通过 |
-| Jest | 64 suites passed、3 skipped；535 tests passed、42 skipped |
-| Production dependency audit | 0 vulnerabilities |
-| Windows NSIS 安装包 | 生成并完成 SHA-256 校验，尚未代码签名 |
+| Jest | 73 个套件通过、3 个跳过；560 个用例通过、74 个跳过 |
+| 评测图表 | 46 张均已从仓库内结果数据重新生成 |
+| 详细清单 | [自动生成的套件与用例明细](docs/testing/jest-test-inventory.md) |
 
 这些数字是验证快照，不是动态徽章；代码变化后应同步更新。
 
@@ -418,9 +254,15 @@ npm start
 | `npm test` | Jest 测试 |
 | `npm run test:trash:electron` | 使用 Electron ABI 验证回收站数据库逻辑 |
 | `npm run smoke:tts` | TTS 运行时冒烟测试 |
+| `npm run bench -- --machine <标签>` | 运行并归档一台机器上的全部硬件敏感基准 |
+| `npm run bench:aggregate` | 汇总已经收集的机器快照 |
+| `npm run bench:charts` | 重新生成仓库内的 SVG 评测图 |
+| `npm run bench:report` | 重新生成 Markdown 评测报告 |
 | `npm run check:audit` | 只检查生产依赖漏洞 |
 | `npm run package` | 当前平台内部构建 |
 | `npm run package:release` | 带正式命名和签名门禁的发布构建 |
+
+非开发人员收集硬件结果时，Windows 可直接双击 `一键跨机硬件测速.cmd`，macOS 可双击 `一键跨机硬件测速-Mac.command`。启动器会检查依赖、询问是否下载缺少的运行时和模型，并将每台机器的结果保存到独立目录。
 
 ## 打包与发布
 
@@ -443,12 +285,16 @@ npm run package
 完整索引见 [docs/README.md](docs/README.md)。
 
 - [项目结构与代码边界](docs/project-structure.md)
-- [任务提取测试用例](docs/testing/task-extraction-cases.md)
-- [TTS 模型基准报告](docs/testing/tts-model-benchmark-2026-08-13.md)
-- [TTS 平台构建说明](docs/testing/tts-platform-builds.md)
-- [Windows TTS 手工验收](docs/testing/tts-windows-manual.md)
+- [测试与评测总览](docs/testing/README.md)
+- [数据集与开发集/保留集拆分](docs/testing/datasets/README.md)
+- [TTS 模型基准](docs/testing/tts-model-benchmark-windows.md)
+- [真人 STT 评测](docs/testing/stt-human-eval.md)
+- [本地 LLM 横向扫描](docs/testing/llm-model-sweep.md)
+- [Embedding 检索评测](docs/testing/retrieval-eval.md)
+- [Agent 端到端评测](docs/testing/agent-end-to-end-eval.md)
+- [一键跨机器基准指南](docs/testing/multi-machine-benchmark-guide.md)
+- [跨平台手工验收](docs/testing/manual-acceptance.md)
 - [详细开发日志](docs/changelog/)
-- [历史迁移归档](docs/archive/legacy-merge-inventory.md)
 - [贡献者行为准则](.github/CODE_OF_CONDUCT.md)
 
 ## Electron React Boilerplate

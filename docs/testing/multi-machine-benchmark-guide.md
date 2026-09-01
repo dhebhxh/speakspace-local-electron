@@ -100,7 +100,7 @@ npm run bench:charts      # 生成跨机器对比图
 | `tts-memory` | 连续合成时 RSS 是否累积（强制 GC 后采样） | 20–40 min |
 | `tts-length` | 峰值内存随文本长度的变化，决定最低内存门槛 | 10–20 min |
 | `llm` | 每个已安装模型的 tokens/s、首 token 延迟、显存、**GPU 卸载比例** | 2 min/模型 |
-| `stt` | 已安装的每个 whisper 模型转写同一批真人录音的 RTF（**不算 CER**） | 5–20 min/模型（越大越慢） |
+| `stt` | 已安装的每个 whisper 模型转写同一批真人录音的 RTF（**不算 CER**） | tiny/base 约 2 min，small 约 6 min，**large-v1 实测约 38 min**（CPU 推理，体积越大越不成比例地慢） |
 
 **默认不跑**（这些换机器不会变）：待办提取准确率、Agent 端到端、STT 的 CER/内容覆盖率。
 它们取决于模型和提示词（或者对 STT 来说，取决于同一份音频和同一个模型），不取决于硬件

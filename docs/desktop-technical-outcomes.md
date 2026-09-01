@@ -409,7 +409,7 @@ node .\node_modules\electron-builder\cli.js build --config electron-builder.js -
 - Embedding：[OllamaEmbeddingService.ts](../src/main/semantic/OllamaEmbeddingService.ts)、[SemanticNoteService.ts](../src/main/semantic/SemanticNoteService.ts)
 - TTS：[TTSModelCatalog.ts](../src/main/tts/TTSModelCatalog.ts)、[TTSPlaybackPipeline.ts](../src/renderer/tts/TTSPlaybackPipeline.ts)
 - Hardware recommendation：[SystemProfileService.ts](../src/main/recommendation/SystemProfileService.ts)、[ModelRecommendationScorer.ts](../src/main/recommendation/ModelRecommendationScorer.ts)
-- TTS benchmark：[tts-model-benchmark-2026-08-13.md](./testing/tts-model-benchmark-2026-08-13.md)
+- TTS benchmark：[tts-model-benchmark-windows.md](./testing/tts-model-benchmark-windows.md)
 - Packaging：[electron-builder.js](../electron-builder.js)
 
 ### 9.3 報告限制

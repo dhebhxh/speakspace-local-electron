@@ -1,6 +1,6 @@
 # Jest 自动化测试清单
 
-生成时间：2026-09-01 13:16:52 · 生成方式：`npm run test:inventory`
+生成时间：2026-09-01 17:21:26 · 生成方式：`npm run test:inventory`
 
 这份清单由 Jest 的机器可读报告直接渲染，不是手写的。它回答的是「那 N 项测试到底是哪些」，任何人都可以复跑 `npm test` 核对。
 
@@ -8,12 +8,12 @@
 
 | 项目 | 数量 |
 | --- | --- |
-| 测试套件 | 71 |
-| 套件通过 | 68 |
+| 测试套件 | 76 |
+| 套件通过 | 73 |
 | 套件失败 | 0 |
 | 套件跳过 | 3 |
-| 测试用例 | 620 |
-| 用例通过 | 546 |
+| 测试用例 | 634 |
+| 用例通过 | 560 |
 | 用例失败 | 0 |
 | 用例跳过 | 74 |
 
@@ -27,87 +27,92 @@
 | --- | --- | --- | --- | --- | --- |
 | Agent 与检索 | 15 | 94 | 93 | 1 | Agent 循环、工具调用、笔记范围、混合检索与排序融合 |
 | 任务与日程 | 9 | 188 | 134 | 54 | 待办提取、相对日期改写、周期展开、任务归属与提醒 |
-| 模型与语音 | 7 | 30 | 30 | 0 | TTS 引擎与音色、模型激活与删除保护、转写与取消、运行时安装 |
-| 数据与可靠性 | 12 | 57 | 38 | 19 | 数据迁移、导出、回收站、工作流与会话持久化 |
-| 界面与交互 | 20 | 188 | 188 | 0 | 导航、弹窗、HUD、快捷键、引导教程、拖放与窄屏布局 |
-| 主进程与系统 | 3 | 16 | 16 | 0 | 主进程 IPC、后台任务、启动流程与设置模式 |
+| 模型与语音 | 8 | 32 | 32 | 0 | TTS 引擎与音色、模型激活与删除保护、转写与取消、运行时安装 |
+| 数据与可靠性 | 13 | 62 | 43 | 19 | 数据迁移、导出、回收站、工作流与会话持久化 |
+| 界面与交互 | 22 | 194 | 194 | 0 | 导航、弹窗、HUD、快捷键、引导教程、拖放与窄屏布局 |
+| 主进程与系统 | 4 | 17 | 17 | 0 | 主进程 IPC、后台任务、启动流程与设置模式 |
 | 其他 | 5 | 47 | 47 | 0 | 未归类 |
 
 ## 按套件
 
 | 套件 | 功能域 | 用例 | 通过 | 失败 | 跳过 | 耗时 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `src/__tests__/Accelerator.test.ts` | 界面与交互 | 12 | 12 | 0 | 0 | 0.1 s |
-| `src/__tests__/App.test.tsx` | 界面与交互 | 1 | 1 | 0 | 0 | 4.4 s |
-| `src/__tests__/BackgroundShortcuts.test.ts` | 界面与交互 | 18 | 18 | 0 | 0 | 9.4 s |
-| `src/__tests__/BackNavigation.test.tsx` | 界面与交互 | 15 | 15 | 0 | 0 | 11.4 s |
-| `src/__tests__/CloseConfirmDialog.test.tsx` | 界面与交互 | 8 | 8 | 0 | 0 | 1.3 s |
-| `src/__tests__/HudLayout.test.ts` | 界面与交互 | 19 | 19 | 0 | 0 | 8.9 s |
-| `src/__tests__/HudWindows.test.tsx` | 界面与交互 | 21 | 21 | 0 | 0 | 10.1 s |
-| `src/__tests__/markdownAst.test.ts` | 界面与交互 | 27 | 27 | 0 | 0 | 9.6 s |
+| `src/__tests__/Accelerator.test.ts` | 界面与交互 | 12 | 12 | 0 | 0 | 0.2 s |
+| `src/__tests__/App.test.tsx` | 界面与交互 | 1 | 1 | 0 | 0 | 16.9 s |
+| `src/__tests__/BackgroundShortcuts.test.ts` | 界面与交互 | 18 | 18 | 0 | 0 | 11.2 s |
+| `src/__tests__/BackNavigation.test.tsx` | 界面与交互 | 15 | 15 | 0 | 0 | 16.1 s |
+| `src/__tests__/CloseConfirmDialog.test.tsx` | 界面与交互 | 8 | 8 | 0 | 0 | 1.4 s |
+| `src/__tests__/HudLayout.test.ts` | 界面与交互 | 19 | 19 | 0 | 0 | 9.8 s |
+| `src/__tests__/HudWindows.test.tsx` | 界面与交互 | 21 | 21 | 0 | 0 | 12.5 s |
+| `src/__tests__/markdownAst.test.ts` | 界面与交互 | 27 | 27 | 0 | 0 | 9.8 s |
 | `src/__tests__/MarkdownText.test.tsx` | 界面与交互 | 9 | 9 | 0 | 0 | 0.6 s |
-| `src/__tests__/NoteInsightsPanel.test.tsx` | 界面与交互 | 2 | 2 | 0 | 0 | 11.8 s |
-| `src/__tests__/OnboardingSteps.test.ts` | 界面与交互 | 11 | 11 | 0 | 0 | 9.6 s |
-| `src/__tests__/RecordingReviewDialog.test.tsx` | 界面与交互 | 2 | 2 | 0 | 0 | 0.7 s |
-| `src/__tests__/SettingsTourAnchors.test.tsx` | 界面与交互 | 2 | 2 | 0 | 0 | 1.3 s |
+| `src/__tests__/NoteInsightsPanel.test.tsx` | 界面与交互 | 2 | 2 | 0 | 0 | 11.9 s |
+| `src/__tests__/OnboardingRoute.test.ts` | 界面与交互 | 4 | 4 | 0 | 0 | 0.4 s |
+| `src/__tests__/OnboardingSteps.test.ts` | 界面与交互 | 12 | 12 | 0 | 0 | 0.3 s |
+| `src/__tests__/RecordingReviewDialog.test.tsx` | 界面与交互 | 2 | 2 | 0 | 0 | 0.8 s |
+| `src/__tests__/SettingsTourAnchors.test.tsx` | 界面与交互 | 2 | 2 | 0 | 0 | 0.8 s |
 | `src/__tests__/ShortcutRecorder.test.tsx` | 界面与交互 | 7 | 7 | 0 | 0 | 1.5 s |
-| `src/__tests__/TourClickDemo.test.tsx` | 界面与交互 | 8 | 8 | 0 | 0 | 2.0 s |
-| `src/__tests__/TourDragDemo.test.tsx` | 界面与交互 | 6 | 6 | 0 | 0 | 1.7 s |
-| `src/__tests__/TourHoverDemo.test.tsx` | 界面与交互 | 8 | 8 | 0 | 0 | 10.7 s |
-| `src/__tests__/TourHudStage.test.tsx` | 界面与交互 | 9 | 9 | 0 | 0 | 1.4 s |
-| `src/renderer/pages/ModelManager/components/ModelSelect.test.tsx` | 界面与交互 | 2 | 2 | 0 | 0 | 0.6 s |
-| `src/renderer/pages/ModelManager/useModelManager.test.ts` | 界面与交互 | 1 | 1 | 0 | 0 | 1.1 s |
-| `src/__tests__/isTranscriptionFileBusy.test.ts` | 模型与语音 | 8 | 8 | 0 | 0 | 0.2 s |
-| `src/__tests__/TranscriptionAbort.test.ts` | 模型与语音 | 9 | 9 | 0 | 0 | 9.5 s |
-| `src/main/runtime/__tests__/RuntimeInstallSupport.test.ts` | 模型与语音 | 4 | 4 | 0 | 0 | 0.1 s |
-| `src/main/tts/__tests__/TTSEngine.test.ts` | 模型与语音 | 1 | 1 | 0 | 0 | 0.3 s |
-| `src/main/tts/__tests__/TTSInput.test.ts` | 模型与语音 | 2 | 2 | 0 | 0 | 0.2 s |
-| `src/main/tts/__tests__/TTSModelManager.test.ts` | 模型与语音 | 3 | 3 | 0 | 0 | 0.8 s |
-| `src/renderer/tts/TTSPlaybackPipeline.test.ts` | 模型与语音 | 3 | 3 | 0 | 0 | 0.2 s |
-| `src/__tests__/HeaderMenuPosition.test.ts` | 其他 | 6 | 6 | 0 | 0 | 0.1 s |
-| `src/__tests__/NoteCategory.test.ts` | 其他 | 8 | 8 | 0 | 0 | 0.2 s |
-| `src/__tests__/NoteListFlash.test.tsx` | 其他 | 10 | 10 | 0 | 0 | 11.2 s |
-| `src/__tests__/NoteListHeaderControls.test.tsx` | 其他 | 18 | 18 | 0 | 0 | 11.0 s |
-| `src/__tests__/useRoutedNoteChat.test.ts` | 其他 | 5 | 5 | 0 | 0 | 0.4 s |
+| `src/__tests__/TourClickDemo.test.tsx` | 界面与交互 | 7 | 7 | 0 | 0 | 1.1 s |
+| `src/__tests__/TourDragDemo.test.tsx` | 界面与交互 | 6 | 6 | 0 | 0 | 5.3 s |
+| `src/__tests__/TourHoverDemo.test.tsx` | 界面与交互 | 8 | 8 | 0 | 0 | 1.3 s |
+| `src/__tests__/TourHudStage.test.tsx` | 界面与交互 | 9 | 9 | 0 | 0 | 5.3 s |
+| `src/renderer/pages/ModelManager/components/ModelSelect.test.tsx` | 界面与交互 | 2 | 2 | 0 | 0 | 1.0 s |
+| `src/renderer/pages/ModelManager/useModelManager.test.ts` | 界面与交互 | 1 | 1 | 0 | 0 | 1.0 s |
+| `src/renderer/pages/Settings/components/HardwareSettingsPanel.test.tsx` | 界面与交互 | 2 | 2 | 0 | 0 | 2.0 s |
+| `src/__tests__/isTranscriptionFileBusy.test.ts` | 模型与语音 | 9 | 9 | 0 | 0 | 0.2 s |
+| `src/__tests__/TranscriptionAbort.test.ts` | 模型与语音 | 9 | 9 | 0 | 0 | 14.3 s |
+| `src/__tests__/useTranscriptionController.test.tsx` | 模型与语音 | 1 | 1 | 0 | 0 | 11.7 s |
+| `src/main/runtime/__tests__/RuntimeInstallSupport.test.ts` | 模型与语音 | 4 | 4 | 0 | 0 | 0.2 s |
+| `src/main/tts/__tests__/TTSEngine.test.ts` | 模型与语音 | 1 | 1 | 0 | 0 | 0.2 s |
+| `src/main/tts/__tests__/TTSInput.test.ts` | 模型与语音 | 2 | 2 | 0 | 0 | 0.3 s |
+| `src/main/tts/__tests__/TTSModelManager.test.ts` | 模型与语音 | 3 | 3 | 0 | 0 | 0.6 s |
+| `src/renderer/tts/TTSPlaybackPipeline.test.ts` | 模型与语音 | 3 | 3 | 0 | 0 | 0.3 s |
+| `src/__tests__/HeaderMenuPosition.test.ts` | 其他 | 6 | 6 | 0 | 0 | 0.2 s |
+| `src/__tests__/NoteCategory.test.ts` | 其他 | 8 | 8 | 0 | 0 | 0.3 s |
+| `src/__tests__/NoteListFlash.test.tsx` | 其他 | 10 | 10 | 0 | 0 | 12.4 s |
+| `src/__tests__/NoteListHeaderControls.test.tsx` | 其他 | 18 | 18 | 0 | 0 | 12.4 s |
+| `src/__tests__/useRoutedNoteChat.test.ts` | 其他 | 5 | 5 | 0 | 0 | 0.3 s |
 | `src/__tests__/CompletionDetector.test.ts` | 任务与日程 | 15 | 15 | 0 | 0 | 0.2 s |
-| `src/__tests__/DailyReminder.test.tsx` | 任务与日程 | 4 | 4 | 0 | 0 | 11.5 s |
+| `src/__tests__/DailyReminder.test.tsx` | 任务与日程 | 4 | 4 | 0 | 0 | 11.3 s |
 | `src/__tests__/DateContext.test.ts` | 任务与日程 | 19 | 19 | 0 | 0 | 0.2 s |
-| `src/__tests__/RecurrenceExpander.test.ts` | 任务与日程 | 12 | 12 | 0 | 0 | 0.1 s |
-| `src/__tests__/RelativeDateRewriter.test.ts` | 任务与日程 | 57 | 57 | 0 | 0 | 9.4 s |
-| `src/__tests__/summarizeTodosByNote.test.ts` | 任务与日程 | 9 | 9 | 0 | 0 | 1.5 s |
+| `src/__tests__/RecurrenceExpander.test.ts` | 任务与日程 | 12 | 12 | 0 | 0 | 0.2 s |
+| `src/__tests__/RelativeDateRewriter.test.ts` | 任务与日程 | 57 | 57 | 0 | 0 | 11.1 s |
+| `src/__tests__/summarizeTodosByNote.test.ts` | 任务与日程 | 9 | 9 | 0 | 0 | 1.3 s |
 | `src/__tests__/todoExtraction.eval.ts` | 任务与日程 | 54 | 0 | 0 | 54 | 0.0 s |
-| `src/__tests__/TodoExtractionService.privacy.test.ts` | 任务与日程 | 4 | 4 | 0 | 0 | 9.8 s |
-| `src/__tests__/TodoOwnershipFilter.test.ts` | 任务与日程 | 14 | 14 | 0 | 0 | 0.2 s |
-| `src/__tests__/WorkspaceNoteCard.test.tsx` | 数据与可靠性 | 8 | 8 | 0 | 0 | 4.0 s |
-| `src/i18n/locales/TrashLocales.test.ts` | 数据与可靠性 | 2 | 2 | 0 | 0 | 0.2 s |
-| `src/main/export/__tests__/NoteExport.test.ts` | 数据与可靠性 | 2 | 2 | 0 | 0 | 0.7 s |
+| `src/__tests__/TodoExtractionService.privacy.test.ts` | 任务与日程 | 4 | 4 | 0 | 0 | 9.9 s |
+| `src/__tests__/TodoOwnershipFilter.test.ts` | 任务与日程 | 14 | 14 | 0 | 0 | 0.3 s |
+| `src/__tests__/WorkspaceNoteCard.test.tsx` | 数据与可靠性 | 8 | 8 | 0 | 0 | 16.0 s |
+| `src/i18n/locales/TrashLocales.test.ts` | 数据与可靠性 | 2 | 2 | 0 | 0 | 2.0 s |
+| `src/main/audio/__tests__/RecordingStorageService.test.ts` | 数据与可靠性 | 2 | 2 | 0 | 0 | 5.4 s |
+| `src/main/export/__tests__/NoteExport.test.ts` | 数据与可靠性 | 2 | 2 | 0 | 0 | 1.0 s |
 | `src/main/export/__tests__/NoteExportRepository.electron.test.ts` | 数据与可靠性 | 1 | 0 | 0 | 1 | 0.0 s |
-| `src/main/ipc/__tests__/WorkspaceStructuredNoteGeneration.test.ts` | 数据与可靠性 | 2 | 2 | 0 | 0 | 0.1 s |
-| `src/main/startup/__tests__/UserDataMigration.test.ts` | 数据与可靠性 | 2 | 2 | 0 | 0 | 0.2 s |
+| `src/main/ipc/__tests__/WorkspaceStructuredNoteGeneration.test.ts` | 数据与可靠性 | 2 | 2 | 0 | 0 | 0.2 s |
+| `src/main/startup/__tests__/UserDataMigration.test.ts` | 数据与可靠性 | 2 | 2 | 0 | 0 | 0.3 s |
 | `src/main/trash/__tests__/TrashService.test.ts` | 数据与可靠性 | 18 | 0 | 0 | 18 | 0.0 s |
 | `src/main/workflow/__tests__/WorkflowService.test.ts` | 数据与可靠性 | 3 | 3 | 0 | 0 | 0.4 s |
-| `src/renderer/components/TrashCanButton.test.tsx` | 数据与可靠性 | 1 | 1 | 0 | 0 | 0.4 s |
-| `src/renderer/components/TrashUndoToast.test.tsx` | 数据与可靠性 | 1 | 1 | 0 | 0 | 0.4 s |
-| `src/renderer/pages/Settings/components/TrashSettingsPanel.test.tsx` | 数据与可靠性 | 5 | 5 | 0 | 0 | 12.2 s |
-| `src/renderer/pages/Workspace/WorkspacePage.test.tsx` | 数据与可靠性 | 12 | 12 | 0 | 0 | 13.3 s |
-| `src/__tests__/BackgroundRequests.test.tsx` | 主进程与系统 | 5 | 5 | 0 | 0 | 0.4 s |
-| `src/__tests__/BackgroundSettingsSchema.test.ts` | 主进程与系统 | 6 | 6 | 0 | 0 | 0.4 s |
-| `src/main/AI-module/__tests__/ActiveModelStateStore.test.ts` | 主进程与系统 | 5 | 5 | 0 | 0 | 0.2 s |
-| `scripts/benchmark/agent-eval-scoring.test.ts` | Agent 与检索 | 4 | 4 | 0 | 0 | 0.2 s |
-| `src/__tests__/AskAINotePreview.test.tsx` | Agent 与检索 | 1 | 1 | 0 | 0 | 0.7 s |
-| `src/__tests__/AskAIRecentsActive.test.tsx` | Agent 与检索 | 3 | 3 | 0 | 0 | 0.4 s |
-| `src/__tests__/NoteSearch.test.ts` | Agent 与检索 | 15 | 15 | 0 | 0 | 0.2 s |
-| `src/__tests__/useActiveAgentRun.test.ts` | Agent 与检索 | 5 | 5 | 0 | 0 | 0.3 s |
-| `src/main/agent/__tests__/AgentAllWorkspaceScope.test.ts` | Agent 与检索 | 8 | 8 | 0 | 0 | 0.2 s |
+| `src/renderer/components/TrashCanButton.test.tsx` | 数据与可靠性 | 1 | 1 | 0 | 0 | 0.5 s |
+| `src/renderer/components/TrashUndoToast.test.tsx` | 数据与可靠性 | 1 | 1 | 0 | 0 | 0.7 s |
+| `src/renderer/pages/Settings/components/TrashSettingsPanel.test.tsx` | 数据与可靠性 | 5 | 5 | 0 | 0 | 15.4 s |
+| `src/renderer/pages/Workspace/WorkspacePage.test.tsx` | 数据与可靠性 | 15 | 15 | 0 | 0 | 1.4 s |
+| `src/__tests__/AudioUploadProgress.test.ts` | 主进程与系统 | 1 | 1 | 0 | 0 | 0.2 s |
+| `src/__tests__/BackgroundRequests.test.tsx` | 主进程与系统 | 5 | 5 | 0 | 0 | 0.6 s |
+| `src/__tests__/BackgroundSettingsSchema.test.ts` | 主进程与系统 | 6 | 6 | 0 | 0 | 0.5 s |
+| `src/main/AI-module/__tests__/ActiveModelStateStore.test.ts` | 主进程与系统 | 5 | 5 | 0 | 0 | 0.3 s |
+| `scripts/benchmark/agent-eval-scoring.test.ts` | Agent 与检索 | 4 | 4 | 0 | 0 | 0.4 s |
+| `src/__tests__/AskAINotePreview.test.tsx` | Agent 与检索 | 1 | 1 | 0 | 0 | 1.0 s |
+| `src/__tests__/AskAIRecentsActive.test.tsx` | Agent 与检索 | 3 | 3 | 0 | 0 | 2.9 s |
+| `src/__tests__/NoteSearch.test.ts` | Agent 与检索 | 15 | 15 | 0 | 0 | 0.3 s |
+| `src/__tests__/useActiveAgentRun.test.ts` | Agent 与检索 | 5 | 5 | 0 | 0 | 0.4 s |
+| `src/main/agent/__tests__/AgentAllWorkspaceScope.test.ts` | Agent 与检索 | 8 | 8 | 0 | 0 | 0.4 s |
 | `src/main/agent/__tests__/AgentExtractTodosTool.test.ts` | Agent 与检索 | 5 | 5 | 0 | 0 | 0.2 s |
 | `src/main/agent/__tests__/AgentOrchestratorLoop.test.ts` | Agent 与检索 | 11 | 11 | 0 | 0 | 0.2 s |
-| `src/main/agent/__tests__/AgentPrompt.test.ts` | Agent 与检索 | 14 | 14 | 0 | 0 | 0.2 s |
+| `src/main/agent/__tests__/AgentPrompt.test.ts` | Agent 与检索 | 14 | 14 | 0 | 0 | 0.3 s |
 | `src/main/agent/__tests__/AgentSearchNotesTool.test.ts` | Agent 与检索 | 5 | 5 | 0 | 0 | 0.2 s |
-| `src/main/ask-ai/__tests__/AskAIRecordTurn.test.ts` | Agent 与检索 | 4 | 4 | 0 | 0 | 1.0 s |
+| `src/main/ask-ai/__tests__/AskAIRecordTurn.test.ts` | Agent 与检索 | 4 | 4 | 0 | 0 | 0.9 s |
 | `src/main/knowledge/__tests__/KnowledgeGenerationParsing.test.ts` | Agent 与检索 | 7 | 7 | 0 | 0 | 0.3 s |
-| `src/main/recommendation/__tests__/GpuMerge.test.ts` | Agent 与检索 | 6 | 6 | 0 | 0 | 0.1 s |
-| `src/main/semantic/__tests__/SemanticNoteSearch.test.ts` | Agent 与检索 | 2 | 1 | 0 | 1 | 0.3 s |
-| `src/main/workflow/__tests__/KnowledgeTemplateNormalizer.test.ts` | Agent 与检索 | 4 | 4 | 0 | 0 | 0.4 s |
+| `src/main/recommendation/__tests__/GpuMerge.test.ts` | Agent 与检索 | 6 | 6 | 0 | 0 | 0.2 s |
+| `src/main/semantic/__tests__/SemanticNoteSearch.test.ts` | Agent 与检索 | 2 | 1 | 0 | 1 | 0.5 s |
+| `src/main/workflow/__tests__/KnowledgeTemplateNormalizer.test.ts` | Agent 与检索 | 4 | 4 | 0 | 0 | 0.3 s |
 
 ## 全部用例
 
@@ -473,12 +478,13 @@
 
 ### 模型与语音
 
-**`src/__tests__/isTranscriptionFileBusy.test.ts`**（8 条）
+**`src/__tests__/isTranscriptionFileBusy.test.ts`**（9 条）
 
 - ✓ isTranscriptionFileBusy 空闲时不忙
 - ✓ isTranscriptionFileBusy 语言检测进行中算忙（BUG-002 复现方式 A）
 - ✓ isTranscriptionFileBusy 文件转写 job 处理中算忙（BUG-002 复现方式 B）
 - ✓ isTranscriptionFileBusy 请求提交中算忙
+- ✓ isTranscriptionFileBusy keeps file actions disabled while the selected audio is importing
 - ✓ isTranscriptionFileBusy 实时分段转写中算忙
 - ✓ isTranscriptionFileBusy job 已完成不再算忙
 - ✓ isTranscriptionFileBusy Structured Note 生成默认不影响普通转写忙碌状态
@@ -495,6 +501,10 @@
 - ✓ 放弃这一轮采集 没有在跑的任务时不去调取消
 - ✓ 放弃这一轮采集 取消失败也不抛出去：本地状态已经清干净了
 - ✓ 完整转写后的 Structured Note 只把完整 transcript 交给 Structured Note 生成器并保留同一份草稿
+
+**`src/__tests__/useTranscriptionController.test.tsx`**（1 条）
+
+- ✓ useTranscriptionController controller identity switches away from the previous transcript as soon as the controller changes
 
 **`src/main/runtime/__tests__/RuntimeInstallSupport.test.ts`**（4 条）
 
@@ -541,6 +551,11 @@
 
 - ✓ Trash interface translations keeps the Trash key set complete in both locales
 - ✓ Trash interface translations translates shared confirmation buttons instead of using fallbacks
+
+**`src/main/audio/__tests__/RecordingStorageService.test.ts`**（2 条）
+
+- ✓ RecordingStorageService audio import streams a selected file into managed storage and reports real progress
+- ✓ RecordingStorageService audio import imports an m4a file from a Windows-style Unicode folder name
 
 **`src/main/export/__tests__/NoteExport.test.ts`**（2 条）
 
@@ -604,10 +619,13 @@
 - ✓ TrashSettingsPanel shows templates in the same Trash and warns about saved outputs
 - ✓ TrashSettingsPanel carries the onboarding anchor the tour points at
 
-**`src/renderer/pages/Workspace/WorkspacePage.test.tsx`**（12 条）
+**`src/renderer/pages/Workspace/WorkspacePage.test.tsx`**（15 条）
 
 - ✓ WorkspacePage renders an empty workspace using the detail hook note contract
 - ✓ WorkspacePage renders existing notes using the detail hook note contract
+- ✓ WorkspacePage 一键全选当前可见笔记，同时保留其他筛选结果中的选择
+- ✓ WorkspacePage 当前可见笔记已全选时只取消它们，不清除筛选外的选择
+- ✓ WorkspacePage 部分可见笔记被选择时向辅助技术报告混合状态
 - ✓ WorkspacePage 笔记问答按钮和批量删除同在顶栏工具条里，且都带计数
 - ✓ WorkspacePage 点笔记问答就带着选中的笔记跳到对话工作台
 - ✓ WorkspacePage 批量删除按钮只在勾选之后出现
@@ -783,17 +801,25 @@
 - ✓ NoteInsightsPanel scenario templates shows built-in and custom templates together and sends the custom identity
 - ✓ NoteInsightsPanel scenario templates opens template management as a dialog on the current page
 
-**`src/__tests__/OnboardingSteps.test.ts`**（11 条）
+**`src/__tests__/OnboardingRoute.test.ts`**（4 条）
+
+- ✓ 工作空间引导路由 普通步骤直接使用声明的路由，不读取工作空间
+- ✓ 工作空间引导路由 有工作空间时打开最近的一个详情页
+- ✓ 工作空间引导路由 空工作空间 时返回 null，让引导安全略过详情
+- ✓ 工作空间引导路由 读取失败 时返回 null，让引导安全略过详情
+
+**`src/__tests__/OnboardingSteps.test.ts`**（12 条）
 
 - ✓ 引导步骤与文案 每一步的标题、描述、提示都有中英文
 - ✓ 引导步骤与文案 id 不重复——它同时是 React key 和进度定位
 - ✓ 引导步骤与文案 每一步都写了路由，往回退时才能把页面也带回去
 - ✓ 引导步骤与文案 不打光的步骤必须居中，否则卡片会飘在左上角
-- ✓ 引导步骤与文案 新加的这几块都讲到了
+- ✓ 引导步骤与文案 把 27 个逐控件步骤合并成 15 个主题步骤
 - ✓ 引导步骤与文案 要摆实物浮窗的那几步，聚光灯得打在浮窗上
 - ✓ 引导步骤与文案 示例待办的文案中英文都在——库是空的新用户看到的就是它
 - ✓ 引导步骤与文案 设置页里指到面板的那几步，必须带上 ?section= 把那一栏打开
-- ✓ 引导步骤与文案 后台那两步指的不是同一块——一块讲关窗行为，一块讲快捷键
+- ✓ 引导步骤与文案 后台常驻和快捷键合并指向同一个设置内容区
+- ✓ 引导步骤与文案 工作空间首页总会讲，详情步骤只在有工作空间时进入
 - ✓ 引导步骤与文案 要跑真实联动的那一步，卡片得钉在角上
 - ✓ 引导步骤与文案 同一页的步骤是连着走的，不来回跳页
 
@@ -804,8 +830,8 @@
 
 **`src/__tests__/SettingsTourAnchors.test.tsx`**（2 条）
 
-- ✓ 设置面板上的引导锚点 后台面板上下两块，各自认得出自己那一步
-- ✓ 设置面板上的引导锚点 智能助理面板认得出自己那一步
+- ✓ 设置面板上的引导锚点 后台面板上下两块被同一个合并步骤覆盖
+- ✓ 设置面板上的引导锚点 设置总览一步同时覆盖导航和智能助理面板
 
 **`src/__tests__/ShortcutRecorder.test.tsx`**（7 条）
 
@@ -817,7 +843,7 @@
 - ✓ 快捷键录制 没绑时显示「未设置」，也不显示解绑按钮
 - ✓ 快捷键录制 被占用时把状态喊出来给读屏软件
 
-**`src/__tests__/TourClickDemo.test.tsx`**（8 条）
+**`src/__tests__/TourClickDemo.test.tsx`**（7 条）
 
 - ✓ 引导里的双击演示 落点和容器都在，才画出指针、水波和详情面板
 - ✓ 引导里的双击演示 指针从旁边摸过来，不是凭空贴在卡片上
@@ -826,7 +852,6 @@
 - ✓ 引导里的双击演示 容器不在页面上就整个不画
 - ✓ 引导里的双击演示 落点找不到就退回这一步打光的那个元素
 - ✓ 引导里的双击演示 演示指的那个东西，双击它真的会打开详情
-- ✓ 引导里的双击演示 那一步确实配了双击演示
 
 **`src/__tests__/TourDragDemo.test.tsx`**（6 条）
 
@@ -869,7 +894,16 @@
 
 - ✓ useModelManager concurrent downloads runs different models concurrently, deduplicates the same model, and tracks progress by id
 
+**`src/renderer/pages/Settings/components/HardwareSettingsPanel.test.tsx`**（2 条）
+
+- ✓ HardwareSettingsPanel shows hardware-matched STT and LLM recommendations
+- ✓ HardwareSettingsPanel invalidates the hardware cache before recalculating recommendations
+
 ### 主进程与系统
+
+**`src/__tests__/AudioUploadProgress.test.ts`**（1 条）
+
+- ✓ audio upload progress publishes byte progress, then transcribes the managed copy
 
 **`src/__tests__/BackgroundRequests.test.tsx`**（5 条）
 

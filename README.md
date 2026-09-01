@@ -55,41 +55,7 @@ SpeakSpace Local is an Electron desktop application that brings recording, audio
 
 ## System architecture
 
-```mermaid
-flowchart LR
-  User["User"] --> Renderer
-
-  subgraph Window["Electron BrowserWindow"]
-    Renderer["React Renderer<br/>Pages, state, i18n, responsive UI"]
-    Preload["Preload / contextBridge<br/>Typed window.electron API"]
-    Renderer -->|"Controlled API calls"| Preload
-  end
-
-  subgraph Main["Electron Main Process"]
-    IPC["18 IPC capability modules"]
-    Services["Domain services<br/>Workspace / Knowledge / Agent / Export"]
-    Repositories["10 repositories"]
-    Runtime["Local models and runtimes<br/>STT / Ollama / TTS / FFmpeg"]
-    Background["Tray, shortcuts, HUDs, single instance"]
-    Preload -->|"ipcRenderer.invoke"| IPC
-    IPC --> Services
-    Services --> Repositories
-    Services --> Runtime
-    Background -.-> Renderer
-  end
-
-  subgraph Local["Local userData"]
-    SQLite[("speakspace.db")]
-    Recordings["blobs/recordings"]
-    Models["models / runtimes / cache / output"]
-    Settings["app-settings.json / model-state"]
-  end
-
-  Repositories --> SQLite
-  Services --> Recordings
-  Runtime --> Models
-  Services --> Settings
-```
+![SpeakSpace Local system architecture](docs/readme/system-architecture.png)
 
 ### Process boundaries
 
@@ -107,31 +73,7 @@ Direct Renderer imports from the main process are prohibited and enforced throug
 
 After transcription completes, the application does not generate a separate summary and then repeat the same work for a structured note. It performs one structured extraction. The review dialog displays the draft's `summary`, and saving binds that draft to the real `noteId` before persisting it.
 
-```mermaid
-flowchart LR
-  Source{"Audio source"} -->|Microphone| Capture["MediaRecorder"]
-  Source -->|Local audio file| Import["File picker and format validation"]
-  Capture --> STT
-  Import --> STT
-
-  STT["Whisper / Parakeet<br/>FFmpeg preprocessing when required"] --> Transcript["Transcript"]
-  Transcript --> Draft["Local LLM creates<br/>Structured Note Draft"]
-  Draft --> Review["Review dialog<br/>draft.summary + transcript"]
-
-  Review -->|"Confirm and save"| Save["Workspace:saveTranscriptionNote"]
-  Capture -->|"Persist recording"| Audio["blobs/recordings"]
-  Import -->|"Import recording"| Audio
-
-  Save --> Note[("notes")]
-  Save --> Structured[("structured_notes")]
-  Save -.->|"Background extraction"| Todo[("todos")]
-  Note --> Search["Full-text / semantic index"]
-  Structured --> Search
-
-  Note --> Scenario["Select built-in or custom template"]
-  Scenario --> ScenarioOutput[("scenario_knowledge")]
-  ScenarioOutput --> Search
-```
+![Recording-to-knowledge pipeline](docs/readme/recording-to-knowledge.png)
 
 Key invariants:
 
@@ -164,93 +106,7 @@ Key invariants:
 
 ### SQLite relationship model
 
-```mermaid
-erDiagram
-  WORKSPACES ||--o{ NOTES : contains
-  NOTES ||--o{ SUBNOTES : has
-  NOTES ||--o| STRUCTURED_NOTES : has
-  NOTES ||--o| SCENARIO_KNOWLEDGE : has
-  NOTES ||--o{ TODOS : produces
-  NOTES ||--o{ NOTE_EMBEDDINGS : indexes
-  NOTES ||--o{ KNOWLEDGE_OUTPUTS : generates
-  KNOWLEDGE_TEMPLATES ||--o{ KNOWLEDGE_OUTPUTS : defines
-  AI_CONVERSATIONS ||--o{ AI_MESSAGES : contains
-  AI_CONVERSATIONS ||--o{ CONVERSATION_CONTEXTS : links
-  NOTES ||--o{ CONVERSATION_CONTEXTS : provides
-
-  WORKSPACES {
-    INTEGER id PK
-    TEXT name
-    TEXT last_opened_at
-    TEXT trashed_at
-  }
-  NOTES {
-    INTEGER id PK
-    INTEGER workspace_id FK
-    TEXT transcript
-    TEXT audio_relative_path
-    TEXT type_category
-    TEXT trashed_at
-  }
-  STRUCTURED_NOTES {
-    INTEGER note_id PK,FK
-    TEXT payload
-    TEXT model_id
-  }
-  SCENARIO_KNOWLEDGE {
-    INTEGER note_id PK,FK
-    TEXT scenario
-    TEXT payload
-    TEXT model_id
-  }
-  KNOWLEDGE_TEMPLATES {
-    INTEGER id PK
-    TEXT prompt
-    TEXT scenario_definition
-    TEXT normalized_at
-    TEXT trashed_at
-  }
-  KNOWLEDGE_OUTPUTS {
-    INTEGER id PK
-    INTEGER note_id FK
-    INTEGER template_id FK
-    TEXT content
-  }
-  NOTE_EMBEDDINGS {
-    INTEGER note_id PK,FK
-    TEXT model_name PK
-    TEXT embedding
-    TEXT content_hash
-  }
-  TODOS {
-    INTEGER id PK
-    INTEGER note_id FK
-    TEXT title
-    TEXT date_string
-    INTEGER is_completed
-  }
-  AI_CONVERSATIONS {
-    INTEGER id PK
-    TEXT name
-    TEXT trashed_at
-  }
-  AI_MESSAGES {
-    INTEGER id PK
-    INTEGER conversation_id FK
-    TEXT role
-    TEXT content
-  }
-  CONVERSATION_CONTEXTS {
-    INTEGER conversation_id PK,FK
-    INTEGER note_id PK,FK
-  }
-  SUBNOTES {
-    INTEGER id PK
-    INTEGER note_id FK
-    TEXT content_type
-    TEXT content
-  }
-```
+![SQLite relationship model](docs/readme/data-model.png)
 
 Workspaces, notes, AI conversations, and custom templates use `trashed_at` for soft deletion. Physical deletion and cascading cleanup occur only through “Delete permanently” inside Trash.
 
@@ -274,42 +130,7 @@ Semantic search caches vectors in `note_embeddings` and uses `content_hash` to d
 
 Ask AI is designed for question answering over a fixed scope. Agent mode lets the local model call tools within a bounded loop. When users link notes explicitly, those notes are loaded deterministically before the first inference step, and `search_notes` is removed from the available tool set so the model cannot ignore the requested scope.
 
-```mermaid
-sequenceDiagram
-  actor User
-  participant UI as Agent UI
-  participant Agent as AgentOrchestrator
-  participant DB as SQLite / Note Tools
-  participant LLM as Local Ollama
-  participant History as AI Conversation
-
-  User->>UI: Question + workspaceId + linkedNoteIds
-  UI->>Agent: IPC request
-  Agent->>Agent: Validate, limit, deduplicate, retain recent history
-
-  alt Explicitly linked notes
-    Agent->>DB: Parallel read_note (up to 8 notes)
-    DB-->>Agent: Deterministic context, up to 8000 characters
-    Note over Agent: search_notes is removed
-  else No linked notes
-    Note over Agent: search_notes may inspect a workspace or the full library
-  end
-
-  loop At most 6 steps
-    Agent->>LLM: System prompt + run state + collected evidence
-    alt Model requests a tool
-      LLM-->>Agent: search_notes / read_note / extract_todos
-      Agent->>DB: Execute a registered tool
-      DB-->>Agent: Tool result
-    else Model returns an answer
-      LLM-->>Agent: final
-    end
-  end
-
-  Note over Agent: Duplicate calls are short-circuited and tools are removed on the final step
-  Agent->>History: Persist the turn and linked sources
-  Agent-->>UI: Step timeline + final answer
-```
+![Bounded Agent execution workflow](docs/readme/agent-workflow.png)
 
 Code-level Agent bounds:
 
@@ -332,43 +153,58 @@ Code-level Agent bounds:
 | TTS | Kokoro / MeloTTS / MOSS-TTS-Nano | Main-process inference with pipelined playback in the Renderer |
 | Runtime management | Application-managed or system-installed | Main process is authoritative for readiness; Renderer does not infer file state |
 
-### TTS benchmark snapshot
+## Evaluation evidence
 
-The following medians were measured on 2026-08-13 on an Apple M4 using CPU inference with three repetitions per text. An RTF below 1 means synthesis is faster than real-time playback.
+The evaluation suite covers all four local-AI subsystems—TTS, STT, LLM, and embedding-based retrieval—plus bounded Agent behavior and deterministic regression tests. Raw JSON, human-recorded STT audio, generated reports, and chart sources are committed under [`docs/testing`](docs/testing/README.md).
 
-| Model | Load time | Peak RSS | Mean median RTF | Result |
-| --- | ---: | ---: | ---: | --- |
-| Kokoro | 1.260 s | 779.8 MiB | 0.978 | Real-time for Chinese/English; slower for mixed text |
-| MeloTTS | 1.344 s | 663.5 MiB | 0.652 | Real-time for all three text categories |
-| MOSS-TTS-Nano | 4.024 s | 1,248.2 MiB | 0.529 | Fastest, with the highest load time and memory use |
+| Area | Current evidence | Important boundary |
+| --- | --- | --- |
+| TTS | 3 engines × 36 Chinese/English/mixed texts × 3 repetitions; RTF, peak memory, length scaling, and ASR back-transcription | CER is a proxy, not a human MOS listening study |
+| STT | 4 Whisper sizes over 56 human recordings; CER, content recall, noise slice, and RTF | One Chinese-native speaker; not a population estimate |
+| LLM / tasks | 5 local models on a 54-case task corpus with a 22/32 development-holdout split | Results cover the tested prompts and 1.5B–3.8B models only |
+| Embedding retrieval | Production keyword + BGE-M3 vector search + RRF, evaluated independently of the LLM | One embedding model and 24 labelled retrieval tasks |
+| Agent | 80 fixed notes and 90 tasks with a 45/45 development-holdout split; strict tool and scope scoring | The Agent remains below the product-readiness target |
+| Regression | Machine-readable Jest inventory grouped by feature area | Regression tests do not measure model quality |
 
-See the [full TTS benchmark](docs/testing/tts-model-benchmark-2026-08-13.md) for the method, per-text results, CER proxy measurements, and platform limitations. Runtime compatibility with Windows is not equivalent to a Windows hardware benchmark.
+<table>
+  <tr>
+    <td width="50%"><img src="docs/testing/charts/panel-tts-speed.svg" alt="TTS speed evaluation panel" /></td>
+    <td width="50%"><img src="docs/testing/charts/panel-stt.svg" alt="STT human-recording evaluation panel" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/testing/charts/llm-accuracy-vs-speed.svg" alt="LLM speed and accuracy trade-off" /></td>
+    <td width="50%"><img src="docs/testing/charts/panel-retrieval.svg" alt="Embedding-based hybrid retrieval evaluation panel" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/testing/charts/panel-agent.svg" alt="Agent end-to-end evaluation panel" /></td>
+    <td width="50%"><img src="docs/testing/charts/jest-by-area.svg" alt="Jest regression tests by feature area" /></td>
+  </tr>
+</table>
+
+The central methodological rule is simple: choose prompts and harnesses on the development split, then report acceptance results on a frozen holdout. Hardware-sensitive measurements—latency, throughput, memory, and GPU offload—are collected separately through the one-click cross-machine benchmark. See the [coverage and limitations ledger](docs/testing/test-coverage-gaps.md) before quoting any number.
 
 ## Engineering snapshot
 
-Source metrics for the 2026-08-23 working tree:
+Evaluation and test inventory generated on 2026-09-01:
 
 | Metric | Count |
 | --- | ---: |
-| TypeScript / TSX / JavaScript / JSX source files | 388 |
-| Main-process files | 190 |
-| Renderer files | 135 |
-| Shared files | 21 |
-| Test files | 67 |
-| IPC capability modules | 18 |
-| SQLite tables | 12 |
-| Concrete repositories | 10 |
+| Generated evaluation reports | 8 |
+| Reproducible SVG charts | 46 |
+| Jest suites | 76 |
+| Jest cases | 634 |
+| Fixed Agent corpus | 80 notes / 90 tasks |
+| Archived machine profiles | 1 (more runs pending) |
 
-Latest complete quality gate:
+Published automated-test inventory and the latest merge verification:
 
 | Check | Result |
 | --- | --- |
 | TypeScript | Passed |
-| ESLint | 0 errors, 29 existing warnings |
 | Webpack main / renderer build | Passed |
-| Jest | 64 suites passed, 3 skipped; 535 tests passed, 42 skipped |
-| Production dependency audit | 0 vulnerabilities |
-| Windows NSIS installer | Generated and SHA-256 verified; not yet code-signed |
+| Jest | 73 suites passed, 3 skipped; 560 tests passed, 74 skipped |
+| Evaluation charts | All 46 regenerated from committed result data |
+| Detailed inventory | [Generated suite and case listing](docs/testing/jest-test-inventory.md) |
 
 These values are a verification snapshot rather than dynamic badges and should be updated when the implementation changes.
 
@@ -416,9 +252,15 @@ npm start
 | `npm test` | Run Jest |
 | `npm run test:trash:electron` | Validate Trash database behavior with the Electron ABI |
 | `npm run smoke:tts` | Run the TTS runtime smoke test |
+| `npm run bench -- --machine <label>` | Run and archive all hardware-sensitive benchmarks for one machine |
+| `npm run bench:aggregate` | Aggregate collected machine snapshots |
+| `npm run bench:charts` | Regenerate the committed SVG evaluation charts |
+| `npm run bench:report` | Regenerate the Markdown evaluation reports |
 | `npm run check:audit` | Audit production dependencies only |
 | `npm run package` | Create an internal build for the current platform |
 | `npm run package:release` | Create a release-named build with signing gates |
+
+For non-developers collecting hardware results, double-click `一键跨机硬件测速.cmd` on Windows or `一键跨机硬件测速-Mac.command` on macOS. The launcher checks dependencies, offers to download required runtimes/models, and stores each machine under its own result directory.
 
 ## Packaging and release
 
@@ -441,12 +283,16 @@ npm run package
 See [docs/README.md](docs/README.md) for the complete index.
 
 - [Project structure and process boundaries](docs/project-structure.md)
-- [Task extraction test cases](docs/testing/task-extraction-cases.md)
-- [TTS model benchmark](docs/testing/tts-model-benchmark-2026-08-13.md)
-- [TTS platform build notes](docs/testing/tts-platform-builds.md)
-- [Windows TTS manual acceptance](docs/testing/tts-windows-manual.md)
+- [Testing and evaluation overview](docs/testing/README.md)
+- [Datasets and development/holdout splits](docs/testing/datasets/README.md)
+- [TTS model benchmark](docs/testing/tts-model-benchmark-windows.md)
+- [Human-recorded STT evaluation](docs/testing/stt-human-eval.md)
+- [Local LLM model sweep](docs/testing/llm-model-sweep.md)
+- [Embedding-based retrieval evaluation](docs/testing/retrieval-eval.md)
+- [Agent end-to-end evaluation](docs/testing/agent-end-to-end-eval.md)
+- [Cross-machine one-click benchmark guide](docs/testing/multi-machine-benchmark-guide.md)
+- [Manual platform acceptance](docs/testing/manual-acceptance.md)
 - [Detailed development logs](docs/changelog/)
-- [Historical migration archive](docs/archive/legacy-merge-inventory.md)
 - [Contributor Code of Conduct](.github/CODE_OF_CONDUCT.md)
 
 ## Electron React Boilerplate

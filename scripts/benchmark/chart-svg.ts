@@ -617,11 +617,16 @@ export function scatterChart(
       `<line x1="${toX(0)}" y1="${toY(0)}" x2="${toX(limit)}" y2="${toY(limit)}" stroke="#D64545" stroke-width="1.4" stroke-dasharray="5 4"/>`,
     );
     parts.push(
-      text(toX(limit) - 6, toY(limit) - 8, '实时线（合成耗时 = 音频时长）', {
-        size: 11,
-        fill: '#D64545',
-        anchor: 'end',
-      }),
+      text(
+        toX(limit) - 6,
+        toY(limit) - 8,
+        'Real-time line (synthesis time = audio duration)',
+        {
+          size: 11,
+          fill: '#D64545',
+          anchor: 'end',
+        },
+      ),
     );
   }
 
@@ -677,7 +682,14 @@ export function horizontalBarChart(
   const top = (series.length > 1 ? 92 : 74) + legendShift;
   const bottom = caption ? 52 : 28;
   const height = options.height ?? top + categories.length * rowHeight + bottom;
-  const left = 132;
+  const labelWidth = Math.max(
+    0,
+    ...categories.map((category) => textWidth(category, 11.5)),
+  );
+  const left = Math.min(
+    Math.max(132, Math.ceil(labelWidth + 24)),
+    Math.floor(width * 0.36),
+  );
   const right = 92;
   const plotWidth = width - left - right;
 
@@ -771,7 +783,14 @@ export function stackedBarChart(
       18;
   const bottom = caption ? 52 : 28;
   const height = options.height ?? top + categories.length * rowHeight + bottom;
-  const left = 132;
+  const labelWidth = Math.max(
+    0,
+    ...categories.map((category) => textWidth(category, 11.5)),
+  );
+  const left = Math.min(
+    Math.max(132, Math.ceil(labelWidth + 24)),
+    Math.floor(width * 0.36),
+  );
   const right = 92;
   const plotWidth = width - left - right;
   const totals = categories.map((_, index) =>

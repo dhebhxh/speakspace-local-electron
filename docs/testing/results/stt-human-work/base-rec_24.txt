@@ -1,0 +1,1 @@
+SpeakSpace local可以在本地運行Test2Speech 並保護用戶的PrivateNose。

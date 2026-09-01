@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" viewBox="0 0 860 420" role="img">
+<rect width="860" height="420" fill="#FFFFFF" rx="8"/>
+<rect x="0.5" y="0.5" width="859" height="419" fill="none" stroke="#E3E8EF" rx="8"/>
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">TTS 合成速度：分内容类别 P95 RTF</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">12th Gen Intel(R) Core(TM) i9-12900H · 3 次重复 · CPU 4 线程</text>
+<rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Kokoro Multi-Lang v1.0</text><rect x="207.2" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="223.19999999999993" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">MeloTTS Chinese-English</text><rect x="397.0" y="63" width="11" height="11" rx="2" fill="#B5446E"/><text x="412.9999999999999" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">MOSS-TTS-Nano 100M</text>
+<line x1="64" y1="346" x2="836" y2="346" stroke="#E3E8EF"/>
+<text x="56" y="350" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">0.00</text>
+<line x1="64" y1="295.2" x2="836" y2="295.2" stroke="#E3E8EF"/>
+<text x="56" y="299.2" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">0.25</text>
+<line x1="64" y1="244.39999999999998" x2="836" y2="244.39999999999998" stroke="#E3E8EF"/>
+<text x="56" y="248.39999999999998" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">0.50</text>
+<line x1="64" y1="193.6" x2="836" y2="193.6" stroke="#E3E8EF"/>
+<text x="56" y="197.6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">0.75</text>
+<line x1="64" y1="142.79999999999998" x2="836" y2="142.79999999999998" stroke="#E3E8EF"/>
+<text x="56" y="146.79999999999998" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">1.00</text>
+<line x1="64" y1="92" x2="836" y2="92" stroke="#E3E8EF"/>
+<text x="56" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">1.25</text>
+<text x="18" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 219)">P95 RTF</text>
+<rect x="77.5" y="148.1" width="20.2" height="197.9" fill="#2E86AB" rx="2"/>
+<rect x="100.7" y="214.7" width="20.2" height="131.3" fill="#E8871A" rx="2"/>
+<rect x="123.8" y="202.9" width="20.2" height="143.1" fill="#B5446E" rx="2"/>
+<text x="112.25" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">basic</text>
+<rect x="174.0" y="144.5" width="20.2" height="201.5" fill="#2E86AB" rx="2"/>
+<rect x="197.2" y="216.2" width="20.2" height="129.8" fill="#E8871A" rx="2"/>
+<rect x="220.3" y="211.9" width="20.2" height="134.1" fill="#B5446E" rx="2"/>
+<text x="208.75" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">numeric</text>
+<rect x="270.5" y="159.9" width="20.2" height="186.1" fill="#2E86AB" rx="2"/>
+<rect x="293.7" y="212.4" width="20.2" height="133.6" fill="#E8871A" rx="2"/>
+<rect x="316.8" y="215.7" width="20.2" height="130.3" fill="#B5446E" rx="2"/>
+<text x="305.25" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">datetime</text>
+<rect x="367.0" y="151.7" width="20.2" height="194.3" fill="#2E86AB" rx="2"/>
+<rect x="390.2" y="217.3" width="20.2" height="128.7" fill="#E8871A" rx="2"/>
+<rect x="413.3" y="236.7" width="20.2" height="109.3" fill="#B5446E" rx="2"/>
+<text x="401.75" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">proper-noun</text>
+<rect x="463.5" y="133.6" width="20.2" height="212.4" fill="#2E86AB" rx="2"/>
+<rect x="486.7" y="217.5" width="20.2" height="128.5" fill="#E8871A" rx="2"/>
+<rect x="509.8" y="228.1" width="20.2" height="117.9" fill="#B5446E" rx="2"/>
+<text x="498.25" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">acronym</text>
+<rect x="560.0" y="139.1" width="20.2" height="206.9" fill="#2E86AB" rx="2"/>
+<rect x="583.2" y="215.3" width="20.2" height="130.7" fill="#E8871A" rx="2"/>
+<rect x="606.3" y="216.9" width="20.2" height="129.1" fill="#B5446E" rx="2"/>
+<text x="594.75" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">technical</text>
+<rect x="656.5" y="150.7" width="20.2" height="195.3" fill="#2E86AB" rx="2"/>
+<rect x="679.7" y="206.8" width="20.2" height="139.2" fill="#E8871A" rx="2"/>
+<rect x="702.8" y="199.4" width="20.2" height="146.6" fill="#B5446E" rx="2"/>
+<text x="691.25" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">punctuation</text>
+<rect x="753.0" y="154.8" width="20.2" height="191.2" fill="#2E86AB" rx="2"/>
+<rect x="776.2" y="214.0" width="20.2" height="132.0" fill="#E8871A" rx="2"/>
+<rect x="799.3" y="187.3" width="20.2" height="158.7" fill="#B5446E" rx="2"/>
+<text x="787.75" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">long</text>
+<line x1="64" y1="142.79999999999998" x2="836" y2="142.79999999999998" stroke="#D64545" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="832" y="136.79999999999998" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#D64545" text-anchor="end" font-weight="400">RTF = 1</text>
+<line x1="64" y1="346" x2="836" y2="346" stroke="#6B7280"/>
+<text x="24" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">取 P95 而不是中位数，是为了看最坏情况：Kokoro 在中英混合类文本上会越过实时线。</text>
+</svg>

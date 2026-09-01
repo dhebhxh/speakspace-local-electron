@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" viewBox="0 0 860 420" role="img">
+<rect width="860" height="420" fill="#FFFFFF" rx="8"/>
+<rect x="0.5" y="0.5" width="859" height="419" fill="none" stroke="#E3E8EF" rx="8"/>
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">Agent 首次真实检索的排名质量（n=24，样本量很小）</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">qwen2.5:3b-instruct · bge-m3 · 1 轮 · 90 个任务 · 其中 24 个任务需要全库检索</text>
+<rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">首次 search_notes 返回结果</text>
+<line x1="64" y1="346" x2="836" y2="346" stroke="#E3E8EF"/>
+<text x="56" y="350" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">0%</text>
+<line x1="64" y1="295.2" x2="836" y2="295.2" stroke="#E3E8EF"/>
+<text x="56" y="299.2" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">10%</text>
+<line x1="64" y1="244.39999999999998" x2="836" y2="244.39999999999998" stroke="#E3E8EF"/>
+<text x="56" y="248.39999999999998" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">20%</text>
+<line x1="64" y1="193.6" x2="836" y2="193.6" stroke="#E3E8EF"/>
+<text x="56" y="197.6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">30%</text>
+<line x1="64" y1="142.79999999999998" x2="836" y2="142.79999999999998" stroke="#E3E8EF"/>
+<text x="56" y="146.79999999999998" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">40%</text>
+<line x1="64" y1="92" x2="836" y2="92" stroke="#E3E8EF"/>
+<text x="56" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">50%</text>
+<text x="18" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 219)">比例</text>
+<rect x="111.3" y="134.3" width="31.0" height="211.7" fill="#2E86AB" rx="2"/>
+<text x="126.83333333333331" y="129.33333333333331" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">42%</text>
+<text x="128.33333333333331" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">Recall@1</text>
+<rect x="240.0" y="134.3" width="31.0" height="211.7" fill="#2E86AB" rx="2"/>
+<text x="255.5" y="129.33333333333331" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">42%</text>
+<text x="257" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">Recall@3</text>
+<rect x="368.7" y="134.3" width="31.0" height="211.7" fill="#2E86AB" rx="2"/>
+<text x="384.16666666666663" y="129.33333333333331" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">42%</text>
+<text x="385.66666666666663" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">Recall@5</text>
+<rect x="497.3" y="134.3" width="31.0" height="211.7" fill="#2E86AB" rx="2"/>
+<text x="512.8333333333333" y="129.33333333333331" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">42%</text>
+<text x="514.3333333333333" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">Recall@8</text>
+<rect x="626.0" y="134.3" width="31.0" height="211.7" fill="#2E86AB" rx="2"/>
+<text x="641.5" y="129.33333333333331" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">42%</text>
+<text x="643" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">MRR</text>
+<rect x="754.7" y="134.3" width="31.0" height="211.7" fill="#2E86AB" rx="2"/>
+<text x="770.1666666666666" y="129.33333333333331" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">42%</text>
+<text x="771.6666666666666" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">nDCG@8</text>
+<line x1="64" y1="346" x2="836" y2="346" stroke="#6B7280"/>
+<text x="24" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">只统计要求全库检索的任务，关联笔记直接预载不计入。单个任务翻面即可改变约 4.2 个百分点，仅作方向性观察。</text>
+</svg>

@@ -9,10 +9,10 @@
 | 文档 | 用途 |
 | --- | --- |
 | [项目结构](./project-structure.md) | 目录职责、进程边界、路径别名和代码放置规则 |
-| [任务提取用例](./testing/task-extraction-cases.md) | 日期、所有权和任务抽取的验收语料 |
-| [TTS 模型基准](./testing/tts-model-benchmark-2026-08-13.md) | Kokoro、MeloTTS、MOSS 的性能、内存与可懂度数据 |
-| [TTS 平台构建](./testing/tts-platform-builds.md) | 原生 TTS 依赖的跨平台构建边界 |
-| [Windows TTS 手工验收](./testing/tts-windows-manual.md) | Windows 安装包上的 TTS 验收步骤 |
+| [测试与评测总览](./testing/README.md) | 所有基准、评测与报告的入口 |
+| [测试集总览](./testing/datasets/README.md) | 每份测试集是什么、多少条、开发集/保留集怎么拆 |
+| [跨机器基准](./testing/multi-machine-benchmark-guide.md) | 在新机器上一键跑硬件基准 |
+| [TTS 平台构建与手工验收](./testing/manual-acceptance.md) | 跨平台构建边界与安装包验收步骤 |
 
 ## 历史与追踪
 

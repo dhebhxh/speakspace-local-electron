@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="316" viewBox="0 0 860 316" role="img">
+<rect width="860" height="316" fill="#FFFFFF" rx="8"/>
+<rect x="0.5" y="0.5" width="859" height="315" fill="none" stroke="#E3E8EF" rx="8"/>
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">待办提取：失败原因构成（第 1 轮，全部 54 条用例）</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">按问题类型统计出现次数，同一条用例可能命中多个类型</text>
+<text x="122" y="91" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="end" font-weight="400">彻底漏检</text>
+<rect x="132" y="78" width="636.0" height="18" fill="#2E86AB" rx="2"/>
+<text x="776" y="91" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">9 次</text>
+<text x="122" y="129" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="end" font-weight="400">合并进其他任务</text>
+<rect x="132" y="116" width="212.0" height="18" fill="#2E86AB" rx="2"/>
+<text x="352" y="129" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">3 次</text>
+<text x="122" y="167" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="end" font-weight="400">日期错误</text>
+<rect x="132" y="154" width="353.3" height="18" fill="#2E86AB" rx="2"/>
+<text x="493.33333333333337" y="167" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">5 次</text>
+<text x="122" y="205" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="end" font-weight="400">多抽（假阳性）</text>
+<rect x="132" y="192" width="212.0" height="18" fill="#2E86AB" rx="2"/>
+<text x="352" y="205" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">3 次</text>
+<text x="122" y="243" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="end" font-weight="400">重复类型错误</text>
+<rect x="132" y="230" width="70.7" height="18" fill="#2E86AB" rx="2"/>
+<text x="210.66666666666666" y="243" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">1 次</text>
+<text x="24" y="302" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">「合并」指模型把并列分句压成一条任务：用户仍能看到这件事，但没有独立条目和独立日期，产品影响与彻底漏掉不同。</text>
+</svg>

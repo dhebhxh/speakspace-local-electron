@@ -1,0 +1,3 @@
+我们用RF融合KeyWord Search
+和Shermantic Search
+Inbiting模型跑在CPU上不依赖GPU

@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "measured_at": "2026-08-31T04:11:43.725Z",
+  "model_id": "kokoro-multi-lang-v1_0",
+  "model_name": "Kokoro Multi-Lang v1.0",
+  "engine": "sherpa-kokoro",
+  "gc_exposed": true,
+  "iterations_per_phase": 8,
+  "baseline_rss_bytes": 99069952,
+  "final_rss_bytes": 800743424,
+  "after_dispose_rss_bytes": 794013696,
+  "growth_per_iteration_bytes": 10357691.733333332,
+  "second_half_growth_per_iteration_bytes": 223817.14285714287,
+  "verdict": "stable",
+  "phases": [
+    {
+      "phase": "short",
+      "case_id": "zh_short",
+      "text_length": 24,
+      "samples": [
+        {
+          "iteration": 1,
+          "rss_bytes": 645378048,
+          "synthesis_ms": 5798
+        },
+        {
+          "iteration": 2,
+          "rss_bytes": 744792064,
+          "synthesis_ms": 4393
+        },
+        {
+          "iteration": 3,
+          "rss_bytes": 744845312,
+          "synthesis_ms": 4349
+        },
+        {
+          "iteration": 4,
+          "rss_bytes": 744898560,
+          "synthesis_ms": 4492
+        },
+        {
+          "iteration": 5,
+          "rss_bytes": 745324544,
+          "synthesis_ms": 4490
+        },
+        {
+          "iteration": 6,
+          "rss_bytes": 745615360,
+          "synthesis_ms": 4400
+        },
+        {
+          "iteration": 7,
+          "rss_bytes": 745684992,
+          "synthesis_ms": 4418
+        },
+        {
+          "iteration": 8,
+          "rss_bytes": 745701376,
+          "synthesis_ms": 4421
+        }
+      ]
+    },
+    {
+      "phase": "long",
+      "case_id": "zh_long_01",
+      "text_length": 315,
+      "samples": [
+        {
+          "iteration": 1,
+          "rss_bytes": 746946560,
+          "synthesis_ms": 56828
+        },
+        {
+          "iteration": 2,
+          "rss_bytes": 799604736,
+          "synthesis_ms": 56837
+        },
+        {
+          "iteration": 3,
+          "rss_bytes": 799240192,
+          "synthesis_ms": 57511
+        },
+        {
+          "iteration": 4,
+          "rss_bytes": 800043008,
+          "synthesis_ms": 56062
+        },
+        {
+          "iteration": 5,
+          "rss_bytes": 799817728,
+          "synthesis_ms": 55177
+        },
+        {
+          "iteration": 6,
+          "rss_bytes": 800649216,
+          "synthesis_ms": 55806
+        },
+        {
+          "iteration": 7,
+          "rss_bytes": 800362496,
+          "synthesis_ms": 55867
+        },
+        {
+          "iteration": 8,
+          "rss_bytes": 800743424,
+          "synthesis_ms": 55125
+        }
+      ]
+    }
+  ],
+  "verdict_note": "趋势在同一段文本内部用最小二乘斜率计算，并丢弃每段第一次；震荡幅度超过整体漂移两倍时判为 oscillating。",
+  "per_phase_analysis": [
+    {
+      "phase": "short",
+      "slope": 183003.42857142858,
+      "range": 909312,
+      "drift": 1098020.5714285714,
+      "oscillating": false
+    },
+    {
+      "phase": "long",
+      "slope": 223817.14285714287,
+      "range": 1503232,
+      "drift": 1342902.8571428573,
+      "oscillating": false
+    }
+  ]
+}

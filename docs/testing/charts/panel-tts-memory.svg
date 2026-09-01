@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1636" height="952" viewBox="0 0 1636 952" role="img">
+<rect width="1636" height="952" fill="#F7F8FA" rx="10"/>
+<text x="26" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="19" fill="#1F2933" text-anchor="start" font-weight="600">TTS 内存行为总览</text>
+<text x="26" y="56" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12.5" fill="#6B7280" text-anchor="start" font-weight="400">峰值 RSS、随长度的变化、以及连续调用是否累积</text>
+<svg x="20.0" y="74.0" width="791.2" height="220.8" viewBox="0 0 860 240">
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="240" viewBox="0 0 860 240" role="img">
+<rect width="860" height="240" fill="#FFFFFF" rx="8"/>
+
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">TTS 跑完全部 36 条语料的峰值内存</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">12th Gen Intel(R) Core(TM) i9-12900H · 3 次重复 · CPU 4 线程</text>
+<text x="122" y="91" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="end" font-weight="400">Kokoro Multi-Lang v1.0</text>
+<rect x="132" y="78" width="46.2" height="18" fill="#2E86AB" rx="2"/>
+<text x="186.17182318469014" y="91" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">1.3 GiB</text>
+<text x="122" y="129" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="end" font-weight="400">MeloTTS Chinese-English</text>
+<rect x="132" y="116" width="25.1" height="18" fill="#2E86AB" rx="2"/>
+<text x="165.11877292726447" y="129" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">752 MiB</text>
+<text x="122" y="167" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="end" font-weight="400">MOSS-TTS-Nano 100M</text>
+<rect x="132" y="154" width="636.0" height="18" fill="#2E86AB" rx="2"/>
+<text x="776" y="167" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">18.6 GiB</text>
+<text x="24" y="226" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">MOSS 的峰值比另外两个高一个数量级。它是单次请求的瞬时开销，不是泄漏 —— 见下一张图。</text>
+</svg>
+
+</svg>
+<svg x="825.2" y="74.0" width="791.2" height="404.8" viewBox="0 0 860 440">
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="440" viewBox="0 0 860 440" role="img">
+<rect width="860" height="440" fill="#FFFFFF" rx="8"/>
+
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">峰值内存随文本长度的变化（决定最低内存门槛）</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">合成期间每 50 ms 采样 RSS 取最大值 · 本机内存 39.8 GiB</text>
+<rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Kokoro Multi-Lang v1.0</text><rect x="207.2" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="223.19999999999993" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">MeloTTS Chinese-English</text><rect x="397.0" y="63" width="11" height="11" rx="2" fill="#B5446E"/><text x="412.9999999999999" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">MOSS-TTS-Nano 100M</text>
+<line x1="72" y1="326.1545707995685" x2="832" y2="326.1545707995685" stroke="#E3E8EF"/>
+<text x="64" y="330.1545707995685" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">500 MiB</text>
+<line x1="72" y1="285.16318759938224" x2="832" y2="285.16318759938224" stroke="#E3E8EF"/>
+<text x="64" y="289.16318759938224" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">1000 MiB</text>
+<line x1="72" y1="244.17180439919605" x2="832" y2="244.17180439919605" stroke="#E3E8EF"/>
+<text x="64" y="248.17180439919605" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">2 GiB</text>
+<line x1="72" y1="189.98414329857602" x2="832" y2="189.98414329857602" stroke="#E3E8EF"/>
+<text x="64" y="193.98414329857602" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">5 GiB</text>
+<line x1="72" y1="148.9927600983898" x2="832" y2="148.9927600983898" stroke="#E3E8EF"/>
+<text x="64" y="152.9927600983898" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">10 GiB</text>
+<line x1="72" y1="108.00137689820355" x2="832" y2="108.00137689820355" stroke="#E3E8EF"/>
+<text x="64" y="112.00137689820355" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">20 GiB</text>
+<text x="72" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">0</text>
+<text x="224" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">250</text>
+<text x="376" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">500</text>
+<text x="528" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">750</text>
+<text x="680" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">1000</text>
+<text x="832" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">1250</text>
+<text x="18" y="227" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 227)">峰值 RSS（对数轴）</text>
+<text x="452" y="398" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400">文本长度（字符）</text>
+<line x1="72" y1="119.79510529975246" x2="832" y2="119.79510529975246" stroke="#D64545" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="78" y="113.79510529975246" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#D64545" text-anchor="start" font-weight="400">16 GiB 机器的物理内存上限</text>
+<path d="M86.6 305.3 L95.7 305.1 L103.6 304.9 L137.7 304.9 L263.5 304.7 L380.3 304.4 L799.2 290.2" fill="none" stroke="#2E86AB" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="86.6" cy="305.3" r="3.4" fill="#2E86AB"/>
+<circle cx="95.7" cy="305.1" r="3.4" fill="#2E86AB"/>
+<circle cx="103.6" cy="304.9" r="3.4" fill="#2E86AB"/>
+<circle cx="137.7" cy="304.9" r="3.4" fill="#2E86AB"/>
+<circle cx="263.5" cy="304.7" r="3.4" fill="#2E86AB"/>
+<circle cx="380.3" cy="304.4" r="3.4" fill="#2E86AB"/>
+<circle cx="799.2" cy="290.2" r="3.4" fill="#2E86AB"/>
+<path d="M86.6 321.0 L95.7 320.2 L103.6 320.0 L137.7 318.4 L263.5 317.8 L380.3 316.6 L799.2 306.4" fill="none" stroke="#E8871A" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="86.6" cy="321.0" r="3.4" fill="#E8871A"/>
+<circle cx="95.7" cy="320.2" r="3.4" fill="#E8871A"/>
+<circle cx="103.6" cy="320.0" r="3.4" fill="#E8871A"/>
+<circle cx="137.7" cy="318.4" r="3.4" fill="#E8871A"/>
+<circle cx="263.5" cy="317.8" r="3.4" fill="#E8871A"/>
+<circle cx="380.3" cy="316.6" r="3.4" fill="#E8871A"/>
+<circle cx="799.2" cy="306.4" r="3.4" fill="#E8871A"/>
+<path d="M86.6 266.0 L95.7 262.5 L103.6 257.0 L137.7 227.1 L263.5 201.3 L380.3 148.6 L799.2 146.6" fill="none" stroke="#B5446E" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="86.6" cy="266.0" r="3.4" fill="#B5446E"/>
+<circle cx="95.7" cy="262.5" r="3.4" fill="#B5446E"/>
+<circle cx="103.6" cy="257.0" r="3.4" fill="#B5446E"/>
+<circle cx="137.7" cy="227.1" r="3.4" fill="#B5446E"/>
+<circle cx="263.5" cy="201.3" r="3.4" fill="#B5446E"/>
+<circle cx="380.3" cy="148.6" r="3.4" fill="#B5446E"/>
+<circle cx="799.2" cy="146.6" r="3.4" fill="#B5446E"/>
+<line x1="72" y1="362" x2="832" y2="362" stroke="#6B7280"/>
+<text x="24" y="426" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">这是本轮最重要的一张图：两个 sherpa 模型几乎是平的，MOSS 合成 1196 字需要约 10 GiB。</text>
+</svg>
+
+</svg>
+<svg x="422.6" y="492.8" width="791.2" height="404.8" viewBox="0 0 860 440">
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="440" viewBox="0 0 860 440" role="img">
+<rect width="860" height="440" fill="#FFFFFF" rx="8"/>
+
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">连续合成时的常驻内存：会不会一直涨？</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">每次合成后强制 GC 再采样 · 前 8 次为短句（24 字），后 8 次为长文本（315 字）</text>
+<rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Kokoro Multi-Lang v1.0</text><rect x="207.2" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="223.19999999999993" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">MeloTTS Chinese-English</text><rect x="397.0" y="63" width="11" height="11" rx="2" fill="#B5446E"/><text x="412.9999999999999" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">MOSS-TTS-Nano 100M</text>
+<line x1="72" y1="307.746760445509" x2="832" y2="307.746760445509" stroke="#E3E8EF"/>
+<text x="64" y="311.746760445509" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">500M</text>
+<line x1="72" y1="257.7103840803293" x2="832" y2="257.7103840803293" stroke="#E3E8EF"/>
+<text x="64" y="261.7103840803293" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">1000M</text>
+<line x1="72" y1="207.67400771514957" x2="832" y2="207.67400771514957" stroke="#E3E8EF"/>
+<text x="64" y="211.67400771514957" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">2.0G</text>
+<line x1="72" y1="141.52951603166053" x2="832" y2="141.52951603166053" stroke="#E3E8EF"/>
+<text x="64" y="145.52951603166053" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">4.9G</text>
+<text x="72" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">0</text>
+<text x="262" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">5</text>
+<text x="452" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">10</text>
+<text x="642" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">15</text>
+<text x="832" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">20</text>
+<text x="18" y="227" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 227)">RSS（MiB，强制 GC 后）</text>
+<text x="452" y="398" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400">第几次合成（1–8 短句，9–16 长文本）</text>
+<path d="M110.0 292.7 L148.0 282.4 L186.0 282.4 L224.0 282.4 L262.0 282.4 L300.0 282.3 L338.0 282.3 L376.0 282.3 L414.0 282.2 L452.0 277.3 L490.0 277.3 L528.0 277.2 L566.0 277.3 L604.0 277.2 L642.0 277.2 L680.0 277.2" fill="none" stroke="#2E86AB" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="110.0" cy="292.7" r="3.4" fill="#2E86AB"/>
+<circle cx="148.0" cy="282.4" r="3.4" fill="#2E86AB"/>
+<circle cx="186.0" cy="282.4" r="3.4" fill="#2E86AB"/>
+<circle cx="224.0" cy="282.4" r="3.4" fill="#2E86AB"/>
+<circle cx="262.0" cy="282.4" r="3.4" fill="#2E86AB"/>
+<circle cx="300.0" cy="282.3" r="3.4" fill="#2E86AB"/>
+<circle cx="338.0" cy="282.3" r="3.4" fill="#2E86AB"/>
+<circle cx="376.0" cy="282.3" r="3.4" fill="#2E86AB"/>
+<circle cx="414.0" cy="282.2" r="3.4" fill="#2E86AB"/>
+<circle cx="452.0" cy="277.3" r="3.4" fill="#2E86AB"/>
+<circle cx="490.0" cy="277.3" r="3.4" fill="#2E86AB"/>
+<circle cx="528.0" cy="277.2" r="3.4" fill="#2E86AB"/>
+<circle cx="566.0" cy="277.3" r="3.4" fill="#2E86AB"/>
+<circle cx="604.0" cy="277.2" r="3.4" fill="#2E86AB"/>
+<circle cx="642.0" cy="277.2" r="3.4" fill="#2E86AB"/>
+<circle cx="680.0" cy="277.2" r="3.4" fill="#2E86AB"/>
+<path d="M110.0 312.0 L148.0 301.4 L186.0 301.4 L224.0 301.3 L262.0 301.3 L300.0 301.3 L338.0 301.3 L376.0 301.3 L414.0 299.4 L452.0 299.4 L490.0 299.2 L528.0 299.4 L566.0 299.3 L604.0 299.5 L642.0 299.3 L680.0 299.2" fill="none" stroke="#E8871A" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="110.0" cy="312.0" r="3.4" fill="#E8871A"/>
+<circle cx="148.0" cy="301.4" r="3.4" fill="#E8871A"/>
+<circle cx="186.0" cy="301.4" r="3.4" fill="#E8871A"/>
+<circle cx="224.0" cy="301.3" r="3.4" fill="#E8871A"/>
+<circle cx="262.0" cy="301.3" r="3.4" fill="#E8871A"/>
+<circle cx="300.0" cy="301.3" r="3.4" fill="#E8871A"/>
+<circle cx="338.0" cy="301.3" r="3.4" fill="#E8871A"/>
+<circle cx="376.0" cy="301.3" r="3.4" fill="#E8871A"/>
+<circle cx="414.0" cy="299.4" r="3.4" fill="#E8871A"/>
+<circle cx="452.0" cy="299.4" r="3.4" fill="#E8871A"/>
+<circle cx="490.0" cy="299.2" r="3.4" fill="#E8871A"/>
+<circle cx="528.0" cy="299.4" r="3.4" fill="#E8871A"/>
+<circle cx="566.0" cy="299.3" r="3.4" fill="#E8871A"/>
+<circle cx="604.0" cy="299.5" r="3.4" fill="#E8871A"/>
+<circle cx="642.0" cy="299.3" r="3.4" fill="#E8871A"/>
+<circle cx="680.0" cy="299.2" r="3.4" fill="#E8871A"/>
+<path d="M110.0 244.9 L148.0 239.1 L186.0 239.3 L224.0 239.3 L262.0 239.2 L300.0 239.0 L338.0 238.5 L376.0 238.5 L414.0 161.2 L452.0 130.2 L490.0 126.1 L528.0 130.2 L566.0 126.0 L604.0 126.0 L642.0 130.2 L680.0 125.9" fill="none" stroke="#B5446E" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="110.0" cy="244.9" r="3.4" fill="#B5446E"/>
+<circle cx="148.0" cy="239.1" r="3.4" fill="#B5446E"/>
+<circle cx="186.0" cy="239.3" r="3.4" fill="#B5446E"/>
+<circle cx="224.0" cy="239.3" r="3.4" fill="#B5446E"/>
+<circle cx="262.0" cy="239.2" r="3.4" fill="#B5446E"/>
+<circle cx="300.0" cy="239.0" r="3.4" fill="#B5446E"/>
+<circle cx="338.0" cy="238.5" r="3.4" fill="#B5446E"/>
+<circle cx="376.0" cy="238.5" r="3.4" fill="#B5446E"/>
+<circle cx="414.0" cy="161.2" r="3.4" fill="#B5446E"/>
+<circle cx="452.0" cy="130.2" r="3.4" fill="#B5446E"/>
+<circle cx="490.0" cy="126.1" r="3.4" fill="#B5446E"/>
+<circle cx="528.0" cy="130.2" r="3.4" fill="#B5446E"/>
+<circle cx="566.0" cy="126.0" r="3.4" fill="#B5446E"/>
+<circle cx="604.0" cy="126.0" r="3.4" fill="#B5446E"/>
+<circle cx="642.0" cy="130.2" r="3.4" fill="#B5446E"/>
+<circle cx="680.0" cy="125.9" r="3.4" fill="#B5446E"/>
+<line x1="72" y1="362" x2="832" y2="362" stroke="#6B7280"/>
+<text x="24" y="426" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">三条线都走平，说明重复调用不会无限累积。第 9 次的台阶是换长文本造成的一次性跳变，不是泄漏。</text>
+</svg>
+
+</svg>
+<text x="26" y="937.6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">MOSS 的峰值随文本长度暴涨到约 10 GiB，但重复调用会走平 —— 是单次请求的瞬时开销，不是泄漏。</text>
+</svg>

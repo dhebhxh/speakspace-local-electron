@@ -1,0 +1,3 @@
+The OKR reveal covers a KPI and ROI.
+It's put in the data from the CRM and technique
+it through the RAS API over HTTPS.

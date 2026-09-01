@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="440" viewBox="0 0 860 440" role="img">
+<rect width="860" height="440" fill="#FFFFFF" rx="8"/>
+<rect x="0.5" y="0.5" width="859" height="439" fill="none" stroke="#E3E8EF" rx="8"/>
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">待办提取：多轮稳定性</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">温度 0.1 下重复跑 3 轮</text>
+<rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Precision</text><rect x="121.4" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="137.4" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Recall</text><rect x="199.0" y="63" width="11" height="11" rx="2" fill="#B5446E"/><text x="215" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">F1</text><rect x="250.2" y="63" width="11" height="11" rx="2" fill="#4C9F70"/><text x="266.2" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">日期准确率</text>
+<line x1="72" y1="362" x2="832" y2="362" stroke="#E3E8EF"/>
+<text x="64" y="366" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">0%</text>
+<line x1="72" y1="308" x2="832" y2="308" stroke="#E3E8EF"/>
+<text x="64" y="312" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">20%</text>
+<line x1="72" y1="254" x2="832" y2="254" stroke="#E3E8EF"/>
+<text x="64" y="258" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">40%</text>
+<line x1="72" y1="200" x2="832" y2="200" stroke="#E3E8EF"/>
+<text x="64" y="204" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">60%</text>
+<line x1="72" y1="146" x2="832" y2="146" stroke="#E3E8EF"/>
+<text x="64" y="150" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">80%</text>
+<line x1="72" y1="92" x2="832" y2="92" stroke="#E3E8EF"/>
+<text x="64" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">100%</text>
+<text x="72" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">第 1 轮</text>
+<text x="262" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">第 2 轮</text>
+<text x="452" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">第 2 轮</text>
+<text x="642" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">第 3 轮</text>
+<text x="832" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">第 3 轮</text>
+<text x="18" y="227" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 227)">比例</text>
+<text x="452" y="398" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400">第几轮</text>
+<path d="M72.0 105.7 L452.0 105.7 L832.0 105.5" fill="none" stroke="#2E86AB" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="72.0" cy="105.7" r="3.4" fill="#2E86AB"/>
+<text x="72" y="96.72881355932202" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#2E86AB" text-anchor="middle" font-weight="400">95%</text>
+<circle cx="452.0" cy="105.7" r="3.4" fill="#2E86AB"/>
+<text x="452" y="96.72881355932202" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#2E86AB" text-anchor="middle" font-weight="400">95%</text>
+<circle cx="832.0" cy="105.5" r="3.4" fill="#2E86AB"/>
+<text x="832" y="96.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#2E86AB" text-anchor="middle" font-weight="400">95%</text>
+<path d="M72.0 139.6 L452.0 139.6 L832.0 135.7" fill="none" stroke="#E8871A" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="72.0" cy="139.6" r="3.4" fill="#E8871A"/>
+<text x="72" y="130.64705882352942" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#E8871A" text-anchor="middle" font-weight="400">82%</text>
+<circle cx="452.0" cy="139.6" r="3.4" fill="#E8871A"/>
+<text x="452" y="130.64705882352942" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#E8871A" text-anchor="middle" font-weight="400">82%</text>
+<circle cx="832.0" cy="135.7" r="3.4" fill="#E8871A"/>
+<text x="832" y="126.67647058823528" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#E8871A" text-anchor="middle" font-weight="400">84%</text>
+<path d="M72.0 123.9 L452.0 123.9 L832.0 121.5" fill="none" stroke="#B5446E" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="72.0" cy="123.9" r="3.4" fill="#B5446E"/>
+<text x="72" y="114.88976377952753" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#B5446E" text-anchor="middle" font-weight="400">88%</text>
+<circle cx="452.0" cy="123.9" r="3.4" fill="#B5446E"/>
+<text x="452" y="114.88976377952753" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#B5446E" text-anchor="middle" font-weight="400">88%</text>
+<circle cx="832.0" cy="121.5" r="3.4" fill="#B5446E"/>
+<text x="832" y="112.53125" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#B5446E" text-anchor="middle" font-weight="400">89%</text>
+<path d="M72.0 119.6 L452.0 130.6 L832.0 119.0" fill="none" stroke="#4C9F70" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="72.0" cy="119.6" r="3.4" fill="#4C9F70"/>
+<text x="72" y="110.55102040816325" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#4C9F70" text-anchor="middle" font-weight="400">90%</text>
+<circle cx="452.0" cy="130.6" r="3.4" fill="#4C9F70"/>
+<text x="452" y="121.57142857142858" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#4C9F70" text-anchor="middle" font-weight="400">86%</text>
+<circle cx="832.0" cy="119.0" r="3.4" fill="#4C9F70"/>
+<text x="832" y="110" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#4C9F70" text-anchor="middle" font-weight="400">90%</text>
+<line x1="72" y1="362" x2="832" y2="362" stroke="#6B7280"/>
+<text x="24" y="426" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">几乎重合，说明该温度下输出接近确定性，报告里的数字不是单次抽样的运气。</text>
+</svg>

@@ -1,0 +1,1 @@
+把PR review完之后,ci普通就可以 merge到man分支,然后触发cd部署

@@ -1,0 +1,18 @@
+先同步一下這個Street的競戰
+Chancecription pipeline的 refactor已經墨值了
+Lone Recording的Pick Memory下降的大約四成
+終於混合場景下Segmentation也穩定了很多
+任務提取那一塊我們加了一刀
+OM的Shake Review專門解決別人的X910算到幼稚頭上的問題
+下一步的重點是 Retryable
+我們打算把 Key Wars Search and Wester Search
+和並成一路Hybrid Recording
+然後用Receive Practical Rank Fusion作牌去
+難免不再算法而在本地設備的算力運算
+Inbiting Model必須足夠小同時中文的 Recording不能掉
+另外還有幾個容易被火力的點就是Note數量長到幾千條之後
+Four Library Search的LaytonC會明顯上升
+所以Incredemento Indance and Cash策略
+也要體驗設計好
+這些是還來我的方向
+具體Monstone我會在DLC裡面解清楚

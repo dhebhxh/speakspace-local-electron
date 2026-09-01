@@ -1,0 +1,2 @@
+We combine keyword retrieval with factory retrieval and merge both rankings using
+reciprocal ranking refusion to om the local procedure.

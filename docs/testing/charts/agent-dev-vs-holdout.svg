@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" viewBox="0 0 860 420" role="img">
+<rect width="860" height="420" fill="#FFFFFF" rx="8"/>
+<rect x="0.5" y="0.5" width="859" height="419" fill="none" stroke="#E3E8EF" rx="8"/>
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">Agent 端到端：开发集 vs 保留集</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">qwen2.5:3b-instruct · bge-m3 · 1 轮 · 90 个任务</text>
+<rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">开发集 dev（45 个）</text><rect x="181.6" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="197.64" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">保留集 holdout（45 个）</text>
+<line x1="64" y1="346" x2="836" y2="346" stroke="#E3E8EF"/>
+<text x="56" y="350" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">0%</text>
+<line x1="64" y1="295.2" x2="836" y2="295.2" stroke="#E3E8EF"/>
+<text x="56" y="299.2" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">20%</text>
+<line x1="64" y1="244.39999999999998" x2="836" y2="244.39999999999998" stroke="#E3E8EF"/>
+<text x="56" y="248.39999999999998" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">40%</text>
+<line x1="64" y1="193.6" x2="836" y2="193.6" stroke="#E3E8EF"/>
+<text x="56" y="197.6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">60%</text>
+<line x1="64" y1="142.79999999999998" x2="836" y2="142.79999999999998" stroke="#E3E8EF"/>
+<text x="56" y="146.79999999999998" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">80%</text>
+<line x1="64" y1="92" x2="836" y2="92" stroke="#E3E8EF"/>
+<text x="56" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">100%</text>
+<text x="18" y="219" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 219)">比例</text>
+<rect x="107.2" y="193.6" width="31.0" height="152.4" fill="#2E86AB" rx="2"/>
+<text x="122.69999999999999" y="188.6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">60%</text>
+<rect x="141.2" y="244.4" width="31.0" height="101.6" fill="#E8871A" rx="2"/>
+<text x="156.7" y="239.39999999999998" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">40%</text>
+<text x="141.2" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">严格完成率</text>
+<rect x="261.6" y="116.5" width="31.0" height="229.5" fill="#2E86AB" rx="2"/>
+<text x="277.1" y="111.45925925925923" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">90%</text>
+<rect x="295.6" y="105.2" width="31.0" height="240.8" fill="#E8871A" rx="2"/>
+<text x="311.1" y="100.17037037037039" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">95%</text>
+<text x="295.6" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">事实覆盖率</text>
+<rect x="416.0" y="131.5" width="31.0" height="214.5" fill="#2E86AB" rx="2"/>
+<text x="431.5" y="126.51111111111112" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">84%</text>
+<rect x="450.0" y="182.3" width="31.0" height="163.7" fill="#E8871A" rx="2"/>
+<text x="465.5" y="177.3111111111111" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">64%</text>
+<text x="450" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">答案模式</text>
+<rect x="570.4" y="210.5" width="31.0" height="135.5" fill="#2E86AB" rx="2"/>
+<text x="585.9" y="205.53333333333333" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">53%</text>
+<rect x="604.4" y="238.8" width="31.0" height="107.2" fill="#E8871A" rx="2"/>
+<text x="619.9" y="233.75555555555556" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">42%</text>
+<text x="604.4" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">Judge 通过</text>
+<rect x="724.8" y="132.9" width="31.0" height="213.1" fill="#2E86AB" rx="2"/>
+<text x="740.3000000000001" y="127.92222222222222" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">84%</text>
+<rect x="758.8" y="156.9" width="31.0" height="189.1" fill="#E8871A" rx="2"/>
+<text x="774.3000000000001" y="151.9111111111111" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="10" fill="#6B7280" text-anchor="middle" font-weight="400">74%</text>
+<text x="758.8000000000001" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">Groundedness</text>
+<line x1="64" y1="346" x2="836" y2="346" stroke="#6B7280"/>
+<text x="24" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">严格完成率来自可复核规则；Judge 与 Groundedness 尚待人工盲审校准，不能单独作为最终结论。</text>
+</svg>

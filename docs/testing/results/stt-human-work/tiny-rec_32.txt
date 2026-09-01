@@ -1,0 +1,1 @@
+我们用rf融合 keyword search and semantic search, imbadding模型,跑在cpu上步一来 GPU。

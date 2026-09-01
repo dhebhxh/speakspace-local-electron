@@ -1,0 +1,1 @@
+把PR、Review完之後,CI跑通就可以 merge到慢分支,然後觸發CD部署。

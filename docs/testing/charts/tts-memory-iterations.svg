@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="440" viewBox="0 0 860 440" role="img">
+<rect width="860" height="440" fill="#FFFFFF" rx="8"/>
+<rect x="0.5" y="0.5" width="859" height="439" fill="none" stroke="#E3E8EF" rx="8"/>
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">连续合成时的常驻内存：会不会一直涨？</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">每次合成后强制 GC 再采样 · 前 8 次为短句（24 字），后 8 次为长文本（315 字）</text>
+<rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Kokoro Multi-Lang v1.0</text><rect x="207.2" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="223.19999999999993" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">MeloTTS Chinese-English</text><rect x="397.0" y="63" width="11" height="11" rx="2" fill="#B5446E"/><text x="412.9999999999999" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">MOSS-TTS-Nano 100M</text>
+<line x1="72" y1="307.746760445509" x2="832" y2="307.746760445509" stroke="#E3E8EF"/>
+<text x="64" y="311.746760445509" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">500M</text>
+<line x1="72" y1="257.7103840803293" x2="832" y2="257.7103840803293" stroke="#E3E8EF"/>
+<text x="64" y="261.7103840803293" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">1000M</text>
+<line x1="72" y1="207.67400771514957" x2="832" y2="207.67400771514957" stroke="#E3E8EF"/>
+<text x="64" y="211.67400771514957" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">2.0G</text>
+<line x1="72" y1="141.52951603166053" x2="832" y2="141.52951603166053" stroke="#E3E8EF"/>
+<text x="64" y="145.52951603166053" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">4.9G</text>
+<text x="72" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">0</text>
+<text x="262" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">5</text>
+<text x="452" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">10</text>
+<text x="642" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">15</text>
+<text x="832" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="middle" font-weight="400">20</text>
+<text x="18" y="227" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400" transform="rotate(-90 18 227)">RSS（MiB，强制 GC 后）</text>
+<text x="452" y="398" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="middle" font-weight="400">第几次合成（1–8 短句，9–16 长文本）</text>
+<path d="M110.0 292.7 L148.0 282.4 L186.0 282.4 L224.0 282.4 L262.0 282.4 L300.0 282.3 L338.0 282.3 L376.0 282.3 L414.0 282.2 L452.0 277.3 L490.0 277.3 L528.0 277.2 L566.0 277.3 L604.0 277.2 L642.0 277.2 L680.0 277.2" fill="none" stroke="#2E86AB" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="110.0" cy="292.7" r="3.4" fill="#2E86AB"/>
+<circle cx="148.0" cy="282.4" r="3.4" fill="#2E86AB"/>
+<circle cx="186.0" cy="282.4" r="3.4" fill="#2E86AB"/>
+<circle cx="224.0" cy="282.4" r="3.4" fill="#2E86AB"/>
+<circle cx="262.0" cy="282.4" r="3.4" fill="#2E86AB"/>
+<circle cx="300.0" cy="282.3" r="3.4" fill="#2E86AB"/>
+<circle cx="338.0" cy="282.3" r="3.4" fill="#2E86AB"/>
+<circle cx="376.0" cy="282.3" r="3.4" fill="#2E86AB"/>
+<circle cx="414.0" cy="282.2" r="3.4" fill="#2E86AB"/>
+<circle cx="452.0" cy="277.3" r="3.4" fill="#2E86AB"/>
+<circle cx="490.0" cy="277.3" r="3.4" fill="#2E86AB"/>
+<circle cx="528.0" cy="277.2" r="3.4" fill="#2E86AB"/>
+<circle cx="566.0" cy="277.3" r="3.4" fill="#2E86AB"/>
+<circle cx="604.0" cy="277.2" r="3.4" fill="#2E86AB"/>
+<circle cx="642.0" cy="277.2" r="3.4" fill="#2E86AB"/>
+<circle cx="680.0" cy="277.2" r="3.4" fill="#2E86AB"/>
+<path d="M110.0 312.0 L148.0 301.4 L186.0 301.4 L224.0 301.3 L262.0 301.3 L300.0 301.3 L338.0 301.3 L376.0 301.3 L414.0 299.4 L452.0 299.4 L490.0 299.2 L528.0 299.4 L566.0 299.3 L604.0 299.5 L642.0 299.3 L680.0 299.2" fill="none" stroke="#E8871A" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="110.0" cy="312.0" r="3.4" fill="#E8871A"/>
+<circle cx="148.0" cy="301.4" r="3.4" fill="#E8871A"/>
+<circle cx="186.0" cy="301.4" r="3.4" fill="#E8871A"/>
+<circle cx="224.0" cy="301.3" r="3.4" fill="#E8871A"/>
+<circle cx="262.0" cy="301.3" r="3.4" fill="#E8871A"/>
+<circle cx="300.0" cy="301.3" r="3.4" fill="#E8871A"/>
+<circle cx="338.0" cy="301.3" r="3.4" fill="#E8871A"/>
+<circle cx="376.0" cy="301.3" r="3.4" fill="#E8871A"/>
+<circle cx="414.0" cy="299.4" r="3.4" fill="#E8871A"/>
+<circle cx="452.0" cy="299.4" r="3.4" fill="#E8871A"/>
+<circle cx="490.0" cy="299.2" r="3.4" fill="#E8871A"/>
+<circle cx="528.0" cy="299.4" r="3.4" fill="#E8871A"/>
+<circle cx="566.0" cy="299.3" r="3.4" fill="#E8871A"/>
+<circle cx="604.0" cy="299.5" r="3.4" fill="#E8871A"/>
+<circle cx="642.0" cy="299.3" r="3.4" fill="#E8871A"/>
+<circle cx="680.0" cy="299.2" r="3.4" fill="#E8871A"/>
+<path d="M110.0 244.9 L148.0 239.1 L186.0 239.3 L224.0 239.3 L262.0 239.2 L300.0 239.0 L338.0 238.5 L376.0 238.5 L414.0 161.2 L452.0 130.2 L490.0 126.1 L528.0 130.2 L566.0 126.0 L604.0 126.0 L642.0 130.2 L680.0 125.9" fill="none" stroke="#B5446E" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="110.0" cy="244.9" r="3.4" fill="#B5446E"/>
+<circle cx="148.0" cy="239.1" r="3.4" fill="#B5446E"/>
+<circle cx="186.0" cy="239.3" r="3.4" fill="#B5446E"/>
+<circle cx="224.0" cy="239.3" r="3.4" fill="#B5446E"/>
+<circle cx="262.0" cy="239.2" r="3.4" fill="#B5446E"/>
+<circle cx="300.0" cy="239.0" r="3.4" fill="#B5446E"/>
+<circle cx="338.0" cy="238.5" r="3.4" fill="#B5446E"/>
+<circle cx="376.0" cy="238.5" r="3.4" fill="#B5446E"/>
+<circle cx="414.0" cy="161.2" r="3.4" fill="#B5446E"/>
+<circle cx="452.0" cy="130.2" r="3.4" fill="#B5446E"/>
+<circle cx="490.0" cy="126.1" r="3.4" fill="#B5446E"/>
+<circle cx="528.0" cy="130.2" r="3.4" fill="#B5446E"/>
+<circle cx="566.0" cy="126.0" r="3.4" fill="#B5446E"/>
+<circle cx="604.0" cy="126.0" r="3.4" fill="#B5446E"/>
+<circle cx="642.0" cy="130.2" r="3.4" fill="#B5446E"/>
+<circle cx="680.0" cy="125.9" r="3.4" fill="#B5446E"/>
+<line x1="72" y1="362" x2="832" y2="362" stroke="#6B7280"/>
+<text x="24" y="426" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">三条线都走平，说明重复调用不会无限累积。第 9 次的台阶是换长文本造成的一次性跳变，不是泄漏。</text>
+</svg>

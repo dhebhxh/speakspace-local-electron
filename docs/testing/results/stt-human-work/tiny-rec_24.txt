@@ -1,0 +1,2 @@
+Speakspace local可以在本地運行 task to speech
+并保護用戶的 private notes

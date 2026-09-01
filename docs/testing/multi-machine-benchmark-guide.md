@@ -1,0 +1,145 @@
+# 在一台新机器上跑基准
+
+## 推荐：Windows 双击运行
+
+直接双击仓库根目录的 **`一键跨机硬件测速.cmd`**。它会在窗口里询问机器标签和测速范围，
+自动处理依赖检查、Ollama 启动、硬件基准和 ZIP 打包。除 Node.js LTS 外，不需要手工拼命令。
+
+下面的命令行步骤保留给需要定制运行范围或排查环境问题的开发者。
+
+## 零、先准备这台机器
+
+`npm run bench` 是一条命令，但它需要仓库、依赖和模型都就位。按你想测什么，选一档：
+
+### A 档：只要 LLM 速度与 GPU（约 10 分钟准备，2 分钟出结果）
+
+想知道「这台机器带不带得动模型、多快」，走这一档就够了。
+**不需要原生依赖**，LLM 探针只用 Node 内置模块。
+
+```bash
+git clone <仓库地址> && cd speakspace
+npm ci --ignore-scripts          # 跳过 Electron 下载与原生模块重建，快很多
+# 启动 Ollama 并拉模型（用应用自带的那个，或系统装的 ollama 都行）
+ollama serve &
+ollama pull qwen2.5:3b-instruct  # 想测哪些模型就拉哪些
+npm run bench -- --machine <标签> --only llm
+```
+
+### B 档：完整基准（准备 20–40 分钟，跑 1–1.5 小时）
+
+要 TTS 的速度和内存曲线，就得装原生依赖（`sherpa-onnx-node`、`onnxruntime-node`）。
+
+```bash
+git clone <仓库地址> && cd speakspace
+npm install                      # 会下载 Electron 并重建原生模块，比较慢
+npm run bench:tts:fetch          # 下载三个 TTS 模型，约 910 MiB，带 sha256 校验
+ollama serve &                   # LLM 那步需要
+npm run bench -- --machine <标签>
+```
+
+`bench:tts:fetch` 从 GitHub Releases 和 HuggingFace 拉模型，那台机器要能访问这两个域名。
+拉不动的话可以从已有机器把模型目录整个拷过去，路径见文末「结果目录在哪」里 `models/` 那部分说明。
+
+### 标签怎么起
+
+**每台机器一个唯一且稳定的标签**，汇总表靠它区分：`3060-laptop`、`m4-mac`、`office-nuc`、`server-xeon`。
+不要两台机器用同一个标签 —— 后拷回来的会覆盖先拷回来的。
+
+## 一条命令
+
+```bash
+npm run bench -- --machine <这台机器的标签>
+```
+
+标签自己起，能认出是哪台就行：`3060-laptop`、`m4-mac`、`office-nuc`、`server-xeon`。
+**一定要给标签** —— 不给的话会退回主机名哈希，汇总表里读不出是哪台机。
+
+它会做四件事：
+
+1. 采集机器指纹（CPU、核心数、内存、GPU、显存、驱动版本、系统）
+2. 串行跑完所有**对硬件敏感**的基准
+3. 把结果收进 `results/machines/<标签>/`
+4. 打印结果目录路径
+
+跑完把那个目录整个拷回主控机的同一路径下，然后在主控机上：
+
+```bash
+npm run bench:aggregate   # 生成跨机器总表
+npm run bench:charts      # 生成跨机器对比图
+```
+
+## 跑之前
+
+**别的事都停下。** 速度和内存是时间敏感量，并行会让数据直接作废 ——
+本仓库实测过：并行跑一次 `tsc`，Kokoro 的 RTF 从 0.79 掉到 4.4，整轮数据报废。
+
+依赖缺了会自动跳过，不会报错中断：
+
+| 依赖 | 缺了会跳过 | 怎么装 |
+| --- | --- | --- |
+| TTS 模型 | TTS 的三项基准 | `npm run bench:tts:fetch`（约 910 MiB，按应用内 catalog 下载并校验 sha256） |
+| Ollama 在跑 | LLM 吞吐与 GPU | 启动应用自带的 `runtimes/llm/bin/ollama serve`，`OLLAMA_MODELS` 指向应用模型目录 |
+| whisper 运行时 + STT 模型 | STT 转写速度 | 通过应用本身的模型管理页下载至少一个 whisper 模型；没有独立的命令行安装方式 |
+| STT 录音文件 | STT 转写速度 | `docs/testing/datasets/stt-human-recordings/` 目前没有随仓库分发，需要手动从已有机器拷过去，见下方「常见问题」 |
+| `nvidia-smi` | 显存与驱动信息 | 无 N 卡时自动降级，不影响其他指标 |
+
+## 默认跑什么、不跑什么
+
+**跑**（这些换机器会变）：
+
+| 步骤 | 测什么 | 大约耗时 |
+| --- | --- | --- |
+| `tts` | 三个 TTS 模型 × 36 条语料 × 3 次，P50/P95 RTF、峰值内存、信号有效性 | 40–90 min |
+| `tts-memory` | 连续合成时 RSS 是否累积（强制 GC 后采样） | 20–40 min |
+| `tts-length` | 峰值内存随文本长度的变化，决定最低内存门槛 | 10–20 min |
+| `llm` | 每个已安装模型的 tokens/s、首 token 延迟、显存、**GPU 卸载比例** | 2 min/模型 |
+| `stt` | 已安装的每个 whisper 模型转写同一批真人录音的 RTF（**不算 CER**） | 5–20 min/模型（越大越慢） |
+
+**默认不跑**（这些换机器不会变）：待办提取准确率、Agent 端到端、STT 的 CER/内容覆盖率。
+它们取决于模型和提示词（或者对 STT 来说，取决于同一份音频和同一个模型），不取决于硬件
+—— 在每台机器上重跑几小时只会得到同样的数字。待办/Agent 准确率要跑：
+`npm run bench -- --machine <标签> --with-accuracy`；STT 准确率本来就该只在一台机器上
+跑一次，见 [STT 真人评测](./stt-human-eval.md)，不需要额外的开关。
+
+只跑其中几项：`npm run bench -- --machine <标签> --only llm,tts-length`
+
+## 汇总产物
+
+`npm run bench:aggregate` 生成 [cross-machine-benchmark.md](./cross-machine-benchmark.md)，包含：
+
+- 机器清单（CPU / 核心 / 内存 / GPU / 类别）
+- TTS 合成速度跨机器对比，带 RTF = 1 可用下限参考线
+- TTS 峰值内存对比（配合各机内存判断「扛不扛得住」）
+- LLM 吞吐对比
+- **GPU 卸载比例对比** —— 判断「这台机器能带动多大模型」最直接的依据
+- STT 转写速度对比（不含准确率）
+
+`npm run bench:charts` 生成对应的跨机器图（机器数 ≥ 2 时才画）。
+
+## 常见问题
+
+**结果目录在哪？**
+固定在仓库内：`docs/testing/results/machines/<机器标签>/`，跟代码放在一起，
+**不受 `TTS_BENCHMARK_ROOT` 影响**——这样结果才能直接 `git add`、提交、推到 GitHub 给所有人看。
+下载的 TTS 模型二进制文件不在这里，那部分体积太大不适合进仓库，仍然在系统缓存目录
+（Windows `%LOCALAPPDATA%\SpeakSpace-TTS-Benchmark\models\`，macOS/Linux 同名 `models/`）。
+
+**同一台机器跑两次会怎样？**
+覆盖自己那份，不影响其他机器的目录。
+
+**在容器或沙箱里跑，结果找不到？**
+先看命令最后打印的绝对路径。正常情况下应该落在仓库的 `docs/testing/results/` 下；
+如果不是，说明沙箱把 `PROJECT_ROOT` 解析到了别处，以打印出来的路径为准。
+
+**结果占多大地方，提交前要注意什么？**
+JSON 数据本身很小，但 TTS 基准会把合成出来的 WAV 音频也存进 `docs/testing/results/wav/`
+（几个模型跑下来上百 MB），是刻意保留的——为了以后能直接拿这些音频做人工听测评分，
+不是需要清理的冗余文件。真正的临时文件是 `asr-work/`、`stt-human-work/` 这两个目录
+（重采样出来的音频副本 + whisper 逐条输出，内容跟已经保存的 JSON 完全重复），
+已经写进 `.gitignore`，正常 `git add` 不会带上它们。
+
+**新机器上 STT 步骤被跳过了？**
+`docs/testing/datasets/stt-human-recordings/`（56 段真人录音）目前没有提交进 git，
+新克隆的仓库里没有这些文件，`stt` 这一步会自动跳过（不报错）。要在新机器上跑这一步，
+把这个目录从已有机器整个拷过去（约 22 MiB），再确认应用的模型管理页里至少装了一个
+whisper 模型。这一步只影响转写**速度**——CER 不受影响，因为它压根不在跨机器测试范围内。

@@ -37,6 +37,12 @@ lint-results.json
 # Local coding-agent state
 /.claude/
 /.impeccable/
+/.codex-docx-work/
+/.codex-latex-work/
+/.codex-tmp/
+
+# Personal report and its source material are local deliverables, not project source.
+/个人报告/
 
 # Local packaging cache and deliverables
 /release/.electron-builder-cache/

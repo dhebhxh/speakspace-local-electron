@@ -106,7 +106,11 @@ export default function AudioTranscriptionScreen() {
         sizeBytes,
         mimeType: asset.mimeType ?? null,
       });
-      const validationError = validateImportedAudio(asset.name, sizeBytes);
+      const validationError = validateImportedAudio(
+        asset.name,
+        sizeBytes,
+        asset.mimeType,
+      );
       if (validationError !== null) {
         transcriptionService.deleteTemporaryImport(asset.uri);
         setError(validationError);

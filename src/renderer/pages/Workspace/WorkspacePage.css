@@ -264,6 +264,22 @@
   min-width: 0;
 }
 
+.workspace-note-selection-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.workspace-note-selection-toggle[aria-pressed='true'],
+.workspace-note-selection-toggle[aria-pressed='mixed'] {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-strong));
+}
+
 /* 元信息压成一行，用 · 分隔，不再是一排圆角胶囊 */
 .workspace-detail-meta {
   display: flex;
@@ -1507,8 +1523,19 @@ body.workspace-template-manager-open .workspace-detail-body {
   .workspace-insights-panel {
     grid-template-columns: 1fr;
   }
+
+  .workspace-detail-tools {
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
+
   .workspace-search-field {
+    flex-basis: 100%;
     max-width: none;
+  }
+
+  .workspace-note-selection-toggle {
+    flex: 1 1 auto;
   }
 
   .workspace-note-head {

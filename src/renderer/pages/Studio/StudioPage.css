@@ -329,6 +329,53 @@
     box-shadow var(--dur-base) var(--ease-out);
 }
 
+.studio-audio-task {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.05rem 0.15rem 0.45rem;
+  padding: 0.55rem 0.65rem;
+  color: var(--muted);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  font-size: var(--fs-sm);
+}
+
+.studio-audio-task > div {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.studio-audio-task svg,
+.studio-audio-task__spinner {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+}
+
+.studio-audio-task strong {
+  margin-inline-start: auto;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.studio-audio-task progress {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  accent-color: var(--accent);
+}
+
+.studio-audio-task__spinner {
+  border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: studio-spin 0.7s linear infinite;
+}
+
 /* 拖拽笔记 / 工作区的落点是整块对话面板，不必精确拖到输入框里 */
 .studio-chat.is-drag-over {
   background: color-mix(in srgb, var(--accent) 8%, transparent);

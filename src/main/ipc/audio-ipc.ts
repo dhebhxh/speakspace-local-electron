@@ -1,4 +1,5 @@
 import { dialog, ipcMain } from 'electron';
+import type { AudioImportProgressEvent } from '@shared/types/AudioTypes';
 import AudioDurationService from '../audio/AudioDurationService';
 import RecordingStorageService from '../audio/RecordingStorageService';
 
@@ -30,8 +31,27 @@ ipcMain.handle(
     recordingStorageService.saveRecording(data, mimeType),
 );
 
-ipcMain.handle('Audio:importRecordingFile', (_event, filePath: unknown) =>
-  recordingStorageService.importRecordingFile(filePath),
+ipcMain.handle(
+  'Audio:importRecordingFile',
+  (event, filePath: unknown, rawRequestId: unknown) => {
+    const requestId =
+      typeof rawRequestId === 'string' && rawRequestId.length <= 128
+        ? rawRequestId
+        : null;
+    return recordingStorageService.importRecordingFile(
+      filePath,
+      requestId
+        ? (progress) => {
+            if (event.sender.isDestroyed()) return;
+            const payload: AudioImportProgressEvent = {
+              requestId,
+              ...progress,
+            };
+            event.sender.send('Audio:importProgress', payload);
+          }
+        : undefined,
+    );
+  },
 );
 
 ipcMain.handle('Audio:discardRecording', (_event, relativePath: unknown) =>

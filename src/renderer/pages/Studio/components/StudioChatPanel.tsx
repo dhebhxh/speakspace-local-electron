@@ -37,6 +37,9 @@ type RecordingUiState = {
   stopBusy: boolean;
   elapsedMs: number;
   error: string | null;
+  uploadPending: boolean;
+  uploadPercent: number;
+  fileProcessing: boolean;
 };
 
 type StudioChatPanelProps = {
@@ -672,6 +675,29 @@ export default function StudioChatPanel({
       )}
 
       <form className="studio-composer" onSubmit={handleSubmit}>
+        {(recording.uploadPending || recording.fileProcessing) && (
+          <div className="studio-audio-task" role="status" aria-live="polite">
+            <div>
+              {recording.uploadPending ? (
+                <UploadIcon />
+              ) : (
+                <span className="studio-audio-task__spinner" aria-hidden />
+              )}
+              <span>
+                {recording.uploadPending
+                  ? t('studio.chat.uploadingAudio')
+                  : t('studio.chat.processingAudio')}
+              </span>
+              {recording.uploadPending && (
+                <strong>{recording.uploadPercent}%</strong>
+              )}
+            </div>
+            {recording.uploadPending && (
+              <progress max={100} value={recording.uploadPercent} />
+            )}
+          </div>
+        )}
+
         {mentionOpen && (
           <div
             className="studio-mention"

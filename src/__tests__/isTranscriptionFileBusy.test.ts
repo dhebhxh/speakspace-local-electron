@@ -12,6 +12,9 @@ const IDLE: TranscriptionControllerSnapshot = {
   inputMode: 'file',
   uploadedFileName: null,
   uploadedFilePath: null,
+  uploadedRecording: null,
+  uploadPending: false,
+  uploadProgress: null,
   uploadLanguage: 'auto',
   detectedLanguage: null,
   languageDetectionPending: false,
@@ -58,6 +61,12 @@ describe('isTranscriptionFileBusy', () => {
 
   it('请求提交中算忙', () => {
     expect(isTranscriptionFileBusy(snapshot({ requestPending: true }))).toBe(
+      true,
+    );
+  });
+
+  it('keeps file actions disabled while the selected audio is importing', () => {
+    expect(isTranscriptionFileBusy(snapshot({ uploadPending: true }))).toBe(
       true,
     );
   });

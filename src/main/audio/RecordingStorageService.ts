@@ -1,7 +1,13 @@
 import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { Transform } from 'stream';
+import { pipeline } from 'stream/promises';
 import Database from 'better-sqlite3';
+import type {
+  AudioImportProgress,
+  SavedRecording,
+} from '@shared/types/AudioTypes';
 import { BlobStorage } from '../database/BlobStorage';
 import { DatabaseManager } from '../database/DatabaseManager';
 
@@ -28,13 +34,6 @@ const RECORDING_MIME_TYPES_BY_EXTENSION: Record<string, string> =
   );
 RECORDING_MIME_TYPES_BY_EXTENSION.flac = 'audio/flac';
 RECORDING_MIME_TYPES_BY_EXTENSION.mp4 = 'audio/mp4';
-
-export type SavedRecording = {
-  relativePath: string;
-  mimeType: string;
-  byteLength: number;
-  createdAt: string;
-};
 
 export type RecordingDiscardResult = {
   deleted: boolean;
@@ -104,7 +103,10 @@ export default class RecordingStorageService {
     };
   }
 
-  public importRecordingFile(rawFilePath: unknown): SavedRecording {
+  public async importRecordingFile(
+    rawFilePath: unknown,
+    onProgress?: (progress: AudioImportProgress) => void,
+  ): Promise<SavedRecording> {
     if (typeof rawFilePath !== 'string' || !rawFilePath.trim()) {
       throw new Error('?��??�音频�?件路�?/ Invalid audio file path');
     }
@@ -126,7 +128,46 @@ export default class RecordingStorageService {
     const relativePath = path.posix.join('recordings', fileName);
     const targetPath = this.blobStorage.resolveAbsolutePath(relativePath);
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    fs.copyFileSync(filePath, targetPath);
+
+    let transferredBytes = 0;
+    const reportProgress = () => {
+      const progress = {
+        transferredBytes,
+        totalBytes: stat.size,
+        percent: Math.min(
+          100,
+          Math.round((transferredBytes / stat.size) * 100),
+        ),
+      };
+      try {
+        onProgress?.(progress);
+      } catch {
+        // UI progress must never interrupt the managed-file copy.
+      }
+    };
+
+    reportProgress();
+    try {
+      await pipeline(
+        fs.createReadStream(filePath),
+        new Transform({
+          transform(chunk: Buffer, _encoding, callback) {
+            transferredBytes += chunk.byteLength;
+            reportProgress();
+            callback(null, chunk);
+          },
+        }),
+        fs.createWriteStream(targetPath, { flags: 'wx' }),
+      );
+    } catch (error) {
+      fs.rmSync(targetPath, { force: true });
+      throw error;
+    }
+
+    if (transferredBytes !== stat.size) {
+      fs.rmSync(targetPath, { force: true });
+      throw new Error('音频导入不完整 / Audio import was incomplete');
+    }
 
     return {
       relativePath,

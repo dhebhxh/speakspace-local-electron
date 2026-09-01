@@ -186,7 +186,9 @@ export default function RecordControlBar(props: {
       }
 
       let audioRelativePath = snapshot.savedRecording?.relativePath ?? null;
-      if (fileMode && transcriptionSnapshot.uploadedFilePath) {
+      if (fileMode && latestTranscription.uploadedRecording) {
+        audioRelativePath = latestTranscription.uploadedRecording.relativePath;
+      } else if (fileMode && transcriptionSnapshot.uploadedFilePath) {
         importedRecording = (await window.electron.audio.importRecordingFile(
           transcriptionSnapshot.uploadedFilePath,
         )) as SavedRecording;

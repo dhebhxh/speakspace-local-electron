@@ -163,6 +163,10 @@ export default function StudioPage() {
   const [trashError, setTrashError] = useState('');
   const preserveLinksOnSelectionChange = useRef(false);
   const startedAtRef = useRef<number | null>(null);
+  // A completed upload must open exactly one review dialog. Without this guard,
+  // closing/saving the dialog can render once with the same completed job and
+  // immediately open a second, stale review.
+  const openedFileReviewJobId = useRef<string | null>(null);
 
   const handleDeleteNote = async (noteId: number) => {
     const note = page.notes.find((item) => item.id === noteId);
@@ -219,7 +223,7 @@ export default function StudioPage() {
       detach();
       engine.transcription.dispose();
     };
-  }, [engine, t]);
+  }, [engine]);
 
   // 录音计时器。
   useEffect(() => {
@@ -582,19 +586,21 @@ export default function StudioPage() {
 
   // 上传文件转录完成后自动弹出复核窗口。
   useEffect(() => {
+    const completedJob = transcriptionSnapshot.job;
     if (
       !reviewOpen &&
       transcriptionSnapshot.inputMode === 'file' &&
-      transcriptionSnapshot.job?.status === 'completed' &&
-      transcriptionSnapshot.job.result?.text
+      completedJob?.status === 'completed' &&
+      completedJob.result?.text &&
+      openedFileReviewJobId.current !== completedJob.id
     ) {
+      openedFileReviewJobId.current = completedJob.id;
       openReview(true);
     }
   }, [
     reviewOpen,
     transcriptionSnapshot.inputMode,
-    transcriptionSnapshot.job?.status,
-    transcriptionSnapshot.job?.result?.text,
+    transcriptionSnapshot.job,
     openReview,
   ]);
 
@@ -649,7 +655,9 @@ export default function StudioPage() {
         }
 
         let audioRelativePath = snapshot.savedRecording?.relativePath ?? null;
-        if (reviewFileMode && latest.uploadedFilePath) {
+        if (reviewFileMode && latest.uploadedRecording) {
+          audioRelativePath = latest.uploadedRecording.relativePath;
+        } else if (reviewFileMode && latest.uploadedFilePath) {
           importedRecording = (await window.electron.audio.importRecordingFile(
             latest.uploadedFilePath,
           )) as SavedRecording;
@@ -724,6 +732,15 @@ export default function StudioPage() {
         }),
       stopBusy: snapshot.busy,
       elapsedMs,
+      uploadPending: transcriptionSnapshot.uploadPending,
+      uploadPercent: transcriptionSnapshot.uploadProgress?.percent ?? 0,
+      fileProcessing:
+        transcriptionSnapshot.inputMode === 'file' &&
+        !transcriptionSnapshot.uploadPending &&
+        (transcriptionSnapshot.languageDetectionPending ||
+          transcriptionSnapshot.requestPending ||
+          transcriptionSnapshot.job?.status === 'processing' ||
+          transcriptionSnapshot.structuredNotePending),
       error:
         recordError ||
         snapshot.errorMessage ||

@@ -53,24 +53,37 @@ describe('引导步骤与文案', () => {
     });
   });
 
-  it('新加的这几块都讲到了', () => {
+  it('把 27 个逐控件步骤合并成 15 个主题步骤', () => {
     const ids = ONBOARDING_STEPS.map((step) => step.id);
 
-    // 右下角两个浮窗、快捷录音、快捷键、后台常驻、回收站
-    expect(ids).toEqual(
-      expect.arrayContaining([
-        'hudStats',
-        'hudTodos',
-        'hudRecord',
-        'shortcuts',
-        'background',
-        'trash',
-      ]),
-    );
-    // 仪表板的两个联动方向
-    expect(ids).toEqual(
-      expect.arrayContaining(['calendarTodos', 'todoDateHover']),
-    );
+    expect(ids).toEqual([
+      'welcome',
+      'composer',
+      'libraryDrag',
+      'recents',
+      'workspace',
+      'workspaceDetail',
+      'workspaceNotes',
+      'dashboard',
+      'calendarTodos',
+      'models',
+      'settings',
+      'background',
+      'hudStats',
+      'trash',
+      'done',
+    ]);
+    // These controls now live in their neighbouring topic instead of taking a
+    // full click of their own.
+    [
+      'record',
+      'upload',
+      'agent',
+      'splitter',
+      'shortcuts',
+      'hudTodos',
+      'hudRecord',
+    ].forEach((mergedId) => expect(ids).not.toContain(mergedId));
   });
 
   it('要摆实物浮窗的那几步，聚光灯得打在浮窗上', () => {
@@ -78,11 +91,7 @@ describe('引导步骤与文案', () => {
     // 居中卡片——正好把要展示的浮窗晾在一边，最难发现的那种坏法
     const demoSteps = ONBOARDING_STEPS.filter((step) => step.hudDemo);
 
-    expect(demoSteps.map((step) => step.hudDemo)).toEqual([
-      'stats',
-      'todos',
-      'record',
-    ]);
+    expect(demoSteps.map((step) => step.hudDemo)).toEqual(['stats']);
     demoSteps.forEach((step) => {
       expect(step.target).toBe(HUD_DEMO_TARGET);
       expect(step.placement).toBe('auto');
@@ -133,17 +142,28 @@ describe('引导步骤与文案', () => {
     expect(missingSection).toEqual([]);
   });
 
-  it('后台那两步指的不是同一块——一块讲关窗行为，一块讲快捷键', () => {
+  it('后台常驻和快捷键合并指向同一个设置内容区', () => {
     const byId = (id: string) =>
       ONBOARDING_STEPS.find((step) => step.id === id);
 
-    expect(byId('background')?.target).toBe(
-      '[data-tour="settings-close-behavior"]',
-    );
-    expect(byId('shortcuts')?.target).toBe(
-      '[data-tour="settings-shortcut-list"]',
-    );
-    expect(byId('background')?.target).not.toBe(byId('shortcuts')?.target);
+    expect(byId('background')?.target).toBe('.settings-content');
+    expect(byId('shortcuts')).toBeUndefined();
+  });
+
+  it('工作空间首页总会讲，详情步骤只在有工作空间时进入', () => {
+    const byId = (id: string) =>
+      ONBOARDING_STEPS.find((step) => step.id === id);
+
+    expect(byId('workspace')).toMatchObject({
+      route: '/Workspace',
+      target: '[data-tour="workspace-home-create"]',
+    });
+    ['workspaceDetail', 'workspaceNotes'].forEach((id) => {
+      expect(byId(id)).toMatchObject({
+        route: '/Workspace',
+        dynamicRoute: 'firstWorkspace',
+      });
+    });
   });
 
   it('要跑真实联动的那一步，卡片得钉在角上', () => {

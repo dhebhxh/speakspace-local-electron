@@ -7,6 +7,10 @@ import type {
   TranscriptionSource,
 } from '@shared/types/TranscriptionTypes';
 import type { StructuredNoteDraft } from '@shared/types/KnowledgeGenerationTypes';
+import type {
+  AudioImportProgress,
+  SavedRecording,
+} from '@shared/types/AudioTypes';
 
 export type LiveTranscriptSegment = {
   id: number;
@@ -24,6 +28,9 @@ export type TranscriptionControllerSnapshot = {
   inputMode: TranscriptionInputMode;
   uploadedFileName: string | null;
   uploadedFilePath: string | null;
+  uploadedRecording: SavedRecording | null;
+  uploadPending: boolean;
+  uploadProgress: AudioImportProgress | null;
   uploadLanguage: TranscriptionLanguage;
   detectedLanguage: LanguageDetectionResult | null;
   languageDetectionPending: boolean;
@@ -54,6 +61,7 @@ export function isTranscriptionFileBusy(
   options: { includeStructuredNote?: boolean } = {},
 ): boolean {
   return (
+    snapshot.uploadPending ||
     snapshot.requestPending ||
     snapshot.job?.status === 'processing' ||
     snapshot.livePendingCount > 0 ||
@@ -114,6 +122,12 @@ export default class TranscriptionController {
 
   private uploadedFilePath: string | null = null;
 
+  private uploadedRecording: SavedRecording | null = null;
+
+  private uploadPending = false;
+
+  private uploadProgress: AudioImportProgress | null = null;
+
   private uploadLanguage: TranscriptionLanguage = 'auto';
 
   private detectedLanguage: LanguageDetectionResult | null = null;
@@ -163,6 +177,11 @@ export default class TranscriptionController {
       inputMode: this.inputMode,
       uploadedFileName: this.uploadedFileName,
       uploadedFilePath: this.uploadedFilePath,
+      uploadedRecording: this.uploadedRecording
+        ? { ...this.uploadedRecording }
+        : null,
+      uploadPending: this.uploadPending,
+      uploadProgress: this.uploadProgress ? { ...this.uploadProgress } : null,
       uploadLanguage: this.uploadLanguage,
       detectedLanguage: this.detectedLanguage
         ? { ...this.detectedLanguage }
@@ -197,6 +216,8 @@ export default class TranscriptionController {
 
   public dispose(): void {
     this.liveGeneration += 1;
+    TranscriptionController.releaseUploadedRecording(this.uploadedRecording);
+    this.uploadedRecording = null;
     this.unsubscribeStatus();
     this.unsubscribePartial();
     this.listeners.clear();
@@ -206,11 +227,21 @@ export default class TranscriptionController {
     inputMode: TranscriptionInputMode = 'microphone',
     uploadedFileName: string | null = null,
     uploadedFilePath: string | null = null,
+    uploadedRecording: SavedRecording | null = null,
   ): void {
+    if (
+      this.uploadedRecording &&
+      this.uploadedRecording.relativePath !== uploadedRecording?.relativePath
+    ) {
+      TranscriptionController.releaseUploadedRecording(this.uploadedRecording);
+    }
     this.liveGeneration += 1;
     this.inputMode = inputMode;
     this.uploadedFileName = uploadedFileName;
     this.uploadedFilePath = uploadedFilePath;
+    this.uploadedRecording = uploadedRecording;
+    this.uploadPending = false;
+    this.uploadProgress = null;
     this.detectedLanguage = null;
     this.languageDetectionPending = false;
     this.languageDetectionError = null;
@@ -333,6 +364,40 @@ export default class TranscriptionController {
 
     const fileName = filePath.split(/[\\/]/u).pop() || 'audio';
     this.resetLive('file', fileName, filePath);
+    const generation = this.liveGeneration;
+    this.uploadPending = true;
+    this.uploadProgress = null;
+    this.notify();
+
+    try {
+      const recording = (await window.electron.audio.importRecordingFile(
+        filePath,
+        (progress) => this.receiveUploadProgress(progress, generation),
+      )) as SavedRecording;
+      if (generation !== this.liveGeneration) {
+        TranscriptionController.releaseUploadedRecording(recording);
+        return;
+      }
+      this.uploadedRecording = recording;
+      this.uploadProgress = {
+        transferredBytes: recording.byteLength,
+        totalBytes: recording.byteLength,
+        percent: 100,
+      };
+    } catch (error) {
+      if (generation !== this.liveGeneration) return;
+      this.requestError =
+        error instanceof Error
+          ? error.message
+          : '音频上传失败 / Audio import failed';
+      return;
+    } finally {
+      if (generation === this.liveGeneration) {
+        this.uploadPending = false;
+        this.notify();
+      }
+    }
+
     await this.startUploadedFile(options?.skipConfirmation);
   }
 
@@ -341,7 +406,8 @@ export default class TranscriptionController {
 
     const filePath = this.uploadedFilePath;
     const fileName = this.uploadedFileName;
-    this.resetLive('file', fileName, filePath);
+    const { uploadedRecording } = this;
+    this.resetLive('file', fileName, filePath, uploadedRecording);
     await this.startUploadedFile();
   }
 
@@ -351,6 +417,13 @@ export default class TranscriptionController {
     const filePath = this.uploadedFilePath;
     if (!filePath) return;
 
+    const source: TranscriptionSource = this.uploadedRecording
+      ? {
+          kind: 'recording',
+          relativePath: this.uploadedRecording.relativePath,
+        }
+      : { kind: 'file', filePath };
+
     let language = this.uploadLanguage;
     if (language === 'auto') {
       this.languageDetectionPending = true;
@@ -359,8 +432,7 @@ export default class TranscriptionController {
 
       try {
         const result = (await window.electron.transcription.detectLanguage({
-          kind: 'file',
-          filePath,
+          ...source,
           language: 'auto',
         })) as LanguageDetectionResult;
         this.detectedLanguage = result;
@@ -400,11 +472,7 @@ export default class TranscriptionController {
       this.languageConfirmationRequired = false;
     }
 
-    await this.start({
-      kind: 'file',
-      filePath,
-      language,
-    });
+    await this.start({ ...source, language });
   }
 
   public startRecording(relativePath: string): Promise<void> {
@@ -471,6 +539,43 @@ export default class TranscriptionController {
       this.requestPending = false;
       this.notify();
     }
+  }
+
+  private receiveUploadProgress(
+    rawProgress: unknown,
+    generation: number,
+  ): void {
+    if (generation !== this.liveGeneration) return;
+    if (typeof rawProgress !== 'object' || rawProgress === null) return;
+
+    const progress = rawProgress as Partial<AudioImportProgress>;
+    if (
+      typeof progress.transferredBytes !== 'number' ||
+      !Number.isFinite(progress.transferredBytes) ||
+      typeof progress.totalBytes !== 'number' ||
+      !Number.isFinite(progress.totalBytes) ||
+      progress.totalBytes <= 0 ||
+      typeof progress.percent !== 'number' ||
+      !Number.isFinite(progress.percent)
+    ) {
+      return;
+    }
+
+    this.uploadProgress = {
+      transferredBytes: Math.max(0, progress.transferredBytes),
+      totalBytes: progress.totalBytes,
+      percent: Math.max(0, Math.min(100, Math.round(progress.percent))),
+    };
+    this.notify();
+  }
+
+  private static releaseUploadedRecording(
+    recording: SavedRecording | null,
+  ): void {
+    if (!recording) return;
+    window.electron.audio
+      .discardRecording(recording.relativePath)
+      .catch(() => undefined);
   }
 
   private receivePartial(rawPayload: unknown): void {

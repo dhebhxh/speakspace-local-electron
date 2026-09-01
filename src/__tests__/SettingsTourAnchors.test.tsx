@@ -39,29 +39,40 @@ describe('设置面板上的引导锚点', () => {
   const targetOf = (id: string) =>
     ONBOARDING_STEPS.find((step) => step.id === id)?.target as string;
 
-  it('后台面板上下两块，各自认得出自己那一步', async () => {
-    const { container } = render(<BackgroundSettingsPanel {...props} />);
+  it('后台面板上下两块被同一个合并步骤覆盖', async () => {
+    const { container } = render(
+      <div className="settings-content">
+        <BackgroundSettingsPanel {...props} />
+      </div>,
+    );
     // 面板一挂载就去问一次快捷键状态，等它回来再断言，免得 act 报警
     await waitFor(() =>
       expect((window as any).electron.background.getStatus).toHaveBeenCalled(),
     );
 
-    const closeBlock = container.querySelector(targetOf('background'));
-    const shortcutBlock = container.querySelector(targetOf('shortcuts'));
+    const combinedBlock = container.querySelector(targetOf('background'));
 
-    expect(closeBlock).not.toBeNull();
-    expect(shortcutBlock).not.toBeNull();
-    expect(closeBlock).not.toBe(shortcutBlock);
+    expect(combinedBlock).not.toBeNull();
     // 上面那块讲关窗行为，下面那块是三个快捷键录制框
-    expect(closeBlock!.querySelector('#background-tray')).not.toBeNull();
+    expect(combinedBlock!.querySelector('#background-tray')).not.toBeNull();
     expect(
-      shortcutBlock!.querySelectorAll('.settings-shortcut-list > *').length,
+      combinedBlock!.querySelectorAll('.settings-shortcut-list > *').length,
     ).toBe(3);
   });
 
-  it('智能助理面板认得出自己那一步', () => {
-    const { container } = render(<AgentSettingsPanel {...props} />);
+  it('设置总览一步同时覆盖导航和智能助理面板', () => {
+    const { container } = render(
+      <div className="settings-layout">
+        <nav className="settings-nav" />
+        <AgentSettingsPanel {...props} />
+      </div>,
+    );
 
-    expect(container.querySelector(targetOf('settingsAgent'))).not.toBeNull();
+    const combinedBlock = container.querySelector(targetOf('settings'));
+    expect(combinedBlock).not.toBeNull();
+    expect(combinedBlock!.querySelector('.settings-nav')).not.toBeNull();
+    expect(
+      combinedBlock!.querySelector('[data-tour="settings-agent-panel"]'),
+    ).not.toBeNull();
   });
 });

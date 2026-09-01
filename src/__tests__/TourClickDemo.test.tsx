@@ -3,7 +3,6 @@ import { fireEvent, render, waitFor, within } from '@testing-library/react';
 import AskAINotesPanel from '../renderer/pages/AskAI/components/AskAINotesPanel';
 import { AskAINote } from '../renderer/pages/AskAI/AskAITypes';
 import TourClickDemo from '../renderer/onboarding/TourClickDemo';
-import { ONBOARDING_STEPS } from '../renderer/onboarding/OnboardingSteps';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ i18n: { language: 'zh' }, t: (key: string) => key }),
@@ -21,6 +20,10 @@ function placeElement(className: string, box: Partial<DOMRect>) {
 }
 
 const SPEC = { onSelector: '.note', panelHostSelector: '.page' };
+const NOTE_PREVIEW_SPEC = {
+  onSelector: '.ask-ai-note-card',
+  panelHostSelector: '.studio-page',
+};
 
 const numberVar = (element: HTMLElement, name: string) =>
   Number.parseFloat(element.style.getPropertyValue(name));
@@ -133,7 +136,6 @@ describe('引导里的双击演示', () => {
 
   it('演示指的那个东西，双击它真的会打开详情', () => {
     // 选择器写错了不会报错，指针只会戳在一个跟双击毫无关系的地方
-    const step = ONBOARDING_STEPS.find((item) => item.id === 'notePreview');
     const onPreviewNote = jest.fn();
     const note: AskAINote = {
       id: 7,
@@ -159,21 +161,12 @@ describe('引导里的双击演示', () => {
     );
 
     const card = container.querySelector(
-      step?.clickDemo?.onSelector as string,
+      NOTE_PREVIEW_SPEC.onSelector,
     ) as HTMLElement;
     expect(card).not.toBeNull();
 
     fireEvent.doubleClick(within(card).getByText('周会纪要'));
 
     expect(onPreviewNote).toHaveBeenCalledWith(7);
-  });
-
-  it('那一步确实配了双击演示', () => {
-    const step = ONBOARDING_STEPS.find((item) => item.id === 'notePreview');
-
-    expect(step?.clickDemo).toEqual({
-      onSelector: '.ask-ai-note-card',
-      panelHostSelector: '.studio-page',
-    });
   });
 });

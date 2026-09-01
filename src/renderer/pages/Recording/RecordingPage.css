@@ -486,6 +486,67 @@
   white-space: nowrap;
 }
 
+.recording-uploaded-file__status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.recording-processing-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid color-mix(in srgb, var(--info) 30%, transparent);
+  border-top-color: var(--info);
+  border-radius: 50%;
+  animation: recording-processing-spin 0.75s linear infinite;
+}
+
+.recording-upload-progress {
+  display: grid;
+  gap: 0.45rem;
+  margin: -0.45rem 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--info) 30%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--info) 9%, transparent);
+}
+
+.recording-upload-progress > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--recording-muted);
+  font-size: var(--fs-md);
+}
+
+.recording-upload-progress strong {
+  color: var(--info);
+  font-variant-numeric: tabular-nums;
+}
+
+.recording-upload-progress progress {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  accent-color: var(--info);
+}
+
+@keyframes recording-processing-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recording-processing-spinner {
+    animation-duration: 1.5s;
+  }
+}
+
 @media (max-width: 640px) {
   .recording-uploaded-file {
     align-items: flex-start;

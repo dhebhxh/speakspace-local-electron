@@ -48,6 +48,8 @@ export type OnboardingStep = {
    * 而页面还停在后一步那一页，聚光灯自然就找不到目标了。
    */
   route: string;
+  /** Resolve the first available workspace just before entering this step. */
+  dynamicRoute?: 'firstWorkspace';
   /** 高亮目标的选择器；null 表示居中展示不打光 */
   target: string | null;
   placement: StepPlacement;
@@ -89,7 +91,7 @@ export type OnboardingStep = {
   hoverDemo?: HoverDemoSpec;
 };
 
-export const ONBOARDING_STEPS: OnboardingStep[] = [
+const ONBOARDING_STEP_CATALOG: OnboardingStep[] = [
   {
     id: 'welcome',
     route: '/',
@@ -354,4 +356,79 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     descKey: 'onboarding.tour.done.desc',
     hintKey: 'onboarding.tour.done.hint',
   },
+];
+
+/**
+ * Keep the detailed catalog above as reusable material for contextual help, but
+ * make the first-run tour deliberately short. Controls that sit together are
+ * taught as one group instead of advancing once per button.
+ */
+function catalogStep(
+  id: string,
+  patch: Partial<OnboardingStep> = {},
+): OnboardingStep {
+  const step = ONBOARDING_STEP_CATALOG.find((item) => item.id === id);
+  if (!step) throw new Error(`Unknown onboarding step: ${id}`);
+  return { ...step, ...patch };
+}
+
+export const ONBOARDING_STEPS: OnboardingStep[] = [
+  catalogStep('welcome', {
+    target: '[data-tour="sidebar-nav"]',
+    placement: 'auto',
+  }),
+  // The composer contains text input, record, upload and agent-mode controls.
+  catalogStep('composer'),
+  // One library step covers grouping, drag-to-chat and double-click preview.
+  catalogStep('libraryDrag', { target: '.ask-ai-library' }),
+  // Recent conversations and their resize divider are one adjacent region.
+  catalogStep('recents', {
+    hintKey: 'onboarding.tour.splitter.hint',
+  }),
+  catalogStep('workspace', {
+    target: '[data-tour="workspace-home-create"]',
+  }),
+  {
+    id: 'workspaceDetail',
+    route: '/Workspace',
+    dynamicRoute: 'firstWorkspace',
+    target: '[data-tour="workspace-detail-header"]',
+    placement: 'auto',
+    titleKey: 'onboarding.tour.workspaceDetail.title',
+    descKey: 'onboarding.tour.workspaceDetail.desc',
+    hintKey: 'onboarding.tour.workspaceDetail.hint',
+  },
+  {
+    id: 'workspaceNotes',
+    route: '/Workspace',
+    dynamicRoute: 'firstWorkspace',
+    target: '[data-tour="workspace-detail-notes"]',
+    placement: 'corner',
+    titleKey: 'onboarding.tour.workspaceNotes.title',
+    descKey: 'onboarding.tour.workspaceNotes.desc',
+    hintKey: 'onboarding.tour.workspaceNotes.hint',
+  },
+  // The page header's create button and metric cards are introduced together.
+  catalogStep('dashboard', {
+    target: '.dashboard-page-container',
+    placement: 'corner',
+  }),
+  // The same step demonstrates calendar -> note and explains the reverse link.
+  catalogStep('calendarTodos'),
+  catalogStep('models'),
+  // The nav and active Assistant panel are visible side by side.
+  catalogStep('settings', {
+    route: settingsSection('agent'),
+    target: '.settings-layout',
+    placement: 'corner',
+  }),
+  // Close behaviour and the shortcut editor are adjacent in this content area.
+  catalogStep('background', {
+    target: '.settings-content',
+    placement: 'corner',
+  }),
+  // One representative HUD replaces three consecutive floating-window steps.
+  catalogStep('hudStats'),
+  catalogStep('trash'),
+  catalogStep('done'),
 ];

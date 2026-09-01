@@ -72,10 +72,25 @@
 .settings-hardware-badge.is-entry { color: var(--warning); }
 .settings-hardware-level small { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .settings-hardware-hint { margin: 0.6rem 0 0; color: var(--muted); font-size: var(--fs-sm); }
+.settings-model-recommendations { margin-top: 1.2rem; padding-top: 1.2rem; border-top: 1px solid var(--border); }
+.settings-model-recommendation-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
+.settings-model-recommendation-heading h3 { margin: 0 0 0.2rem; font-size: var(--fs-lg); }
+.settings-model-recommendation-heading p { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+.settings-model-manage-link { flex: none; padding: 0.4rem 0.75rem; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); border-radius: 999px; background: color-mix(in srgb, var(--accent) 9%, var(--surface-soft)); font-size: var(--fs-sm); font-weight: 700; text-decoration: none; }
+.settings-model-manage-link:hover { border-color: var(--accent); }
+.settings-model-recommendation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; min-height: 6.2rem; }
+.settings-model-recommendation-card { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; padding: 0.85rem 0.95rem; border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border)); border-radius: 15px; background: color-mix(in srgb, var(--accent) 6%, var(--surface-soft)); }
+.settings-model-recommendation-card > span { color: var(--accent); font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.settings-model-recommendation-card strong { overflow: hidden; font-size: var(--fs-md); text-overflow: ellipsis; white-space: nowrap; }
+.settings-model-recommendation-card p { margin: 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.45; }
+.settings-model-recommendation-status { display: flex; grid-column: 1 / -1; align-items: center; justify-content: center; gap: 0.55rem; margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+.settings-loading-spinner { width: 1rem; height: 1rem; border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent); border-top-color: var(--accent); border-radius: 50%; animation: settings-spin 0.8s linear infinite; }
 
 @keyframes settings-pulse { 50% { opacity: 0.4; transform: scale(0.82); } }
+@keyframes settings-spin { to { transform: rotate(360deg); } }
 @media (max-width: 900px) { .settings-grid { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .settings-header { align-items: flex-start; flex-direction: column; padding: 1.4rem; } }
+@media (max-width: 620px) { .settings-model-recommendation-heading { align-items: stretch; flex-direction: column; } .settings-model-manage-link { align-self: flex-start; } .settings-model-recommendation-grid { grid-template-columns: 1fr; } }
 
 /* =========================================================
    设置页动效
@@ -99,6 +114,7 @@
 @media (prefers-reduced-motion: reduce) {
   .settings-header, .settings-nav, .settings-panel { animation-duration: 1ms !important; animation-delay: 0ms !important; }
   .settings-nav-item:hover .settings-nav-glyph, .settings-check { transform: none; }
+  .settings-loading-spinner { animation-duration: 1.8s; }
 }
 
 /* ---------- 后台与快捷键 ---------- */

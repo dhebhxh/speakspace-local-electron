@@ -30,6 +30,10 @@ const specOf = (id: string) =>
   };
 
 const spec = specOf('calendarTodos');
+const REVERSE_SPEC = {
+  itemSelector: '.notes-table .todo-date-pill',
+  maxItems: 3,
+};
 
 function renderDemo() {
   const onFocusDate = jest.fn();
@@ -210,7 +214,7 @@ describe('引导里的反向联动演示', () => {
             new TodoItem(12, '联系物流', '2026-08-25', false, 2),
           ]}
         />
-        <TourHoverDemo spec={specOf('todoDateHover')} />
+        <TourHoverDemo spec={REVERSE_SPEC} />
       </>,
     );
     return onHoverTodoDates;
@@ -261,7 +265,7 @@ describe('引导里的反向联动演示', () => {
     const { rerender } = render(
       <>
         {table}
-        <TourHoverDemo spec={specOf('todoDateHover')} />
+        <TourHoverDemo spec={REVERSE_SPEC} />
       </>,
     );
 

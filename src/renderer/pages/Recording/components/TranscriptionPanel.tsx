@@ -20,11 +20,14 @@ export default function TranscriptionPanel(props: {
     job,
     inputMode,
     uploadedFileName,
+    uploadPending,
+    uploadProgress,
     uploadLanguage,
     detectedLanguage,
     languageDetectionPending,
     languageDetectionError,
     languageConfirmationRequired,
+    requestPending,
     liveSegments,
     livePendingCount,
     liveError,
@@ -33,6 +36,13 @@ export default function TranscriptionPanel(props: {
     structuredNoteError,
   } = transcriptionSnapshot;
   const fileMode = inputMode === 'file';
+  const fileAiProcessing =
+    fileMode &&
+    !uploadPending &&
+    (languageDetectionPending ||
+      requestPending ||
+      job?.status === 'processing' ||
+      structuredNotePending);
   const streamedText = liveSegments
     .map((segment) => segment.text.trim())
     .filter(Boolean)
@@ -82,9 +92,15 @@ export default function TranscriptionPanel(props: {
     displayState = job.status;
     displayStatus = job.statusMessage;
   }
-  if (fileMode && languageDetectionPending) {
+  if (fileMode && uploadPending) {
+    displayState = 'processing';
+    displayStatus = t('recording.panel.uploadingStatus');
+  } else if (fileMode && languageDetectionPending) {
     displayState = 'processing';
     displayStatus = t('recording.panel.detectingLanguage');
+  } else if (fileMode && requestPending) {
+    displayState = 'processing';
+    displayStatus = t('recording.panel.status.preparing');
   }
   const transcriptTitle = fileMode
     ? t('recording.panel.fileTranscription')
@@ -101,12 +117,22 @@ export default function TranscriptionPanel(props: {
   } else if (livePendingCount > 0) {
     emptyTranscriptText = t('recording.panel.empty.firstSegment');
   }
+  let uploadedFileStatus =
+    job?.statusMessage ?? t('recording.panel.waitingShort');
+  if (uploadPending) {
+    uploadedFileStatus = t('recording.panel.uploadingShort');
+  } else if (languageDetectionPending) {
+    uploadedFileStatus = t('recording.panel.detectingShort');
+  } else if (requestPending) {
+    uploadedFileStatus = t('recording.panel.status.preparing');
+  } else if (structuredNotePending) {
+    uploadedFileStatus = t('recording.panel.summaryStatus.analyzing');
+  }
 
   // 正在录 / 正在转写时给面板挂上 is-live：状态徽章里的声波开始起伏，
   // 面板边缘的辉光环开始转。空闲和工作中必须一眼能分辨。
   const isLive =
-    snapshot.state === RecordingState.Recording ||
-    (fileMode && job?.status === 'processing');
+    snapshot.state === RecordingState.Recording || fileAiProcessing;
 
   return (
     <section className={`recording-panel${isLive ? ' is-live' : ''}`}>
@@ -204,11 +230,29 @@ export default function TranscriptionPanel(props: {
                   )}
               </span>
             </div>
-            <span>
-              {languageDetectionPending
-                ? t('recording.panel.detectingShort')
-                : (job?.statusMessage ?? t('recording.panel.waitingShort'))}
+            <span className="recording-uploaded-file__status">
+              {fileAiProcessing && (
+                <span
+                  className="recording-processing-spinner"
+                  aria-hidden="true"
+                />
+              )}
+              <span>{uploadedFileStatus}</span>
             </span>
+          </div>
+        )}
+
+        {fileMode && uploadPending && (
+          <div
+            className="recording-upload-progress"
+            role="status"
+            aria-live="polite"
+          >
+            <div>
+              <span>{t('recording.panel.uploadingAudio')}</span>
+              <strong>{uploadProgress?.percent ?? 0}%</strong>
+            </div>
+            <progress max={100} value={uploadProgress?.percent ?? 0} />
           </div>
         )}
 

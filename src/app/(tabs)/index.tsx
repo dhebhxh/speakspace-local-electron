@@ -88,14 +88,16 @@ export default function HomeScreen() {
       overview.calendarIntents,
       overview.notes,
     );
-    const openTaskNoteIds = getOpenTaskNoteIds(calendarByDate);
+    const openTaskNoteIds = getOpenTaskNoteIds(calendarByDate, overview.tasks);
+    const openTaskNotes = overview.notes.filter((note) => openTaskNoteIds.has(note.getId()));
     const filteredNotes = overview.notes.filter((note) =>
       (noteFilter === "pinned" ? note.getIsPinned() : noteFilter === "todos" ? openTaskNoteIds.has(note.getId()) : true) &&
       (categoryFilter === "all" || note.getCategory() === categoryFilter),
     );
     return {
       pinnedCount: overview.notes.filter((note) => note.getIsPinned()).length,
-      openTaskNoteCount: openTaskNoteIds.size,
+      openTaskNoteCount: openTaskNotes.length,
+      openTaskNotes,
       filteredNotes,
       transcriptCount: overview.notes.reduce((sum, note) => sum + note.getTranscript().length, 0),
       recentTranscriptCount: recentNotes.reduce((sum, note) => sum + note.getTranscript().length, 0),
@@ -185,6 +187,8 @@ export default function HomeScreen() {
           </View>
           <HomeTaskList
             tasks={overview.tasks}
+            calendarByDate={overviewData.calendarByDate}
+            openTaskNotes={overviewData.openTaskNotes}
             onOpenNote={(noteId) => router.push({ pathname: "/notes/[noteId]", params: { noteId } })}
             onTaskCompletedChange={async (task, completed) => {
               await appContainer.coreNoteInsightService.setTaskCompleted(task.sourceNoteId, task.id, completed);

@@ -44,6 +44,7 @@ test("calendar reads Traditional Chinese reminder and event dates directly from 
   assert.deepEqual(grouped.get("2026-08-25")?.map(({ kind, title }) => ({ kind, title })), [
     { kind: "reminder", title: "參加這場工作面試" },
   ]);
+  assert.deepEqual([...getOpenTaskNoteIds(grouped)], ["note-zh"]);
 });
 
 test("stored Structured Note items take precedence over note-content fallbacks", () => {
@@ -65,17 +66,18 @@ test("stored Structured Note items take precedence over note-content fallbacks",
   assert.equal(grouped.get("2026-08-25")?.[0].id, "stored-reminder");
 });
 
-test("Open tasks counts calendar to-do notes once instead of counting task rows", () => {
+test("Open tasks counts each actionable note once across tasks and calendar items", () => {
   const tasks = [
     { id: "task-1", title: "交報告", status: "pending", dueAt: "2026-08-29", startsAt: null, sourceNoteId: "note-1" },
     { id: "task-2", title: "寄電郵", status: "pending", dueAt: "2026-08-30", startsAt: null, sourceNoteId: "note-1" },
+    { id: "task-3", title: "整理資料", status: "pending", dueAt: null, startsAt: null, sourceNoteId: "note-3" },
   ];
   const grouped = groupHomeCalendarItems(tasks, [], [note({
     id: "note-2",
     transcript: "8月31號要提交報告",
   })]);
 
-  assert.deepEqual([...getOpenTaskNoteIds(grouped)].sort(), ["note-1", "note-2"]);
+  assert.deepEqual([...getOpenTaskNoteIds(grouped, tasks)].sort(), ["note-1", "note-2", "note-3"]);
 });
 
 test("a completed stored task cannot reappear through transcript fallback", () => {
@@ -92,5 +94,5 @@ test("a completed stored task cannot reappear through transcript fallback", () =
   })]);
 
   assert.equal(grouped.has("2026-08-29"), false);
-  assert.equal(getOpenTaskNoteIds(grouped).size, 0);
+  assert.equal(getOpenTaskNoteIds(grouped, tasks).size, 0);
 });

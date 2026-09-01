@@ -17,10 +17,12 @@ test("single-note pin controls are available from home, search, and note detail"
   for (const screen of [home, search, detail]) assert.match(screen, /setNotePinned\(/);
 });
 
-test("the Open tasks card and its note filter share calendar task-note identities", async () => {
+test("the Open tasks card and its note filter share task and calendar note identities", async () => {
   const home = await read("src/app/(tabs)/index.tsx");
 
-  assert.match(home, /const openTaskNoteIds = getOpenTaskNoteIds\(calendarByDate\)/);
-  assert.match(home, /openTaskNoteCount: openTaskNoteIds\.size/);
+  assert.match(home, /const openTaskNoteIds = getOpenTaskNoteIds\(calendarByDate, overview\.tasks\)/);
+  assert.match(home, /openTaskNoteCount: openTaskNotes\.length/);
   assert.match(home, /noteFilter === "todos" \? openTaskNoteIds\.has\(note\.getId\(\)\)/);
+  assert.match(home, /calendarByDate=\{overviewData\.calendarByDate\}/);
+  assert.match(home, /openTaskNotes=\{overviewData\.openTaskNotes\}/);
 });

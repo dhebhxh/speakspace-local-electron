@@ -114,17 +114,22 @@ export function groupHomeCalendarItems(
 }
 
 /**
- * Returns one entry per note that contributes an unfinished to-do to the
- * calendar. A note with several dated tasks still counts as one open-task
- * note, matching the Notes filter shown by the dashboard card.
+ * Returns one entry per note that still needs attention. Pending Structured
+ * Note tasks count even without a date, while every pending item shown on the
+ * calendar (task, reminder, or event) also makes its source note open. A note
+ * with several items still counts only once.
  */
 export function getOpenTaskNoteIds(
   itemsByDate: ReadonlyMap<string, readonly HomeCalendarItem[]>,
+  tasks: readonly CoreTask[] = [],
 ): Set<string> {
   const noteIds = new Set<string>();
+  for (const task of tasks) {
+    if (task.status === "pending") noteIds.add(task.sourceNoteId);
+  }
   for (const items of itemsByDate.values()) {
     for (const item of items) {
-      if (item.kind === "task") noteIds.add(item.sourceNoteId);
+      noteIds.add(item.sourceNoteId);
     }
   }
   return noteIds;

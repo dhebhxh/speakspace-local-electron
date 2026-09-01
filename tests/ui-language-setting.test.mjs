@@ -36,14 +36,16 @@ test("home overview stat cards have localized labels, filters, and weekly deltas
 
 test("home task groups and dynamic task counts are localized", async () => {
   const source = await read("src/localization/ui-copy.ts");
-  for (const label of ["Overdue", "Today", "Upcoming", "Unscheduled", "open across your Structured Notes"]) {
+  for (const label of ["Overdue", "Today", "Upcoming", "Unscheduled", "Calendar follow-ups"]) {
     assert.ok(source.includes(label), `missing localized home task copy: ${label}`);
   }
   assert.match(source, /value\.match\(\/\^Completed/);
+  assert.match(source, /value\.match\(\/\^\(\\d\+\) open notes/);
 
   const taskList = await read("src/components/home-task-list.tsx");
   const home = await read("src/app/(tabs)/index.tsx");
   assert.match(taskList, /\{`Completed \(\$\{groups\.completed\.length\}\)`\}/);
+  assert.match(taskList, /calendarOnlyNotes\.map/);
   assert.match(home, /\{`\$\{overviewData\.filteredNotes\.length\} shown`\}/);
 });
 

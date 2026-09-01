@@ -25,6 +25,8 @@ const UI_COPY: Record<string, Copy> = {
   Tasks: copy("Tasks", "任务", "Tareas", "Tâches", "Aufgaben", "タスク", "작업", "Tarefas"),
   "No open tasks": copy("No open tasks", "没有待办任务", "No hay tareas abiertas", "Aucune tâche ouverte", "Keine offenen Aufgaben", "未完了のタスクはありません", "진행 중인 작업 없음", "Sem tarefas em aberto"),
   "Tasks generated from Structured Notes will appear here.": copy("Tasks generated from Structured Notes will appear here.", "从结构化笔记生成的任务会显示在这里。", "Las tareas de notas estructuradas aparecerán aquí.", "Les tâches issues des notes structurées apparaîtront ici.", "Aufgaben aus strukturierten Notizen erscheinen hier.", "構造化ノートから生成されたタスクがここに表示されます。", "구조화된 노트에서 생성된 작업이 여기에 표시됩니다.", "As tarefas de notas estruturadas aparecem aqui."),
+  "Tasks and calendar follow-ups from your notes will appear here.": copy("Tasks and calendar follow-ups from your notes will appear here.", "笔记中的任务和日历跟进事项会显示在这里。", "Aquí aparecerán las tareas y seguimientos del calendario de tus notas.", "Les tâches et suivis du calendrier de vos notes apparaîtront ici.", "Aufgaben und Kalendertermine aus deinen Notizen erscheinen hier.", "ノートのタスクとカレンダーのフォローアップがここに表示されます。", "노트의 작업과 캘린더 후속 항목이 여기에 표시됩니다.", "As tarefas e acompanhamentos do calendário das suas notas aparecem aqui."),
+  "Calendar follow-ups": copy("Calendar follow-ups", "日历跟进事项", "Seguimientos del calendario", "Suivis du calendrier", "Kalendertermine", "カレンダーのフォローアップ", "캘린더 후속 항목", "Acompanhamentos do calendário"),
   "Ask AI": copy("Ask AI", "询问 AI", "Preguntar a la IA", "Demander à l’IA", "KI fragen", "AIに質問", "AI에게 질문", "Perguntar à IA"),
   "Open Ask AI": copy("Open Ask AI", "打开询问 AI", "Abrir Preguntar a la IA", "Ouvrir Demander à l’IA", "KI fragen öffnen", "AIに質問を開く", "AI에게 질문 열기", "Abrir Perguntar à IA"),
   Ask: copy("Ask", "询问", "Preguntar", "Demander", "Fragen", "質問", "질문", "Perguntar"),
@@ -344,6 +346,9 @@ export function translateUiCopy(value: string, language: UiLanguage): string {
 
   const completed = value.match(/^Completed \((\d+)\)$/);
   if (completed) return ({ en: `Completed (${completed[1]})`, "zh-CN": `已完成（${completed[1]}）`, es: `Completadas (${completed[1]})`, fr: `Terminées (${completed[1]})`, de: `Erledigt (${completed[1]})`, ja: `完了（${completed[1]}）`, ko: `완료됨 (${completed[1]})`, pt: `Concluídas (${completed[1]})` })[language];
+
+  const openNotes = value.match(/^(\d+) open notes?$/);
+  if (openNotes) return ({ en: `${openNotes[1]} open note${openNotes[1] === "1" ? "" : "s"}`, "zh-CN": `${openNotes[1]} 篇待处理笔记`, es: `${openNotes[1]} nota${openNotes[1] === "1" ? "" : "s"} abierta${openNotes[1] === "1" ? "" : "s"}`, fr: `${openNotes[1]} note${openNotes[1] === "1" ? "" : "s"} en attente`, de: `${openNotes[1]} offene Notiz${openNotes[1] === "1" ? "" : "en"}`, ja: `${openNotes[1]}件の未処理ノート`, ko: `미처리 노트 ${openNotes[1]}개`, pt: `${openNotes[1]} nota${openNotes[1] === "1" ? "" : "s"} em aberto` })[language];
 
   const downloading = value.match(/^Downloading…\s?(\d+)%$/);
   if (downloading) return ({ en: `Downloading… ${downloading[1]}%`, "zh-CN": `正在下载…… ${downloading[1]}%`, es: `Descargando… ${downloading[1]}%`, fr: `Téléchargement… ${downloading[1]}%`, de: `Wird heruntergeladen … ${downloading[1]}%`, ja: `ダウンロード中… ${downloading[1]}%`, ko: `다운로드 중… ${downloading[1]}%`, pt: `A transferir… ${downloading[1]}%` })[language];

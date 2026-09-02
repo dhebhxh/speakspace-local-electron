@@ -18,7 +18,11 @@ import {
   scatterChart,
   stackedBarChart,
 } from './chart-svg';
-import { benchmarkResultsRoot, PROJECT_ROOT } from './tts-paths';
+import {
+  benchmarkResultsRoot,
+  portablePathBasename,
+  PROJECT_ROOT,
+} from './tts-paths';
 
 type Json = Record<string, any>;
 
@@ -320,7 +324,7 @@ function asrCharts(): void {
     'tts-cer-by-language.svg',
     groupedBarChart({
       title: 'Whisper back-transcription CER by language',
-      subtitle: `Back-transcription model ${path.basename(String(asr.whisper_model))} · lower is better`,
+      subtitle: `Back-transcription model ${portablePathBasename(String(asr.whisper_model))} · lower is better`,
       categories: ['Chinese', 'English', 'Chinese-English'],
       series: entries.map((item) => ({
         name: item.name,

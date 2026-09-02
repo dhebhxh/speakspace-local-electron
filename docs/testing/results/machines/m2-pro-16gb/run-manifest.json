@@ -3,7 +3,7 @@
   "machine": {
     "machine_id": "m2-pro-16gb",
     "label": "m2-pro-16gb",
-    "captured_at": "2026-09-01T14:59:32.090Z",
+    "captured_at": "2026-09-02T17:21:03.634Z",
     "hostname_hash": "a0d8cc65107b",
     "os": "Darwin 25.6.0",
     "arch": "arm64",
@@ -15,46 +15,16 @@
     "node_version": "v26.3.0",
     "accelerator_class": "apple-silicon"
   },
-  "ran_at": "2026-09-01T16:21:03.399Z",
+  "ran_at": "2026-09-02T18:01:37.555Z",
   "with_accuracy": false,
   "steps": [
     {
-      "id": "tts",
-      "status": "ok",
-      "elapsed_ms": 2771631
-    },
-    {
-      "id": "tts-memory",
-      "status": "ok",
-      "elapsed_ms": 1109893
-    },
-    {
-      "id": "tts-length",
-      "status": "ok",
-      "elapsed_ms": 494356
-    },
-    {
-      "id": "llm",
-      "status": "ok",
-      "elapsed_ms": 154168
-    },
-    {
       "id": "stt",
       "status": "ok",
-      "elapsed_ms": 360662
+      "elapsed_ms": 2433895
     }
   ],
   "files": [
-    "llm-runtime.json",
-    "stt-human-speed.json",
-    "tts-kokoro-multi-lang-v1_0.json",
-    "tts-length-kokoro-multi-lang-v1_0.json",
-    "tts-length-moss-tts-nano-100m-onnx.json",
-    "tts-length-vits-melo-tts-zh_en.json",
-    "tts-memory-kokoro-multi-lang-v1_0.json",
-    "tts-memory-moss-tts-nano-100m-onnx.json",
-    "tts-memory-vits-melo-tts-zh_en.json",
-    "tts-moss-tts-nano-100m-onnx.json",
-    "tts-vits-melo-tts-zh_en.json"
+    "stt-human-speed.json"
   ]
 }

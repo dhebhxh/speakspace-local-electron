@@ -4,6 +4,7 @@ import path from 'path';
 import {
   makeBenchmarkArtifactPortable,
   machineResultsMarkdownLink,
+  portablePathBasename,
   resolveSystemCommand,
   resolveWhisper,
 } from './tts-paths';
@@ -89,5 +90,14 @@ describe('benchmark runtime discovery', () => {
     expect(machineResultsMarkdownLink('M2 Pro/16GB')).toBe(
       './results/machines/M2%20Pro%2F16GB/',
     );
+  });
+
+  it('extracts a filename from paths created on either operating system', () => {
+    expect(portablePathBasename('/models/stt/ggml-large-v1.bin')).toBe(
+      'ggml-large-v1.bin',
+    );
+    expect(
+      portablePathBasename('C:\\Users\\Alice\\models\\stt\\ggml-large-v1.bin'),
+    ).toBe('ggml-large-v1.bin');
   });
 });

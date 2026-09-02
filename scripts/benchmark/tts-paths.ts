@@ -94,6 +94,14 @@ function portableArchivedPath(value: string): string {
 }
 
 /**
+ * 结果可能由不同操作系统生成；展示文件名时不能使用当前平台的 path.basename，
+ * 否则 macOS/Linux 会把 Windows 反斜杠路径原样写进报告和 SVG。
+ */
+export function portablePathBasename(value: string): string {
+  return path.posix.basename(value.replace(/\\/g, '/'));
+}
+
+/**
  * 机器归档会提交到 GitHub，不应把运行者用户名和本机目录写进 JSON。
  * 这里只改写已知的路径字段；测量值、模型标识和网络地址保持原样。
  */

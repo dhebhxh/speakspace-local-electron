@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1636" height="933" viewBox="0 0 1636 933" role="img">
-<rect width="1636" height="933" fill="#F7F8FA" rx="10"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="831" height="1751" viewBox="0 0 831 1751" role="img">
+<rect width="831" height="1751" fill="#F7F8FA" rx="10"/>
 <text x="26" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="19" fill="#1F2933" text-anchor="start" font-weight="600">Human-recorded STT evaluation overview</text>
 <text x="26" y="56" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12.5" fill="#6B7280" text-anchor="start" font-weight="400">56 recordings · whisper.cpp tiny/base/small/large-v1</text>
 <svg x="20.0" y="74.0" width="791.2" height="386.4" viewBox="0 0 860 420">
@@ -45,7 +45,7 @@
 </svg>
 
 </svg>
-<svg x="825.2" y="74.0" width="791.2" height="386.4" viewBox="0 0 860 420">
+<svg x="20.0" y="474.4" width="791.2" height="386.4" viewBox="0 0 860 420">
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" viewBox="0 0 860 420" role="img">
 <rect width="860" height="420" fill="#FFFFFF" rx="8"/>
 
@@ -97,7 +97,7 @@
 </svg>
 
 </svg>
-<svg x="20.0" y="474.4" width="791.2" height="386.4" viewBox="0 0 860 420">
+<svg x="20.0" y="874.8" width="791.2" height="386.4" viewBox="0 0 860 420">
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" viewBox="0 0 860 420" role="img">
 <rect width="860" height="420" fill="#FFFFFF" rx="8"/>
 
@@ -149,7 +149,7 @@
 </svg>
 
 </svg>
-<svg x="825.2" y="474.4" width="791.2" height="404.8" viewBox="0 0 860 440">
+<svg x="20.0" y="1275.2" width="791.2" height="404.8" viewBox="0 0 860 440">
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="440" viewBox="0 0 860 440" role="img">
 <rect width="860" height="440" fill="#FFFFFF" rx="8"/>
 
@@ -181,5 +181,6 @@
 </svg>
 
 </svg>
-<text x="26" y="919.2" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">The speaker is a native Chinese speaker; segment B is a paraphrase and is not scored with CER. Chart 4 shows the speed-accuracy trade-off.</text>
+<text x="26" y="1720" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">The speaker is a native Chinese speaker; segment B is a paraphrase and is not scored with CER. Chart 4 shows the</text>
+<text x="26" y="1737" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">speed-accuracy trade-off.</text>
 </svg>

@@ -1610,6 +1610,7 @@ function panels(): void {
       'tts-rtf-vs-length.svg',
       'tts-synthesis-vs-audio.svg',
     ],
+    1,
   );
 
   compose(
@@ -1643,6 +1644,7 @@ function panels(): void {
       'stt-content-recall-by-segment.svg',
       'stt-speed-vs-accuracy.svg',
     ],
+    1,
   );
 
   compose(
@@ -1676,6 +1678,7 @@ function panels(): void {
       'agent-latency-by-scenario.svg',
       'agent-round-stability.svg',
     ],
+    1,
   );
 
   const retrievalData = readJson('embedding-retrieval.json');
@@ -1691,22 +1694,26 @@ function panels(): void {
       'retrieval-by-scenario.svg',
       'retrieval-vs-llm-mediated.svg',
     ],
+    1,
   );
 }
 
 function main(): void {
-  ttsCharts();
-  memoryCharts();
-  asrCharts();
-  sttCharts();
-  todoCharts();
-  agentCharts();
-  retrievalCharts();
-  jestCharts();
-  llmCharts();
-  tuningCharts();
-  crossMachineCharts();
-  // 面板要在单图之后生成：它读的就是刚写出来的那些文件
+  const panelsOnly = process.argv.includes('--panels-only');
+  if (!panelsOnly) {
+    ttsCharts();
+    memoryCharts();
+    asrCharts();
+    sttCharts();
+    todoCharts();
+    agentCharts();
+    retrievalCharts();
+    jestCharts();
+    llmCharts();
+    tuningCharts();
+    crossMachineCharts();
+  }
+  // 完整模式先生成单图；panels-only 模式则安全复用仓库里已有的单图。
   panels();
   if (written.length === 0) {
     process.stdout.write(

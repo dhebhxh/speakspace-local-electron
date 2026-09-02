@@ -174,16 +174,71 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 
 Ask AI 适合固定范围问答；Agent 则允许本地模型在有界循环里调用工具。用户手动关联笔记时，这些笔记会在第一轮推理前确定性载入，同时从可用工具中移除 `search_notes`，防止模型忽略用户指定范围。
 
-<p align="center">
-  <img src="docs/readme/agent-workflow-zh.png" width="900" alt="原有 Agent 请求时序图" />
-</p>
+下面两张图以 Mermaid 源码直接维护在 README 中，并由 GitHub 自动渲染；以后可以修改结构，而不需要手工编辑位图。
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User as 用户
+  participant UI as Agent 界面
+  participant Agent as AgentOrchestrator
+  participant Data as 笔记 / SQLite
+  participant LLM as 本地 Ollama
+
+  User->>UI: 问题 + 作用范围
+  UI->>Agent: 类型化 IPC 请求
+  Agent->>Agent: 校验限制并保留最近对话
+
+  alt 已显式关联笔记
+    Agent->>Data: 并行 read_note（最多 8 篇）
+    Data-->>Agent: 确定性上下文（最多 8000 字符）
+    Note over Agent,LLM: 移除 search_notes
+  else 工作区或全库范围
+    Note over Agent,LLM: 保留 search_notes
+  end
+
+  loop 有界工具循环（最多 6 步）
+    Agent->>LLM: 提示词 + 运行状态 + 证据
+    alt 请求调用工具
+      LLM-->>Agent: search_notes / read_note / extract_todos
+      Agent->>Data: 执行已注册工具
+      Data-->>Agent: 工具观察结果
+    else 返回最终回答
+      LLM-->>Agent: 基于证据的回答
+    end
+  end
+
+  Agent->>Data: 保存本轮对话和关联来源
+  Agent-->>UI: 步骤时间线 + 最终回答
+  UI-->>User: 文本或 TTS 输出
+```
+
 <p align="center"><em>图 5：Agent 请求时序图。</em></p>
 
 时序图展示各组件随时间发生的交互；下面的控制器视图则补充决策分支、有界工具循环、证据回传和最终回答之间的关系。
 
-<p align="center">
-  <img src="docs/readme/bounded-agent-workflow.png" width="900" alt="有界 Agent 控制器工作流" />
-</p>
+```mermaid
+flowchart TB
+  Query["1 · 用户问题<br/>指令与作用范围"] --> Context["2 · 上下文组装<br/>历史 + 关联笔记 + 工具策略"]
+  Context --> LLM["3 · 本地 LLM<br/>在有界上下文中推理"]
+  LLM --> Decision{"下一步操作？"}
+
+  Decision -->|最终回答| Response["4 · 最终回答<br/>基于证据生成"]
+  Response --> Delivery["Agent 界面 / TTS<br/>时间线、文本与语音反馈"]
+  Response --> History[("AI 对话<br/>本轮内容 + 关联来源")]
+
+  subgraph Loop["有界工具循环 · 最多 6 步"]
+    Controller["工具控制器<br/>校验名称与参数<br/>限制范围、去重并控制步数"]
+    Tools["工具执行层<br/>search_notes · read_note · extract_todos"]
+    Observation["观察结果<br/>将工具结果追加到模型上下文"]
+    Controller --> Tools --> Observation
+  end
+
+  Decision -->|调用工具| Controller
+  Tools <--> Knowledge[("本地知识<br/>笔记 · 待办 · 搜索索引")]
+  Observation -->|将证据返回模型| LLM
+```
+
 <p align="center"><em>图 6：有界 Agent 控制器工作流。</em></p>
 
 Agent 的代码级边界：
@@ -221,32 +276,32 @@ Agent 的代码级边界：
 | 回归测试 | 可按功能域复核的 Jest 机器可读清单 | 回归测试不衡量模型准确率 |
 
 <p align="center">
-  <img src="docs/testing/charts/panel-tts-speed.svg" width="900" alt="TTS 速度评测面板" />
+  <img src="docs/testing/charts/panel-tts-speed.svg" width="100%" alt="TTS 速度评测面板" />
 </p>
 <p align="center"><em>图 7：各测试引擎的 TTS 合成速度。</em></p>
 
 <p align="center">
-  <img src="docs/testing/charts/panel-stt.svg" width="900" alt="STT 真人录音评测面板" />
+  <img src="docs/testing/charts/panel-stt.svg" width="100%" alt="STT 真人录音评测面板" />
 </p>
 <p align="center"><em>图 8：基于真人录音的 STT 评测。</em></p>
 
 <p align="center">
-  <img src="docs/testing/charts/llm-accuracy-vs-speed.svg" width="900" alt="LLM 速度与准确率权衡" />
+  <img src="docs/testing/charts/llm-accuracy-vs-speed.svg" width="100%" alt="LLM 速度与准确率权衡" />
 </p>
 <p align="center"><em>图 9：本地 LLM 准确率与速度权衡。</em></p>
 
 <p align="center">
-  <img src="docs/testing/charts/panel-retrieval.svg" width="900" alt="Embedding 混合检索评测面板" />
+  <img src="docs/testing/charts/panel-retrieval.svg" width="100%" alt="Embedding 混合检索评测面板" />
 </p>
 <p align="center"><em>图 10：基于 Embedding 的混合检索评测。</em></p>
 
 <p align="center">
-  <img src="docs/testing/charts/panel-agent.svg" width="900" alt="Agent 端到端评测面板" />
+  <img src="docs/testing/charts/panel-agent.svg" width="100%" alt="Agent 端到端评测面板" />
 </p>
 <p align="center"><em>图 11：Agent 端到端评测。</em></p>
 
 <p align="center">
-  <img src="docs/testing/charts/jest-by-area.svg" width="900" alt="按功能域划分的 Jest 回归测试" />
+  <img src="docs/testing/charts/jest-by-area.svg" width="100%" alt="按功能域划分的 Jest 回归测试" />
 </p>
 <p align="center"><em>图 12：按功能域划分的 Jest 回归覆盖。</em></p>
 
@@ -340,6 +395,7 @@ npm start
 | `npm run bench -- --machine <标签>` | 运行并归档一台机器上的全部硬件敏感基准 |
 | `npm run bench:aggregate` | 汇总已经收集的机器快照 |
 | `npm run bench:charts` | 重新生成仓库内的 SVG 评测图 |
+| `npm run bench:charts -- --panels-only` | 使用已有明细图重组总览面板，不重新选择基准数据 |
 | `npm run bench:report` | 重新生成 Markdown 评测报告 |
 | `npm run check:audit` | 只检查生产依赖漏洞 |
 | `npm run package` | 当前平台内部构建 |

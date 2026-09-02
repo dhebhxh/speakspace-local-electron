@@ -172,16 +172,71 @@ Semantic search caches vectors in `note_embeddings` and uses `content_hash` to d
 
 Ask AI is designed for question answering over a fixed scope. Agent mode lets the local model call tools within a bounded loop. When users link notes explicitly, those notes are loaded deterministically before the first inference step, and `search_notes` is removed from the available tool set so the model cannot ignore the requested scope.
 
-<p align="center">
-  <img src="docs/readme/agent-workflow.png" width="900" alt="Original Agent request sequence" />
-</p>
+The two diagrams below are maintained as Mermaid source in this README and rendered by GitHub, so their structure can be updated without editing raster images.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Agent UI
+  participant Agent as AgentOrchestrator
+  participant Data as Notes / SQLite
+  participant LLM as Local Ollama
+
+  User->>UI: Question + scope
+  UI->>Agent: Typed IPC request
+  Agent->>Agent: Validate limits and retain recent history
+
+  alt Explicitly linked notes
+    Agent->>Data: Parallel read_note (up to 8)
+    Data-->>Agent: Deterministic context (up to 8,000 characters)
+    Note over Agent,LLM: search_notes is removed
+  else Workspace or library scope
+    Note over Agent,LLM: search_notes remains available
+  end
+
+  loop Bounded tool loop (at most 6 steps)
+    Agent->>LLM: Prompt + run state + evidence
+    alt Tool requested
+      LLM-->>Agent: search_notes / read_note / extract_todos
+      Agent->>Data: Execute the registered tool
+      Data-->>Agent: Tool observation
+    else Final answer
+      LLM-->>Agent: Evidence-grounded response
+    end
+  end
+
+  Agent->>Data: Persist turn and linked sources
+  Agent-->>UI: Step timeline + final answer
+  UI-->>User: Text or TTS output
+```
+
 <p align="center"><em>Figure 5. Agent request sequence.</em></p>
 
 The sequence diagram shows interactions over time; the controller view below highlights the decision point, bounded tool loop, evidence return path, and final response.
 
-<p align="center">
-  <img src="docs/readme/bounded-agent-workflow.png" width="900" alt="Bounded Agent controller workflow" />
-</p>
+```mermaid
+flowchart TB
+  Query["1 · User query<br/>Instruction and scope"] --> Context["2 · Context assembly<br/>History + linked notes + tool policy"]
+  Context --> LLM["3 · Local LLM<br/>Reason over the bounded context"]
+  LLM --> Decision{"Next action?"}
+
+  Decision -->|Final answer| Response["4 · Final response<br/>Evidence-grounded answer"]
+  Response --> Delivery["Agent UI / TTS<br/>Timeline, text, and voice feedback"]
+  Response --> History[("AI conversation<br/>Turn + linked sources")]
+
+  subgraph Loop["Bounded tool loop · at most 6 steps"]
+    Controller["Tool controller<br/>Validate name and arguments<br/>Enforce scope, deduplication, and step limit"]
+    Tools["Tool execution layer<br/>search_notes · read_note · extract_todos"]
+    Observation["Observation<br/>Append the tool result to model context"]
+    Controller --> Tools --> Observation
+  end
+
+  Decision -->|Tool call| Controller
+  Tools <--> Knowledge[("Local knowledge<br/>Notes · todos · search index")]
+  Observation -->|Return evidence to the model| LLM
+```
+
 <p align="center"><em>Figure 6. Bounded Agent controller workflow.</em></p>
 
 Code-level Agent bounds:
@@ -219,32 +274,32 @@ The evaluation suite covers all four local-AI subsystems—TTS, STT, LLM, and em
 | Regression | Machine-readable Jest inventory grouped by feature area | Regression tests do not measure model quality |
 
 <p align="center">
-  <img src="docs/testing/charts/panel-tts-speed.svg" width="900" alt="TTS speed evaluation panel" />
+  <img src="docs/testing/charts/panel-tts-speed.svg" width="100%" alt="TTS speed evaluation panel" />
 </p>
 <p align="center"><em>Figure 7. TTS synthesis speed across the tested engines.</em></p>
 
 <p align="center">
-  <img src="docs/testing/charts/panel-stt.svg" width="900" alt="STT human-recording evaluation panel" />
+  <img src="docs/testing/charts/panel-stt.svg" width="100%" alt="STT human-recording evaluation panel" />
 </p>
 <p align="center"><em>Figure 8. STT evaluation on human recordings.</em></p>
 
 <p align="center">
-  <img src="docs/testing/charts/llm-accuracy-vs-speed.svg" width="900" alt="LLM speed and accuracy trade-off" />
+  <img src="docs/testing/charts/llm-accuracy-vs-speed.svg" width="100%" alt="LLM speed and accuracy trade-off" />
 </p>
 <p align="center"><em>Figure 9. Local LLM accuracy and speed trade-off.</em></p>
 
 <p align="center">
-  <img src="docs/testing/charts/panel-retrieval.svg" width="900" alt="Embedding-based hybrid retrieval evaluation panel" />
+  <img src="docs/testing/charts/panel-retrieval.svg" width="100%" alt="Embedding-based hybrid retrieval evaluation panel" />
 </p>
 <p align="center"><em>Figure 10. Embedding-based hybrid retrieval evaluation.</em></p>
 
 <p align="center">
-  <img src="docs/testing/charts/panel-agent.svg" width="900" alt="Agent end-to-end evaluation panel" />
+  <img src="docs/testing/charts/panel-agent.svg" width="100%" alt="Agent end-to-end evaluation panel" />
 </p>
 <p align="center"><em>Figure 11. Agent end-to-end evaluation.</em></p>
 
 <p align="center">
-  <img src="docs/testing/charts/jest-by-area.svg" width="900" alt="Jest regression tests by feature area" />
+  <img src="docs/testing/charts/jest-by-area.svg" width="100%" alt="Jest regression tests by feature area" />
 </p>
 <p align="center"><em>Figure 12. Jest regression coverage by feature area.</em></p>
 
@@ -338,6 +393,7 @@ npm start
 | `npm run bench -- --machine <label>` | Run and archive all hardware-sensitive benchmarks for one machine |
 | `npm run bench:aggregate` | Aggregate collected machine snapshots |
 | `npm run bench:charts` | Regenerate the committed SVG evaluation charts |
+| `npm run bench:charts -- --panels-only` | Recompose overview panels from existing detailed charts without selecting new benchmark data |
 | `npm run bench:report` | Regenerate the Markdown evaluation reports |
 | `npm run check:audit` | Audit production dependencies only |
 | `npm run package` | Create an internal build for the current platform |

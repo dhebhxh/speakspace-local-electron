@@ -20,7 +20,7 @@ const STEPS = [
   },
   {
     title: "Record or Import",
-    body: "Record a live conversation or choose an audio file. SpeakSpace saves the original transcript before starting any optional AI organization.",
+    body: "Record a live conversation or choose an audio file. LetsVoice saves the original transcript before starting any optional AI organization.",
   },
   {
     title: "Set Up AI Models",
@@ -168,7 +168,7 @@ export default function GettingStartedScreen() {
             </Pressable>
           )}
           <AppButton
-            label={step === STEPS.length - 1 ? (isReplay ? "Close Guide" : "Start Using SpeakSpace") : "Continue"}
+            label={step === STEPS.length - 1 ? (isReplay ? "Close Guide" : "Start Using LetsVoice") : "Continue"}
             onPress={() => step === STEPS.length - 1 ? void finish() : setStep((current) => Math.min(STEPS.length - 1, current + 1))}
           />
         </View>

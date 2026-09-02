@@ -70,7 +70,7 @@ function InlineBlock({ text, style }: { text: string; style: object }) {
   const openLink = (href: string, domain: string) => {
     Alert.alert(
       "Open external link?",
-      `This will open ${domain} outside SpeakSpace.`,
+      `This will open ${domain} outside LetsVoice.`,
       [
         { text: "Cancel", style: "cancel" },
         { text: "Open", onPress: () => void Linking.openURL(href) },

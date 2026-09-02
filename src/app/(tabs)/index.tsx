@@ -126,7 +126,7 @@ export default function HomeScreen() {
         <View style={styles.hero}>
           <View style={[styles.brandMark, { backgroundColor: colors.accent }]}><Text style={styles.brandGlyph}>|||</Text></View>
           <View style={styles.heroCopy}>
-            <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.eyebrow, { color: colors.accent }]}>SPEAKSPACE-LOCAL</Text>
+            <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.eyebrow, { color: colors.accent }]}>LETSVOICE-LOCAL</Text>
           </View>
           <Pressable
             accessibilityHint="Shows note and task statistics"

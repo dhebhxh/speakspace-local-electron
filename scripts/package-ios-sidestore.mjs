@@ -21,7 +21,7 @@ const outputDirectoryArgument = process.argv[3] ?? "dist/ios";
 
 if (!appPathArgument) {
   fail(
-    "Usage: npm run package:ios:sidestore -- /absolute/path/to/SpeakSpace.app [output-directory]",
+    "Usage: npm run package:ios:sidestore -- /absolute/path/to/LetsVoice.app [output-directory]",
   );
 }
 
@@ -42,7 +42,7 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 const version = packageJson.version;
-const artifactBaseName = `SpeakSpace-iOS-v${version}`;
+const artifactBaseName = `LetsVoice-iOS-v${version}`;
 const ipaPath = join(outputDirectory, `${artifactBaseName}.ipa`);
 const checksumPath = `${ipaPath}.sha256`;
 const workingDirectory = await mkdtemp(

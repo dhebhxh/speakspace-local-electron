@@ -1,6 +1,16 @@
 # Changelog
 
-本文件记录 SpeakSpace Local Mobile 面向组内测试的稳定版本。iOS 安装包不发布到 App Store，二进制资产附在团队仓库对应的 GitHub Release 中。
+本文件记录 LetsVoice Local Mobile 面向组内测试的稳定版本。iOS 安装包不发布到 App Store，二进制资产附在团队仓库对应的 GitHub Release 中。
+
+## [1.6.1] - 2026-09-03
+
+### Changed
+
+- 将当前 App 的产品名称、界面文案、权限说明、本地 PDF 标记及 SideStore 发布资产统一为 LetsVoice。
+- 保留现有 Bundle ID、URL scheme、数据库名、通知 ID、仓库名和 package 名等小写技术标识，确保 iOS 覆盖安装、深链和本地数据继续兼容。
+- App version 更新为 `1.6.1`，iOS build number 更新为 `8`；本版不包含功能行为变更。
+
+发布记录：[LetsVoice iOS v1.6.1](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.6.1)
 
 ## [1.6.0] - 2026-08-28
 

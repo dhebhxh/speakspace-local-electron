@@ -1049,6 +1049,21 @@ SideStore packager 从签名真机 `.app` 复制后递归移除全部 `_CodeSign
 > - Method: 最终版本全量质量门、安全审计、干净 Prebuild/CocoaPods、签名真机与模拟器 Release、codesign/verifier、CoreDevice 清装、IPA ZIP/entry/plist/SHA-256 独立验证，以及发布后 GitHub API 回读
 > - Confidence: High；源码、自动质量门、构建、模拟器启动、真机清装与启动进程、IPA 有直接证据；Windows SideStore 重签仍需对应环境验收
 
+### 12.26 LetsVoice 品牌更名与 iOS v1.6.1 封版
+
+本轮只把当前 App 的产品名称从旧名称更新为 LetsVoice，并将 App version 提升为 1.6.1、iOS build number 提升为 8。界面、权限说明、PDF 标记、安装指南、脚本输出和 SideStore 资产使用同一新名称；功能逻辑保持不变。为维持覆盖安装、深链和本地数据兼容性，Bundle ID `com.dhebhxh.speakspacelocalmobile`、URL scheme、数据库名、通知 ID、仓库名和 package 名等既有小写技术标识没有更改。历史 changelog 与旧版发布记录继续保留发布当时的旧名称。
+
+最终质量门使用 Europe/London 测试基线完成 141/141 tests，TypeScript 通过，Lint 为 0 error 和 12 个既有 Hook dependency warning。Expo public config 确认 LetsVoice、1.6.1 (8)、SDK 57 以及未变化的兼容标识。`expo install --check` 报告 11 个可更新的 SDK 57 patch dependency；`expo-doctor` 另受目录/网络查询影响，没有全绿。由于用户明确要求只改名称，本轮没有把依赖更新混入发布。production audit 没有 high/critical，保留 17 个 moderate 工具链公告。
+
+干净 Prebuild 生成 `LetsVoice.xcworkspace` 与 `LetsVoice` scheme，并安装 127 个 Pod dependencies。unsigned iPhoneOS Release arm64 构建、项目 verifier 和独立 plist/架构扫描通过。iPhone 17 Pro / iOS 26.5 Simulator Release 构建、安装和直接启动通过，PID 7215；截图确认 Home 显示 `LETSVOICE-LOCAL`，不依赖 Metro。本轮没有卸载或修改实体 iPhone 上的数据，也没有使用 iPhone Mirroring；实体设备签名安装留给后续专门验收。
+
+SideStore packager 生成 `LetsVoice-iOS-v1.6.1.ipa` 与 checksum。IPA 为 34,368,738 bytes，SHA-256 为 `37657ab606c42a5136d117029976dc3f08665b6990380dba013d815942da4ef5`；业务 JS bundle 为 5,136,091 bytes。ZIP 完整性、根目录、签名与 provisioning 清理、Info.plist、arm64 架构、版本和哈希均独立复核通过。完整证据与已知限制记录在 `docs/ios-release-v1.6.1-YQ.md`。
+
+> Evidence:
+> - Source: `app.json`, `package.json`, `package-lock.json`, `CHANGELOG.md`, `README.md`, `CONTEXT.md`, `docs/adr/0020-preserve-technical-identifiers-during-letsvoice-rebrand.md`, `docs/ios-release-v1.6.1-YQ.md`, `scripts/verify-ios-release.mjs`, `scripts/package-ios-sidestore.mjs`
+> - Method: 全量测试、TypeScript、Lint、Expo 配置与依赖诊断、干净 Prebuild/CocoaPods、unsigned iPhoneOS Release、iOS Simulator Release 安装与启动、IPA ZIP/entry/plist/architecture/SHA-256 独立验证
+> - Confidence: High；名称范围、兼容标识、自动质量门、两类原生构建、模拟器可见结果与 IPA 有直接证据；实体 iPhone 重签安装和 Windows SideStore 流程不由模拟器结果替代
+
 ## 十三、参考资料
 
 - Expo SDK 57 app config：<https://docs.expo.dev/versions/v57.0.0/config/app/>

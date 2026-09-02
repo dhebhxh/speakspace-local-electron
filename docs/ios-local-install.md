@@ -1,6 +1,6 @@
-# Install SpeakSpace on an iPhone
+# Install LetsVoice on an iPhone
 
-This workflow installs SpeakSpace directly from a Mac. It does not use EAS,
+This workflow installs LetsVoice directly from a Mac. It does not use EAS,
 TestFlight, or the App Store.
 
 ## Supported target
@@ -38,7 +38,7 @@ npm ci
 IOS_BUNDLE_IDENTIFIER=com.example.speakspace.local \
   npx expo prebuild --platform ios
 npx pod-install ios
-open ios/speakspacelocalmobile.xcworkspace
+open ios/LetsVoice.xcworkspace
 ```
 
 Replace `com.example.speakspace.local` with a unique reverse-DNS identifier for
@@ -62,7 +62,7 @@ intentionally ignored by Git; do not commit it.
    complete the required restart.
 3. In **Xcode > Settings > Apple Accounts**, add the Apple Account used for
    testing.
-4. Select the `speakspacelocalmobile` project and app target, then open
+4. Select the `LetsVoice` project and app target, then open
    **Signing & Capabilities**.
 5. Leave **Automatically manage signing** enabled and choose the appropriate
    Personal Team or development team.
@@ -115,7 +115,7 @@ signed-bundle verifier:
 
 ```bash
 npm run verify:ios-release -- \
-  /absolute/path/to/speakspacelocalmobile.app --require-signed
+  /absolute/path/to/LetsVoice.app --require-signed
 ```
 
 Record the remaining runtime results in
@@ -129,15 +129,15 @@ Windows testers can re-sign with SideStore:
 
 ```bash
 npm run package:ios:sidestore -- \
-  /absolute/path/to/speakspacelocalmobile.app
+  /absolute/path/to/LetsVoice.app
 ```
 
 The packager copies the app, removes the original `_CodeSignature` directories
 and provisioning profile, validates the IPA layout, and writes both files below:
 
 ```text
-dist/ios/SpeakSpace-iOS-v1.6.0.ipa
-dist/ios/SpeakSpace-iOS-v1.6.0.ipa.sha256
+dist/ios/LetsVoice-iOS-v1.6.1.ipa
+dist/ios/LetsVoice-iOS-v1.6.1.ipa.sha256
 ```
 
 Do not commit these binaries. Attach both files to the matching GitHub Release.
@@ -189,5 +189,5 @@ inside the app's local container.
   operation is required.
 - **A model cannot download:** verify network access and free storage. The app
   retains a 256 MB safety reserve in addition to the estimated operation size.
-  Keep SpeakSpace visible until the download finishes; leaving the foreground
+  Keep LetsVoice visible until the download finishes; leaving the foreground
   may stop a model transfer, after which it can be started again safely.

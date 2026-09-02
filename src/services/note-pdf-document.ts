@@ -123,7 +123,7 @@ export function buildNotePdfHtml(input: NotePdfDocumentInput): string {
   .privacy { background: #fff7e6; border-radius: 6px; color: #795400; padding: 9px; }
   footer { border-top: 1px solid #dce4ee; color: #788597; font-size: 9px; margin-top: 28px; padding-top: 10px; }
 </style></head><body>
-  <header><h1>${text(title)}</h1><div class="meta">SpeakSpace Local · Private one-note export</div></header>
+  <header><h1>${text(title)}</h1><div class="meta">LetsVoice Local · Private one-note export</div></header>
   <section><h2>Note Details</h2><div class="facts">
     <div class="fact"><strong>Workspace</strong><span>${text(input.workspaceName)}</span></div>
     <div class="fact"><strong>Category</strong><span>${text(input.note.getCategory())}</span></div>
@@ -135,6 +135,6 @@ export function buildNotePdfHtml(input: NotePdfDocumentInput): string {
   ${structuredSection(input.structuredNote)}
   ${knowledgeSection(input.knowledgeHistory)}
   ${conversationsSection(input.conversations)}
-  <footer>Generated locally by SpeakSpace. The temporary PDF is removed from the app cache after the share sheet closes.</footer>
+  <footer>Generated locally by LetsVoice. The temporary PDF is removed from the app cache after the share sheet closes.</footer>
 </body></html>`;
 }

@@ -16,7 +16,7 @@ test("SideStore packager creates a checksummed IPA without signing assets", asyn
     packageJson.scripts["package:ios:sidestore"],
     "node scripts/package-ios-sidestore.mjs",
   );
-  assert.match(script, /artifactBaseName = `SpeakSpace-iOS-v\$\{version\}`/);
+  assert.match(script, /artifactBaseName = `LetsVoice-iOS-v\$\{version\}`/);
   assert.match(script, /`\$\{artifactBaseName\}\.ipa`/);
   assert.match(script, /entry\.name === "_CodeSignature"/);
   assert.match(script, /entry\.name === "embedded\.mobileprovision"/);

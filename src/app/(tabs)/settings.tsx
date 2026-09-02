@@ -119,7 +119,7 @@ export default function SettingsScreen() {
       <View style={styles.heading}>
         <Text style={[styles.kicker, { color: colors.accent }]}>SETTINGS</Text>
         <Text style={[styles.title, { color: colors.text }]}>Appearance</Text>
-        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Choose how SpeakSpace looks on this iPhone.</Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Choose how LetsVoice looks on this iPhone.</Text>
       </View>
 
       <SettingsSegmentedControl

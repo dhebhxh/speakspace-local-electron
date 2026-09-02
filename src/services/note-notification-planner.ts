@@ -61,7 +61,7 @@ export function planNoteNotifications(
       kind: "task",
       noteId: task.sourceNoteId,
       title: task.title,
-      body: "Task due — open the source Note in SpeakSpace.",
+      body: "Task due — open the source Note in LetsVoice.",
       triggerAt,
     });
   }

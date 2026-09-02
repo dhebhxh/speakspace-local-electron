@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "speakspace-local-mobile",
+    "name": "LetsVoice",
     "slug": "speakspace-local-mobile",
-    "version": "1.6.0",
+    "version": "1.6.1",
     "backgroundColor": "#F3F7F5",
     "primaryColor": "#356F68",
     "orientation": "portrait",
@@ -13,9 +13,9 @@
       "icon": "./assets/expo.icon",
       "supportsTablet": false,
       "deploymentTarget": "16.4",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "SpeakSpace uses the microphone to create local transcripts and recordings.",
+        "NSMicrophoneUsageDescription": "LetsVoice uses the microphone to create local transcripts and recordings.",
         "UIViewControllerBasedStatusBarAppearance": true
       },
       "bundleIdentifier": "com.dhebhxh.speakspacelocalmobile"
@@ -58,7 +58,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "SpeakSpace uses the microphone to create local transcripts and recordings.",
+          "microphonePermission": "LetsVoice uses the microphone to create local transcripts and recordings.",
           "enableBackgroundPlayback": false,
           "enableBackgroundRecording": false
         }

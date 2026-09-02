@@ -227,7 +227,7 @@ export class TtsModelService {
       defaultLexicon = new File(lexiconDirectory, "lexicon.txt");
       defaultLexicon.create();
       generatedMarker.create();
-      generatedMarker.write("managed by SpeakSpace");
+      generatedMarker.write("managed by LetsVoice");
     }
     defaultLexicon.write(await selected.bytes());
     this.configuredLexicons.set(modelPath, lexiconLanguage);

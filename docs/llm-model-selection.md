@@ -19,13 +19,13 @@ subsequently on real mobile hardware.
 
 ## 1. Runtime and Model Format Compatibility
 
-Only models compatible with the inference stack used by SpeakSpace Local are
+Only models compatible with the inference stack used by LetsVoice Local are
 considered.
 
 The deployment stack is:
 
 ```text
-SpeakSpace Local Mobile
+LetsVoice Local Mobile
         │
         ▼
      llama.rn

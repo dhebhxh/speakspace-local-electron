@@ -228,6 +228,10 @@ Published automated-test inventory and the latest merge verification:
 
 These values are a verification snapshot rather than dynamic badges and should be updated when the implementation changes.
 
+### Hardware archive update (2026-09-02)
+
+The cross-machine archive has expanded to three profiles: Apple M2 Pro 16GB, an RTX 3090 desktop, and an RTX 3060 laptop. Only the M2 profile currently covers every strict benchmark stage; the two NVIDIA profiles contain partial, complementary measurements, so missing cells in the [cross-machine aggregate](docs/testing/cross-machine-benchmark.md) must not be read as zero.
+
 ## Repository structure
 
 ```text

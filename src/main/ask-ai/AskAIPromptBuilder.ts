@@ -31,7 +31,7 @@ export function buildAskAIMessages(
         .join('\n\n---\n\n')
     : '(no saved notes selected)';
 
-  const systemMessage = `You are SpeakSpace Local Ask AI, a local-first assistant.
+  const systemMessage = `You are LetsVoice Ask AI, a local-first assistant.
 
 Answer using only the selected local note transcripts below as factual evidence. Do not use external knowledge. If the notes do not contain enough information, say that directly in the user's language.
 

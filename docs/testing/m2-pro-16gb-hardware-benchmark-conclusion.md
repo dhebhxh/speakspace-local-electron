@@ -1,4 +1,4 @@
-# SpeakSpace Local M2 Pro 16GB 全套硬件基准结论报告
+# LetsVoice M2 Pro 16GB 全套硬件基准结论报告
 
 - 测试时间：2026-09-01 22:59 至 2026-09-02 00:21（Asia/Shanghai）
 - 测试入口：`一键跨机硬件测速-Mac.command`
@@ -12,7 +12,7 @@
 
 ## 结论摘要
 
-这台 M2 Pro 16GB 可以完成 SpeakSpace Local 的标准全套硬件工作负载。严格模式下的
+这台 M2 Pro 16GB 可以完成 LetsVoice 的标准全套硬件工作负载。严格模式下的
 TTS、TTS 连续运行内存、TTS 长文本、LLM 和 STT 五个阶段全部为 `ok`，总耗时
 **1 小时 21 分 30.7 秒**，没有阶段失败。
 
@@ -26,7 +26,7 @@ TTS、TTS 连续运行内存、TTS 长文本、LLM 和 STT 五个阶段全部为
 | 质量结论   | 本轮 `with_accuracy=false`                                    | 不能据此判断 TTS 音质、LLM 答案质量或 STT 准确率                    |
 
 因此，这次测试回答的是“这台机器跑不跑得动、速度和资源开销怎样”，不是“哪个模型的
-输出质量最好”。性能上不存在阻断 SpeakSpace Local 开发的硬件问题；主要风险集中在
+输出质量最好”。性能上不存在阻断 LetsVoice 开发的硬件问题；主要风险集中在
 MOSS-TTS 的长文本内存占用，以及 MeloTTS、MOSS-TTS 连续运行探针显示的缓慢增长。
 
 ## 测试环境与覆盖范围

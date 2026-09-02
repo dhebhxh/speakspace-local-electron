@@ -1,5 +1,5 @@
 ========================================================================
-SpeakSpace 修改日志
+LetsVoice 修改日志
 版本号：2026082001
 日期：2026-08-20
 分支：main
@@ -74,7 +74,7 @@ SpeakSpace 修改日志
     （改成 ES2019 的可选 catch 绑定）。
 
   另外把日志落点改成可覆盖：
-    SPEAKSPACE_LOG_DIR 优先，否则才用 app.getPath('userData')。
+    LETSVOICE_LOG_DIR 优先，否则才用 app.getPath('userData')。
     排障时能把日志导到指定目录，测试也不必再依赖 Electron 替身。
     （这一条同时解决了一个测试偶发失败，见第四段。）
 
@@ -630,12 +630,12 @@ AgentOrchestrator.ts 三条外部（代码级）约束：
 1. 【高】笔记数据库位置不明，无法核对实际落库结果
    现象：
      运行中的 Electron 进程命令行明确带
-       --user-data-dir="C:\Users\lf\AppData\Roaming\SpeakSpace"
-     提取日志也确实写在该目录下（speakspace_extraction.log，
+       --user-data-dir="C:\Users\lf\AppData\Roaming\LetsVoice"
+     提取日志也确实写在该目录下（letsvoice_extraction.log，
      记录了 note 1 ~ note 20 的完整提取过程），
-     但同目录的 speakspace.db 是**纯 schema、零行数据**
+     但同目录的 letsvoice.db 是**纯 schema、零行数据**
      （16 页、freelist 0、全文搜不到任何 2026-08 字样）。
-     另一个旧目录 electron-react-boilerplate/speakspace.db 有数据，
+     另一个旧目录 electron-react-boilerplate/letsvoice.db 有数据，
      但停在 8-18，也不是它。
 
    影响：
@@ -649,14 +649,14 @@ AgentOrchestrator.ts 三条外部（代码级）约束：
 
 2. 【高】旧笔记数据滞留在改名前的目录
    UserDataMigration 的 copyIfMissing 会跳过目标已存在的条目。
-   目标目录当时已经有一个空的 speakspace.db（早于迁移代码的某次启动
+   目标目录当时已经有一个空的 letsvoice.db（早于迁移代码的某次启动
    创建的），于是数据库被整个跳过。维护者本机的 .userdata-migrated
    记录可以佐证：
      "copied": ["app-settings.json","blobs","runtimes","models","output"]
-   —— speakspace.db 不在列表里。
+   —— letsvoice.db 不在列表里。
 
    8-18 之前的笔记（平板价格 / 太阳温度 / 布里斯托天气 / 会议记录）
-   仍在 electron-react-boilerplate/speakspace.db（114KB），应用看不见。
+   仍在 electron-react-boilerplate/letsvoice.db（114KB），应用看不见。
    数据没丢，但合并两个库涉及主键与音频 blob 路径的重新对应，
    属于要动用户数据的操作，本次未擅自执行。
 

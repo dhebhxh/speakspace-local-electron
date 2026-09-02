@@ -1,5 +1,5 @@
 /** 笔记库拖到输入框时携带的载荷，自定义 MIME 避免和外部拖拽内容混淆。 */
-export const NOTE_DRAG_MIME = 'application/x-speakspace-ref';
+export const NOTE_DRAG_MIME = 'application/x-lets-voice-ref';
 
 export type NoteDragPayload =
   | { kind: 'note'; id: number }

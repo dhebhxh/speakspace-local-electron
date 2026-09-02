@@ -14,7 +14,7 @@ describe('benchmark runtime discovery', () => {
 
   beforeEach(() => {
     temporaryRoot = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'speakspace-benchmark-paths-'),
+      path.join(os.tmpdir(), 'lets-voice-benchmark-paths-'),
     );
   });
 
@@ -53,7 +53,7 @@ describe('benchmark runtime discovery', () => {
     expect(
       makeBenchmarkArtifactPortable({
         model_dir:
-          '/Users/alice/Library/Caches/SpeakSpace-TTS-Benchmark/models/moss-tts',
+          '/Users/alice/Library/Caches/LetsVoice-TTS-Benchmark/models/moss-tts',
         cases: [
           {
             wav_path:
@@ -64,7 +64,7 @@ describe('benchmark runtime discovery', () => {
         models: {
           small: {
             model_path:
-              'C:\\Users\\Bob\\AppData\\Roaming\\SpeakSpace Local\\models\\stt\\ggml-small.bin',
+              'C:\\Users\\Bob\\AppData\\Roaming\\LetsVoice\\models\\stt\\ggml-small.bin',
           },
         },
         details: {

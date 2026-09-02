@@ -1,6 +1,6 @@
 ---
 name: 使用问题
-about: 询问 SpeakSpace Local 的安装、模型或使用方式
+about: 询问 LetsVoice 的安装、模型或使用方式
 labels: question
 ---
 
@@ -10,6 +10,6 @@ labels: question
 
 ## 环境
 
-- SpeakSpace Local 版本：
+- LetsVoice 版本：
 - 操作系统及版本：
 - 相关模型：

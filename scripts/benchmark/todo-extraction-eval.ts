@@ -165,6 +165,7 @@ async function chat(
 function locateBundledOllama(): { binary: string; modelsDir: string } | null {
   const executable = process.platform === 'win32' ? 'ollama.exe' : 'ollama';
   const names = [
+    'LetsVoice',
     'SpeakSpace Local',
     'SpeakSpace',
     'electron-react-boilerplate',

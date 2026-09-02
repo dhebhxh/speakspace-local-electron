@@ -8,7 +8,7 @@ describe('ActiveModelStateStore.resolveActiveModelId', () => {
   let store: ActiveModelStateStore;
 
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'speakspace-active-model-'));
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'lets-voice-active-model-'));
     store = new ActiveModelStateStore(path.join(root, 'state.json'));
   });
 

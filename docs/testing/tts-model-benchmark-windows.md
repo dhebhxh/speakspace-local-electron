@@ -1,4 +1,4 @@
-# SpeakSpace Local TTS 模型基准测试（Windows 实测）
+# LetsVoice TTS 模型基准测试（Windows 实测）
 
 测试日期：2026-09-02 · 生成方式：`npm run bench:tts` → `npm run bench:tts:asr` → `npm run bench:report`
 
@@ -287,4 +287,4 @@ npm run bench:report        # 生成本文件
 - [tts-asr-eval.ts](../../scripts/benchmark/tts-asr-eval.ts)
 - [tts-corpus.json](../../scripts/benchmark/tts-corpus.json)
 
-原始 JSON 与 WAV：`E:\programs\pycharm_programs\speakspace\docs\testing\results`
+原始 JSON 与 WAV：`E:\programs\pycharm_programs\letsvoice\docs\testing\results`

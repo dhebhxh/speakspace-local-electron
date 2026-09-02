@@ -25,17 +25,17 @@ export function benchmarkRoot(): string {
   if (process.platform === 'win32') {
     const localAppData =
       process.env.LOCALAPPDATA ?? path.join(os.homedir(), 'AppData', 'Local');
-    return path.join(localAppData, 'SpeakSpace-TTS-Benchmark');
+    return path.join(localAppData, 'LetsVoice-TTS-Benchmark');
   }
   if (process.platform === 'darwin') {
     return path.join(
       os.homedir(),
       'Library',
       'Caches',
-      'SpeakSpace-TTS-Benchmark',
+      'LetsVoice-TTS-Benchmark',
     );
   }
-  return path.join(os.homedir(), '.cache', 'SpeakSpace-TTS-Benchmark');
+  return path.join(os.homedir(), '.cache', 'LetsVoice-TTS-Benchmark');
 }
 
 export function benchmarkModelsRoot(): string {
@@ -76,7 +76,7 @@ function portableArchivedPath(value: string): string {
     return `docs/testing/results/${normalized.slice(resultIndex + resultMarker.length)}`;
   }
 
-  const benchmarkMarker = '/SpeakSpace-TTS-Benchmark/';
+  const benchmarkMarker = '/LetsVoice-TTS-Benchmark/';
   const benchmarkIndex = normalized.lastIndexOf(benchmarkMarker);
   if (benchmarkIndex >= 0) {
     return normalized.slice(benchmarkIndex + benchmarkMarker.length);
@@ -120,6 +120,7 @@ export function machineResultsMarkdownLink(machineId: string): string {
 /** Electron userData 的候选位置。productName 改过名，所以历史目录也要看。 */
 function userDataCandidates(): string[] {
   const names = [
+    'LetsVoice',
     'SpeakSpace Local',
     'SpeakSpace',
     'speakspace',

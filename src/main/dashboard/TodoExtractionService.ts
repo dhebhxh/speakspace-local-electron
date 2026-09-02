@@ -62,16 +62,16 @@ export class TodoExtractionService {
   private static readonly SENSITIVE_PREVIEW_LIMIT = 2000;
 
   private static isDebugMode(): boolean {
-    return process.env.SPEAKSPACE_DEBUG_AI_LOGS === 'true';
+    return process.env.LETSVOICE_DEBUG_AI_LOGS === 'true';
   }
 
   /**
-   * 日志落点。默认写 userData，可用 SPEAKSPACE_LOG_DIR 改到别处 ——
+   * 日志落点。默认写 userData，可用 LETSVOICE_LOG_DIR 改到别处 ——
    * 排查问题时方便把日志导到指定目录，测试里也不必依赖 Electron。
    */
   private static logFilePath(): string {
-    const dir = process.env.SPEAKSPACE_LOG_DIR || app.getPath('userData');
-    return path.join(dir, 'speakspace_extraction.log');
+    const dir = process.env.LETSVOICE_LOG_DIR || app.getPath('userData');
+    return path.join(dir, 'letsvoice_extraction.log');
   }
 
   /**
@@ -79,7 +79,7 @@ export class TodoExtractionService {
    *
    * 默认只写非敏感元信息（note id、长度、失败原因分类）；
    * 笔记原文、模型输出这类私人内容必须传 debugOnly=true，
-   * 只有显式打开 SPEAKSPACE_DEBUG_AI_LOGS 时才会落盘。
+   * 只有显式打开 LETSVOICE_DEBUG_AI_LOGS 时才会落盘。
    */
   private static log(msg: string, debugOnly: boolean = false): void {
     if (debugOnly && !TodoExtractionService.isDebugMode()) return;

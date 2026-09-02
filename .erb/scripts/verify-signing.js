@@ -10,7 +10,7 @@ const chalk = require('chalk');
  * 非 release 构建只提示，release 构建校验不过直接退出非零。
  */
 
-const isReleaseBuild = process.env.SPEAKSPACE_RELEASE === 'true';
+const isReleaseBuild = process.env.LETSVOICE_RELEASE === 'true';
 const buildRoot = path.resolve(__dirname, '../../release/build');
 
 function findApps() {

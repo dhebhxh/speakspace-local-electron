@@ -161,4 +161,4 @@ npm run bench:charts
 npm run bench:report
 ```
 
-原始 JSON：`E:\programs\pycharm_programs\speakspace\docs\testing\results\llm-sweep.json`、`E:\programs\pycharm_programs\speakspace\docs\testing\results\llm-runtime.json`
+原始 JSON：`E:\programs\pycharm_programs\letsvoice\docs\testing\results\llm-sweep.json`、`E:\programs\pycharm_programs\letsvoice\docs\testing\results\llm-runtime.json`

@@ -138,6 +138,7 @@ function resolveFfmpeg(): string | null {
       ? [process.env.APPDATA ?? '']
       : [path.join(os.homedir(), 'Library', 'Application Support')];
   const names = [
+    'LetsVoice',
     'SpeakSpace Local',
     'SpeakSpace',
     'electron-react-boilerplate',

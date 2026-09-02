@@ -55,4 +55,4 @@ npm run bench:report        # 生成本文件
 
 脚本：[embedding-retrieval-eval.ts](../../scripts/benchmark/embedding-retrieval-eval.ts)，直接调用生产代码 [AgentSearchNotesTool.ts](../../src/main/agent/AgentSearchNotesTool.ts)，未新增或修改任何生产逻辑。
 
-原始逐任务 JSON：`E:\programs\pycharm_programs\speakspace\docs\testing\results\embedding-retrieval.json`
+原始逐任务 JSON：`E:\programs\pycharm_programs\letsvoice\docs\testing\results\embedding-retrieval.json`

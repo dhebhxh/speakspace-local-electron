@@ -17,9 +17,9 @@ describe('migrateLegacyUserData', () => {
 
   beforeEach(() => {
     appDataPath = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'speakspace-local-migration-'),
+      path.join(os.tmpdir(), 'lets-voice-migration-'),
     );
-    userDataPath = path.join(appDataPath, 'SpeakSpace Local');
+    userDataPath = path.join(appDataPath, 'LetsVoice');
     mockGetPath.mockImplementation((name: string) =>
       name === 'userData' ? userDataPath : appDataPath,
     );
@@ -30,7 +30,7 @@ describe('migrateLegacyUserData', () => {
     fs.rmSync(appDataPath, { recursive: true, force: true });
   });
 
-  it('从 SpeakSpace 目录迁移数据库、设置和模型激活状态', () => {
+  it('从 SpeakSpace 目录迁移数据库、设置和模型激活状态，并把库文件改成新名字', () => {
     const legacyPath = path.join(appDataPath, 'SpeakSpace');
     fs.mkdirSync(path.join(legacyPath, 'model-state'), { recursive: true });
     fs.writeFileSync(path.join(legacyPath, 'speakspace.db'), 'database');
@@ -43,7 +43,7 @@ describe('migrateLegacyUserData', () => {
     migrateLegacyUserData();
 
     expect(
-      fs.readFileSync(path.join(userDataPath, 'speakspace.db'), 'utf8'),
+      fs.readFileSync(path.join(userDataPath, 'letsvoice.db'), 'utf8'),
     ).toBe('database');
     expect(fs.existsSync(path.join(userDataPath, 'app-settings.json'))).toBe(
       true,
@@ -57,7 +57,7 @@ describe('migrateLegacyUserData', () => {
     expect(marker.from).toBe(legacyPath);
     expect(marker.copied).toEqual(
       expect.arrayContaining([
-        'speakspace.db',
+        'letsvoice.db',
         'app-settings.json',
         'model-state',
       ]),
@@ -69,12 +69,28 @@ describe('migrateLegacyUserData', () => {
     fs.mkdirSync(legacyPath, { recursive: true });
     fs.mkdirSync(userDataPath, { recursive: true });
     fs.writeFileSync(path.join(legacyPath, 'speakspace.db'), 'old');
-    fs.writeFileSync(path.join(userDataPath, 'speakspace.db'), 'new');
+    fs.writeFileSync(path.join(userDataPath, 'letsvoice.db'), 'new');
 
     migrateLegacyUserData();
 
     expect(
-      fs.readFileSync(path.join(userDataPath, 'speakspace.db'), 'utf8'),
+      fs.readFileSync(path.join(userDataPath, 'letsvoice.db'), 'utf8'),
     ).toBe('new');
+  });
+
+  it('从上一代产品名 SpeakSpace Local 目录迁移到 LetsVoice', () => {
+    const legacyPath = path.join(appDataPath, 'SpeakSpace Local');
+    fs.mkdirSync(path.join(legacyPath, 'models'), { recursive: true });
+    fs.writeFileSync(path.join(legacyPath, 'speakspace.db'), 'database');
+    fs.writeFileSync(path.join(legacyPath, 'models', 'tts.bin'), 'weights');
+
+    migrateLegacyUserData();
+
+    expect(
+      fs.readFileSync(path.join(userDataPath, 'letsvoice.db'), 'utf8'),
+    ).toBe('database');
+    expect(fs.existsSync(path.join(userDataPath, 'models', 'tts.bin'))).toBe(
+      true,
+    );
   });
 });

@@ -25,7 +25,7 @@ const { buildCategoryPrompt, parseCategory } = require(
 );
 
 const MODEL =
-  process.argv[2] || process.env.SPEAKSPACE_MODEL || 'qwen2.5:3b-instruct';
+  process.argv[2] || process.env.LETSVOICE_MODEL || 'qwen2.5:3b-instruct';
 
 const CASES = [
   {

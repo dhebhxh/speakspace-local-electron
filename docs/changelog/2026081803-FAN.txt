@@ -1,5 +1,5 @@
 ========================================================================
-SpeakSpace 修改日志
+LetsVoice 修改日志
 版本号：2026081803
 日期：2026-08-18
 分支：main
@@ -111,7 +111,7 @@ SpeakSpace 修改日志
     此处有一个必须记住的坑：eslint 的 import/no-relative-packages 规则会
     把 .erb/configs/webpack.config.base.ts 和 .erb/scripts/electron-rebuild.js
     里的 '../../release/app/package.json' 自动改写成包名形式
-    'speakspace-app/package.json'。release/app 并不是已安装的依赖，改完
+    'lets-voice-app/package.json'。release/app 并不是已安装的依赖，改完
     直接把 lint 自己跑崩（TS2307）。已改回相对路径并加定向 disable 注释。
     今后再跑 lint:fix 要留意这两处。
 
@@ -206,8 +206,8 @@ SpeakSpace 修改日志
 报告列的六项全部处理，另外补了三处报告没提到的可见品牌残留。
 
   package.json
-    name          electron-react-boilerplate → speakspace
-    productName   新增 "SpeakSpace"
+    name          electron-react-boilerplate → letsvoice
+    productName   新增 "LetsVoice"
                   （加在根 package.json 是关键：开发模式下
                    app.getName() 取的是这里，productName 优先于 name，
                    这样 dev 与打包后的 userData 路径才一致）
@@ -215,20 +215,20 @@ SpeakSpace 修改日志
     删除 boilerplate 的 contributors 与 collective 字段
 
   release/app/package.json
-    name          → speakspace-app（与根包区分，顺带消掉 jest 的
+    name          → lets-voice-app（与根包区分，顺带消掉 jest 的
                   haste module naming collision 警告）
-    productName   新增 "SpeakSpace"
+    productName   新增 "LetsVoice"
 
   构建配置
-    productName   ElectronReact       → SpeakSpace
-    appId         org.erb.ElectronReact → com.speakspace.app
+    productName   ElectronReact       → LetsVoice
+    appId         org.erb.ElectronReact → com.letsvoice.app
     publish       electron-react-boilerplate → dhebhxh/speakspace-local-electron
     copyright     新增
 
   报告未提及、但同样会被用户看到的三处：
     - src/main/menu.ts 里 macOS 菜单的 "About ElectronReact" /
       "Hide ElectronReact" / 顶层 "Electron"，改为跟随 app.getName()
-    - src/renderer/index.ejs 的窗口标题 "Hello Electron React!" → SpeakSpace
+    - src/renderer/index.ejs 的窗口标题 "Hello Electron React!" → LetsVoice
       （.erb/scripts/start-dev.js 里用这句话识别「是不是自己的开发服务器」，
        APP_MARKER 同步更新）
     - seed.js 里写死的 %APPDATA%/electron-react-boilerplate 路径
@@ -247,7 +247,7 @@ SpeakSpace 修改日志
     只能写 ${env.X} 模板；一旦有人直接跑 electron-builder 而没带环境变量，
     构建会以 ERR_ELECTRON_BUILDER_ENV_NOT_DEFINED 直接失败。
     因此把整份构建配置从 package.json 的 build 字段搬到根目录
-    electron-builder.js，在 JS 里按 SPEAKSPACE_RELEASE 计算后缀，
+    electron-builder.js，在 JS 里按 LETSVOICE_RELEASE 计算后缀，
     没显式声明是 release 就按内部包命名——安全默认值。
 
     ※ 文件名必须是 electron-builder.js。electron-builder v25 的自动发现
@@ -259,7 +259,7 @@ SpeakSpace 修改日志
 验收：
   已在本机实跑 electron-builder（--dir）：
     • loaded configuration file=...\electron-builder.js
-    • executablePath=release\build\win-unpacked\SpeakSpace.exe
+    • executablePath=release\build\win-unpacked\LetsVoice.exe
   产物已不再是 ElectronReact。完整打包未能跑通，见遗留问题第 2 条。
 
 
@@ -322,7 +322,7 @@ SpeakSpace 修改日志
       TeamIdentifier 不为 not set。release 构建不通过即非零退出，
       内部构建只提示。
 
-notarize.js 同时增加硬失败模式：SPEAKSPACE_RELEASE=true 时，
+notarize.js 同时增加硬失败模式：LETSVOICE_RELEASE=true 时，
 凭据缺失从「warn 后跳过」变成直接抛错。
 
 验收：
@@ -491,13 +491,13 @@ notarize.js 同时增加硬失败模式：SPEAKSPACE_RELEASE=true 时，
 1. 【重要】维护者本机的旧笔记数据没有被迁移过来
 
    第 4 节的 userData 迁移在本机执行得不完整。
-   %APPDATA%/SpeakSpace/.userdata-migrated 记录的 copied 列表是：
+   %APPDATA%/LetsVoice/.userdata-migrated 记录的 copied 列表是：
        app-settings.json / blobs / runtimes / models / output
-   **speakspace.db 不在其中**，model-state 也不在其中。
+   **letsvoice.db 不在其中**，model-state 也不在其中。
 
    现状：
-       %APPDATA%/electron-react-boilerplate/speakspace.db   114688 字节（旧数据）
-       %APPDATA%/SpeakSpace/speakspace.db                    65536 字节（空库）
+       %APPDATA%/electron-react-boilerplate/letsvoice.db   114688 字节（旧数据）
+       %APPDATA%/LetsVoice/letsvoice.db                    65536 字节（空库）
 
    成因有两条，都是迁移实现本身的问题：
      a. 改名和迁移不是同一次落地的。改名后 electronmon 自动重启了一次
@@ -525,7 +525,7 @@ notarize.js 同时增加硬失败模式：SPEAKSPACE_RELEASE=true 时，
        或以管理员身份运行。
    因为卡在这一步，exe 内嵌的版本资源（ProductName 仍是 Electron、
    CompanyName 仍是 GitHub, Inc.）没有被 rcedit 改写，这部分未验证。
-   --dir 阶段产出的 SpeakSpace.exe 文件名是正确的。
+   --dir 阶段产出的 LetsVoice.exe 文件名是正确的。
 
 3. macOS 签名与公证无法在本机验证
 

@@ -1,6 +1,6 @@
 ---
 name: 问题报告
-about: 报告可以复现的 SpeakSpace Local 问题
+about: 报告可以复现的 LetsVoice 问题
 labels: bug
 ---
 
@@ -16,7 +16,7 @@ labels: bug
 
 ## 环境
 
-- SpeakSpace Local 版本：
+- LetsVoice 版本：
 - 操作系统及版本：
 - 使用的 STT / LLM / TTS 模型：
 

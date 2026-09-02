@@ -1,4 +1,4 @@
-# SpeakSpace Local 桌面端技術成果報告
+# LetsVoice 桌面端技術成果報告
 
 > Technical Outcomes Report
 
@@ -12,7 +12,7 @@
 
 ## 1. 結論摘要
 
-SpeakSpace Local 已形成可運作的桌面端本地 AI 架構：React Renderer 負責互動，Electron preload 提供受控 API，Main process 負責檔案、SQLite、原生套件、AI runtime 與模型生命週期。錄音、匯入、STT、結構化筆記、工作空間保存、Ask AI、語意索引與 TTS 都有明確的本地執行路徑；模型採按需下載，不直接塞入安裝包。
+LetsVoice 已形成可運作的桌面端本地 AI 架構：React Renderer 負責互動，Electron preload 提供受控 API，Main process 負責檔案、SQLite、原生套件、AI runtime 與模型生命週期。錄音、匯入、STT、結構化筆記、工作空間保存、Ask AI、語意索引與 TTS 都有明確的本地執行路徑；模型採按需下載，不直接塞入安裝包。
 
 `JackFix` 將本輪產品要求落在既有架構上，主要成果如下：
 
@@ -74,7 +74,7 @@ flowchart LR
   DRAFT --> R
 
   WIPC --> WS[WorkspaceService]
-  WS --> DB[(userData/speakspace.db)]
+  WS --> DB[(userData/letsvoice.db)]
   WS --> BLOB
   DRAFT -->|bind on save| WS
 
@@ -95,7 +95,7 @@ flowchart LR
 | Renderer | React 19、TypeScript | 錄音、匯入、Workspace、Ask AI、Settings、onboarding 與狀態呈現；不直接碰任意檔案或啟動原生程序 |
 | Preload boundary | Electron `contextBridge` | 將 namespaced、typed API 暴露為 `window.electron.*`，隔離 Renderer 與 Node 權限 |
 | Main process | Electron／Node services | 檔案 I/O、IPC、系統能力、原生套件、child process、AI job 與 runtime 管理 |
-| Persistence | `better-sqlite3` + filesystem blobs | 結構化資料存於 `userData/speakspace.db`；錄音存於 `userData/blobs/recordings`，DB 只保存關聯與相對路徑 |
+| Persistence | `better-sqlite3` + filesystem blobs | 結構化資料存於 `userData/letsvoice.db`；錄音存於 `userData/blobs/recordings`，DB 只保存關聯與相對路徑 |
 | AI runtimes | whisper.cpp、sherpa-onnx、ONNX Runtime、Ollama、FFmpeg | STT、LLM、Embedding、TTS 與音訊標準化全部在本機執行 |
 | Shared domain | `src/shared` | 純 types、entities、contracts，降低 Renderer／Main 之間的資料模型漂移 |
 
@@ -262,7 +262,7 @@ RTF 小於 1 表示生成速度快於音訊播放。Melo 三類輸入都能即�
 - 匯入保留原檔並複製一份受管音訊，換取路徑穩定、中文路徑安全與工作空間可攜，但會佔雙份磁碟。
 - LLM 沒有 RAM／VRAM telemetry；model file size 不能等同 runtime memory，還需考慮 KV cache、prompt、runner 與 GPU offload。
 
-本機 `SpeakSpace Local` userData 快照為 12.42 GiB，其中 models 10.38 GiB、runtimes 2.02 GiB；models 約分為 LLM／Embedding 6.15 GiB、STT 3.01 GiB、TTS 1.22 GiB。這是已選裝多模型的單機狀態，不是最低需求。因 copy-only migration，本機三個歷史資料根合計約 29.6 GiB，顯示未來可考慮在驗證成功後提供「可預覽、可復原、由使用者確認」的 legacy cleanup UI，不應自動刪除。
+本機 `LetsVoice` userData 快照為 12.42 GiB，其中 models 10.38 GiB、runtimes 2.02 GiB；models 約分為 LLM／Embedding 6.15 GiB、STT 3.01 GiB、TTS 1.22 GiB。這是已選裝多模型的單機狀態，不是最低需求。因 copy-only migration，本機三個歷史資料根合計約 29.6 GiB，顯示未來可考慮在驗證成功後提供「可預覽、可復原、由使用者確認」的 legacy cleanup UI，不應自動刪除。
 
 ### 6.5 Package size
 
@@ -272,7 +272,7 @@ RTF 小於 1 表示生成速度快於音訊播放。Melo 三類輸入都能即�
 
 | 產物／組件 | 實測大小 | 說明 |
 |---|---:|---|
-| `SpeakSpace Local-4.6.0-internal-unsigned.exe` | 174,983,525 bytes／166.9 MiB | 僅供工程量測，未簽章、未作 clean-machine 安裝驗收 |
+| `LetsVoice-4.6.0-internal-unsigned.exe` | 174,983,525 bytes／166.9 MiB | 僅供工程量測，未簽章、未作 clean-machine 安裝驗收 |
 | `win-unpacked` | 630,634,262 bytes／601.4 MiB，182 files | 解壓後應用，不含使用者後續下載模型 |
 | Electron distribution | 約 284.1 MiB | 桌面 shell 基礎成本 |
 | `release/app/node_modules` | 約 304.7 MiB | 原生 AI／DB dependencies 為主要來源 |

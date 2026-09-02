@@ -3,10 +3,10 @@
 </p>
 
 <p align="center">
-  <img src="assets/icon.png" width="128" alt="SpeakSpace Local logo" />
+  <img src="assets/icon.png" width="128" alt="LetsVoice logo" />
 </p>
 
-<h1 align="center">SpeakSpace Local</h1>
+<h1 align="center">LetsVoice</h1>
 
 <p align="center">
   本地优先的语音笔记与知识工作台
@@ -45,7 +45,7 @@
   <a href="docs/README.md">文档导航</a>
 </p>
 
-SpeakSpace Local 是一个 Electron 桌面应用，将录音、文件导入、离线转写、结构化笔记、场景知识、全文与语义检索、本地 AI 对话和语音播报整合在同一个工作台中。
+LetsVoice 是一个 Electron 桌面应用，将录音、文件导入、离线转写、结构化笔记、场景知识、全文与语义检索、本地 AI 对话和语音播报整合在同一个工作台中。
 
 “Local”指推理和用户知识库在本机运行：数据库、录音和受管模型均位于 Electron `userData`；模型不进入 Git，也不塞进安装包。首次使用相关能力时，用户再从模型管理页按需下载运行时和模型。
 
@@ -84,14 +84,14 @@ SpeakSpace Local 是一个 Electron 桌面应用，将录音、文件导入、�
 ## 系统架构
 
 <p align="center">
-  <img src="docs/readme/system-architecture-readable-zh.svg" width="100%" alt="SpeakSpace Local 进程边界架构" />
+  <img src="docs/readme/system-architecture-readable-zh.svg" width="100%" alt="LetsVoice 进程边界架构" />
 </p>
-<p align="center"><em>图 1：SpeakSpace Local 进程边界架构。</em></p>
+<p align="center"><em>图 1：LetsVoice 进程边界架构。</em></p>
 
 上方可缩放图以纵向布局保留了 README 原有的进程边界视图；下图补充当前模型、持久化与核心数据流，但不替代该视图。
 
 <p align="center">
-  <img src="docs/readme/tech-implementation-readable-zh.svg" width="100%" alt="SpeakSpace Local 技术实现概览" />
+  <img src="docs/readme/tech-implementation-readable-zh.svg" width="100%" alt="LetsVoice 技术实现概览" />
 </p>
 <p align="center"><em>图 2：当前技术实现概览。</em></p>
 
@@ -129,7 +129,7 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 
 ```text
 <Electron userData>/
-├─ speakspace.db              # SQLite 主数据库
+├─ letsvoice.db              # SQLite 主数据库
 ├─ app-settings.json          # 语言、主题、快捷键、后台与 Agent 设置
 ├─ model-state/
 │  ├─ stt.json
@@ -449,7 +449,7 @@ npm run package
 - [Electron React Boilerplate 文档](https://electron-react-boilerplate.js.org/docs/installation)
 - [Electron 文档](https://www.electronjs.org/docs/latest/)
 
-SpeakSpace Local 的产品功能、界面、数据模型和本地 AI 流程由本项目独立维护。
+LetsVoice 的产品功能、界面、数据模型和本地 AI 流程由本项目独立维护。
 
 ## 许可证
 

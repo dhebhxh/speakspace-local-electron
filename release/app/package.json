@@ -1,11 +1,11 @@
 {
-  "name": "speakspace-app",
-  "productName": "SpeakSpace Local",
+  "name": "lets-voice-app",
+  "productName": "LetsVoice",
   "version": "4.6.0",
-  "description": "SpeakSpace Local desktop application package",
+  "description": "LetsVoice desktop application package",
   "license": "MIT",
   "author": {
-    "name": "SpeakSpace Local",
+    "name": "LetsVoice",
     "url": "https://github.com/dhebhxh/speakspace-local-electron"
   },
   "main": "./dist/main/main.js",

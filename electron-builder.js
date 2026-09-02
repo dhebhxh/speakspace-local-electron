@@ -7,15 +7,15 @@
  * ERR_ELECTRON_BUILDER_ENV_NOT_DEFINED 直接失败。放在 JS 里就能给出安全默认值：
  * 没显式声明是 release，就按内部包命名。
  */
-const isReleaseBuild = process.env.SPEAKSPACE_RELEASE === 'true';
+const isReleaseBuild = process.env.LETSVOICE_RELEASE === 'true';
 
 // 内部包一律带 -internal-unsigned 后缀，避免和正式产物混淆后被误分发。
 const artifactSuffix = isReleaseBuild ? '' : '-internal-unsigned';
 
 module.exports = {
-  productName: 'SpeakSpace Local',
-  appId: 'com.speakspace.app',
-  copyright: 'Copyright © 2026 SpeakSpace Local',
+  productName: 'LetsVoice',
+  appId: 'com.letsvoice.app',
+  copyright: 'Copyright © 2026 LetsVoice',
   artifactName: `\${productName}-\${version}${artifactSuffix}.\${ext}`,
   asar: true,
   afterSign: '.erb/scripts/notarize.js',

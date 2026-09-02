@@ -120,7 +120,7 @@ export default class AskAIService {
   }
 
   public async autoSegmentNote(noteId: number): Promise<void> {
-    const logFile = path.join(app.getPath('userData'), 'speakspace_askai.log');
+    const logFile = path.join(app.getPath('userData'), 'letsvoice_askai.log');
     fs.appendFileSync(
       logFile,
       `\n[${new Date().toISOString()}] autoSegmentNote called for noteId ${noteId}\n`,

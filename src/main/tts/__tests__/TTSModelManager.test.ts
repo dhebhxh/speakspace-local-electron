@@ -28,7 +28,7 @@ describe('TTSModelManager', () => {
   let manager: TTSModelManager;
 
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'speakspace-tts-manager-'));
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'lets-voice-tts-manager-'));
     createRequiredFiles(root, KOKORO_TTS_MODEL_ID);
     createRequiredFiles(root, MELO_TTS_MODEL_ID);
     manager = new TTSModelManager({

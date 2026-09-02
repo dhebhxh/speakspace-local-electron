@@ -180,6 +180,7 @@ function Get-OllamaStatus {
 function Find-OllamaRuntime {
   $appData = [Environment]::GetFolderPath('ApplicationData')
   $appNames = @(
+    'LetsVoice',
     'SpeakSpace Local',
     'SpeakSpace',
     'speakspace',
@@ -273,7 +274,7 @@ function Get-BenchmarkResultsRoot {
 
 function Get-BenchmarkBundleRoot {
   $localAppData = [Environment]::GetFolderPath('LocalApplicationData')
-  return Join-Path $localAppData 'SpeakSpace-TTS-Benchmark\bundles'
+  return Join-Path $localAppData 'LetsVoice-TTS-Benchmark\bundles'
 }
 
 function New-ResultBundle {
@@ -289,7 +290,7 @@ function New-ResultBundle {
   $bundleDirectory = Get-BenchmarkBundleRoot
   New-Item -ItemType Directory -Path $bundleDirectory -Force | Out-Null
   $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-  $bundlePath = Join-Path $bundleDirectory "speakspace-hardware-$MachineLabel-$timestamp.zip"
+  $bundlePath = Join-Path $bundleDirectory "lets-voice-hardware-$MachineLabel-$timestamp.zip"
   $archiveOptions = @{
     LiteralPath = $machineDirectory
     DestinationPath = $bundlePath
@@ -306,12 +307,12 @@ try {
   [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
   Set-Location -LiteralPath $projectRoot
   if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'package.json'))) {
-    throw "没有找到 SpeakSpace Local 工程：$projectRoot"
+    throw "没有找到 LetsVoice 工程：$projectRoot"
   }
 
-  Write-Section 'SpeakSpace Local · 跨机器硬件测速'
+  Write-Section 'LetsVoice · 跨机器硬件测速'
   Write-Host '只测速度、延迟、内存、显存和 GPU 卸载；默认不跑准确率评测。'
-  Write-Host '测速期间请关闭 SpeakSpace Local 和其他高负载程序。'
+  Write-Host '测速期间请关闭 LetsVoice 和其他高负载程序。'
 
   if (-not $NonInteractive -and -not $PSBoundParameters.ContainsKey('Machine')) {
     $defaultMachine = Resolve-MachineLabel -RequestedLabel $null

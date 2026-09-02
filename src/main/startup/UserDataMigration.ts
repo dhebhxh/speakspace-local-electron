@@ -4,19 +4,21 @@ import { app } from 'electron';
 
 /** 历次产品名对应的旧 userData 目录。 */
 const LEGACY_DIRECTORY_NAMES = [
+  'SpeakSpace Local',
   'SpeakSpace',
   'electron-react-boilerplate',
   'ElectronReact',
 ];
+
+/** 旧产品名下的数据库文件名，迁移时要顺带改名成新的。 */
+const LEGACY_DATABASE_BASENAME = 'speakspace.db';
+const DATABASE_BASENAME = 'letsvoice.db';
 
 /** 迁移完成后写入的标记，避免每次启动都重新扫描旧目录。 */
 const MARKER_FILE = '.userdata-migrated';
 
 /** 只迁移应用自己的数据，不动 Electron/Chromium 自己的缓存目录。 */
 const MIGRATED_ENTRIES = [
-  'speakspace.db',
-  'speakspace.db-shm',
-  'speakspace.db-wal',
   'app-settings.json',
   'blobs',
   'runtimes',
@@ -24,6 +26,21 @@ const MIGRATED_ENTRIES = [
   'model-state',
   'output',
 ];
+
+/**
+ * 数据库三件套在改名前后叫法不同：旧目录里是 speakspace.db*，新目录要落成
+ * letsvoice.db*。其余条目名字没变，源和目标同名。
+ */
+function migratedEntryPairs(): Array<{ from: string; to: string }> {
+  const databaseSuffixes = ['', '-shm', '-wal'];
+  return [
+    ...databaseSuffixes.map((suffix) => ({
+      from: `${LEGACY_DATABASE_BASENAME}${suffix}`,
+      to: `${DATABASE_BASENAME}${suffix}`,
+    })),
+    ...MIGRATED_ENTRIES.map((entry) => ({ from: entry, to: entry })),
+  ];
+}
 
 function copyIfMissing(source: string, target: string): boolean {
   if (!fs.existsSync(source) || fs.existsSync(target)) return false;
@@ -49,19 +66,22 @@ export default function migrateLegacyUserData(): void {
   ).find(
     (candidate) =>
       candidate !== userDataPath &&
-      fs.existsSync(path.join(candidate, 'speakspace.db')),
+      (fs.existsSync(path.join(candidate, LEGACY_DATABASE_BASENAME)) ||
+        fs.existsSync(path.join(candidate, DATABASE_BASENAME))),
   );
 
   if (!legacyPath) return;
 
   try {
     fs.mkdirSync(userDataPath, { recursive: true });
-    const copied = MIGRATED_ENTRIES.filter((entry) =>
-      copyIfMissing(
-        path.join(legacyPath, entry),
-        path.join(userDataPath, entry),
-      ),
-    );
+    const copied = migratedEntryPairs()
+      .filter((entry) =>
+        copyIfMissing(
+          path.join(legacyPath, entry.from),
+          path.join(userDataPath, entry.to),
+        ),
+      )
+      .map((entry) => entry.to);
     fs.writeFileSync(
       markerPath,
       `${JSON.stringify(

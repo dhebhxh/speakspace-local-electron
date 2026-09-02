@@ -32,7 +32,7 @@ async function main(): Promise<void> {
   if (!fs.existsSync(resolvedDir)) {
     throw new Error(`Model directory does not exist: ${resolvedDir}`);
   }
-  const text = valueAfter('--text') ?? '你好，Welcome to SpeakSpace Local.';
+  const text = valueAfter('--text') ?? '你好，Welcome to LetsVoice.';
   const speaker = valueAfter('--speaker') ?? definition.speaker;
   const engine = new TTSEngine();
   const started = performance.now();

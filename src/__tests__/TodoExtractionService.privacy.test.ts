@@ -70,10 +70,10 @@ describe('TodoExtractionService 默认模式不外泄私人内容', () => {
     extractTodosForNote(id: number): Promise<boolean>;
   };
 
-  const originalDebugFlag = process.env.SPEAKSPACE_DEBUG_AI_LOGS;
+  const originalDebugFlag = process.env.LETSVOICE_DEBUG_AI_LOGS;
 
   function logPath(): string {
-    return path.join(mockState.logDir, 'speakspace_extraction.log');
+    return path.join(mockState.logDir, 'letsvoice_extraction.log');
   }
 
   function readDefaultLog(): string {
@@ -82,7 +82,7 @@ describe('TodoExtractionService 默认模式不外泄私人内容', () => {
 
   beforeAll(() => {
     mockState.logDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'speakspace-todo-test-'),
+      path.join(os.tmpdir(), 'lets-voice-todo-test-'),
     );
     // 放在 mockState 就绪之后再加载被测模块，避免 electron 替身取到空目录。
     // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
@@ -92,14 +92,14 @@ describe('TodoExtractionService 默认模式不外泄私人内容', () => {
 
   // debug 开关是进程级共享状态，用例之间必须复位，否则跑的顺序会影响结果。
   beforeEach(() => {
-    delete process.env.SPEAKSPACE_DEBUG_AI_LOGS;
+    delete process.env.LETSVOICE_DEBUG_AI_LOGS;
     // 每个用例一个独立目录，日志内容不会互相串。
-    // 走 SPEAKSPACE_LOG_DIR 而不是 electron 替身：整套测试一起跑时，
+    // 走 LETSVOICE_LOG_DIR 而不是 electron 替身：整套测试一起跑时，
     // 依赖 electron mock 的路径会偶发拿不到，日志因此为空。
     mockState.logDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'speakspace-todo-case-'),
+      path.join(os.tmpdir(), 'lets-voice-todo-case-'),
     );
-    process.env.SPEAKSPACE_LOG_DIR = mockState.logDir;
+    process.env.LETSVOICE_LOG_DIR = mockState.logDir;
     warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     error = jest.spyOn(console, 'error').mockImplementation(() => {});
   });
@@ -108,11 +108,11 @@ describe('TodoExtractionService 默认模式不外泄私人内容', () => {
     warn.mockRestore();
     error.mockRestore();
     mockState.chat.mockReset();
-    delete process.env.SPEAKSPACE_LOG_DIR;
+    delete process.env.LETSVOICE_LOG_DIR;
     if (originalDebugFlag === undefined) {
-      delete process.env.SPEAKSPACE_DEBUG_AI_LOGS;
+      delete process.env.LETSVOICE_DEBUG_AI_LOGS;
     } else {
-      process.env.SPEAKSPACE_DEBUG_AI_LOGS = originalDebugFlag;
+      process.env.LETSVOICE_DEBUG_AI_LOGS = originalDebugFlag;
     }
   });
 
@@ -169,7 +169,7 @@ describe('TodoExtractionService 默认模式不外泄私人内容', () => {
   });
 
   it('显式打开 debug 时，原文只进日志文件、仍然不进 console', async () => {
-    process.env.SPEAKSPACE_DEBUG_AI_LOGS = 'true';
+    process.env.LETSVOICE_DEBUG_AI_LOGS = 'true';
     mockState.chat.mockResolvedValue({
       content: `I found this task from ${MOCK_PRIVATE_NOTE}`,
     });

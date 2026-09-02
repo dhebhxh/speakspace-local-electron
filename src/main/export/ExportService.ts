@@ -38,7 +38,7 @@ function safeFilename(title: string): string {
     .replace(/[<>:"/\\|?*\p{Cc}]/gu, '_')
     .replace(/[. ]+$/g, '')
     .trim();
-  return (cleaned || 'SpeakSpace Local Note').slice(0, 120);
+  return (cleaned || 'LetsVoice Note').slice(0, 120);
 }
 
 function exportDialogTitle(language: 'zh' | 'en', word: boolean): string {

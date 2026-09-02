@@ -16,7 +16,7 @@ export class DatabaseManager {
   private constructor() {
     const userDataPath = app.getPath('userData');
 
-    this.databasePath = path.join(userDataPath, 'speakspace.db');
+    this.databasePath = path.join(userDataPath, 'letsvoice.db');
 
     this.database = new Database(this.databasePath);
 

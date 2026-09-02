@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 1360" role="img" aria-labelledby="title desc">
-  <title id="title">SpeakSpace Local 技术实现概览</title>
+  <title id="title">LetsVoice 技术实现概览</title>
   <desc id="desc">从 React Renderer 经 preload 与 IPC 受控桥接，到领域服务、本地 AI 运行时和本地持久化的纵向技术实现图。</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">

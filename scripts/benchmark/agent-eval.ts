@@ -1,5 +1,5 @@
 /**
- * SpeakSpace Agent 端到端评测。
+ * LetsVoice Agent 端到端评测。
  *
  * 使用真实 AgentOrchestrator、Agent 工具、Repository、bge-m3 混合检索和
  * TodoExtractionService。数据库与日志都在 benchmarkRoot()，不接触用户数据。
@@ -602,7 +602,7 @@ async function main(): Promise<void> {
   fs.mkdirSync(resultsRoot, { recursive: true });
   const logDir = path.join(benchmarkRoot(), 'agent-eval', 'logs');
   fs.mkdirSync(logDir, { recursive: true });
-  process.env.SPEAKSPACE_LOG_DIR = logDir;
+  process.env.LETSVOICE_LOG_DIR = logDir;
 
   const { database, manifest } = rebuildAgentEvalFixture();
   const notes = new NoteRepository(database);

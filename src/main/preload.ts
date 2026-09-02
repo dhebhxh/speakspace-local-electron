@@ -45,7 +45,7 @@ const electronHandler = {
     },
   },
 
-  // speakspace-local
+  // lets-voice-local
   modelManagement: {
     getModelList(modelType: string) {
       return ipcRenderer.invoke('ModelManagement:getModelList', modelType);

@@ -6,7 +6,7 @@ import { SettingsService } from '../main/settings/SettingsService';
 
 /** 每个用例一份临时设置文件，互不干扰。 */
 function makeService(initial?: unknown) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'speakspace-settings-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lets-voice-settings-'));
   const file = path.join(dir, 'app-settings.json');
   if (initial !== undefined) {
     fs.writeFileSync(file, JSON.stringify(initial), 'utf8');

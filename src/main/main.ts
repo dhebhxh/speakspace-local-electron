@@ -16,7 +16,7 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import { resolveHtmlPath } from './util';
 
-// speakspace-local ipc
+// lets-voice-local ipc
 import './ipc/audio-ipc';
 import './ipc/model-management-ipc';
 import './ipc/workflow-ipc';

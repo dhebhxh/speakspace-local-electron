@@ -1,7 +1,7 @@
 const build = require('../../electron-builder');
 
 /** release 构建里签名 / 公证缺失必须直接失败，不能静默产出一个装不上的包。 */
-const isReleaseBuild = process.env.SPEAKSPACE_RELEASE === 'true';
+const isReleaseBuild = process.env.LETSVOICE_RELEASE === 'true';
 
 function skipOrFail(reason) {
   if (isReleaseBuild) {

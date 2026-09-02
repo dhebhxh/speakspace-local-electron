@@ -262,7 +262,7 @@ export const AGENT_EVAL_TASKS_V2: AgentEvalTask[] = [
     scenario: 'cross-note',
     language: 'en',
     instruction:
-      'What RRF constant does the SpeakSpace Agent use, and how does it differ from the graph baseline?',
+      'What RRF constant does the LetsVoice Agent use, and how does it differ from the graph baseline?',
     workspaceKey: 'research',
     linkedNoteKeys: ['r-retrieval-rrf', 'r-graph-baseline'],
     relevantNoteKeys: ['r-retrieval-rrf', 'r-graph-baseline'],

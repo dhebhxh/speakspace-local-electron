@@ -1,4 +1,4 @@
-# SpeakSpace Local 真人 STT 准确率评测
+# LetsVoice 真人 STT 准确率评测
 
 测试日期：2026-09-01 · 生成方式：`npm run bench:stt` → `npm run bench:report`
 
@@ -104,4 +104,4 @@ npm run bench:report        # 生成本文件
 - [stt-recording-corpus.ts](../../scripts/benchmark/stt-recording-corpus.ts) —— 录音文件到原文的映射
 - [stt-human-eval.ts](../../scripts/benchmark/stt-human-eval.ts) —— 评测脚本
 
-原始 JSON 与转写工作目录：`E:\programs\pycharm_programs\speakspace\docs\testing\results`
+原始 JSON 与转写工作目录：`E:\programs\pycharm_programs\letsvoice\docs\testing\results`

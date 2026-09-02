@@ -1,6 +1,6 @@
-const ONBOARDING_STORAGE_KEY = 'speakspace:onboarding:v1';
-export const ONBOARDING_OPEN_EVENT = 'speakspace:open-onboarding';
-const ONBOARDING_ACTIVE_EVENT = 'speakspace:onboarding-active';
+const ONBOARDING_STORAGE_KEY = 'letsvoice:onboarding:v1';
+export const ONBOARDING_OPEN_EVENT = 'letsvoice:open-onboarding';
+const ONBOARDING_ACTIVE_EVENT = 'letsvoice:onboarding-active';
 
 /**
  * 引导是否正在进行。放在模块级而不是 React context：

@@ -115,7 +115,7 @@ export function buildNoteExportWordDocument(
   return new Document({
     title: layout.title,
     subject: layout.subtitle,
-    creator: 'SpeakSpace Local',
+    creator: 'LetsVoice',
     description: layout.subtitle,
     styles: {
       default: {
@@ -320,7 +320,7 @@ export function buildNoteExportWordDocument(
               new Paragraph({
                 children: [
                   new TextRun({
-                    text: `SpeakSpace Local  |  ${layout.subtitle}`,
+                    text: `LetsVoice  |  ${layout.subtitle}`,
                     font: FONT,
                     size: 16,
                     color: '7A858A',

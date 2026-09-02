@@ -1,6 +1,6 @@
 import type { TTSSpeaker } from '@shared/types/TTSRuntimeTypes';
 
-const SPEAKER_KEY = 'speakspace:tts:speaker-by-model';
+const SPEAKER_KEY = 'letsvoice:tts:speaker-by-model';
 
 function readPreferences(): Record<string, string> {
   try {

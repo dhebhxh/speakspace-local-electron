@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 1840" role="img" aria-labelledby="title desc">
-  <title id="title">SpeakSpace Local SQLite relationship model</title>
+  <title id="title">LetsVoice SQLite relationship model</title>
   <desc id="desc">A vertical relationship diagram for workspaces, notes, note-owned records, knowledge templates, and AI conversations.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">

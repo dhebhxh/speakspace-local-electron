@@ -118,7 +118,7 @@ describe('今日事项提醒', () => {
 
   it('每次启动或从托盘重新显示都会读取今日事项', async () => {
     const today = formatLocalDateKey(new Date());
-    localStorage.setItem('speakspace:onboarding:v1', 'completed');
+    localStorage.setItem('letsvoice:onboarding:v1', 'completed');
     (window as any).electron = {
       dashboard: {
         getDashboardOverview: jest.fn().mockResolvedValue({

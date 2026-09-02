@@ -122,7 +122,7 @@ export default function Sidebar({ collapsed, onToggle }) {
           <span className="sidebar-brand-mark">
             <SoundWave bars={4} size={14} />
           </span>
-          <span className="sidebar-wordmark-text">SpeakSpace Local</span>
+          <span className="sidebar-wordmark-text">LetsVoice</span>
         </h2>
         <button
           type="button"

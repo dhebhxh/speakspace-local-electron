@@ -31,7 +31,7 @@ const LAYERS = [
     title: 'ROLE',
     scope: '全程',
     body: [
-      "You are SpeakSpace Local's note assistant.",
+      "You are LetsVoice's note assistant.",
       "You answer questions about the user's own saved notes, and you may act on them through the registered tools.",
       "Everything runs on the user's machine; nothing leaves it.",
     ],

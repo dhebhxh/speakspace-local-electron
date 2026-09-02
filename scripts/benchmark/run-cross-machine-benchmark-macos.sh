@@ -123,13 +123,13 @@ if [[ "$(uname -s)" != 'Darwin' && "$DRY_RUN" -ne 1 ]]; then
 fi
 
 cd "$PROJECT_ROOT" || fail "无法进入工程目录：$PROJECT_ROOT"
-[[ -f "$PROJECT_ROOT/package.json" ]] || fail "没有找到 SpeakSpace Local 工程：$PROJECT_ROOT"
+[[ -f "$PROJECT_ROOT/package.json" ]] || fail "没有找到 LetsVoice 工程：$PROJECT_ROOT"
 command -v node >/dev/null 2>&1 || fail '未检测到 Node.js。请先安装 Node.js LTS，再重新双击。'
 command -v npm >/dev/null 2>&1 || fail '未检测到 npm。请先安装 Node.js LTS，再重新双击。'
 
-section 'SpeakSpace Local · macOS 跨机器硬件测速'
+section "LetsVoice · macOS 跨机器硬件测速"
 printf '%s\n' '只测速度、延迟、内存、统一内存占用和 GPU 卸载；默认不跑准确率评测。'
-printf '%s\n' '测速期间请关闭 SpeakSpace Local 和其他高负载程序。'
+printf '%s\n' "测速期间请关闭 LetsVoice 和其他高负载程序。"
 
 default_machine="$(scutil --get ComputerName 2>/dev/null || hostname -s 2>/dev/null || hostname 2>/dev/null || printf 'mac')"
 if [[ -z "$MACHINE" && "$NON_INTERACTIVE" -ne 1 ]]; then
@@ -227,7 +227,7 @@ find_ollama() {
   OLLAMA_MODELS_ROOT=''
   OLLAMA_PORTABLE=0
   local app_name data_root candidate
-  for app_name in 'SpeakSpace Local' 'SpeakSpace' 'speakspace' 'electron-react-boilerplate'; do
+  for app_name in "LetsVoice" 'SpeakSpace Local' 'SpeakSpace' 'speakspace' 'electron-react-boilerplate'; do
     data_root="$HOME/Library/Application Support/$app_name"
     candidate="$data_root/runtimes/llm/bin/ollama"
     if [[ -x "$candidate" ]]; then
@@ -271,7 +271,7 @@ ensure_ollama() {
   fi
 
   printf '正在启动 Ollama：%s\n' "$OLLAMA_BINARY"
-  OLLAMA_LOG="${TMPDIR:-/tmp}/speakspace-ollama-benchmark-$$.log"
+  OLLAMA_LOG="${TMPDIR:-/tmp}/lets-voice-ollama-benchmark-$$.log"
   if [[ "$OLLAMA_PORTABLE" -eq 1 ]]; then
     mkdir -p "$OLLAMA_MODELS_ROOT"
     OLLAMA_HOST='127.0.0.1:11434' OLLAMA_MODELS="$OLLAMA_MODELS_ROOT" \
@@ -321,10 +321,10 @@ results_root="$PROJECT_ROOT/docs/testing/results"
 machine_directory="$results_root/machines/$MACHINE"
 [[ -d "$machine_directory" ]] || fail "没有找到本机结果目录：$machine_directory"
 
-bundle_directory="$HOME/Library/Caches/SpeakSpace-TTS-Benchmark/bundles"
+bundle_directory="$HOME/Library/Caches/LetsVoice-TTS-Benchmark/bundles"
 mkdir -p "$bundle_directory"
 timestamp="$(date '+%Y%m%d-%H%M%S')"
-bundle_path="$bundle_directory/speakspace-hardware-$MACHINE-$timestamp.zip"
+bundle_path="$bundle_directory/lets-voice-hardware-$MACHINE-$timestamp.zip"
 ditto -c -k --keepParent "$machine_directory" "$bundle_path" || fail '结果 ZIP 打包失败'
 
 section '测速完成'

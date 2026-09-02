@@ -18,7 +18,7 @@ import { execSync, spawn } from 'child_process';
 
 const DEFAULT_PORT = Number(process.env.PORT) || 1212;
 // 本程序开发服务器返回的 HTML / HMR 特征，用于识别「是不是自己」。
-const APP_MARKER = /SpeakSpace|webpack-dev-server|__webpack_hmr/i;
+const APP_MARKER = /LetsVoice|webpack-dev-server|__webpack_hmr/i;
 
 function probeIsOurServer(port) {
   return new Promise((resolve) => {
@@ -111,7 +111,7 @@ async function resolvePort() {
   if (ours) {
     console.log(
       chalk.yellow(
-        `检测到端口 ${DEFAULT_PORT} 上已有 SpeakSpace Local 开发服务器，正在回收旧实例以保持单一服务…`,
+        `检测到端口 ${DEFAULT_PORT} 上已有 LetsVoice 开发服务器，正在回收旧实例以保持单一服务…`,
       ),
     );
     killPids(pidsOnPort(DEFAULT_PORT));
@@ -133,7 +133,7 @@ async function resolvePort() {
 resolvePort()
   .then((port) => {
     process.env.PORT = String(port);
-    console.log(chalk.green.bold(`SpeakSpace Local 开发服务器端口：${port}`));
+    console.log(chalk.green.bold(`LetsVoice 开发服务器端口：${port}`));
     const child = spawn('npm', ['run', 'start:renderer'], {
       shell: true,
       stdio: 'inherit',

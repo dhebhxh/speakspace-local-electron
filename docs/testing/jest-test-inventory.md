@@ -573,7 +573,7 @@
 
 **`src/main/startup/__tests__/UserDataMigration.test.ts`**（2 条）
 
-- ✓ migrateLegacyUserData 从 SpeakSpace 目录迁移数据库、设置和模型激活状态
+- ✓ migrateLegacyUserData 从 LetsVoice 目录迁移数据库、设置和模型激活状态
 - ✓ migrateLegacyUserData 不覆盖新目录里已经存在的数据
 
 **`src/main/trash/__tests__/TrashService.test.ts`**（18 条）

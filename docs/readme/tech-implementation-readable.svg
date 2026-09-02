@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 1360" role="img" aria-labelledby="title desc">
-  <title id="title">SpeakSpace Local technical implementation</title>
+  <title id="title">LetsVoice technical implementation</title>
   <desc id="desc">A vertical implementation overview from the React renderer through the preload and IPC bridge to domain services, local AI runtimes, and local persistence.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">

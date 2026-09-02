@@ -41,7 +41,7 @@ function download(url: string, target: string, hops = 0): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = https.get(
       url,
-      { headers: { 'User-Agent': 'speakspace-benchmark' } },
+      { headers: { 'User-Agent': 'lets-voice-benchmark' } },
       (response) => {
         const { statusCode, headers } = response;
         if (

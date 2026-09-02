@@ -1,9 +1,9 @@
 {
-  "name": "speakspace",
-  "productName": "SpeakSpace Local",
-  "description": "SpeakSpace Local — 本地优先的语音笔记与知识工作台 / Local-first voice notes and knowledge workspace",
+  "name": "letsvoice",
+  "productName": "LetsVoice",
+  "description": "LetsVoice — 本地优先的语音笔记与知识工作台 / Local-first voice notes and knowledge workspace",
   "keywords": [
-    "speakspace",
+    "letsvoice",
     "electron",
     "react",
     "typescript",
@@ -23,7 +23,7 @@
   },
   "license": "MIT",
   "author": {
-    "name": "SpeakSpace Local",
+    "name": "LetsVoice",
     "url": "https://github.com/dhebhxh/speakspace-local-electron"
   },
   "main": "./.erb/dll/main.bundle.dev.js",
@@ -48,7 +48,7 @@
     "test:trash:electron": "cross-env ELECTRON_RUN_AS_NODE=1 electron ./node_modules/jest/bin/jest.js --runInBand src/main/trash/__tests__/TrashService.test.ts",
     "check:electron": "node .erb/scripts/check-electron-binary.js",
     "check:audit": "npm audit --omit=dev --audit-level=high",
-    "package:release": "node .erb/scripts/check-release-signing.js && npm run clean && npm run build && cross-env SPEAKSPACE_RELEASE=true electron-builder build --config electron-builder.js --publish never && cross-env SPEAKSPACE_RELEASE=true node .erb/scripts/verify-signing.js && npm run build:dll",
+    "package:release": "node .erb/scripts/check-release-signing.js && npm run clean && npm run build && cross-env LETSVOICE_RELEASE=true electron-builder build --config electron-builder.js --publish never && cross-env LETSVOICE_RELEASE=true node .erb/scripts/verify-signing.js && npm run build:dll",
     "check:signing": "node .erb/scripts/check-release-signing.js",
     "bench:tts:fetch": "cross-env TS_NODE_TRANSPILE_ONLY=true node -r ts-node/register/transpile-only scripts/benchmark/fetch-tts-models.ts",
     "bench:stt:fetch": "cross-env ELECTRON_RUN_AS_NODE=1 NODE_PATH=release/app/node_modules TS_NODE_TRANSPILE_ONLY=true electron -r ./scripts/benchmark/register-shared-alias.js -r ./scripts/benchmark/register-electron-app-stub.js -r ts-node/register/transpile-only scripts/benchmark/install-whisper-runtime.ts",

@@ -3,10 +3,10 @@
 </p>
 
 <p align="center">
-  <img src="assets/icon.png" width="128" alt="SpeakSpace Local logo" />
+  <img src="assets/icon.png" width="128" alt="LetsVoice logo" />
 </p>
 
-<h1 align="center">SpeakSpace Local</h1>
+<h1 align="center">LetsVoice</h1>
 
 <p align="center">
   Local-first voice notes and knowledge workspace
@@ -43,7 +43,7 @@
   <a href="docs/README.md">Documentation</a>
 </p>
 
-SpeakSpace Local is an Electron desktop application that brings recording, audio import, offline transcription, structured notes, scenario knowledge, full-text and semantic search, local AI conversations, and speech playback into one workspace.
+LetsVoice is an Electron desktop application that brings recording, audio import, offline transcription, structured notes, scenario knowledge, full-text and semantic search, local AI conversations, and speech playback into one workspace.
 
 “Local” means that inference and the user's knowledge base run on the user's computer. The database, recordings, and application-managed models live under Electron's `userData` directory. Models are neither committed to Git nor bundled with the installer; users download the runtimes and models they need from Model Management.
 
@@ -82,14 +82,14 @@ SpeakSpace Local is an Electron desktop application that brings recording, audio
 ## System architecture
 
 <p align="center">
-  <img src="docs/readme/system-architecture-readable.svg" width="100%" alt="SpeakSpace Local system architecture" />
+  <img src="docs/readme/system-architecture-readable.svg" width="100%" alt="LetsVoice system architecture" />
 </p>
-<p align="center"><em>Figure 1. SpeakSpace Local process-boundary architecture.</em></p>
+<p align="center"><em>Figure 1. LetsVoice process-boundary architecture.</em></p>
 
 The scalable diagram above preserves the repository's process-boundary view in a vertical layout. The following implementation view adds the current model, persistence, and core-flow summary without replacing that view.
 
 <p align="center">
-  <img src="docs/readme/tech-implementation-readable.svg" width="100%" alt="SpeakSpace Local technical implementation" />
+  <img src="docs/readme/tech-implementation-readable.svg" width="100%" alt="LetsVoice technical implementation" />
 </p>
 <p align="center"><em>Figure 2. Current technical implementation overview.</em></p>
 
@@ -127,7 +127,7 @@ Key invariants:
 
 ```text
 <Electron userData>/
-├─ speakspace.db              # Primary SQLite database
+├─ letsvoice.db              # Primary SQLite database
 ├─ app-settings.json          # Language, theme, shortcuts, background, Agent settings
 ├─ model-state/
 │  ├─ stt.json
@@ -447,7 +447,7 @@ This project is built on the [Electron React Boilerplate](https://github.com/ele
 - [Electron React Boilerplate documentation](https://electron-react-boilerplate.js.org/docs/installation)
 - [Electron documentation](https://www.electronjs.org/docs/latest/)
 
-SpeakSpace Local's product functionality, interface, data model, and local AI workflows are maintained independently by this project.
+LetsVoice's product functionality, interface, data model, and local AI workflows are maintained independently by this project.
 
 ## License
 

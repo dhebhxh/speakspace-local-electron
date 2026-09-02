@@ -229,6 +229,6 @@ npm run bench:report
 - [agent-eval-rescore.ts](../../scripts/benchmark/agent-eval-rescore.ts)
 - [agent-eval-human-scoring.ts](../../scripts/benchmark/agent-eval-human-scoring.ts)
 
-原始逐任务 JSON：`E:\programs\pycharm_programs\speakspace\docs\testing\results\agent-eval.json`
-绘图明细 CSV：`E:\programs\pycharm_programs\speakspace\docs\testing\results\agent-eval-plot-data.csv`
-盲审逐样本记录：`E:\programs\pycharm_programs\speakspace\docs\testing\results\agent-eval-human-review.json`
+原始逐任务 JSON：`E:\programs\pycharm_programs\letsvoice\docs\testing\results\agent-eval.json`
+绘图明细 CSV：`E:\programs\pycharm_programs\letsvoice\docs\testing\results\agent-eval-plot-data.csv`
+盲审逐样本记录：`E:\programs\pycharm_programs\letsvoice\docs\testing\results\agent-eval-human-review.json`

@@ -119,7 +119,7 @@ function buildTTSReport(): string | null {
   }
 
   const lines: string[] = [];
-  lines.push('# SpeakSpace Local TTS 模型基准测试（Windows 实测）');
+  lines.push('# LetsVoice TTS 模型基准测试（Windows 实测）');
   lines.push('');
   lines.push(
     `测试日期：${String(models[0].measured_at).slice(0, 10)} · 生成方式：\`npm run bench:tts\` → \`npm run bench:tts:asr\` → \`npm run bench:report\``,
@@ -622,7 +622,7 @@ function buildSTTReport(): string | null {
   const models = data.models as Json;
 
   const lines: string[] = [];
-  lines.push('# SpeakSpace Local 真人 STT 准确率评测');
+  lines.push('# LetsVoice 真人 STT 准确率评测');
   lines.push('');
   lines.push(
     `测试日期：${String(data.measured_at).slice(0, 10)} · 生成方式：\`npm run bench:stt\` → \`npm run bench:report\``,
@@ -1910,10 +1910,7 @@ function main(): void {
   const sweepReport = buildSweepReport();
   if (sweepReport) {
     const target = path.join(DOCS, 'llm-model-sweep.md');
-    fs.writeFileSync(
-      target,
-      `${sweepReport.trimEnd()}\n`,
-    );
+    fs.writeFileSync(target, `${sweepReport.trimEnd()}\n`);
     process.stdout.write(`已生成 ${target}\n`);
     written += 1;
   }

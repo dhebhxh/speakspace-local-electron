@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 
-const STORAGE_KEY = 'speakspace:library:recents-height';
+const STORAGE_KEY = 'letsvoice:library:recents-height';
 /** 两块区域各自的下限：拖到底也要留得下标题和一两行内容。 */
 const MIN_RECENTS_HEIGHT = 96;
 const MIN_NOTES_HEIGHT = 140;

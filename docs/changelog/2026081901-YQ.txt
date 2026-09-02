@@ -1,5 +1,5 @@
 ========================================================================
-SpeakSpace 修改日志
+LetsVoice 修改日志
 版本号：2026081901-YQ
 日期：2026-08-19
 分支：main
@@ -132,7 +132,7 @@ SpeakSpace 修改日志
     全部通过。
   - 生产 Webpack：main 与 renderer 均构建成功。
   - macOS arm64：electron-builder 成功重建 better-sqlite3，生成 ZIP/DMG；
-    打包后的 SpeakSpace.app 已实际启动到主界面。
+    打包后的 LetsVoice.app 已实际启动到主界面。
   - npm ls --depth=0、Electron 二进制检查、git diff --check 均通过。
 
 构建边界：

@@ -1,5 +1,5 @@
 ========================================================================
-SpeakSpace Local 修改日志
+LetsVoice 修改日志
 版本号：2026082301
 日期：2026-08-23
 分支：main
@@ -14,7 +14,7 @@ SpeakSpace Local 修改日志
   五、删除操作统一进入回收站，并清理旧工作流页面；
   六、工作空间全文搜索与 Word / PDF 完整导出；
   七、Agent 关联笔记上下文修复，以及 TTS 首段等待时间优化；
-  八、品牌统一为 SpeakSpace Local，更换新版图标并移除系统菜单栏；
+  八、品牌统一为 LetsVoice，更换新版图标并移除系统菜单栏；
   九、生成 Windows x64 NSIS 安装包，模型保持按需下载；
   十、项目目录、文档、规范、构建脚本与历史生成物整理。
 
@@ -38,7 +38,7 @@ SpeakSpace Local 修改日志
 
   Windows 安装包：
       release/installers/4.6.0/windows-x64/
-      SpeakSpace-Local-Setup-4.6.0-x64.exe
+      Lets-Voice-Setup-4.6.0-x64.exe
       大小：175084026 bytes（约 166.97 MB）
       SHA-256：
       6966A1308EA0D4335E84103299ABD5737760506D13545259451614D659ED6C01
@@ -214,7 +214,7 @@ SpeakSpace Local 修改日志
 修复：
   - 按断点同步缩小主导航侧边栏、Ask AI 笔记栏、对话区和当前笔记栏。
   - 详情打开时仍参与网格 / flex 空间分配，不再用覆盖层压住对话。
-  - 主导航展开宽度后来调整到可以完整容纳“SpeakSpace Local”和收起按钮，
+  - 主导航展开宽度后来调整到可以完整容纳“LetsVoice”和收起按钮，
     避免品牌名变长后按钮一半跑出侧边栏。
   - 对话区设置正确的 min-width: 0 和内部滚动归属，内容可以收缩而不是
     把兄弟面板推到同一位置。
@@ -305,7 +305,7 @@ Workflow 页面。
     清楚描述提取目标、输出分区、边界和不应编造的内容。
   - 保存原始需求和规范化结果，方便后续编辑与审计。
   - 模型不可用或输出无法解析时返回明确错误，不静默保存半成品。
-  - 自定义模板带「自定义」标记，与 SpeakSpace 维护的内置模板区分。
+  - 自定义模板带「自定义」标记，与 LetsVoice 维护的内置模板区分。
   - AI 规范化所用语言跟随系统语言，不再随机中英文混用。
 
 涉及文件：
@@ -364,7 +364,7 @@ Workflow 页面。
   - Structured Note / Copy Structured Note 等固定英文改为 i18n 文案。
   - Scenario Knowledge、内置 / 自定义标记、模板管理按钮、空状态、
     规范化进度和错误提示统一使用语言文件。
-  - SpeakSpace Local 作为品牌名保持不翻译。
+  - LetsVoice 作为品牌名保持不翻译。
   - 中文系统不再出现一半中文、一半英文的模板结果界面；英文系统反之。
 
 涉及文件：
@@ -578,7 +578,7 @@ Workflow 页面。
 ========================================================================
 
 ------------------------------------------------------------------------
-20. 【品牌】SpeakSpace → SpeakSpace Local
+20. 【品牌】LetsVoice → LetsVoice
 ------------------------------------------------------------------------
 
 统一范围：
@@ -645,7 +645,7 @@ menu，并删除已经没有调用方的 src/main/menu.ts。
 ------------------------------------------------------------------------
 
 问题：
-  “SpeakSpace Local”比原品牌名更长，收起侧边栏按钮被挤到栏外一部分。
+  “LetsVoice”比原品牌名更长，收起侧边栏按钮被挤到栏外一部分。
 
 修复：
   桌面展开态侧边栏宽度调整为可容纳 Logo、完整品牌名、间距和收起按钮
@@ -669,9 +669,9 @@ menu，并删除已经没有调用方的 src/main/menu.ts。
   模型不塞进安装包，由用户进入模型管理后联网按需下载。
 
 配置：
-  productName    SpeakSpace Local
+  productName    LetsVoice
   version        4.6.0
-  appId          com.speakspace.app
+  appId          com.letsvoice.app
   platform       win32 x64
   target         NSIS
   oneClick       true
@@ -684,7 +684,7 @@ menu，并删除已经没有调用方的 src/main/menu.ts。
 
 产物：
   release/installers/4.6.0/windows-x64/
-  SpeakSpace-Local-Setup-4.6.0-x64.exe
+  Lets-Voice-Setup-4.6.0-x64.exe
 
 安装包目录加入 .gitignore，本地保留用于交付，不把 167 MB 二进制提交进
 源码仓库。
@@ -740,10 +740,10 @@ NotSigned。首次安装可能看到 Windows SmartScreen「未知发布者」，
   根 README 原本完全沿用上游 Electron React Boilerplate 模板，其中包含
   Banner、Discord、OpenCollective 和赞助商内容，但它同时承载了有价值的
   Electron 技术栈、开发启动与打包说明；根 CHANGELOG 则仍是上游 0.x–2.x
-  历史，与 SpeakSpace Local 的产品版本无关。
+  历史，与 LetsVoice 的产品版本无关。
 
 处理：
-  - README 以 SpeakSpace Local 为产品主体，同时保留并更新 Electron React
+  - README 以 LetsVoice 为产品主体，同时保留并更新 Electron React
     Boilerplate、Electron、React、React Router、Webpack 和 React Fast
     Refresh 的工程说明。
   - 对照 Ask AI 等旧分支恢复 README 顶部的视觉化徽章区域；徽章改为本仓库
@@ -751,10 +751,10 @@ NotSigned。首次安装可能看到 Windows SmartScreen「未知发布者」，
     Webpack、Node.js、Windows NSIS 和 Local-first 信息，不再引用上游状态。
   - 合并当前产品能力、本地模型策略、仓库安装、开发启动、验证、桌面端打包、
     签名检查、项目目录和上游 Electron 文档入口。
-  - CHANGELOG 改为 SpeakSpace Local 4.6.0 的正式摘要，并链接详细日志。
-  - LICENSE 增加 SpeakSpace Local contributors，同时保留上游 MIT 版权。
+  - CHANGELOG 改为 LetsVoice 4.6.0 的正式摘要，并链接详细日志。
+  - LICENSE 增加 LetsVoice contributors，同时保留上游 MIT 版权。
   - 删除 .github/FUNDING.yml 中错误的上游赞助账号。
-  - 重写三个 Issue 模板为 SpeakSpace Local 的问题 / 使用 / 功能模板。
+  - 重写三个 Issue 模板为 LetsVoice 的问题 / 使用 / 功能模板。
   - 删除永远被 electron-react-boilerplate owner 条件拦住的旧 publish workflow；
     在正式签名和发布策略确定前，不保留一个看似存在、实际不运行的流程。
   - 删除 README 不再引用的三张 .erb/img 上游宣传图片；保留上游技术文档、
@@ -1106,7 +1106,7 @@ README 保留产品 Logo、Tests、CodeQL、MIT、版本和技术栈徽章，并
 
 本地生成但不进入 Git：
     release/installers/4.6.0/windows-x64/
-    SpeakSpace-Local-Setup-4.6.0-x64.exe
+    Lets-Voice-Setup-4.6.0-x64.exe
 
 README 修复：
     删除英文版标题区残留的中文副标题

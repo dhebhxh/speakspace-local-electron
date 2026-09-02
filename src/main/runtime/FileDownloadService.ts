@@ -24,7 +24,7 @@ export default class FileDownloadService {
     options: DownloadOptions = {},
   ): Promise<void> {
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'SpeakSpace-Local-Downloader' },
+      headers: { 'User-Agent': 'Lets-Voice-Downloader' },
       redirect: 'follow',
       signal: options.signal,
     });

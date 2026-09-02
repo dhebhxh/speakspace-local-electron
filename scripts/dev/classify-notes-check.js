@@ -4,7 +4,7 @@
 /**
  * 笔记分类的离线抽查脚本。
  *
- * 直接读本地 speakspace.db 里的真实笔记，用与应用完全相同的 prompt 打一遍
+ * 直接读本地 letsvoice.db 里的真实笔记，用与应用完全相同的 prompt 打一遍
  * 本地 Ollama 模型，把「笔记标题 + 开头片段 + 模型给的类型」列出来人工核对。
  * 只读数据库，不会写回任何分类。
  *
@@ -23,16 +23,16 @@ const Database = require(
 );
 const { Ollama } = require(path.join(ROOT, 'node_modules/ollama'));
 
-const MODEL = process.argv[2] || process.env.SPEAKSPACE_MODEL || 'qwen3:8b';
+const MODEL = process.argv[2] || process.env.LETSVOICE_MODEL || 'qwen3:8b';
 const LIMIT = Number(process.argv[3] || 30);
 
-// 默认按 productName 找 userData；开发构建可能落在别的目录，用 SPEAKSPACE_DB 指定。
+// 默认按 productName 找 userData；开发构建可能落在别的目录，用 LETSVOICE_DB 指定。
 const DB_PATH =
-  process.env.SPEAKSPACE_DB ||
+  process.env.LETSVOICE_DB ||
   path.join(
     process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'),
-    'SpeakSpace Local',
-    'speakspace.db',
+    'LetsVoice',
+    'letsvoice.db',
   );
 
 // prompt 从 TypeScript 源码里现读现编译，避免脚本抄一份很快就跟应用跑偏。

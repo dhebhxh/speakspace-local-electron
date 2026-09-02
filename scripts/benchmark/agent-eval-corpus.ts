@@ -122,7 +122,7 @@ const CORE_NOTES: AgentEvalNote[] = [
     language: 'en',
     title: 'Legacy API compatibility header',
     transcript:
-      'Clients using protocol revision 4 must send compatibility header X-SpeakSpace-Code with value ZQ-17. ZQ-71 belongs to an abandoned draft and must not be used.',
+      'Clients using protocol revision 4 must send compatibility header X-LetsVoice-Code with value ZQ-17. ZQ-71 belongs to an abandoned draft and must not be used.',
   },
   {
     key: 'p-hiring-plan',
@@ -297,7 +297,7 @@ const CORE_NOTES: AgentEvalNote[] = [
     language: 'en',
     title: 'Graph retrieval baseline',
     transcript:
-      'The graph baseline used reciprocal rank constant 20 and returned 5 passages. It is a separate prototype, not the SpeakSpace Agent configuration.',
+      'The graph baseline used reciprocal rank constant 20 and returned 5 passages. It is a separate prototype, not the LetsVoice Agent configuration.',
   },
 ];
 
@@ -414,7 +414,7 @@ const AGENT_EVAL_TASKS_V1: AgentEvalTask[] = [
     split: 'dev',
     scenario: 'single-note',
     language: 'zh',
-    instruction: 'SpeakSpace 的混合检索 RRF 常数和最大返回条数分别是多少？',
+    instruction: 'LetsVoice 的混合检索 RRF 常数和最大返回条数分别是多少？',
     workspaceKey: 'research',
     linkedNoteKeys: ['r-retrieval-rrf'],
     relevantNoteKeys: ['r-retrieval-rrf'],

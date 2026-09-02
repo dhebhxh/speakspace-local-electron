@@ -163,4 +163,4 @@ npm run bench:report                  # 生成本文件
 - [todo-extraction-corpus.ts](../../scripts/benchmark/todo-extraction-corpus.ts)
 - Jest 回归门禁：[todoExtraction.eval.ts](../../src/__tests__/todoExtraction.eval.ts)
 
-原始 JSON：`E:\programs\pycharm_programs\speakspace\docs\testing\results\todo-extraction-eval.json`
+原始 JSON：`E:\programs\pycharm_programs\letsvoice\docs\testing\results\todo-extraction-eval.json`

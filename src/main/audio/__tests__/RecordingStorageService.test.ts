@@ -9,7 +9,7 @@ describe('RecordingStorageService audio import', () => {
 
   beforeEach(() => {
     testRoot = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'speakspace-audio-import-'),
+      path.join(os.tmpdir(), 'lets-voice-audio-import-'),
     );
   });
 

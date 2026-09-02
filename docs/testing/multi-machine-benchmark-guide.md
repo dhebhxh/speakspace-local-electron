@@ -24,7 +24,7 @@ chmod +x 一键跨机硬件测速-Mac.command scripts/benchmark/run-cross-machin
 **不需要原生依赖**，LLM 探针只用 Node 内置模块。
 
 ```bash
-git clone <仓库地址> && cd speakspace
+git clone <仓库地址> && cd letsvoice
 npm ci --ignore-scripts          # 跳过 Electron 下载与原生模块重建，快很多
 # 启动 Ollama（用应用自带的那个，或系统装的 ollama 都行）
 ollama serve &
@@ -41,7 +41,7 @@ npm run bench -- --machine <标签> --only llm
 要 TTS 的速度和内存曲线，就得装原生依赖（`sherpa-onnx-node`、`onnxruntime-node`）。
 
 ```bash
-git clone <仓库地址> && cd speakspace
+git clone <仓库地址> && cd letsvoice
 npm install                      # 会下载 Electron 并重建原生模块，比较慢
 npm run bench:tts:fetch          # 下载三个 TTS 模型，约 910 MiB，带 sha256 校验
 ollama serve &                   # LLM 那步需要
@@ -170,7 +170,7 @@ Windows 一键脚本对应有 `-Mode stt` 和 `-Mode llm-stt` 两个模式（菜
 固定在仓库内：`docs/testing/results/machines/<机器标签>/`，跟代码放在一起，
 **不受 `TTS_BENCHMARK_ROOT` 影响**——这样结果才能直接 `git add`、提交、推到 GitHub 给所有人看。
 下载的 TTS 模型二进制文件不在这里，那部分体积太大不适合进仓库，仍然在系统缓存目录
-（Windows `%LOCALAPPDATA%\SpeakSpace-TTS-Benchmark\models\`，macOS/Linux 同名 `models/`）。
+（Windows `%LOCALAPPDATA%\LetsVoice-TTS-Benchmark\models\`，macOS/Linux 同名 `models/`）。
 
 **同一台机器跑两次会怎样？**
 覆盖自己那份，不影响其他机器的目录。

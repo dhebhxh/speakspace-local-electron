@@ -32,7 +32,7 @@ export default class OllamaReleaseClient {
     const response = await fetch(LATEST_RELEASE_API, {
       headers: {
         Accept: 'application/vnd.github+json',
-        'User-Agent': 'SpeakSpace-Local-Runtime-Installer',
+        'User-Agent': 'Lets-Voice-Runtime-Installer',
       },
       signal,
     });

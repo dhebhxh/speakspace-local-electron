@@ -162,7 +162,7 @@ function runJest(reportPath: string): void {
 function main(): void {
   const provided = flagValue('--from');
   const reportPath =
-    provided ?? path.join(os.tmpdir(), 'speakspace-jest-report.json');
+    provided ?? path.join(os.tmpdir(), 'lets-voice-jest-report.json');
   if (!provided) runJest(reportPath);
 
   const report = JSON.parse(fs.readFileSync(reportPath, 'utf8')) as JestReport;

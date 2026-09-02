@@ -84,11 +84,11 @@ SpeakSpace Local 是一个 Electron 桌面应用，将录音、文件导入、�
 ## 系统架构
 
 <p align="center">
-  <img src="docs/readme/system-architecture-zh.png" width="900" alt="SpeakSpace Local 原有系统架构" />
+  <img src="docs/readme/system-architecture-readable-zh.svg" width="900" alt="SpeakSpace Local 进程边界架构" />
 </p>
 <p align="center"><em>图 1：SpeakSpace Local 进程边界架构。</em></p>
 
-上图保留了 README 原有的进程边界视图；下面的新图补充当前模型、持久化与核心数据流，但不再替代原图。
+上方可缩放图以纵向布局保留了 README 原有的进程边界视图；下图补充当前模型、持久化与核心数据流，但不替代该视图。
 
 <p align="center">
   <img src="docs/readme/tech-implementation.png" width="900" alt="SpeakSpace Local 技术实现概览" />
@@ -112,7 +112,7 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 转写完成后不会先生成一份独立摘要，再重复生成结构化笔记。当前链路只做一次结构化提取，复核弹窗直接显示其中的 `summary`；保存时将草稿绑定真实 `noteId` 并持久化。
 
 <p align="center">
-  <img src="docs/readme/recording-to-knowledge-zh.png" width="900" alt="录音到知识的原有处理流水线" />
+  <img src="docs/readme/recording-to-knowledge-readable-zh.svg" width="900" alt="录音到知识的处理流水线" />
 </p>
 <p align="center"><em>图 3：录音到知识的处理流水线。</em></p>
 
@@ -148,7 +148,7 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 ### SQLite 关系模型
 
 <p align="center">
-  <img src="docs/readme/data-model.png" width="900" alt="SQLite 关系模型" />
+  <img src="docs/readme/data-model-readable.svg" width="900" alt="SQLite 关系模型" />
 </p>
 <p align="center"><em>图 4：SQLite 关系模型。</em></p>
 

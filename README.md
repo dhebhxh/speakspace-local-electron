@@ -82,11 +82,11 @@ SpeakSpace Local is an Electron desktop application that brings recording, audio
 ## System architecture
 
 <p align="center">
-  <img src="docs/readme/system-architecture.png" width="900" alt="SpeakSpace Local system architecture" />
+  <img src="docs/readme/system-architecture-readable.svg" width="900" alt="SpeakSpace Local system architecture" />
 </p>
 <p align="center"><em>Figure 1. SpeakSpace Local process-boundary architecture.</em></p>
 
-The original diagram above preserves the repository's process-boundary view. The following implementation view adds the current model, persistence, and core-flow summary without replacing it.
+The scalable diagram above preserves the repository's process-boundary view in a vertical layout. The following implementation view adds the current model, persistence, and core-flow summary without replacing that view.
 
 <p align="center">
   <img src="docs/readme/tech-implementation.png" width="900" alt="SpeakSpace Local technical implementation" />
@@ -110,7 +110,7 @@ Direct Renderer imports from the main process are prohibited and enforced throug
 After transcription completes, the application does not generate a separate summary and then repeat the same work for a structured note. It performs one structured extraction. The review dialog displays the draft's `summary`, and saving binds that draft to the real `noteId` before persisting it.
 
 <p align="center">
-  <img src="docs/readme/recording-to-knowledge.png" width="900" alt="Recording-to-knowledge pipeline" />
+  <img src="docs/readme/recording-to-knowledge-readable.svg" width="900" alt="Recording-to-knowledge pipeline" />
 </p>
 <p align="center"><em>Figure 3. Recording-to-knowledge pipeline.</em></p>
 
@@ -146,7 +146,7 @@ Key invariants:
 ### SQLite relationship model
 
 <p align="center">
-  <img src="docs/readme/data-model.png" width="900" alt="SQLite relationship model" />
+  <img src="docs/readme/data-model-readable.svg" width="900" alt="SQLite relationship model" />
 </p>
 <p align="center"><em>Figure 4. SQLite relationship model.</em></p>
 

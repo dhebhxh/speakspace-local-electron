@@ -35,9 +35,35 @@
   <img alt="Windows NSIS installer" src="https://img.shields.io/badge/Windows%20installer-NSIS-0078D4?style=flat-square&amp;logo=windows11&amp;logoColor=white" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/dhebhxh/speakspace-local-electron/releases"><strong>Download</strong></a>
+  ·
+  <a href="#local-development">Run locally</a>
+  ·
+  <a href="docs/README.md">Documentation</a>
+</p>
+
 SpeakSpace Local is an Electron desktop application that brings recording, audio import, offline transcription, structured notes, scenario knowledge, full-text and semantic search, local AI conversations, and speech playback into one workspace.
 
 “Local” means that inference and the user's knowledge base run on the user's computer. The database, recordings, and application-managed models live under Electron's `userData` directory. Models are neither committed to Git nor bundled with the installer; users download the runtimes and models they need from Model Management.
+
+## Contents
+
+- [Feature map](#feature-map)
+- [System architecture](#system-architecture)
+- [From recording to knowledge](#from-recording-to-knowledge)
+- [Data storage](#data-storage)
+- [Search and export coverage](#search-and-export-coverage)
+- [Agent workflow](#agent-workflow)
+- [Local model stack](#local-model-stack)
+- [Evaluation evidence](#evaluation-evidence)
+- [Engineering snapshot](#engineering-snapshot)
+- [Repository structure](#repository-structure)
+- [Local development](#local-development)
+- [Packaging and release](#packaging-and-release)
+- [Documentation](#documentation)
+- [Electron React Boilerplate](#electron-react-boilerplate)
+- [License](#license)
 
 ## Feature map
 
@@ -55,11 +81,17 @@ SpeakSpace Local is an Electron desktop application that brings recording, audio
 
 ## System architecture
 
-![SpeakSpace Local system architecture](docs/readme/system-architecture.png)
+<p align="center">
+  <img src="docs/readme/system-architecture-readable.svg" width="100%" alt="SpeakSpace Local system architecture" />
+</p>
+<p align="center"><em>Figure 1. SpeakSpace Local process-boundary architecture.</em></p>
 
-The original diagram above preserves the repository's process-boundary view. The following implementation view adds the current model, persistence, and core-flow summary without replacing it.
+The scalable diagram above preserves the repository's process-boundary view in a vertical layout. The following implementation view adds the current model, persistence, and core-flow summary without replacing that view.
 
-![SpeakSpace Local technical implementation](docs/readme/tech-implementation.png)
+<p align="center">
+  <img src="docs/readme/tech-implementation-readable.svg" width="100%" alt="SpeakSpace Local technical implementation" />
+</p>
+<p align="center"><em>Figure 2. Current technical implementation overview.</em></p>
 
 ### Process boundaries
 
@@ -77,7 +109,10 @@ Direct Renderer imports from the main process are prohibited and enforced throug
 
 After transcription completes, the application does not generate a separate summary and then repeat the same work for a structured note. It performs one structured extraction. The review dialog displays the draft's `summary`, and saving binds that draft to the real `noteId` before persisting it.
 
-![Recording-to-knowledge pipeline](docs/readme/recording-to-knowledge.png)
+<p align="center">
+  <img src="docs/readme/recording-to-knowledge-readable.svg" width="100%" alt="Recording-to-knowledge pipeline" />
+</p>
+<p align="center"><em>Figure 3. Recording-to-knowledge pipeline.</em></p>
 
 Key invariants:
 
@@ -110,7 +145,10 @@ Key invariants:
 
 ### SQLite relationship model
 
-![SQLite relationship model](docs/readme/data-model.png)
+<p align="center">
+  <img src="docs/readme/data-model-readable.svg" width="100%" alt="SQLite relationship model" />
+</p>
+<p align="center"><em>Figure 4. SQLite relationship model.</em></p>
 
 Workspaces, notes, AI conversations, and custom templates use `trashed_at` for soft deletion. Physical deletion and cascading cleanup occur only through “Delete permanently” inside Trash.
 
@@ -134,11 +172,77 @@ Semantic search caches vectors in `note_embeddings` and uses `content_hash` to d
 
 Ask AI is designed for question answering over a fixed scope. Agent mode lets the local model call tools within a bounded loop. When users link notes explicitly, those notes are loaded deterministically before the first inference step, and `search_notes` is removed from the available tool set so the model cannot ignore the requested scope.
 
-![Original Agent request sequence](docs/readme/agent-workflow.png)
+The two diagrams below are maintained as Mermaid source in this README and rendered by GitHub, so their structure can be updated without editing raster images.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Agent UI
+  participant Agent as AgentOrchestrator
+  participant Data as Notes / SQLite
+  participant LLM as Local Ollama
+
+  User->>UI: Question + scope
+  UI->>Agent: Typed IPC request
+  Agent->>Agent: Validate limits and retain recent history
+
+  alt Explicitly linked notes
+    Agent->>Data: Parallel read_note (up to 8)
+    Data-->>Agent: Deterministic context (up to 8,000 characters)
+    Note over Agent,LLM: search_notes is removed
+  else Workspace or library scope
+    Note over Agent,LLM: search_notes remains available
+  end
+
+  loop Bounded tool loop (at most 6 steps)
+    Agent->>LLM: Prompt + run state + evidence
+    alt Tool requested
+      LLM-->>Agent: search_notes / read_note / extract_todos
+      Agent->>Data: Execute the registered tool
+      Data-->>Agent: Tool observation
+    else Final answer
+      LLM-->>Agent: Evidence-grounded response
+    end
+  end
+
+  Agent->>Data: Persist turn and linked sources
+  Agent-->>UI: Step timeline + final answer
+  UI-->>User: Text or TTS output
+```
+
+<p align="center"><em>Figure 5. Agent request sequence.</em></p>
 
 The sequence diagram shows interactions over time; the controller view below highlights the decision point, bounded tool loop, evidence return path, and final response.
 
-![Bounded Agent controller workflow](docs/readme/bounded-agent-workflow.png)
+```mermaid
+flowchart TB
+  Query["1 · User query<br/>Instruction and scope"] --> Context["2 · Context assembly<br/>History + linked notes + tool policy"]
+  Context --> LLM["3 · Local LLM<br/>Reason over the bounded context"]
+  LLM --> Decision{"Next action?"}
+
+  Decision -->|Final answer| Response["4 · Final response<br/>Evidence-grounded answer"]
+  Response --> Delivery["Agent UI / TTS<br/>Timeline, text, and voice feedback"]
+  Response --> History[("AI conversation<br/>Turn + linked sources")]
+
+  Decision -->|Tool call| Controller
+  Controller["Tool controller<br/>Validate arguments, scope, duplicates, and step limit"]
+  Controller --> Tools["Tool execution<br/>search_notes · read_note · extract_todos"]
+  Tools --> Observation["Observation<br/>Append the tool result to model context"]
+  Observation --> Repeat["Next model step<br/>Repeat until answered or the 6-step limit is reached"]
+  Tools --> Knowledge[("Local knowledge<br/>Notes · todos · search index")]
+
+  classDef input fill:#f5f3ff,stroke:#7657d5,color:#172033
+  classDef decision fill:#fff7cc,stroke:#b59f27,color:#4b3b00
+  classDef tool fill:#ecfeff,stroke:#0891b2,color:#172033
+  classDef result fill:#ecfdf5,stroke:#059669,color:#172033
+  class Query,Context,LLM input
+  class Decision decision
+  class Controller,Tools,Observation tool
+  class Response,Delivery,History,Repeat,Knowledge result
+```
+
+<p align="center"><em>Figure 6. Bounded Agent controller workflow.</em></p>
 
 Code-level Agent bounds:
 
@@ -174,20 +278,35 @@ The evaluation suite covers all four local-AI subsystems—TTS, STT, LLM, and em
 | Agent | 80 fixed notes and 90 tasks with a 45/45 development-holdout split; strict tool and scope scoring | The Agent remains below the product-readiness target |
 | Regression | Machine-readable Jest inventory grouped by feature area | Regression tests do not measure model quality |
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/testing/charts/panel-tts-speed.svg" alt="TTS speed evaluation panel" /></td>
-    <td width="50%"><img src="docs/testing/charts/panel-stt.svg" alt="STT human-recording evaluation panel" /></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/testing/charts/llm-accuracy-vs-speed.svg" alt="LLM speed and accuracy trade-off" /></td>
-    <td width="50%"><img src="docs/testing/charts/panel-retrieval.svg" alt="Embedding-based hybrid retrieval evaluation panel" /></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/testing/charts/panel-agent.svg" alt="Agent end-to-end evaluation panel" /></td>
-    <td width="50%"><img src="docs/testing/charts/jest-by-area.svg" alt="Jest regression tests by feature area" /></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs/testing/charts/panel-tts-speed.svg" width="100%" alt="TTS speed evaluation panel" />
+</p>
+<p align="center"><em>Figure 7. TTS synthesis speed across the tested engines.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-stt.svg" width="100%" alt="STT human-recording evaluation panel" />
+</p>
+<p align="center"><em>Figure 8. STT evaluation on human recordings.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/llm-accuracy-vs-speed.svg" width="100%" alt="LLM speed and accuracy trade-off" />
+</p>
+<p align="center"><em>Figure 9. Local LLM accuracy and speed trade-off.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-retrieval.svg" width="100%" alt="Embedding-based hybrid retrieval evaluation panel" />
+</p>
+<p align="center"><em>Figure 10. Embedding-based hybrid retrieval evaluation.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-agent.svg" width="100%" alt="Agent end-to-end evaluation panel" />
+</p>
+<p align="center"><em>Figure 11. Agent end-to-end evaluation.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/jest-by-area.svg" width="100%" alt="Jest regression tests by feature area" />
+</p>
+<p align="center"><em>Figure 12. Jest regression coverage by feature area.</em></p>
 
 The central methodological rule is simple: choose prompts and harnesses on the development split, then report acceptance results on a frozen holdout. Hardware-sensitive measurements—latency, throughput, memory, and GPU offload—are collected separately through the one-click cross-machine benchmark. See the [coverage and limitations ledger](docs/testing/test-coverage-gaps.md) before quoting any number.
 
@@ -230,7 +349,7 @@ These values are a verification snapshot rather than dynamic badges and should b
 
 ### Hardware archive update (2026-09-02)
 
-The cross-machine archive has expanded to three profiles: Apple M2 Pro 16GB, an RTX 3090 desktop, and an RTX 3060 laptop. Only the M2 profile currently covers every strict benchmark stage; the two NVIDIA profiles contain partial, complementary measurements, so missing cells in the [cross-machine aggregate](docs/testing/cross-machine-benchmark.md) must not be read as zero.
+As of 2026-09-02, the result archive contains five machine profiles spanning Apple Silicon and NVIDIA RTX 3050, 3060, and 3090 systems. The M2 Pro, `jack`, and `fan3090` profiles record successful outputs for all five hardware stages; the older NVIDIA profiles are partial. The [cross-machine aggregate](docs/testing/cross-machine-benchmark.md) is a generated snapshot that should be regenerated after new runs are imported, and missing cells must not be read as zero.
 
 ## Repository structure
 
@@ -279,6 +398,7 @@ npm start
 | `npm run bench -- --machine <label>` | Run and archive all hardware-sensitive benchmarks for one machine |
 | `npm run bench:aggregate` | Aggregate collected machine snapshots |
 | `npm run bench:charts` | Regenerate the committed SVG evaluation charts |
+| `npm run bench:charts -- --panels-only` | Recompose overview panels from existing detailed charts without selecting new benchmark data |
 | `npm run bench:report` | Regenerate the Markdown evaluation reports |
 | `npm run check:audit` | Audit production dependencies only |
 | `npm run package` | Create an internal build for the current platform |

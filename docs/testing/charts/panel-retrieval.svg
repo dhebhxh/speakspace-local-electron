@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1636" height="915" viewBox="0 0 1636 915" role="img">
-<rect width="1636" height="915" fill="#F7F8FA" rx="10"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="831" height="1332" viewBox="0 0 831 1332" role="img">
+<rect width="831" height="1332" fill="#F7F8FA" rx="10"/>
 <text x="26" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="19" fill="#1F2933" text-anchor="start" font-weight="600">Retrieval quality overview (direct query, no LLM)</text>
 <text x="26" y="56" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12.5" fill="#6B7280" text-anchor="start" font-weight="400">bge-m3 · 24 gold-labelled tasks · task text queried directly without Agent/LLM</text>
 <svg x="20.0" y="74.0" width="791.2" height="386.4" viewBox="0 0 860 420">
@@ -57,7 +57,7 @@
 </svg>
 
 </svg>
-<svg x="825.2" y="74.0" width="791.2" height="386.4" viewBox="0 0 860 420">
+<svg x="20.0" y="474.4" width="791.2" height="386.4" viewBox="0 0 860 420">
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" viewBox="0 0 860 420" role="img">
 <rect width="860" height="420" fill="#FFFFFF" rx="8"/>
 
@@ -112,7 +112,7 @@
 </svg>
 
 </svg>
-<svg x="422.6" y="474.4" width="791.2" height="386.4" viewBox="0 0 860 420">
+<svg x="20.0" y="874.8" width="791.2" height="386.4" viewBox="0 0 860 420">
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" viewBox="0 0 860 420" role="img">
 <rect width="860" height="420" fill="#FFFFFF" rx="8"/>
 
@@ -167,5 +167,6 @@
 </svg>
 
 </svg>
-<text x="26" y="900.8000000000001" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">This measures keyword + vector + RRF ranking, not whether an LLM invokes search or formulates a good query; see the Agent panel for that layer.</text>
+<text x="26" y="1301.2" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">This measures keyword + vector + RRF ranking, not whether an LLM invokes search or formulates a good query; see the</text>
+<text x="26" y="1318.2" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Agent panel for that layer.</text>
 </svg>

@@ -37,9 +37,35 @@
   <img alt="Windows NSIS installer" src="https://img.shields.io/badge/Windows%20installer-NSIS-0078D4?style=flat-square&amp;logo=windows11&amp;logoColor=white" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/dhebhxh/speakspace-local-electron/releases"><strong>下载安装</strong></a>
+  ·
+  <a href="#本地开发">本地运行</a>
+  ·
+  <a href="docs/README.md">文档导航</a>
+</p>
+
 SpeakSpace Local 是一个 Electron 桌面应用，将录音、文件导入、离线转写、结构化笔记、场景知识、全文与语义检索、本地 AI 对话和语音播报整合在同一个工作台中。
 
 “Local”指推理和用户知识库在本机运行：数据库、录音和受管模型均位于 Electron `userData`；模型不进入 Git，也不塞进安装包。首次使用相关能力时，用户再从模型管理页按需下载运行时和模型。
+
+## 目录
+
+- [功能版图](#功能版图)
+- [系统架构](#系统架构)
+- [录音到知识的流水线](#录音到知识的流水线)
+- [数据存储](#数据存储)
+- [搜索与导出覆盖范围](#搜索与导出覆盖范围)
+- [Agent 工作流程](#agent-工作流程)
+- [本地模型栈](#本地模型栈)
+- [测试与评测证据](#测试与评测证据)
+- [工程指标](#工程指标)
+- [项目结构](#项目结构)
+- [本地开发](#本地开发)
+- [打包与发布](#打包与发布)
+- [文档导航](#文档导航)
+- [Electron React Boilerplate](#electron-react-boilerplate)
+- [许可证](#许可证)
 
 ## 功能版图
 
@@ -57,11 +83,17 @@ SpeakSpace Local 是一个 Electron 桌面应用，将录音、文件导入、�
 
 ## 系统架构
 
-![SpeakSpace Local 原有系统架构](docs/readme/system-architecture-zh.png)
+<p align="center">
+  <img src="docs/readme/system-architecture-readable-zh.svg" width="100%" alt="SpeakSpace Local 进程边界架构" />
+</p>
+<p align="center"><em>图 1：SpeakSpace Local 进程边界架构。</em></p>
 
-上图保留了 README 原有的进程边界视图；下面的新图补充当前模型、持久化与核心数据流，但不再替代原图。
+上方可缩放图以纵向布局保留了 README 原有的进程边界视图；下图补充当前模型、持久化与核心数据流，但不替代该视图。
 
-![SpeakSpace Local 技术实现概览](docs/readme/tech-implementation.png)
+<p align="center">
+  <img src="docs/readme/tech-implementation-readable-zh.svg" width="100%" alt="SpeakSpace Local 技术实现概览" />
+</p>
+<p align="center"><em>图 2：当前技术实现概览。</em></p>
 
 ### 进程边界
 
@@ -79,7 +111,10 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 
 转写完成后不会先生成一份独立摘要，再重复生成结构化笔记。当前链路只做一次结构化提取，复核弹窗直接显示其中的 `summary`；保存时将草稿绑定真实 `noteId` 并持久化。
 
-![录音到知识的原有处理流水线](docs/readme/recording-to-knowledge-zh.png)
+<p align="center">
+  <img src="docs/readme/recording-to-knowledge-readable-zh.svg" width="100%" alt="录音到知识的处理流水线" />
+</p>
+<p align="center"><em>图 3：录音到知识的处理流水线。</em></p>
 
 关键约束：
 
@@ -112,7 +147,10 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 
 ### SQLite 关系模型
 
-![SQLite 关系模型](docs/readme/data-model.png)
+<p align="center">
+  <img src="docs/readme/data-model-readable.svg" width="100%" alt="SQLite 关系模型" />
+</p>
+<p align="center"><em>图 4：SQLite 关系模型。</em></p>
 
 工作空间、笔记、AI 会话和自定义模板使用 `trashed_at` 实现软删除；只有回收站中的“永久删除”才会物理移除记录及其级联数据。
 
@@ -136,11 +174,77 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 
 Ask AI 适合固定范围问答；Agent 则允许本地模型在有界循环里调用工具。用户手动关联笔记时，这些笔记会在第一轮推理前确定性载入，同时从可用工具中移除 `search_notes`，防止模型忽略用户指定范围。
 
-![原有 Agent 请求时序图](docs/readme/agent-workflow-zh.png)
+下面两张图以 Mermaid 源码直接维护在 README 中，并由 GitHub 自动渲染；以后可以修改结构，而不需要手工编辑位图。
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User as 用户
+  participant UI as Agent 界面
+  participant Agent as AgentOrchestrator
+  participant Data as 笔记 / SQLite
+  participant LLM as 本地 Ollama
+
+  User->>UI: 问题 + 作用范围
+  UI->>Agent: 类型化 IPC 请求
+  Agent->>Agent: 校验限制并保留最近对话
+
+  alt 已显式关联笔记
+    Agent->>Data: 并行 read_note（最多 8 篇）
+    Data-->>Agent: 确定性上下文（最多 8000 字符）
+    Note over Agent,LLM: 移除 search_notes
+  else 工作区或全库范围
+    Note over Agent,LLM: 保留 search_notes
+  end
+
+  loop 有界工具循环（最多 6 步）
+    Agent->>LLM: 提示词 + 运行状态 + 证据
+    alt 请求调用工具
+      LLM-->>Agent: search_notes / read_note / extract_todos
+      Agent->>Data: 执行已注册工具
+      Data-->>Agent: 工具观察结果
+    else 返回最终回答
+      LLM-->>Agent: 基于证据的回答
+    end
+  end
+
+  Agent->>Data: 保存本轮对话和关联来源
+  Agent-->>UI: 步骤时间线 + 最终回答
+  UI-->>User: 文本或 TTS 输出
+```
+
+<p align="center"><em>图 5：Agent 请求时序图。</em></p>
 
 时序图展示各组件随时间发生的交互；下面的控制器视图则补充决策分支、有界工具循环、证据回传和最终回答之间的关系。
 
-![有界 Agent 控制器工作流](docs/readme/bounded-agent-workflow.png)
+```mermaid
+flowchart TB
+  Query["1 · 用户问题<br/>指令与作用范围"] --> Context["2 · 上下文组装<br/>历史 + 关联笔记 + 工具策略"]
+  Context --> LLM["3 · 本地 LLM<br/>在有界上下文中推理"]
+  LLM --> Decision{"下一步操作？"}
+
+  Decision -->|最终回答| Response["4 · 最终回答<br/>基于证据生成"]
+  Response --> Delivery["Agent 界面 / TTS<br/>时间线、文本与语音反馈"]
+  Response --> History[("AI 对话<br/>本轮内容 + 关联来源")]
+
+  Decision -->|调用工具| Controller
+  Controller["工具控制器<br/>校验参数、范围、重复调用和步数限制"]
+  Controller --> Tools["工具执行<br/>search_notes · read_note · extract_todos"]
+  Tools --> Observation["观察结果<br/>将工具结果追加到模型上下文"]
+  Observation --> Repeat["进入下一轮模型推理<br/>回答完成或达到 6 步后停止"]
+  Tools --> Knowledge[("本地知识<br/>笔记 · 待办 · 搜索索引")]
+
+  classDef input fill:#f5f3ff,stroke:#7657d5,color:#172033
+  classDef decision fill:#fff7cc,stroke:#b59f27,color:#4b3b00
+  classDef tool fill:#ecfeff,stroke:#0891b2,color:#172033
+  classDef result fill:#ecfdf5,stroke:#059669,color:#172033
+  class Query,Context,LLM input
+  class Decision decision
+  class Controller,Tools,Observation tool
+  class Response,Delivery,History,Repeat,Knowledge result
+```
+
+<p align="center"><em>图 6：有界 Agent 控制器工作流。</em></p>
 
 Agent 的代码级边界：
 
@@ -176,20 +280,35 @@ Agent 的代码级边界：
 | Agent | 80 条固定笔记、90 个任务，开发集/保留集各 45 条；严格检查工具、范围和终止行为 | 当前 Agent 尚未达到产品可用目标 |
 | 回归测试 | 可按功能域复核的 Jest 机器可读清单 | 回归测试不衡量模型准确率 |
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/testing/charts/panel-tts-speed.svg" alt="TTS 速度评测面板" /></td>
-    <td width="50%"><img src="docs/testing/charts/panel-stt.svg" alt="STT 真人录音评测面板" /></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/testing/charts/llm-accuracy-vs-speed.svg" alt="LLM 速度与准确率权衡" /></td>
-    <td width="50%"><img src="docs/testing/charts/panel-retrieval.svg" alt="Embedding 混合检索评测面板" /></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/testing/charts/panel-agent.svg" alt="Agent 端到端评测面板" /></td>
-    <td width="50%"><img src="docs/testing/charts/jest-by-area.svg" alt="按功能域划分的 Jest 回归测试" /></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs/testing/charts/panel-tts-speed.svg" width="100%" alt="TTS 速度评测面板" />
+</p>
+<p align="center"><em>图 7：各测试引擎的 TTS 合成速度。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-stt.svg" width="100%" alt="STT 真人录音评测面板" />
+</p>
+<p align="center"><em>图 8：基于真人录音的 STT 评测。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/llm-accuracy-vs-speed.svg" width="100%" alt="LLM 速度与准确率权衡" />
+</p>
+<p align="center"><em>图 9：本地 LLM 准确率与速度权衡。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-retrieval.svg" width="100%" alt="Embedding 混合检索评测面板" />
+</p>
+<p align="center"><em>图 10：基于 Embedding 的混合检索评测。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-agent.svg" width="100%" alt="Agent 端到端评测面板" />
+</p>
+<p align="center"><em>图 11：Agent 端到端评测。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/jest-by-area.svg" width="100%" alt="按功能域划分的 Jest 回归测试" />
+</p>
+<p align="center"><em>图 12：按功能域划分的 Jest 回归覆盖。</em></p>
 
 核心方法只有一条：开发集用于选择提示词和脚手架，冻结的保留集才用于验收；延迟、吞吐、内存和 GPU 卸载等硬件敏感指标则通过一键跨机器基准单独采集。引用任何数字前，请先看[测试覆盖与限制清单](docs/testing/test-coverage-gaps.md)。
 
@@ -232,7 +351,7 @@ Agent 的代码级边界：
 
 ### 硬件归档更新（2026-09-02）
 
-跨机器归档现已扩展到 3 台机器：Apple M2 Pro 16GB、RTX 3090 台式机和 RTX 3060 笔记本。目前只有 M2 机器覆盖全部严格基准阶段；两台 NVIDIA 机器保存的是互补的部分测量，因此[跨机器汇总](docs/testing/cross-machine-benchmark.md)中的缺失项不能按 0 解读。
+截至 2026-09-02，结果归档包含 5 台机器，覆盖 Apple Silicon 以及 NVIDIA RTX 3050、3060 和 3090 系统。M2 Pro、`jack` 与 `fan3090` 均记录了五个硬件阶段的成功结果，较早的两台 NVIDIA 机器则为部分测量。[跨机器汇总](docs/testing/cross-machine-benchmark.md)是生成式快照，新结果导入后应重新生成，其中缺失项不能按 0 解读。
 
 ## 项目结构
 
@@ -281,6 +400,7 @@ npm start
 | `npm run bench -- --machine <标签>` | 运行并归档一台机器上的全部硬件敏感基准 |
 | `npm run bench:aggregate` | 汇总已经收集的机器快照 |
 | `npm run bench:charts` | 重新生成仓库内的 SVG 评测图 |
+| `npm run bench:charts -- --panels-only` | 使用已有明细图重组总览面板，不重新选择基准数据 |
 | `npm run bench:report` | 重新生成 Markdown 评测报告 |
 | `npm run check:audit` | 只检查生产依赖漏洞 |
 | `npm run package` | 当前平台内部构建 |

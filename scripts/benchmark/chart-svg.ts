@@ -124,6 +124,26 @@ function textWidth(value: string, size: number): number {
   return width;
 }
 
+/** 按近似显示宽度切分说明文字，避免窄面板中的副标题和图注被裁掉。 */
+function wrapText(value: string, maxWidth: number, size: number): string[] {
+  const words = value.trim().split(/\s+/);
+  const lines: string[] = [];
+  let current = '';
+
+  words.forEach((word) => {
+    const candidate = current ? `${current} ${word}` : word;
+    if (current && textWidth(candidate, size) > maxWidth) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  });
+
+  if (current) lines.push(current);
+  return lines.length > 0 ? lines : [''];
+}
+
 /** 图例。超出画布宽度时自动换行，中文标签很长时才不会被截掉。 */
 function legend(
   x: number,
@@ -878,11 +898,6 @@ export function gridPanel(options: {
     return { width, height, body };
   });
 
-  const gap = 14;
-  const padding = 20;
-  const headerHeight = subtitle ? 74 : 54;
-  const captionHeight = caption ? 34 : 0;
-
   // 按行切分；每行高度取该行最高的一张，保证格子不重叠
   const rows: (typeof parsed)[] = [];
   for (let index = 0; index < parsed.length; index += columns) {
@@ -892,7 +907,19 @@ export function gridPanel(options: {
     (row) => Math.max(...row.map((item) => item.height)) * scale,
   );
   const cellWidth = Math.max(...parsed.map((item) => item.width)) * scale;
+  const gap = 14;
+  const padding = 20;
   const totalWidth = padding * 2 + cellWidth * columns + gap * (columns - 1);
+  const copyWidth = totalWidth - padding * 2 - 12;
+  const subtitleLines = subtitle ? wrapText(subtitle, copyWidth, 12.5) : [];
+  const captionLines = caption ? wrapText(caption, copyWidth, 12) : [];
+  const lineHeight = 17;
+  const headerHeight = subtitle
+    ? 74 + (subtitleLines.length - 1) * lineHeight
+    : 54;
+  const captionHeight = caption
+    ? 34 + (captionLines.length - 1) * lineHeight
+    : 0;
   const totalHeight =
     headerHeight +
     rowHeights.reduce((sum, value) => sum + value, 0) +
@@ -922,13 +949,25 @@ export function gridPanel(options: {
     `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth.toFixed(0)}" height="${totalHeight.toFixed(0)}" viewBox="0 0 ${totalWidth.toFixed(0)} ${totalHeight.toFixed(0)}" role="img">`,
     `<rect width="${totalWidth.toFixed(0)}" height="${totalHeight.toFixed(0)}" fill="#F7F8FA" rx="10"/>`,
     text(padding + 6, 34, title, { size: 19, weight: 600 }),
-    subtitle
-      ? text(padding + 6, 56, subtitle, { size: 12.5, fill: MUTED })
-      : '',
+    subtitleLines
+      .map((line, index) =>
+        text(padding + 6, 56 + index * lineHeight, line, {
+          size: 12.5,
+          fill: MUTED,
+        }),
+      )
+      .join('\n'),
     body.join('\n'),
-    caption
-      ? text(padding + 6, totalHeight - 14, caption, { size: 12, fill: MUTED })
-      : '',
+    captionLines
+      .map((line, index) =>
+        text(
+          padding + 6,
+          totalHeight - 14 - (captionLines.length - 1 - index) * lineHeight,
+          line,
+          { size: 12, fill: MUTED },
+        ),
+      )
+      .join('\n'),
     '</svg>',
   ].join('\n');
 }

@@ -1,0 +1,2 @@
+we combine keyword retrieval with vector retrieval and merge both rankings using
+reciprocal ranking refusion to on the local pro section

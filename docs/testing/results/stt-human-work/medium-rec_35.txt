@@ -1,0 +1,15 @@
+先同步一下Sprint的进展
+Transcription Pipeline的Refactor已经Merge了
+Long Recording的Pick Memory下降了大约四成
+中阴混合场景下Searchmentation也稳定了很多
+任务提取那一块我们加了一道Owner Shape Reveal
+专门解决别人的Action Item算到用户头上的问题
+下一步的重点是Retrieval
+我们打算把Keyword Search和Vector Search合并成一路Hybrid Record
+然后用Reciprocal Rank Fusion做排序
+难点不在算法,而在本地设备的算力运算
+Embedding Model必须足够小,同时中文的Record不能掉
+另外还有几个容易被忽略的点就是Note数量长到几千条之后
+Full Library Search的Latency会明显上升
+所以Incremental Index and Cache策略要体现设计好
+这些是High Level的方向,具体Mindstone我会在DOC里面写清楚

@@ -1,0 +1,1 @@
+把PR Reveal完了之後,CI跑通就可以Merge到MAT分支,然後觸發CD部署

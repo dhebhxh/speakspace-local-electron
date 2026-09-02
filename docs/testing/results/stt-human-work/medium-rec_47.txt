@@ -1,0 +1,2 @@
+我们用 RRF 融合 Keyword Search and Semantic Search,
+embedding 模型跑在 CPU 上,不依赖 GPU。

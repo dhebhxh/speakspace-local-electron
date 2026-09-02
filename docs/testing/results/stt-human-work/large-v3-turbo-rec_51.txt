@@ -1,0 +1,1 @@
+Local Speech latency keeps private notes on users' own computer.

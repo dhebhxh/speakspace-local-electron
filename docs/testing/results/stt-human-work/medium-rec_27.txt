@@ -1,0 +1,1 @@
+這次的AB test的conversation rate提升了12.5%,sample size是3400人。

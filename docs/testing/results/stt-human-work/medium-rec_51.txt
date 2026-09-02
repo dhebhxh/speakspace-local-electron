@@ -1,0 +1,1 @@
+Local speech seamlessly keeps private nodes on user's own computer.

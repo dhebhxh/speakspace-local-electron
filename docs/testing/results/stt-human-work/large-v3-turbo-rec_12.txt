@@ -1,0 +1,1 @@
+LocalSpeechThinkThis keeps private notes on the user's own computer.

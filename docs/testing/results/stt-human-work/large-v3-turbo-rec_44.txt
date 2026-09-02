@@ -1,0 +1,2 @@
+SpeakSpaceLocal可以允许在本地的Text-to-Speech
+并保护用户的Private nodes

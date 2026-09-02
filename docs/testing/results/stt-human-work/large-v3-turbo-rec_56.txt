@@ -1,0 +1,3 @@
+把PR review完了之后
+CI跑通就可以merge到man分支
+然后触发CD部署

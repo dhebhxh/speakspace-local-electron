@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "machine": {
+    "machine_id": "fan3090",
+    "label": "fan3090",
+    "captured_at": "2026-09-02T01:20:59.919Z",
+    "hostname_hash": "2774ace6a120",
+    "os": "Windows_NT 10.0.26200",
+    "arch": "x64",
+    "cpu_model": "12th Gen Intel(R) Core(TM) i5-12600",
+    "cpu_physical_cores": 6,
+    "cpu_logical_cores": 12,
+    "total_memory_bytes": 68475236352,
+    "gpu": {
+      "name": "NVIDIA GeForce RTX 3090",
+      "memory_total_mib": 24576,
+      "driver_version": "591.86"
+    },
+    "node_version": "v24.19.0",
+    "accelerator_class": "nvidia-gpu"
+  },
+  "ran_at": "2026-09-02T02:37:37.160Z",
+  "with_accuracy": false,
+  "steps": [
+    {
+      "id": "tts",
+      "status": "ok",
+      "elapsed_ms": 2655443
+    },
+    {
+      "id": "tts-memory",
+      "status": "ok",
+      "elapsed_ms": 1086486
+    },
+    {
+      "id": "tts-length",
+      "status": "ok",
+      "elapsed_ms": 487671
+    },
+    {
+      "id": "llm",
+      "status": "ok",
+      "elapsed_ms": 8423
+    },
+    {
+      "id": "stt",
+      "status": "ok",
+      "elapsed_ms": 251583
+    }
+  ],
+  "files": [
+    "llm-runtime.json",
+    "stt-human-speed.json",
+    "tts-kokoro-multi-lang-v1_0.json",
+    "tts-length-kokoro-multi-lang-v1_0.json",
+    "tts-length-moss-tts-nano-100m-onnx.json",
+    "tts-length-vits-melo-tts-zh_en.json",
+    "tts-memory-kokoro-multi-lang-v1_0.json",
+    "tts-memory-moss-tts-nano-100m-onnx.json",
+    "tts-memory-vits-melo-tts-zh_en.json",
+    "tts-moss-tts-nano-100m-onnx.json",
+    "tts-vits-melo-tts-zh_en.json"
+  ]
+}

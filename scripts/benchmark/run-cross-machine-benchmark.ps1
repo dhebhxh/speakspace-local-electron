@@ -12,6 +12,28 @@ $script:OwnedOllamaProcess = $null
 $script:NpmCommand = $null
 $DefaultLlmModel = 'qwen2.5:3b-instruct'
 
+function Get-PropertyValue {
+  # Windows PowerShell 5.1 has no null-conditional operator (`$obj?.Prop`),
+  # so use this helper for any property read on a possibly-null object.
+  param(
+    [Parameter(Position = 0)]$InputObject,
+    [Parameter(Position = 1, Mandatory = $true)][string]$Name,
+    [Parameter(Position = 2)]$Default = $null
+  )
+
+  if ($null -eq $InputObject) {
+    return $Default
+  }
+  $property = $InputObject.PSObject.Properties[$Name]
+  if (-not $property) {
+    return $Default
+  }
+  if ($null -eq $property.Value) {
+    return $Default
+  }
+  return $property.Value
+}
+
 function Write-Section {
   param([string]$Title)
 
@@ -114,7 +136,7 @@ function Ensure-OllamaModel {
   $ollamaExe = (Get-Command 'ollama.exe' -ErrorAction SilentlyContinue).Source
   if (-not $ollamaExe) {
     $runtime = Find-OllamaRuntime
-    $ollamaExe = $runtime?.Binary
+    $ollamaExe = Get-PropertyValue $runtime 'Binary'
   }
   if (-not $ollamaExe) {
     Write-Warning '没有找到 ollama.exe，无法自动拉取模型；LLM 测速将跳过。'
@@ -168,7 +190,11 @@ function Invoke-Npm {
     return
   }
 
-  & $script:NpmCommand @Arguments
+  if (-not $script:NpmCommand) {
+    throw '没有找到可用的 npm，请先安装 Node.js LTS 再重新运行本脚本。'
+  }
+  $npmPath = Get-PropertyValue $script:NpmCommand 'Source' $script:NpmCommand
+  & $npmPath @Arguments
   if ($LASTEXITCODE -ne 0) {
     throw "命令执行失败（退出码 $LASTEXITCODE）：$display"
   }
@@ -357,8 +383,8 @@ try {
   }
 
   $nodeTools = Ensure-NodeJs
-  $nodeCommand = $nodeTools?.Node
-  $script:NpmCommand = $nodeTools?.Npm
+  $nodeCommand = Get-PropertyValue $nodeTools 'Node'
+  $script:NpmCommand = Get-PropertyValue $nodeTools 'Npm'
 
   Write-Section '环境准备'
   Write-Host "机器标签：$Machine"

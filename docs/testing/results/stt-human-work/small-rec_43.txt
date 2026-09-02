@@ -1,0 +1,1 @@
+We combine keyword retrieval with factory retrieval and merge both rankings using reciprocal ranking refution to on the local pro-section.

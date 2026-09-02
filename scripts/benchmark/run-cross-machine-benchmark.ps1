@@ -10,6 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $script:OwnedOllamaProcess = $null
 $script:NpmCommand = $null
+$DefaultLlmModel = 'qwen2.5:3b-instruct'
 
 function Write-Section {
   param([string]$Title)
@@ -39,6 +40,123 @@ function Resolve-MachineLabel {
     throw '机器标签不能为空；请使用字母、数字、中文、点、下划线或短横线。'
   }
   return $normalised
+}
+
+function Update-ProcessPathFromRegistry {
+  # winget 装完东西后系统 PATH 会更新，但当前进程的 PATH 缓存不会自动刷新；
+  # 后面新开的子进程（比如再次调用 npm/ollama）看到的还是旧的，所以每次装完都要重新拼一遍。
+  $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+  $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+  $env:Path = "$machinePath;$userPath"
+}
+
+function Install-WithWinget {
+  param(
+    [string]$Id,
+    [string]$DisplayName
+  )
+
+  $winget = Get-Command 'winget.exe' -ErrorAction SilentlyContinue
+  if (-not $winget) {
+    Write-Warning "没有 winget，无法自动安装 $DisplayName；请手动安装后重新运行本脚本。"
+    return $false
+  }
+  Write-Host "正在通过 winget 自动安装 $DisplayName..."
+  & $winget.Source install --id $Id -e --accept-package-agreements --accept-source-agreements | Out-Null
+  $installOk = $LASTEXITCODE -eq 0
+  Update-ProcessPathFromRegistry
+  if (-not $installOk) {
+    Write-Warning "$DisplayName 自动安装失败（退出码 $LASTEXITCODE）。"
+  }
+  return $installOk
+}
+
+function Ensure-NodeJs {
+  $nodeCommand = Get-Command 'node.exe' -ErrorAction SilentlyContinue
+  $npmCommand = Get-Command 'npm.cmd' -ErrorAction SilentlyContinue
+  if ($nodeCommand -and $npmCommand) {
+    return [PSCustomObject]@{ Node = $nodeCommand; Npm = $npmCommand }
+  }
+  if ($DryRun) {
+    Write-Host '[dry-run] 将自动安装 Node.js LTS' -ForegroundColor Yellow
+    return $null
+  }
+  Install-WithWinget -Id 'OpenJS.NodeJS.LTS' -DisplayName 'Node.js LTS' | Out-Null
+  $nodeCommand = Get-Command 'node.exe' -ErrorAction SilentlyContinue
+  $npmCommand = Get-Command 'npm.cmd' -ErrorAction SilentlyContinue
+  if (-not $nodeCommand -or -not $npmCommand) {
+    throw '未检测到 Node.js/npm，且自动安装未成功。请手动安装 Node.js LTS，再重新双击本脚本。'
+  }
+  return [PSCustomObject]@{ Node = $nodeCommand; Npm = $npmCommand }
+}
+
+function Ensure-OllamaBinary {
+  $existing = Find-OllamaRuntime
+  if ($existing) {
+    return $existing
+  }
+  if ($DryRun) {
+    Write-Host '[dry-run] 将自动安装 Ollama' -ForegroundColor Yellow
+    return $null
+  }
+  Install-WithWinget -Id 'Ollama.Ollama' -DisplayName 'Ollama' | Out-Null
+  return Find-OllamaRuntime
+}
+
+function Ensure-OllamaModel {
+  param([string]$HostUrl)
+
+  if ($DryRun) {
+    Write-Host "[dry-run] 将自动拉取默认模型：$DefaultLlmModel" -ForegroundColor Yellow
+    return
+  }
+
+  $ollamaExe = (Get-Command 'ollama.exe' -ErrorAction SilentlyContinue).Source
+  if (-not $ollamaExe) {
+    $runtime = Find-OllamaRuntime
+    $ollamaExe = $runtime?.Binary
+  }
+  if (-not $ollamaExe) {
+    Write-Warning '没有找到 ollama.exe，无法自动拉取模型；LLM 测速将跳过。'
+    return
+  }
+
+  Write-Host "Ollama 中没有已装模型，正在自动拉取默认模型：$DefaultLlmModel（约几百 MB 到几 GB，视网络而定）"
+  $env:OLLAMA_HOST = $HostUrl
+  & $ollamaExe pull $DefaultLlmModel
+  if ($LASTEXITCODE -ne 0) {
+    Write-Warning "拉取模型 $DefaultLlmModel 失败（退出码 $LASTEXITCODE）；LLM 测速将跳过。"
+  }
+}
+
+function Test-SttReady {
+  # 跟 bench-machine.ts 里 sttReady() 的判断逻辑保持一致，避免每次都重跑安装脚本。
+  $appData = [Environment]::GetFolderPath('ApplicationData')
+  $binary = Join-Path $appData 'SpeakSpace Local\runtimes\stt\whisper\bin\whisper-cli.exe'
+  $modelDir = Join-Path $appData 'SpeakSpace Local\models\stt'
+  $recordingDir = Join-Path $projectRoot 'docs\testing\datasets\stt-human-recordings'
+  $hasBinary = Test-Path -LiteralPath $binary
+  $hasModel = (Test-Path -LiteralPath $modelDir) -and
+    (Get-ChildItem -LiteralPath $modelDir -Filter '*.bin' -ErrorAction SilentlyContinue | Select-Object -First 1)
+  $hasRecordings = (Test-Path -LiteralPath $recordingDir) -and
+    (Get-ChildItem -LiteralPath $recordingDir -ErrorAction SilentlyContinue | Select-Object -First 1)
+  return $hasBinary -and $hasModel -and $hasRecordings
+}
+
+function Ensure-Stt {
+  if (Test-SttReady) {
+    Write-Host 'STT 运行时/模型已就绪。'
+    return
+  }
+  if ($DryRun) {
+    Write-Host '[dry-run] 将自动安装 ffmpeg + whisper.cpp 运行时 + whisper-small 模型' -ForegroundColor Yellow
+    return
+  }
+  Write-Host '首次运行：正在自动安装 STT 依赖（ffmpeg + whisper.cpp 运行时 + whisper-small 模型，约 500 MiB）。'
+  Invoke-Npm -Arguments @('run', 'bench:stt:fetch', '--', 'whisper-small')
+  if (-not (Test-SttReady)) {
+    Write-Warning 'STT 依赖安装后仍不完整；STT 测速将跳过。'
+  }
 }
 
 function Invoke-Npm {
@@ -238,16 +356,16 @@ try {
     }
   }
 
-  $nodeCommand = Get-Command 'node.exe' -ErrorAction SilentlyContinue
-  $script:NpmCommand = Get-Command 'npm.cmd' -ErrorAction SilentlyContinue
-  if (-not $nodeCommand -or -not $script:NpmCommand) {
-    throw '未检测到 Node.js/npm。请先安装 Node.js LTS，再重新双击本脚本。'
-  }
+  $nodeTools = Ensure-NodeJs
+  $nodeCommand = $nodeTools?.Node
+  $script:NpmCommand = $nodeTools?.Npm
 
   Write-Section '环境准备'
   Write-Host "机器标签：$Machine"
   Write-Host "测速模式：$Mode"
-  Write-Host "Node.js：$(& $nodeCommand.Source --version)"
+  if ($nodeCommand) {
+    Write-Host "Node.js：$(& $nodeCommand.Source --version)"
+  }
 
   $tsNodeEntry = Join-Path $projectRoot 'node_modules\ts-node\register\transpile-only.js'
   $dependenciesReady = Test-Path -LiteralPath $tsNodeEntry
@@ -274,10 +392,15 @@ try {
   }
 
   if ($Mode -ne 'tts') {
+    Ensure-OllamaBinary | Out-Null
     $ollamaStatus = Ensure-Ollama
-    if ($ollamaStatus.Reachable -and $ollamaStatus.ModelCount -eq 0 -and -not $DryRun) {
-      Write-Warning 'Ollama 里没有已安装的生成模型；LLM 测速将自动跳过。'
+    if ($ollamaStatus.Reachable -and $ollamaStatus.ModelCount -eq 0) {
+      Ensure-OllamaModel -HostUrl $env:OLLAMA_HOST
     }
+  }
+
+  if ($Mode -eq 'full') {
+    Ensure-Stt
   }
 
   Write-Section '开始测速'

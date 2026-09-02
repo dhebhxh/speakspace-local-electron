@@ -51,6 +51,7 @@
     "package:release": "node .erb/scripts/check-release-signing.js && npm run clean && npm run build && cross-env SPEAKSPACE_RELEASE=true electron-builder build --config electron-builder.js --publish never && cross-env SPEAKSPACE_RELEASE=true node .erb/scripts/verify-signing.js && npm run build:dll",
     "check:signing": "node .erb/scripts/check-release-signing.js",
     "bench:tts:fetch": "cross-env TS_NODE_TRANSPILE_ONLY=true node -r ts-node/register/transpile-only scripts/benchmark/fetch-tts-models.ts",
+    "bench:stt:fetch": "cross-env ELECTRON_RUN_AS_NODE=1 NODE_PATH=release/app/node_modules TS_NODE_TRANSPILE_ONLY=true electron -r ./scripts/benchmark/register-shared-alias.js -r ./scripts/benchmark/register-electron-app-stub.js -r ts-node/register/transpile-only scripts/benchmark/install-whisper-runtime.ts",
     "bench:tts": "cross-env NODE_PATH=release/app/node_modules TS_NODE_TRANSPILE_ONLY=true node -r ts-node/register/transpile-only scripts/benchmark/tts-benchmark.ts",
     "bench:tts:asr": "cross-env NODE_PATH=release/app/node_modules TS_NODE_TRANSPILE_ONLY=true node -r ts-node/register/transpile-only scripts/benchmark/tts-asr-eval.ts",
     "bench:stt": "cross-env NODE_PATH=release/app/node_modules TS_NODE_TRANSPILE_ONLY=true node -r ts-node/register/transpile-only scripts/benchmark/stt-human-eval.ts",

@@ -1,0 +1,1 @@
+Speak space local can be used in the test-to-speech, being able to use the private nodes.

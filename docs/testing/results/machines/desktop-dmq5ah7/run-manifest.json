@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "machine": {
+    "machine_id": "desktop-dmq5ah7",
+    "label": "desktop-dmq5ah7",
+    "captured_at": "2026-09-01T23:48:12.746Z",
+    "hostname_hash": "2774ace6a120",
+    "os": "Windows_NT 10.0.26200",
+    "arch": "x64",
+    "cpu_model": "12th Gen Intel(R) Core(TM) i5-12600",
+    "cpu_physical_cores": 6,
+    "cpu_logical_cores": 12,
+    "total_memory_bytes": 68475236352,
+    "gpu": {
+      "name": "NVIDIA GeForce RTX 3090",
+      "memory_total_mib": 24576,
+      "driver_version": "591.86"
+    },
+    "node_version": "v24.19.0",
+    "accelerator_class": "nvidia-gpu"
+  },
+  "ran_at": "2026-09-01T23:52:33.253Z",
+  "with_accuracy": false,
+  "steps": [
+    {
+      "id": "stt",
+      "status": "ok",
+      "elapsed_ms": 258969
+    }
+  ],
+  "files": [
+    "stt-human-speed.json"
+  ]
+}

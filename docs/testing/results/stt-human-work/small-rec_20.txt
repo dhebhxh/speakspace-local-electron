@@ -1,0 +1,2 @@
+The OKR review covers the KPI and ROI.
+Export the data from the CRM and SyncNIC it through the REST API over HTTPS.

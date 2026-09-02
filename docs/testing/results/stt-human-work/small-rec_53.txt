@@ -1,0 +1,2 @@
+The OKR review covers AKPI and ROI.
+It spotting the data from CRM and Clinic through the REST API over HTTPS.

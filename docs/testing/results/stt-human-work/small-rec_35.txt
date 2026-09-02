@@ -1,0 +1,15 @@
+先同步一下这个Sprint的进展
+transcription pipeline的refactor已经merge了
+long recording的peak memory下降了大约四成
+中音混合场景下segmentation也稳定了很多
+任务提取那一块我们加了一道owner shape review
+专门解决别人的action item算到用户头上的问题
+下一步的重点是retribal
+我们打算把keyword search and vector search合并成一路hybrid record
+然后用receiptraco rankfusion做排序
+难典不再算法而在本地设备的算力预算
+embedding model必须足够小同时中文的recall不能掉
+另外还有几个容易被忽略的点就是note数量
+长到几件条之后full library search的latency会明显上升
+所以incremental index and cache策略要提前设计好
+这些是high-level的方向具体mindstone我会在doc里面写清楚

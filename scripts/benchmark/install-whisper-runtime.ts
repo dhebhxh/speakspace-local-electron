@@ -9,13 +9,27 @@
  * ELECTRON_RUN_AS_NODE=1 的纯 Node 环境下跑。
  */
 
-/* eslint-disable no-console */
+/* eslint-disable no-console, no-await-in-loop, no-continue, no-restricted-syntax */
 
 import WhisperRuntimeInstaller from '../../src/main/transcription/WhisperRuntimeInstaller';
 import { STTModelManager } from '../../src/main/AI-module/STTModelManager';
 import FfmpegInstaller from '../../src/main/runtime/FfmpegInstaller';
+import {
+  STT_BENCHMARK_MODELS,
+  sttBenchmarkCatalogIds,
+} from './stt-benchmark-models';
+import { totalSize } from './model-size';
 
-const MODEL_ID = process.argv[2] || 'whisper-small';
+/**
+ * 不传参数时装整套跨机器基准模型（见 stt-benchmark-models.ts）。
+ * 以前这里默认只装 whisper-small 一个，于是每台机器测到的模型集合都不一样，
+ * cross-stt-rtf.svg 缺了一大片柱子。
+ */
+const MODEL_IDS =
+  process.argv.slice(2).filter((argument) => !argument.startsWith('-')).length >
+  0
+    ? process.argv.slice(2).filter((argument) => !argument.startsWith('-'))
+    : sttBenchmarkCatalogIds();
 
 async function main(): Promise<void> {
   const ffmpegInstaller = new FfmpegInstaller();
@@ -34,25 +48,56 @@ async function main(): Promise<void> {
 
   const modelManager = new STTModelManager();
   const models = modelManager.getModelList();
-  const target = models.find((m) => m.id === MODEL_ID);
-  if (!target) {
-    throw new Error(`未知模型 id: ${MODEL_ID}`);
-  }
-  if (target.downloaded) {
-    console.log(`模型 ${MODEL_ID} 已下载，跳过。`);
-  } else {
-    console.log(`正在下载模型 ${MODEL_ID}...`);
+  const failures: string[] = [];
+
+  const pending = MODEL_IDS.filter(
+    (id) => !models.find((m) => m.id === id)?.downloaded,
+  );
+  const pendingSize = totalSize(
+    STT_BENCHMARK_MODELS.filter((model) => pending.includes(model.catalogId)),
+  );
+  console.log(
+    `需要就绪的模型 ${MODEL_IDS.length} 个，其中 ${pending.length} 个待下载` +
+      `${pending.length > 0 ? `（约 ${pendingSize}）` : ''}。`,
+  );
+  for (const modelId of MODEL_IDS) {
+    const target = models.find((m) => m.id === modelId);
+    if (!target) {
+      failures.push(`${modelId}: 未知模型 id`);
+      console.error(`[失败] 未知模型 id: ${modelId}`);
+      continue;
+    }
+    if (target.downloaded) {
+      console.log(`模型 ${modelId} 已下载，跳过。`);
+      continue;
+    }
+    console.log(`正在下载模型 ${modelId}...`);
     let lastPct = -1;
-    await modelManager.downloadModel(MODEL_ID, (progress) => {
-      const pct = progress.totalBytes
-        ? Math.floor((progress.receivedBytes / progress.totalBytes) * 100)
-        : -1;
-      if (pct !== lastPct && pct % 10 === 0) {
-        lastPct = pct;
-        console.log(`[model] ${pct}%`);
-      }
-    });
-    console.log(`模型 ${MODEL_ID} 下载完成。`);
+    try {
+      // 逐个串行下载：跟基准本身一样，避免并发抢带宽让进度输出没法看。
+      await modelManager.downloadModel(modelId, (progress) => {
+        const pct = progress.totalBytes
+          ? Math.floor((progress.receivedBytes / progress.totalBytes) * 100)
+          : -1;
+        if (pct !== lastPct && pct % 10 === 0) {
+          lastPct = pct;
+          console.log(`[model] ${modelId} ${pct}%`);
+        }
+      });
+      console.log(`模型 ${modelId} 下载完成。`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failures.push(`${modelId}: ${message}`);
+      console.error(`[失败] ${modelId}: ${message}`);
+    }
+  }
+
+  if (failures.length > 0) {
+    // 部分失败不抛异常：已经装好的那些照样能测，缺的那几档在跨机器表里留空即可。
+    console.error(
+      `\n有 ${failures.length} 个模型未就绪：\n${failures.join('\n')}`,
+    );
+    process.exitCode = 1;
   }
 }
 

@@ -1,7 +1,7 @@
 ﻿[CmdletBinding()]
 param(
   [string]$Machine,
-  [ValidateSet('full', 'llm', 'tts')]
+  [ValidateSet('full', 'llm', 'tts', 'stt', 'llm-stt')]
   [string]$Mode = 'full',
   [switch]$NonInteractive,
   [switch]$DryRun
@@ -10,7 +10,6 @@ param(
 $ErrorActionPreference = 'Stop'
 $script:OwnedOllamaProcess = $null
 $script:NpmCommand = $null
-$DefaultLlmModel = 'qwen2.5:3b-instruct'
 
 function Get-PropertyValue {
   # Windows PowerShell 5.1 has no null-conditional operator (`$obj?.Prop`),
@@ -125,61 +124,17 @@ function Ensure-OllamaBinary {
   return Find-OllamaRuntime
 }
 
-function Ensure-OllamaModel {
-  param([string]$HostUrl)
+# 模型的补齐交给 bench 自己（bench-machine.ts → bench:llm:fetch），这里只负责把
+# Ollama 拉起来。以前 PS1 在这里自己 pull 一个默认模型，有两个问题：
+#   1. 只拉 1 个，而跨机器对比需要固定的一整套；
+#   2. 只在「一个模型都没有」时才拉，机器上恰好有别的模型就整个跳过。
+# 实测后果就是各机器测到的模型集合互不相同，对比图缺格。
 
-  if ($DryRun) {
-    Write-Host "[dry-run] 将自动拉取默认模型：$DefaultLlmModel" -ForegroundColor Yellow
-    return
-  }
-
-  $ollamaExe = (Get-Command 'ollama.exe' -ErrorAction SilentlyContinue).Source
-  if (-not $ollamaExe) {
-    $runtime = Find-OllamaRuntime
-    $ollamaExe = Get-PropertyValue $runtime 'Binary'
-  }
-  if (-not $ollamaExe) {
-    Write-Warning '没有找到 ollama.exe，无法自动拉取模型；LLM 测速将跳过。'
-    return
-  }
-
-  Write-Host "Ollama 中没有已装模型，正在自动拉取默认模型：$DefaultLlmModel（约几百 MB 到几 GB，视网络而定）"
-  $env:OLLAMA_HOST = $HostUrl
-  & $ollamaExe pull $DefaultLlmModel
-  if ($LASTEXITCODE -ne 0) {
-    Write-Warning "拉取模型 $DefaultLlmModel 失败（退出码 $LASTEXITCODE）；LLM 测速将跳过。"
-  }
-}
-
-function Test-SttReady {
-  # 跟 bench-machine.ts 里 sttReady() 的判断逻辑保持一致，避免每次都重跑安装脚本。
-  $appData = [Environment]::GetFolderPath('ApplicationData')
-  $binary = Join-Path $appData 'SpeakSpace Local\runtimes\stt\whisper\bin\whisper-cli.exe'
-  $modelDir = Join-Path $appData 'SpeakSpace Local\models\stt'
-  $recordingDir = Join-Path $projectRoot 'docs\testing\datasets\stt-human-recordings'
-  $hasBinary = Test-Path -LiteralPath $binary
-  $hasModel = (Test-Path -LiteralPath $modelDir) -and
-    (Get-ChildItem -LiteralPath $modelDir -Filter '*.bin' -ErrorAction SilentlyContinue | Select-Object -First 1)
-  $hasRecordings = (Test-Path -LiteralPath $recordingDir) -and
-    (Get-ChildItem -LiteralPath $recordingDir -ErrorAction SilentlyContinue | Select-Object -First 1)
-  return $hasBinary -and $hasModel -and $hasRecordings
-}
-
-function Ensure-Stt {
-  if (Test-SttReady) {
-    Write-Host 'STT 运行时/模型已就绪。'
-    return
-  }
-  if ($DryRun) {
-    Write-Host '[dry-run] 将自动安装 ffmpeg + whisper.cpp 运行时 + whisper-small 模型' -ForegroundColor Yellow
-    return
-  }
-  Write-Host '首次运行：正在自动安装 STT 依赖（ffmpeg + whisper.cpp 运行时 + whisper-small 模型，约 500 MiB）。'
-  Invoke-Npm -Arguments @('run', 'bench:stt:fetch', '--', 'whisper-small')
-  if (-not (Test-SttReady)) {
-    Write-Warning 'STT 依赖安装后仍不完整；STT 测速将跳过。'
-  }
-}
+# STT 依赖（ffmpeg + whisper.cpp 运行时 + 基准模型集合）同样交给 bench 自己
+# （bench-machine.ts → bench:stt:fetch）。以前 PS1 在这里自己装，问题和 LLM 那边一样：
+#   1. 只装 whisper-small 一个，而跨机器对比需要目录里全部 16 个 whisper 模型；
+#   2. 只在「一个 .bin 都没有」时才装，机器上恰好有别的模型就整个跳过。
+# 放在一处还能少起一次 electron —— 那个安装脚本要在 ELECTRON_RUN_AS_NODE 下跑。
 
 function Invoke-Npm {
   param([string[]]$Arguments)
@@ -371,13 +326,17 @@ try {
 
   if (-not $NonInteractive -and -not $PSBoundParameters.ContainsKey('Mode')) {
     Write-Host ''
-    Write-Host '[1] 完整硬件测速：TTS + LLM + STT（约 1–2 小时，推荐）'
-    Write-Host '[2] 快速测速：只测 LLM（约 2 分钟/模型）'
+    Write-Host '[1] 完整硬件测速：TTS + LLM + STT（约 6–8 小时，推荐；STT 全量占大头）'
+    Write-Host '[2] 快速测速：只测 LLM（5 个模型约 10 分钟，首次另需下载约 10 GiB）'
     Write-Host '[3] 只测 TTS（约 1–1.5 小时）'
+    Write-Host '[4] 只测 STT（16 个模型约 5 小时，首次另需下载约 18 GiB）'
+    Write-Host '[5] 补 LLM + STT，跳过 TTS（TTS 数据已经齐了就选这个）'
     $choice = Read-Host '请选择（直接回车选 1）'
     switch ($choice) {
       '2' { $Mode = 'llm' }
       '3' { $Mode = 'tts' }
+      '4' { $Mode = 'stt' }
+      '5' { $Mode = 'llm-stt' }
       default { $Mode = 'full' }
     }
   }
@@ -393,14 +352,26 @@ try {
     Write-Host "Node.js：$(& $nodeCommand.Source --version)"
   }
 
+  # 每个模式实际要跑哪几步，以及因此需要装什么依赖。
+  $needsTts = $Mode -in @('full', 'tts')
+  $needsLlm = $Mode -in @('full', 'llm', 'llm-stt')
+  $needsStt = $Mode -in @('full', 'stt', 'llm-stt')
+
   $tsNodeEntry = Join-Path $projectRoot 'node_modules\ts-node\register\transpile-only.js'
   $dependenciesReady = Test-Path -LiteralPath $tsNodeEntry
-  if ($Mode -ne 'llm') {
+  if ($needsTts) {
+    # sherpa-onnx / onnxruntime 只有 TTS 用得到；STT 走的是 whisper.cpp。
     $ttsRuntime = Join-Path $projectRoot 'release\app\node_modules\sherpa-onnx-node'
     $onnxRuntime = Join-Path $projectRoot 'release\app\node_modules\onnxruntime-node'
     $dependenciesReady = $dependenciesReady -and
       (Test-Path -LiteralPath $ttsRuntime) -and
       (Test-Path -LiteralPath $onnxRuntime)
+  }
+  if ($needsStt) {
+    # STT 的安装脚本要在 ELECTRON_RUN_AS_NODE 下跑，所以 electron 必须真的装上，
+    # 不能用 --ignore-scripts 糊过去。
+    $dependenciesReady = $dependenciesReady -and
+      (Test-Path -LiteralPath (Join-Path $projectRoot 'node_modules\electron\dist'))
   }
   if (-not $dependenciesReady) {
     Write-Host '首次运行：正在自动安装项目依赖。'
@@ -417,16 +388,17 @@ try {
     Write-Host '项目依赖已就绪。'
   }
 
-  if ($Mode -ne 'tts') {
+  if ($needsLlm) {
     Ensure-OllamaBinary | Out-Null
     $ollamaStatus = Ensure-Ollama
-    if ($ollamaStatus.Reachable -and $ollamaStatus.ModelCount -eq 0) {
-      Ensure-OllamaModel -HostUrl $env:OLLAMA_HOST
+    if ($ollamaStatus.Reachable) {
+      Write-Host '基准 LLM 模型集合会在测速开始前自动补齐（只下缺的，首次约 10 GiB）。'
     }
   }
 
-  if ($Mode -eq 'full') {
-    Ensure-Stt
+  if ($needsStt) {
+    Write-Host 'STT 依赖（ffmpeg + whisper 运行时 + 全部 16 个模型）会在测速开始前自动补齐（首次约 18 GiB）。'
+    Write-Host 'STT 这一步本身也慢：16 个模型全跑完，较快的机器约 5 小时。' -ForegroundColor Yellow
   }
 
   Write-Section '开始测速'
@@ -434,6 +406,8 @@ try {
   switch ($Mode) {
     'llm' { $benchmarkArguments += @('--only', 'llm') }
     'tts' { $benchmarkArguments += @('--only', 'tts,tts-memory,tts-length') }
+    'stt' { $benchmarkArguments += @('--only', 'stt') }
+    'llm-stt' { $benchmarkArguments += @('--only', 'llm,stt') }
   }
   Invoke-Npm -Arguments $benchmarkArguments
 

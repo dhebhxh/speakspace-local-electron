@@ -3,10 +3,24 @@
  *
  *   npm run bench -- --machine 3060-laptop
  *
- * 这是给「在另一台机器上跑一遍」用的一键命令。它做三件事：
+ * 这是给「在另一台机器上跑一遍」用的一键命令。它做四件事：
  *  1. 采集机器指纹，之后每份结果都归到 results/machines/<machine-id>/ 下；
- *  2. **串行**跑完所有对硬件敏感的基准（顺序固定，中间不并行）；
- *  3. 打包成一份可以直接拷回来的 bundle，供 bench:aggregate 汇总。
+ *  2. 自动补齐依赖：TTS 模型、固定的那套 LLM 模型（约 10 GiB）、
+ *     以及目录里全部 16 个 whisper 模型和运行时（约 18 GiB）；都只下缺的；
+ *  3. **串行**跑完所有对硬件敏感的基准（顺序固定，中间不并行）；
+ *  4. 打包成一份可以直接拷回来的 bundle，供 bench:aggregate 汇总。
+ *
+ * ## 为什么要自动补模型
+ *
+ * 跨机器对比的是「同一个模型换台机器快多少」，每台机器测到的模型集合必须一致。
+ * 靠使用者自己记得装哪几个是行不通的：本仓库前一版就是这样，LLM 那边一台机器只有
+ * 1 个模型、另一台 2 个、第三台 5 个；STT 那边一台只有 small、另一台 3 档、
+ * 开发机 13 档。画出来的对比图一半是空的，根本没法对读。
+ *
+ * 集合分别定义在 llm-benchmark-models.ts 和 stt-benchmark-models.ts，
+ * 并且在跑基准时用 `--models` 显式钉住——只装不钉还不够，
+ * 机器上多装了别的模型同样会让某台机器多出几列。
+ * 不想自动下载时加 `--no-llm-fetch` / `--no-stt-fetch`。
  *
  * ## 为什么默认不跑准确率评测
  *
@@ -44,6 +58,8 @@ import {
   BenchmarkStepResult,
   isCompleteBenchmarkRun,
 } from './benchmark-run-status';
+import { LLM_BENCHMARK_MODELS } from './llm-benchmark-models';
+import { sttBenchmarkModelFilter } from './stt-benchmark-models';
 
 type Step = {
   id: string;
@@ -85,7 +101,14 @@ const HARDWARE_STEPS: Step[] = [
     id: 'llm',
     title: 'LLM 推理速度、显存与 GPU 卸载',
     script: 'bench:llm',
-    args: ['--repeats', '3'],
+    // 显式钉住模型集合。bench:llm 单独跑时默认测「本机装了什么」，那在跨机器场景下
+    // 会让每台机器测到不同的模型（实测导致 cross-llm-gpu.svg 一半柱子是空的）。
+    args: [
+      '--repeats',
+      '3',
+      '--models',
+      LLM_BENCHMARK_MODELS.map((model) => model.name).join(','),
+    ],
     requires: 'ollama',
     outputs: ['llm-runtime'],
   },
@@ -93,7 +116,9 @@ const HARDWARE_STEPS: Step[] = [
     id: 'stt',
     title: 'STT 转写速度（RTF，不算准确率——同一批录音换机器内容不会变）',
     script: 'bench:stt',
-    args: ['--speed-only'],
+    // 跟 llm 一样钉住模型集合：默认测「本机装了什么」在跨机器场景下会让每台机器
+    // 测到不同的梯子。集合与取舍见 stt-benchmark-models.ts。
+    args: ['--speed-only', '--models', sttBenchmarkModelFilter()],
     requires: 'stt-ready',
     outputs: ['stt-human-speed'],
   },
@@ -175,10 +200,28 @@ function ttsModelsReady(): boolean {
 }
 
 /**
- * whisper 可执行文件和 STT 模型来自应用自己的运行时安装，不像 TTS 模型那样
- * 有一个独立的 fetch 脚本可以自动下载——这里只做只读检查，缺了就跳过，
- * 不会像 ttsModelsReady() 那样去尝试装。录音文件也一并检查：这批文件
- * 不一定跟着仓库分发到每台机器，缺了同样跳过而不是报错中断整个基准。
+ * 尽力补齐一套基准模型。
+ *
+ * **刻意不看退出码**：fetch 脚本在「5 个里下成了 4 个」时也会返回非 0，
+ * 但那 4 个照样该测——真正的可用性判断留给各自的 ready 检查。
+ * 拿退出码当门禁的话，一个模型下载失败会让整步静默消失，
+ * 而那正是这次要修的问题（缺格）的另一种形式。
+ *
+ * 用 stdio:'inherit' 而不是像 TTS 那样吞掉输出：首次运行要下几个 GiB，
+ * 使用者需要看到进度，否则会以为脚本卡死了。
+ */
+function fetchModels(script: string): void {
+  const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  spawnSync(npm, ['run', script], {
+    cwd: PROJECT_ROOT,
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  });
+}
+
+/**
+ * 录音文件不在自动安装的范围内：这批文件不一定跟着仓库分发到每台机器，
+ * 缺了就跳过 STT 而不是报错中断整个基准。
  */
 function sttReady(): boolean {
   const whisper = resolveWhisper();
@@ -239,6 +282,7 @@ function collectOutputs(
   profile: MachineProfile,
   steps: Step[],
   before: OutputSnapshot,
+  executed: BenchmarkStepResult[],
 ): string[] {
   const flat = benchmarkResultsRoot();
   const target = machineResultsDir(profile);
@@ -260,11 +304,21 @@ function collectOutputs(
     copied.push(name);
   }
 
+  // 清理只针对**这一轮真的跑成功的**步骤：那种情况下旧文件确实过期了
+  // （比如某个 TTS 模型这次没测出来）。被跳过或失败的步骤必须原样留着 ——
+  // 否则「只补 llm 却忘了开 Ollama」会把这台机器已有的好数据删掉，
+  // 而这正是 --only 分步补数据时最容易踩的坑。
+  const succeeded = new Set(
+    executed.filter((step) => step.status === 'ok').map((step) => step.id),
+  );
+  const prunablePrefixes = outputPrefixes(
+    steps.filter((step) => succeeded.has(step.id)),
+  );
   const copiedSet = new Set(copied);
   for (const name of fs.readdirSync(target)) {
     if (name === 'machine.json' || name === 'run-manifest.json') continue;
     if (!name.endsWith('.json')) continue;
-    if (!prefixes.some((prefix) => name.startsWith(prefix))) continue;
+    if (!prunablePrefixes.some((prefix) => name.startsWith(prefix))) continue;
     if (!copiedSet.has(name)) fs.unlinkSync(path.join(target, name));
   }
   return copied;
@@ -287,16 +341,36 @@ async function main(): Promise<void> {
       '  并行会让数据作废（实测：并行一次 tsc 让 RTF 从 0.79 掉到 4.4）。\n\n',
   );
 
-  const ollama = await ollamaStatus();
-  const hasOllama = ollama.reachable && ollama.modelCount > 0;
+  const needsLlm = steps.some((step) => step.requires === 'ollama');
   const needsTts = steps.some((step) => step.requires === 'tts-models');
-  const hasTts = needsTts ? ttsModelsReady() : false;
   const needsStt = steps.some((step) => step.requires === 'stt-ready');
-  const hasStt = needsStt ? sttReady() : false;
-  if (!ollama.reachable) {
+
+  // 先补模型，再判断可用性。顺序很重要：早期版本拿「一个模型都没有」和
+  // 「已经装了某个模型」当门禁，全新机器因此只测到 1 个模型、已有模型的机器
+  // 则整个跳过安装，跨机器对比图于是缺了一大片柱子。
+  let ollama = await ollamaStatus();
+  if (
+    needsLlm &&
+    ollama.reachable &&
+    !process.argv.includes('--no-llm-fetch')
+  ) {
+    fetchModels('bench:llm:fetch');
+    ollama = await ollamaStatus();
+  }
+  if (needsStt && !process.argv.includes('--no-stt-fetch')) {
+    fetchModels('bench:stt:fetch');
+  }
+
+  const hasOllama = needsLlm && ollama.reachable && ollama.modelCount > 0;
+  const hasTts = needsTts ? ttsModelsReady() : false;
+  const hasStt = needsStt && sttReady();
+  if (needsLlm && !ollama.reachable) {
     process.stdout.write('Ollama 未运行：LLM 相关步骤会跳过。\n');
-  } else if (ollama.modelCount === 0) {
-    process.stdout.write('Ollama 中没有已安装模型：LLM 相关步骤会跳过。\n');
+  } else if (needsLlm && !hasOllama) {
+    process.stdout.write(
+      '一个基准 LLM 模型都没装成：LLM 相关步骤会跳过。\n' +
+        '（网络恢复后单独跑 `npm run bench:llm:fetch` 补齐即可）\n',
+    );
   }
   if (needsTts && !hasTts) {
     process.stdout.write('TTS 模型未就绪：TTS 相关步骤会跳过。\n');
@@ -337,7 +411,7 @@ async function main(): Promise<void> {
   }
 
   writeMachineProfile(profile);
-  const copied = collectOutputs(profile, steps, outputSnapshot);
+  const copied = collectOutputs(profile, steps, outputSnapshot, executed);
   const manifest = {
     schema_version: 1,
     machine: profile,

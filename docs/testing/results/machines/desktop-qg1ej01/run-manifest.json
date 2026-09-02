@@ -3,7 +3,7 @@
   "machine": {
     "machine_id": "desktop-qg1ej01",
     "label": "desktop-qg1ej01",
-    "captured_at": "2026-09-02T09:17:24.650Z",
+    "captured_at": "2026-09-02T16:20:22.519Z",
     "hostname_hash": "c5e428253ef0",
     "os": "Windows_NT 10.0.26200",
     "arch": "x64",
@@ -19,46 +19,16 @@
     "node_version": "v24.14.0",
     "accelerator_class": "nvidia-gpu"
   },
-  "ran_at": "2026-09-02T13:06:41.716Z",
+  "ran_at": "2026-09-02T20:26:53.627Z",
   "with_accuracy": false,
   "steps": [
     {
-      "id": "tts",
-      "status": "ok",
-      "elapsed_ms": 2572657
-    },
-    {
-      "id": "tts-memory",
-      "status": "ok",
-      "elapsed_ms": 1087401
-    },
-    {
-      "id": "tts-length",
-      "status": "ok",
-      "elapsed_ms": 482738
-    },
-    {
-      "id": "llm",
-      "status": "ok",
-      "elapsed_ms": 155825
-    },
-    {
       "id": "stt",
       "status": "ok",
-      "elapsed_ms": 9456165
+      "elapsed_ms": 14266035
     }
   ],
   "files": [
-    "llm-runtime.json",
-    "stt-human-speed.json",
-    "tts-kokoro-multi-lang-v1_0.json",
-    "tts-length-kokoro-multi-lang-v1_0.json",
-    "tts-length-moss-tts-nano-100m-onnx.json",
-    "tts-length-vits-melo-tts-zh_en.json",
-    "tts-memory-kokoro-multi-lang-v1_0.json",
-    "tts-memory-moss-tts-nano-100m-onnx.json",
-    "tts-memory-vits-melo-tts-zh_en.json",
-    "tts-moss-tts-nano-100m-onnx.json",
-    "tts-vits-melo-tts-zh_en.json"
+    "stt-human-speed.json"
   ]
 }

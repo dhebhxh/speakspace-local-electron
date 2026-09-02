@@ -1,2 +1,0 @@
-我们用RF融合keywallsearch and semanticsearch
-Invading模型跑在CPU上,不依赖GPU

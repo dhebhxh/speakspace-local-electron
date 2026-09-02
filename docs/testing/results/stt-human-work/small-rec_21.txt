@@ -1,2 +1,0 @@
-we combined keywords a retrieval with vector retrieval and merge both rankings
-using reciprocal rank fusion on the local processor

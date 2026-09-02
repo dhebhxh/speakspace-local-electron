@@ -1,1 +1,0 @@
-The OKR review covers a KPI and ROI, exporting the data from the CRM and Thinknic through the REST API over HTTPS.

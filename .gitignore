@@ -47,3 +47,9 @@ lint-results.json
 # Local packaging cache and deliverables
 /release/.electron-builder-cache/
 /release/installers/
+
+# Benchmark scratch work dirs: resampled audio copies and raw per-file whisper
+# output that are 100% redundant with data already in the committed result JSON.
+# Everything else under docs/testing/results/ IS tracked and shared via GitHub.
+/docs/testing/results/asr-work/
+/docs/testing/results/stt-human-work/

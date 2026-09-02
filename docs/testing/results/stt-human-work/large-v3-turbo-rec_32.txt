@@ -1,1 +1,0 @@
-我们用RRF融合,Keyword Search and Semantic Search,Embedding模型跑在CPU上不依赖GPU。

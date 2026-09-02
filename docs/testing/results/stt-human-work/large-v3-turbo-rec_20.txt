@@ -1,1 +1,0 @@
-The OKR review covers the KPI and ROI, export the data from the CRM and sync it through the REST API over HTTPS.

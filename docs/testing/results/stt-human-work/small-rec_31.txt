@@ -1,1 +1,0 @@
-把prreview完之后,ci跑通就可以merge到man分支,然后触发cd部署。

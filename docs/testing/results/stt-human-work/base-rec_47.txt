@@ -1,2 +1,0 @@
-我们用RF融合KeyWarsage & CementiSearch
-Inbiting模型跑在CPU上不依赖GPU

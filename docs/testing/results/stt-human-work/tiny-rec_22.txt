@@ -1,2 +1,0 @@
-Really, that's was fast, but honestly, I'm still a little worried, what if something
-breaks in production?

@@ -1,2 +1,0 @@
-我们用RRF融合KeywordSearch和SermanticSearch
-embedding模型跑在CPU上不依赖GPU

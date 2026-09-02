@@ -1,1 +1,0 @@
-We combined key words, a retrival with vector, retrival, and merge both rankings using reciprocall rank fusion on the local poor sexer.

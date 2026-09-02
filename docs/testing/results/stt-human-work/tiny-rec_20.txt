@@ -1,2 +1,0 @@
-The OKR Review covers the KPI and ROI, as part the data from the CRM and
-SYNCNIC, S8 through the REST API over HTTPS.

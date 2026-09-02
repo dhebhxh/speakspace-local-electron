@@ -1,1 +1,0 @@
-We combine keyword retrieval with vector retrieval and merge both rankings using reciprocal ranking refusion to own the local perception.

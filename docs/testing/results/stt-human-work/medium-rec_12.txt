@@ -1,1 +1,0 @@
-Local speech thinkathesis keeps private nodes on the user's own computer.

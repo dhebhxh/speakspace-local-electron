@@ -1,2 +1,0 @@
-The OKR Review covers the KPI and ROI, as part of the data from the CRM and SYNC Nick through
-the REST API over HTTPS.

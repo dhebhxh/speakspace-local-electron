@@ -1,2 +1,0 @@
-这个 feature 的 UI 我还要再 polish 一下
-估计要到下周才能 ship

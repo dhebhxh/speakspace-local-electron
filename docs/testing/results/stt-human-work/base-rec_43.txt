@@ -1,2 +1,0 @@
-We combine keyboard retrieval with factory retrieval and merge both rankings using reciprocal ranking
-refusion to on the local process.

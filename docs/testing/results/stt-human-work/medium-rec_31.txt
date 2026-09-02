@@ -1,1 +1,0 @@
-把 PR review 完之后,CI 跑通就可以 Merge 到 Man分支,然后触发 CD 部署。

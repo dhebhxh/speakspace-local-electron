@@ -4,11 +4,11 @@
 <text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">Peak TTS memory across the 36-text corpus</text>
 <text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">12th Gen Intel(R) Core(TM) i9-12900H · 3 repetitions · 4 CPU threads</text>
 <text x="160" y="91" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="end" font-weight="400">Kokoro Multi-Lang v1.0</text>
-<rect x="170" y="78" width="43.4" height="18" fill="#2E86AB" rx="2"/>
-<text x="221.41312934661119" y="91" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">1.3 GiB</text>
+<rect x="170" y="78" width="43.2" height="18" fill="#2E86AB" rx="2"/>
+<text x="221.24170476161572" y="91" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">1.3 GiB</text>
 <text x="160" y="129" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="end" font-weight="400">MeloTTS Chinese-English</text>
-<rect x="170" y="116" width="23.6" height="18" fill="#2E86AB" rx="2"/>
-<text x="201.6179657397864" y="129" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">752 MiB</text>
+<rect x="170" y="116" width="23.5" height="18" fill="#2E86AB" rx="2"/>
+<text x="201.4990710382962" y="129" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">749 MiB</text>
 <text x="160" y="167" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="end" font-weight="400">MOSS-TTS-Nano 100M</text>
 <rect x="170" y="154" width="598.0" height="18" fill="#2E86AB" rx="2"/>
 <text x="776" y="167" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">18.6 GiB</text>

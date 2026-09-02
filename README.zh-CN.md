@@ -317,6 +317,7 @@ npm run package
 - [Embedding 检索评测](docs/testing/retrieval-eval.md)
 - [Agent 端到端评测](docs/testing/agent-end-to-end-eval.md)
 - [一键跨机器基准指南](docs/testing/multi-machine-benchmark-guide.md)
+- [M2 Pro 16GB 全套硬件基准结论](docs/testing/m2-pro-16gb-hardware-benchmark-conclusion.md)
 - [跨平台手工验收](docs/testing/manual-acceptance.md)
 - [详细开发日志](docs/changelog/)
 - [贡献者行为准则](.github/CODE_OF_CONDUCT.md)

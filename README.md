@@ -315,6 +315,7 @@ See [docs/README.md](docs/README.md) for the complete index.
 - [Embedding-based retrieval evaluation](docs/testing/retrieval-eval.md)
 - [Agent end-to-end evaluation](docs/testing/agent-end-to-end-eval.md)
 - [Cross-machine one-click benchmark guide](docs/testing/multi-machine-benchmark-guide.md)
+- [M2 Pro 16GB full hardware benchmark conclusion](docs/testing/m2-pro-16gb-hardware-benchmark-conclusion.md)
 - [Manual platform acceptance](docs/testing/manual-acceptance.md)
 - [Detailed development logs](docs/changelog/)
 - [Contributor Code of Conduct](.github/CODE_OF_CONDUCT.md)

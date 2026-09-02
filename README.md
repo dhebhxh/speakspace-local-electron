@@ -218,20 +218,35 @@ The evaluation suite covers all four local-AI subsystems—TTS, STT, LLM, and em
 | Agent | 80 fixed notes and 90 tasks with a 45/45 development-holdout split; strict tool and scope scoring | The Agent remains below the product-readiness target |
 | Regression | Machine-readable Jest inventory grouped by feature area | Regression tests do not measure model quality |
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/testing/charts/panel-tts-speed.svg" alt="TTS speed evaluation panel" /></td>
-    <td width="50%"><img src="docs/testing/charts/panel-stt.svg" alt="STT human-recording evaluation panel" /></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/testing/charts/llm-accuracy-vs-speed.svg" alt="LLM speed and accuracy trade-off" /></td>
-    <td width="50%"><img src="docs/testing/charts/panel-retrieval.svg" alt="Embedding-based hybrid retrieval evaluation panel" /></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/testing/charts/panel-agent.svg" alt="Agent end-to-end evaluation panel" /></td>
-    <td width="50%"><img src="docs/testing/charts/jest-by-area.svg" alt="Jest regression tests by feature area" /></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs/testing/charts/panel-tts-speed.svg" width="900" alt="TTS speed evaluation panel" />
+</p>
+<p align="center"><em>Figure 7. TTS synthesis speed across the tested engines.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-stt.svg" width="900" alt="STT human-recording evaluation panel" />
+</p>
+<p align="center"><em>Figure 8. STT evaluation on human recordings.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/llm-accuracy-vs-speed.svg" width="900" alt="LLM speed and accuracy trade-off" />
+</p>
+<p align="center"><em>Figure 9. Local LLM accuracy and speed trade-off.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-retrieval.svg" width="900" alt="Embedding-based hybrid retrieval evaluation panel" />
+</p>
+<p align="center"><em>Figure 10. Embedding-based hybrid retrieval evaluation.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-agent.svg" width="900" alt="Agent end-to-end evaluation panel" />
+</p>
+<p align="center"><em>Figure 11. Agent end-to-end evaluation.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/jest-by-area.svg" width="900" alt="Jest regression tests by feature area" />
+</p>
+<p align="center"><em>Figure 12. Jest regression coverage by feature area.</em></p>
 
 The central methodological rule is simple: choose prompts and harnesses on the development split, then report acceptance results on a frozen holdout. Hardware-sensitive measurements—latency, throughput, memory, and GPU offload—are collected separately through the one-click cross-machine benchmark. See the [coverage and limitations ledger](docs/testing/test-coverage-gaps.md) before quoting any number.
 

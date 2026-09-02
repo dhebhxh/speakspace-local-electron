@@ -220,20 +220,35 @@ Agent 的代码级边界：
 | Agent | 80 条固定笔记、90 个任务，开发集/保留集各 45 条；严格检查工具、范围和终止行为 | 当前 Agent 尚未达到产品可用目标 |
 | 回归测试 | 可按功能域复核的 Jest 机器可读清单 | 回归测试不衡量模型准确率 |
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/testing/charts/panel-tts-speed.svg" alt="TTS 速度评测面板" /></td>
-    <td width="50%"><img src="docs/testing/charts/panel-stt.svg" alt="STT 真人录音评测面板" /></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/testing/charts/llm-accuracy-vs-speed.svg" alt="LLM 速度与准确率权衡" /></td>
-    <td width="50%"><img src="docs/testing/charts/panel-retrieval.svg" alt="Embedding 混合检索评测面板" /></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/testing/charts/panel-agent.svg" alt="Agent 端到端评测面板" /></td>
-    <td width="50%"><img src="docs/testing/charts/jest-by-area.svg" alt="按功能域划分的 Jest 回归测试" /></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs/testing/charts/panel-tts-speed.svg" width="900" alt="TTS 速度评测面板" />
+</p>
+<p align="center"><em>图 7：各测试引擎的 TTS 合成速度。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-stt.svg" width="900" alt="STT 真人录音评测面板" />
+</p>
+<p align="center"><em>图 8：基于真人录音的 STT 评测。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/llm-accuracy-vs-speed.svg" width="900" alt="LLM 速度与准确率权衡" />
+</p>
+<p align="center"><em>图 9：本地 LLM 准确率与速度权衡。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-retrieval.svg" width="900" alt="Embedding 混合检索评测面板" />
+</p>
+<p align="center"><em>图 10：基于 Embedding 的混合检索评测。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-agent.svg" width="900" alt="Agent 端到端评测面板" />
+</p>
+<p align="center"><em>图 11：Agent 端到端评测。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/jest-by-area.svg" width="900" alt="按功能域划分的 Jest 回归测试" />
+</p>
+<p align="center"><em>图 12：按功能域划分的 Jest 回归覆盖。</em></p>
 
 核心方法只有一条：开发集用于选择提示词和脚手架，冻结的保留集才用于验收；延迟、吞吐、内存和 GPU 卸载等硬件敏感指标则通过一键跨机器基准单独采集。引用任何数字前，请先看[测试覆盖与限制清单](docs/testing/test-coverage-gaps.md)。
 

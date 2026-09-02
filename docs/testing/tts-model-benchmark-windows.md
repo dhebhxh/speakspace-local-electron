@@ -1,6 +1,6 @@
 # SpeakSpace Local TTS 模型基准测试（Windows 实测）
 
-测试日期：2026-08-31 · 生成方式：`npm run bench:tts` → `npm run bench:tts:asr` → `npm run bench:report`
+测试日期：2026-09-02 · 生成方式：`npm run bench:tts` → `npm run bench:tts:asr` → `npm run bench:report`
 
 本轮全部数据由脚本自动采集，未手工填写。原始 JSON 与 WAV 见文末「可复现方法」。
 
@@ -49,9 +49,9 @@ RTF（实时因子）= 合成耗时 ÷ 音频时长，小于 1 表示合成快�
 
 | 模型 | 引擎 | 模型大小 | 加载 + 首次合成 | 峰值 RSS | P50 RTF | P95 RTF | 平均 RTF | 输出格式 | 失败 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Kokoro Multi-Lang v1.0 | sherpa-kokoro | 382.2 MiB | 5.83 s | 1381.8 MiB | 0.825 | 1.011 | 0.835 | 24 kHz / 1 声道 | 0/36 |
-| MeloTTS Chinese-English | sherpa-vits | 182.4 MiB | 4.90 s | 751.7 MiB | 0.619 | 0.664 | 0.624 | 44.1 kHz / 1 声道 | 0/36 |
-| MOSS-TTS-Nano 100M | moss-onnx | 684.2 MiB | 8.07 s | 19033.1 MiB | 0.555 | 0.726 | 0.583 | 48 kHz / 2 声道 | 0/36 |
+| Kokoro Multi-Lang v1.0 | sherpa-kokoro | 382.2 MiB | 5.54 s | 1377.4 MiB | 0.787 | 0.954 | 0.804 | 24 kHz / 1 声道 | 0/36 |
+| MeloTTS Chinese-English | sherpa-vits | 182.4 MiB | 4.78 s | 748.5 MiB | 0.607 | 0.633 | 0.610 | 44.1 kHz / 1 声道 | 0/36 |
+| MOSS-TTS-Nano 100M | moss-onnx | 684.2 MiB | 6.35 s | 19048.5 MiB | 0.495 | 0.597 | 0.508 | 48 kHz / 2 声道 | 0/36 |
 
 ### 分语言 RTF
 
@@ -59,15 +59,15 @@ RTF（实时因子）= 合成耗时 ÷ 音频时长，小于 1 表示合成快�
 
 | 模型 | 语言 | 条数 | P50 RTF | P95 RTF | 平均 RTF |
 | --- | --- | --- | --- | --- | --- |
-| Kokoro Multi-Lang v1.0 | zh | 12 | 0.825 | 1.027 | 0.850 |
-| Kokoro Multi-Lang v1.0 | en | 12 | 0.700 | 0.794 | 0.709 |
-| Kokoro Multi-Lang v1.0 | zh-en | 12 | 0.954 | 1.014 | 0.947 |
-| MeloTTS Chinese-English | zh | 12 | 0.615 | 0.640 | 0.618 |
-| MeloTTS Chinese-English | en | 12 | 0.625 | 0.681 | 0.631 |
-| MeloTTS Chinese-English | zh-en | 12 | 0.621 | 0.648 | 0.624 |
-| MOSS-TTS-Nano 100M | zh | 12 | 0.528 | 0.699 | 0.568 |
-| MOSS-TTS-Nano 100M | en | 12 | 0.543 | 0.723 | 0.576 |
-| MOSS-TTS-Nano 100M | zh-en | 12 | 0.582 | 0.760 | 0.605 |
+| Kokoro Multi-Lang v1.0 | zh | 12 | 0.784 | 0.963 | 0.809 |
+| Kokoro Multi-Lang v1.0 | en | 12 | 0.678 | 0.779 | 0.696 |
+| Kokoro Multi-Lang v1.0 | zh-en | 12 | 0.918 | 0.955 | 0.909 |
+| MeloTTS Chinese-English | zh | 12 | 0.602 | 0.629 | 0.605 |
+| MeloTTS Chinese-English | en | 12 | 0.611 | 0.659 | 0.613 |
+| MeloTTS Chinese-English | zh-en | 12 | 0.608 | 0.630 | 0.611 |
+| MOSS-TTS-Nano 100M | zh | 12 | 0.492 | 0.564 | 0.502 |
+| MOSS-TTS-Nano 100M | en | 12 | 0.495 | 0.598 | 0.510 |
+| MOSS-TTS-Nano 100M | zh-en | 12 | 0.502 | 0.638 | 0.511 |
 
 ### 分类别 P95 RTF
 
@@ -75,14 +75,14 @@ RTF（实时因子）= 合成耗时 ÷ 音频时长，小于 1 表示合成快�
 
 | 类别 | Kokoro Multi-Lang v1.0 | MeloTTS Chinese-English | MOSS-TTS-Nano 100M |
 | --- | --- | --- | --- |
-| basic | 0.974 | 0.646 | 0.704 |
-| numeric | 0.992 | 0.639 | 0.660 |
-| datetime | 0.916 | 0.658 | 0.641 |
-| proper-noun | 0.956 | 0.633 | 0.538 |
-| acronym | 1.045 | 0.632 | 0.580 |
-| technical | 1.018 | 0.643 | 0.635 |
-| punctuation | 0.961 | 0.685 | 0.722 |
-| long | 0.941 | 0.650 | 0.781 |
+| basic | 0.941 | 0.633 | 0.555 |
+| numeric | 0.943 | 0.629 | 0.601 |
+| datetime | 0.901 | 0.609 | 0.497 |
+| proper-noun | 0.927 | 0.615 | 0.501 |
+| acronym | 0.977 | 0.625 | 0.540 |
+| technical | 0.961 | 0.621 | 0.526 |
+| punctuation | 0.917 | 0.662 | 0.506 |
+| long | 0.898 | 0.615 | 0.653 |
 
 ### 速度与文本长度的关系
 
@@ -96,8 +96,8 @@ RTF 与文本长度基本无关，说明合成耗时随文本近似线性增长�
 
 | 模型 | 非有限样本 | 最大削波比例 | 最大峰值 | 中位 RMS | 合成失败 |
 | --- | --- | --- | --- | --- | --- |
-| Kokoro Multi-Lang v1.0 | 0 | 0.0000% | 0.655 | 0.0750 | 0/36 |
-| MeloTTS Chinese-English | 0 | 0.0000% | 0.474 | 0.0542 | 0/36 |
+| Kokoro Multi-Lang v1.0 | 0 | 0.0000% | 0.654 | 0.0750 | 0/36 |
+| MeloTTS Chinese-English | 0 | 0.0000% | 0.467 | 0.0558 | 0/36 |
 | MOSS-TTS-Nano 100M | 0 | 0.0000% | 0.980 | 0.1060 | 0/36 |
 
 ## 内存增长探针
@@ -108,9 +108,9 @@ RTF 与文本长度基本无关，说明合成耗时随文本近似线性增长�
 
 | 模型 | 基线 RSS | 末次 RSS | 释放引擎后 | 后半程每次增长 | 判定 |
 | --- | --- | --- | --- | --- | --- |
-| Kokoro Multi-Lang v1.0 | 94.5 MiB | 763.6 MiB | 757.2 MiB | 0.2 MiB | 稳定 |
-| MOSS-TTS-Nano 100M | 93.1 MiB | 6206.3 MiB | 148.8 MiB | 26.1 MiB | 震荡（不累积） |
-| MeloTTS Chinese-English | 92.7 MiB | 562.8 MiB | 553.7 MiB | 0.1 MiB | 稳定 |
+| Kokoro Multi-Lang v1.0 | 93.9 MiB | 759.0 MiB | 752.6 MiB | 0.2 MiB | 稳定 |
+| MOSS-TTS-Nano 100M | 93.5 MiB | 5847.7 MiB | 145.3 MiB | 3.4 MiB | 震荡（不累积） |
+| MeloTTS Chinese-English | 93.8 MiB | 558.9 MiB | 549.8 MiB | 0.2 MiB | 稳定 |
 
 ![连续合成时的 RSS 变化](./charts/tts-memory-iterations.svg)
 
@@ -118,22 +118,22 @@ RTF 与文本长度基本无关，说明合成耗时随文本近似线性增长�
 
 | 阶段 | 第几次 | RSS |
 | --- | --- | --- |
-| short | 1 | 615.5 MiB |
-| short | 2 | 710.3 MiB |
-| short | 3 | 710.3 MiB |
-| short | 4 | 710.4 MiB |
-| short | 5 | 710.8 MiB |
-| short | 6 | 711.1 MiB |
-| short | 7 | 711.1 MiB |
-| short | 8 | 711.2 MiB |
-| long | 1 | 712.3 MiB |
-| long | 2 | 762.6 MiB |
-| long | 3 | 762.2 MiB |
-| long | 4 | 763.0 MiB |
-| long | 5 | 762.8 MiB |
-| long | 6 | 763.6 MiB |
-| long | 7 | 763.3 MiB |
-| long | 8 | 763.6 MiB |
+| short | 1 | 615.2 MiB |
+| short | 2 | 709.9 MiB |
+| short | 3 | 709.9 MiB |
+| short | 4 | 710.0 MiB |
+| short | 5 | 710.0 MiB |
+| short | 6 | 710.0 MiB |
+| short | 7 | 710.0 MiB |
+| short | 8 | 710.5 MiB |
+| long | 1 | 709.1 MiB |
+| long | 2 | 758.3 MiB |
+| long | 3 | 758.5 MiB |
+| long | 4 | 758.6 MiB |
+| long | 5 | 759.4 MiB |
+| long | 6 | 760.3 MiB |
+| long | 7 | 759.2 MiB |
+| long | 8 | 759.0 MiB |
 
 </details>
 
@@ -141,22 +141,22 @@ RTF 与文本长度基本无关，说明合成耗时随文本近似线性增长�
 
 | 阶段 | 第几次 | RSS |
 | --- | --- | --- |
-| short | 1 | 1193.5 MiB |
-| short | 2 | 1293.4 MiB |
-| short | 3 | 1291.0 MiB |
-| short | 4 | 1291.2 MiB |
-| short | 5 | 1292.7 MiB |
-| short | 6 | 1296.7 MiB |
-| short | 7 | 1304.2 MiB |
-| short | 8 | 1305.7 MiB |
-| long | 1 | 3810.0 MiB |
-| long | 2 | 5851.2 MiB |
-| long | 3 | 6190.2 MiB |
-| long | 4 | 5851.8 MiB |
-| long | 5 | 6197.5 MiB |
-| long | 6 | 6201.6 MiB |
-| long | 7 | 5847.8 MiB |
-| long | 8 | 6206.3 MiB |
+| short | 1 | 1193.1 MiB |
+| short | 2 | 1291.3 MiB |
+| short | 3 | 1290.1 MiB |
+| short | 4 | 1292.4 MiB |
+| short | 5 | 1290.5 MiB |
+| short | 6 | 1294.3 MiB |
+| short | 7 | 1294.5 MiB |
+| short | 8 | 1291.8 MiB |
+| long | 1 | 3803.7 MiB |
+| long | 2 | 5845.4 MiB |
+| long | 3 | 6120.9 MiB |
+| long | 4 | 5849.9 MiB |
+| long | 5 | 5844.1 MiB |
+| long | 6 | 5849.4 MiB |
+| long | 7 | 6166.0 MiB |
+| long | 8 | 5847.7 MiB |
 
 </details>
 
@@ -164,22 +164,22 @@ RTF 与文本长度基本无关，说明合成耗时随文本近似线性增长�
 
 | 阶段 | 第几次 | RSS |
 | --- | --- | --- |
-| short | 1 | 471.6 MiB |
-| short | 2 | 545.9 MiB |
-| short | 3 | 546.0 MiB |
-| short | 4 | 546.7 MiB |
-| short | 5 | 546.7 MiB |
-| short | 6 | 546.7 MiB |
-| short | 7 | 546.7 MiB |
-| short | 8 | 546.8 MiB |
-| long | 1 | 561.4 MiB |
-| long | 2 | 561.4 MiB |
-| long | 3 | 562.6 MiB |
-| long | 4 | 561.0 MiB |
-| long | 5 | 562.5 MiB |
-| long | 6 | 560.8 MiB |
-| long | 7 | 561.9 MiB |
-| long | 8 | 562.8 MiB |
+| short | 1 | 471.3 MiB |
+| short | 2 | 545.6 MiB |
+| short | 3 | 545.7 MiB |
+| short | 4 | 545.7 MiB |
+| short | 5 | 546.4 MiB |
+| short | 6 | 546.4 MiB |
+| short | 7 | 546.4 MiB |
+| short | 8 | 546.4 MiB |
+| long | 1 | 558.9 MiB |
+| long | 2 | 559.7 MiB |
+| long | 3 | 556.3 MiB |
+| long | 4 | 558.2 MiB |
+| long | 5 | 557.8 MiB |
+| long | 6 | 559.4 MiB |
+| long | 7 | 558.6 MiB |
+| long | 8 | 558.9 MiB |
 
 </details>
 
@@ -189,13 +189,13 @@ RTF 与文本长度基本无关，说明合成耗时随文本近似线性增长�
 
 | 模型 | zh_short（24 字） | mixed_datetime_01（39 字） | mixed_acronym_01（52 字） | en_acronym_01（108 字） | zh_long_01（315 字） | mixed_long_01（507 字） | en_long_01（1196 字） | 最长 ÷ 最短 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Kokoro Multi-Lang v1.0 | 711.3 MiB | 714.1 MiB | 716.4 MiB | 716.4 MiB | 719.0 MiB | 722.5 MiB | 918.9 MiB | 1.3× |
-| MOSS-TTS-Nano 100M | 1382.4 MiB | 1467.4 MiB | 1609.3 MiB | 2669.3 MiB | 4127.7 MiB | 10060.9 MiB | 10407.2 MiB | 7.5× |
-| MeloTTS Chinese-English | 545.5 MiB | 553.1 MiB | 554.8 MiB | 570.3 MiB | 575.8 MiB | 588.0 MiB | 698.4 MiB | 1.3× |
+| Kokoro Multi-Lang v1.0 | 711.8 MiB | 713.7 MiB | 716.8 MiB | 717.6 MiB | 718.6 MiB | 720.7 MiB | 917.4 MiB | 1.3× |
+| MOSS-TTS-Nano 100M | 1348.3 MiB | 1441.7 MiB | 1595.6 MiB | 2682.6 MiB | 4143.4 MiB | 10053.8 MiB | 10401.2 MiB | 7.7× |
+| MeloTTS Chinese-English | 544.4 MiB | 552.3 MiB | 554.0 MiB | 567.0 MiB | 573.9 MiB | 584.6 MiB | 694.6 MiB | 1.3× |
 
 ![峰值内存随文本长度的变化](./charts/tts-memory-vs-length.svg)
 
-本机内存 40752.5 MiB。最费内存的是 **MOSS-TTS-Nano 100M**：合成 1196 字的一段文本需要 10407.2 MiB。这是**单次请求的瞬时开销**，不是泄漏 —— 但它决定了最低内存门槛，也解释了为什么只用短文本测不出这个问题。
+本机内存 40752.5 MiB。最费内存的是 **MOSS-TTS-Nano 100M**：合成 1196 字的一段文本需要 10401.2 MiB。这是**单次请求的瞬时开销**，不是泄漏 —— 但它决定了最低内存门槛，也解释了为什么只用短文本测不出这个问题。
 
 ## Whisper 回转录可懂度代理
 
@@ -235,9 +235,9 @@ RTF 与文本长度基本无关，说明合成耗时随文本近似线性增长�
 
 | 模型 | P50 RTF | 峰值 RSS（全语料） | 最长文本峰值 RSS | 回转录平均 CER |
 | --- | --- | --- | --- | --- |
-| Kokoro Multi-Lang v1.0 | 0.825 | 1381.8 MiB | 918.9 MiB | 10.3% |
-| MeloTTS Chinese-English | 0.619 | 751.7 MiB | 698.4 MiB | 17.1% |
-| MOSS-TTS-Nano 100M | 0.555 | 19033.1 MiB | 10407.2 MiB | 9.7% |
+| Kokoro Multi-Lang v1.0 | 0.787 | 1377.4 MiB | 917.4 MiB | 10.3% |
+| MeloTTS Chinese-English | 0.607 | 748.5 MiB | 694.6 MiB | 17.1% |
+| MOSS-TTS-Nano 100M | 0.495 | 19048.5 MiB | 10401.2 MiB | 9.7% |
 
 ![速度、内存与可懂度的权衡](./charts/tts-tradeoff.svg)
 

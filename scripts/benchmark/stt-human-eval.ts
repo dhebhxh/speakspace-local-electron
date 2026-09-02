@@ -37,6 +37,7 @@ import {
   resolveWhisper,
 } from './tts-paths';
 import { RECORDING_CASES, RecordingCase } from './stt-recording-corpus';
+import { selectRequestedSttModels } from './stt-model-selection';
 
 type CorpusCase = {
   id: string;
@@ -273,15 +274,14 @@ function main(): void {
   const modelFilter = flagValue('--models')
     ?.split(',')
     .map((item) => item.trim());
-  const allModels = whisper.models
-    .map((modelPath) => ({
-      id: path
-        .basename(modelPath)
-        .replace(/^ggml-/, '')
-        .replace(/\.bin$/, ''),
-      path: modelPath,
-    }))
-    .filter((model) => !modelFilter || modelFilter.includes(model.id));
+  const discoveredModels = whisper.models.map((modelPath) => ({
+    id: path
+      .basename(modelPath)
+      .replace(/^ggml-/, '')
+      .replace(/\.bin$/, ''),
+    path: modelPath,
+  }));
+  const allModels = selectRequestedSttModels(discoveredModels, modelFilter);
   if (allModels.length === 0) throw new Error('没有找到可用的 whisper 模型');
 
   const threadCount = Math.max(1, Math.min(os.cpus().length - 1, 8));

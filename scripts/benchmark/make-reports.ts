@@ -19,7 +19,11 @@
 
 import fs from 'fs';
 import path from 'path';
-import { benchmarkResultsRoot, PROJECT_ROOT } from './tts-paths';
+import {
+  benchmarkResultsRoot,
+  portablePathBasename,
+  PROJECT_ROOT,
+} from './tts-paths';
 import buildSweepReport from './sweep-report';
 
 type Json = Record<string, any>;
@@ -420,7 +424,7 @@ function buildTTSReport(): string | null {
     lines.push('## Whisper 回转录可懂度代理');
     lines.push('');
     lines.push(
-      `回转录模型：\`${path.basename(String(asr.whisper_model))}\`，线程 ${asr.thread_count}。` +
+      `回转录模型：\`${portablePathBasename(String(asr.whisper_model))}\`，线程 ${asr.thread_count}。` +
         'CER 在 NFKC 归一化、小写折叠、去除全部空白与标点后按字符计算。',
     );
     lines.push('');
@@ -1910,10 +1914,7 @@ function main(): void {
   const sweepReport = buildSweepReport();
   if (sweepReport) {
     const target = path.join(DOCS, 'llm-model-sweep.md');
-    fs.writeFileSync(
-      target,
-      `${sweepReport.trimEnd()}\n`,
-    );
+    fs.writeFileSync(target, `${sweepReport.trimEnd()}\n`);
     process.stdout.write(`已生成 ${target}\n`);
     written += 1;
   }

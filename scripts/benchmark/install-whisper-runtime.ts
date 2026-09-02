@@ -31,20 +31,45 @@ const MODEL_IDS =
     ? process.argv.slice(2).filter((argument) => !argument.startsWith('-'))
     : sttBenchmarkCatalogIds();
 
+/**
+ * 运行时（ffmpeg / whisper.cpp）的自动安装**只支持 Windows**：
+ * RuntimeInstallSupport.isAutoInstallSupported() 是 `platform === 'win32'`，
+ * 在 macOS / Linux 上这两个安装器会直接抛错，错误里带着手动安装提示。
+ *
+ * 但**模型下载不受平台限制**（STTModelManager.downloadModel 只是 HTTP 下载）。
+ * 所以运行时装不上不能中断整个脚本 —— 否则 mac 上连模型都补不齐，
+ * 而那些机器往往早就 brew 装好 whisper-cli 了，缺的只是模型。
+ * 装不上就警告并继续；真的缺运行时，后面 sttReady() 会让 STT 步骤自动跳过。
+ */
+async function ensureRuntime(
+  label: string,
+  install: () => Promise<unknown>,
+): Promise<void> {
+  console.log(`正在安装 ${label}...`);
+  try {
+    await install();
+    console.log(`${label} 安装完成。`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[跳过] ${label} 自动安装不可用：${message}`);
+    console.warn(`  已装好的话可以忽略这条；继续补齐模型。`);
+  }
+}
+
 async function main(): Promise<void> {
   const ffmpegInstaller = new FfmpegInstaller();
-  console.log('正在安装 ffmpeg...');
-  await ffmpegInstaller.install((progress) => {
-    console.log(`[ffmpeg] ${progress.phase} ${progress.message}`);
-  });
-  console.log('ffmpeg 安装完成。');
+  await ensureRuntime('ffmpeg', () =>
+    ffmpegInstaller.install((progress) => {
+      console.log(`[ffmpeg] ${progress.phase} ${progress.message}`);
+    }),
+  );
 
   const installer = new WhisperRuntimeInstaller();
-  console.log('正在安装 whisper.cpp 运行时...');
-  await installer.install((progress) => {
-    console.log(`[runtime] ${progress.phase} ${progress.message}`);
-  });
-  console.log('whisper.cpp 运行时安装完成。');
+  await ensureRuntime('whisper.cpp 运行时', () =>
+    installer.install((progress) => {
+      console.log(`[runtime] ${progress.phase} ${progress.message}`);
+    }),
+  );
 
   const modelManager = new STTModelManager();
   const models = modelManager.getModelList();

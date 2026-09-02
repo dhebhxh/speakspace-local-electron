@@ -191,6 +191,18 @@ The evaluation suite covers all four local-AI subsystems—TTS, STT, LLM, and em
 
 The central methodological rule is simple: choose prompts and harnesses on the development split, then report acceptance results on a frozen holdout. Hardware-sensitive measurements—latency, throughput, memory, and GPU offload—are collected separately through the one-click cross-machine benchmark. See the [coverage and limitations ledger](docs/testing/test-coverage-gaps.md) before quoting any number.
 
+### M2 Pro 16GB hardware snapshot
+
+On 2026-09-02, an Apple M2 Pro with 16GB unified memory completed the strict five-stage hardware benchmark—TTS, continuous-run TTS memory, long-text TTS memory, LLM, and STT—in 1h 21m 30.7s with no failed stage.
+
+| Workload | Observed result | Interpretation boundary |
+| --- | --- | --- |
+| TTS | MeloTTS had the best tested speed/memory balance (P50 RTF 0.761; 895.5 MiB peak RSS); MOSS-TTS was fastest (P50 RTF 0.344) but reached 5843.3 MiB on long text | Performance evidence only; the run did not measure listening quality |
+| LLM | All five tested models reported 100% GPU offload; Qwen2.5 1.5B led throughput at 71.9 tokens/s | Throughput does not establish task quality, and unified memory is not zero memory use |
+| STT | All four Whisper sizes were faster than real time; `small` averaged RTF 0.082 and `large-v1` 0.359 | This run measured speed, not CER or broader speaker/accent coverage |
+
+This is one machine run, not a universal hardware ranking. Cross-machine comparisons remain partial and may include runtime and platform differences; see the [full M2 Pro 16GB conclusion report](docs/testing/m2-pro-16gb-hardware-benchmark-conclusion.md) for the evidence and limits.
+
 ## Engineering snapshot
 
 Evaluation and test inventory generated on 2026-09-01:

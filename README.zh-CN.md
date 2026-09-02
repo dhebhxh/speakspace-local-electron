@@ -37,9 +37,35 @@
   <img alt="Windows NSIS installer" src="https://img.shields.io/badge/Windows%20installer-NSIS-0078D4?style=flat-square&amp;logo=windows11&amp;logoColor=white" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/dhebhxh/speakspace-local-electron/releases"><strong>下载安装</strong></a>
+  ·
+  <a href="#本地开发">本地运行</a>
+  ·
+  <a href="docs/README.md">文档导航</a>
+</p>
+
 SpeakSpace Local 是一个 Electron 桌面应用，将录音、文件导入、离线转写、结构化笔记、场景知识、全文与语义检索、本地 AI 对话和语音播报整合在同一个工作台中。
 
 “Local”指推理和用户知识库在本机运行：数据库、录音和受管模型均位于 Electron `userData`；模型不进入 Git，也不塞进安装包。首次使用相关能力时，用户再从模型管理页按需下载运行时和模型。
+
+## 目录
+
+- [功能版图](#功能版图)
+- [系统架构](#系统架构)
+- [录音到知识的流水线](#录音到知识的流水线)
+- [数据存储](#数据存储)
+- [搜索与导出覆盖范围](#搜索与导出覆盖范围)
+- [Agent 工作流程](#agent-工作流程)
+- [本地模型栈](#本地模型栈)
+- [测试与评测证据](#测试与评测证据)
+- [工程指标](#工程指标)
+- [项目结构](#项目结构)
+- [本地开发](#本地开发)
+- [打包与发布](#打包与发布)
+- [文档导航](#文档导航)
+- [Electron React Boilerplate](#electron-react-boilerplate)
+- [许可证](#许可证)
 
 ## 功能版图
 
@@ -57,11 +83,17 @@ SpeakSpace Local 是一个 Electron 桌面应用，将录音、文件导入、�
 
 ## 系统架构
 
-![SpeakSpace Local 原有系统架构](docs/readme/system-architecture-zh.png)
+<p align="center">
+  <img src="docs/readme/system-architecture-zh.png" width="900" alt="SpeakSpace Local 原有系统架构" />
+</p>
+<p align="center"><em>图 1：SpeakSpace Local 进程边界架构。</em></p>
 
 上图保留了 README 原有的进程边界视图；下面的新图补充当前模型、持久化与核心数据流，但不再替代原图。
 
-![SpeakSpace Local 技术实现概览](docs/readme/tech-implementation.png)
+<p align="center">
+  <img src="docs/readme/tech-implementation.png" width="900" alt="SpeakSpace Local 技术实现概览" />
+</p>
+<p align="center"><em>图 2：当前技术实现概览。</em></p>
 
 ### 进程边界
 
@@ -79,7 +111,10 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 
 转写完成后不会先生成一份独立摘要，再重复生成结构化笔记。当前链路只做一次结构化提取，复核弹窗直接显示其中的 `summary`；保存时将草稿绑定真实 `noteId` 并持久化。
 
-![录音到知识的原有处理流水线](docs/readme/recording-to-knowledge-zh.png)
+<p align="center">
+  <img src="docs/readme/recording-to-knowledge-zh.png" width="900" alt="录音到知识的原有处理流水线" />
+</p>
+<p align="center"><em>图 3：录音到知识的处理流水线。</em></p>
 
 关键约束：
 
@@ -112,7 +147,10 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 
 ### SQLite 关系模型
 
-![SQLite 关系模型](docs/readme/data-model.png)
+<p align="center">
+  <img src="docs/readme/data-model.png" width="900" alt="SQLite 关系模型" />
+</p>
+<p align="center"><em>图 4：SQLite 关系模型。</em></p>
 
 工作空间、笔记、AI 会话和自定义模板使用 `trashed_at` 实现软删除；只有回收站中的“永久删除”才会物理移除记录及其级联数据。
 
@@ -136,11 +174,17 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 
 Ask AI 适合固定范围问答；Agent 则允许本地模型在有界循环里调用工具。用户手动关联笔记时，这些笔记会在第一轮推理前确定性载入，同时从可用工具中移除 `search_notes`，防止模型忽略用户指定范围。
 
-![原有 Agent 请求时序图](docs/readme/agent-workflow-zh.png)
+<p align="center">
+  <img src="docs/readme/agent-workflow-zh.png" width="900" alt="原有 Agent 请求时序图" />
+</p>
+<p align="center"><em>图 5：Agent 请求时序图。</em></p>
 
 时序图展示各组件随时间发生的交互；下面的控制器视图则补充决策分支、有界工具循环、证据回传和最终回答之间的关系。
 
-![有界 Agent 控制器工作流](docs/readme/bounded-agent-workflow.png)
+<p align="center">
+  <img src="docs/readme/bounded-agent-workflow.png" width="900" alt="有界 Agent 控制器工作流" />
+</p>
+<p align="center"><em>图 6：有界 Agent 控制器工作流。</em></p>
 
 Agent 的代码级边界：
 
@@ -232,7 +276,7 @@ Agent 的代码级边界：
 
 ### 硬件归档更新（2026-09-02）
 
-跨机器归档现已扩展到 3 台机器：Apple M2 Pro 16GB、RTX 3090 台式机和 RTX 3060 笔记本。目前只有 M2 机器覆盖全部严格基准阶段；两台 NVIDIA 机器保存的是互补的部分测量，因此[跨机器汇总](docs/testing/cross-machine-benchmark.md)中的缺失项不能按 0 解读。
+截至 2026-09-02，结果归档包含 5 台机器，覆盖 Apple Silicon 以及 NVIDIA RTX 3050、3060 和 3090 系统。M2 Pro、`jack` 与 `fan3090` 均记录了五个硬件阶段的成功结果，较早的两台 NVIDIA 机器则为部分测量。[跨机器汇总](docs/testing/cross-machine-benchmark.md)是生成式快照，新结果导入后应重新生成，其中缺失项不能按 0 解读。
 
 ## 项目结构
 

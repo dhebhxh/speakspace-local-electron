@@ -35,9 +35,35 @@
   <img alt="Windows NSIS installer" src="https://img.shields.io/badge/Windows%20installer-NSIS-0078D4?style=flat-square&amp;logo=windows11&amp;logoColor=white" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/dhebhxh/speakspace-local-electron/releases"><strong>Download</strong></a>
+  ·
+  <a href="#local-development">Run locally</a>
+  ·
+  <a href="docs/README.md">Documentation</a>
+</p>
+
 SpeakSpace Local is an Electron desktop application that brings recording, audio import, offline transcription, structured notes, scenario knowledge, full-text and semantic search, local AI conversations, and speech playback into one workspace.
 
 “Local” means that inference and the user's knowledge base run on the user's computer. The database, recordings, and application-managed models live under Electron's `userData` directory. Models are neither committed to Git nor bundled with the installer; users download the runtimes and models they need from Model Management.
+
+## Contents
+
+- [Feature map](#feature-map)
+- [System architecture](#system-architecture)
+- [From recording to knowledge](#from-recording-to-knowledge)
+- [Data storage](#data-storage)
+- [Search and export coverage](#search-and-export-coverage)
+- [Agent workflow](#agent-workflow)
+- [Local model stack](#local-model-stack)
+- [Evaluation evidence](#evaluation-evidence)
+- [Engineering snapshot](#engineering-snapshot)
+- [Repository structure](#repository-structure)
+- [Local development](#local-development)
+- [Packaging and release](#packaging-and-release)
+- [Documentation](#documentation)
+- [Electron React Boilerplate](#electron-react-boilerplate)
+- [License](#license)
 
 ## Feature map
 
@@ -55,11 +81,17 @@ SpeakSpace Local is an Electron desktop application that brings recording, audio
 
 ## System architecture
 
-![SpeakSpace Local system architecture](docs/readme/system-architecture.png)
+<p align="center">
+  <img src="docs/readme/system-architecture.png" width="900" alt="SpeakSpace Local system architecture" />
+</p>
+<p align="center"><em>Figure 1. SpeakSpace Local process-boundary architecture.</em></p>
 
 The original diagram above preserves the repository's process-boundary view. The following implementation view adds the current model, persistence, and core-flow summary without replacing it.
 
-![SpeakSpace Local technical implementation](docs/readme/tech-implementation.png)
+<p align="center">
+  <img src="docs/readme/tech-implementation.png" width="900" alt="SpeakSpace Local technical implementation" />
+</p>
+<p align="center"><em>Figure 2. Current technical implementation overview.</em></p>
 
 ### Process boundaries
 
@@ -77,7 +109,10 @@ Direct Renderer imports from the main process are prohibited and enforced throug
 
 After transcription completes, the application does not generate a separate summary and then repeat the same work for a structured note. It performs one structured extraction. The review dialog displays the draft's `summary`, and saving binds that draft to the real `noteId` before persisting it.
 
-![Recording-to-knowledge pipeline](docs/readme/recording-to-knowledge.png)
+<p align="center">
+  <img src="docs/readme/recording-to-knowledge.png" width="900" alt="Recording-to-knowledge pipeline" />
+</p>
+<p align="center"><em>Figure 3. Recording-to-knowledge pipeline.</em></p>
 
 Key invariants:
 
@@ -110,7 +145,10 @@ Key invariants:
 
 ### SQLite relationship model
 
-![SQLite relationship model](docs/readme/data-model.png)
+<p align="center">
+  <img src="docs/readme/data-model.png" width="900" alt="SQLite relationship model" />
+</p>
+<p align="center"><em>Figure 4. SQLite relationship model.</em></p>
 
 Workspaces, notes, AI conversations, and custom templates use `trashed_at` for soft deletion. Physical deletion and cascading cleanup occur only through “Delete permanently” inside Trash.
 
@@ -134,11 +172,17 @@ Semantic search caches vectors in `note_embeddings` and uses `content_hash` to d
 
 Ask AI is designed for question answering over a fixed scope. Agent mode lets the local model call tools within a bounded loop. When users link notes explicitly, those notes are loaded deterministically before the first inference step, and `search_notes` is removed from the available tool set so the model cannot ignore the requested scope.
 
-![Original Agent request sequence](docs/readme/agent-workflow.png)
+<p align="center">
+  <img src="docs/readme/agent-workflow.png" width="900" alt="Original Agent request sequence" />
+</p>
+<p align="center"><em>Figure 5. Agent request sequence.</em></p>
 
 The sequence diagram shows interactions over time; the controller view below highlights the decision point, bounded tool loop, evidence return path, and final response.
 
-![Bounded Agent controller workflow](docs/readme/bounded-agent-workflow.png)
+<p align="center">
+  <img src="docs/readme/bounded-agent-workflow.png" width="900" alt="Bounded Agent controller workflow" />
+</p>
+<p align="center"><em>Figure 6. Bounded Agent controller workflow.</em></p>
 
 Code-level Agent bounds:
 
@@ -230,7 +274,7 @@ These values are a verification snapshot rather than dynamic badges and should b
 
 ### Hardware archive update (2026-09-02)
 
-The cross-machine archive has expanded to three profiles: Apple M2 Pro 16GB, an RTX 3090 desktop, and an RTX 3060 laptop. Only the M2 profile currently covers every strict benchmark stage; the two NVIDIA profiles contain partial, complementary measurements, so missing cells in the [cross-machine aggregate](docs/testing/cross-machine-benchmark.md) must not be read as zero.
+As of 2026-09-02, the result archive contains five machine profiles spanning Apple Silicon and NVIDIA RTX 3050, 3060, and 3090 systems. The M2 Pro, `jack`, and `fan3090` profiles record successful outputs for all five hardware stages; the older NVIDIA profiles are partial. The [cross-machine aggregate](docs/testing/cross-machine-benchmark.md) is a generated snapshot that should be regenerated after new runs are imported, and missing cells must not be read as zero.
 
 ## Repository structure
 

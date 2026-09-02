@@ -84,14 +84,14 @@ SpeakSpace Local 是一个 Electron 桌面应用，将录音、文件导入、�
 ## 系统架构
 
 <p align="center">
-  <img src="docs/readme/system-architecture-readable-zh.svg" width="900" alt="SpeakSpace Local 进程边界架构" />
+  <img src="docs/readme/system-architecture-readable-zh.svg" width="100%" alt="SpeakSpace Local 进程边界架构" />
 </p>
 <p align="center"><em>图 1：SpeakSpace Local 进程边界架构。</em></p>
 
 上方可缩放图以纵向布局保留了 README 原有的进程边界视图；下图补充当前模型、持久化与核心数据流，但不替代该视图。
 
 <p align="center">
-  <img src="docs/readme/tech-implementation.png" width="900" alt="SpeakSpace Local 技术实现概览" />
+  <img src="docs/readme/tech-implementation-readable-zh.svg" width="100%" alt="SpeakSpace Local 技术实现概览" />
 </p>
 <p align="center"><em>图 2：当前技术实现概览。</em></p>
 
@@ -112,7 +112,7 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 转写完成后不会先生成一份独立摘要，再重复生成结构化笔记。当前链路只做一次结构化提取，复核弹窗直接显示其中的 `summary`；保存时将草稿绑定真实 `noteId` 并持久化。
 
 <p align="center">
-  <img src="docs/readme/recording-to-knowledge-readable-zh.svg" width="900" alt="录音到知识的处理流水线" />
+  <img src="docs/readme/recording-to-knowledge-readable-zh.svg" width="100%" alt="录音到知识的处理流水线" />
 </p>
 <p align="center"><em>图 3：录音到知识的处理流水线。</em></p>
 
@@ -148,7 +148,7 @@ Renderer 禁止直接导入主进程实现，这条边界由 ESLint 的 `no-rest
 ### SQLite 关系模型
 
 <p align="center">
-  <img src="docs/readme/data-model-readable.svg" width="900" alt="SQLite 关系模型" />
+  <img src="docs/readme/data-model-readable.svg" width="100%" alt="SQLite 关系模型" />
 </p>
 <p align="center"><em>图 4：SQLite 关系模型。</em></p>
 
@@ -227,16 +227,21 @@ flowchart TB
   Response --> Delivery["Agent 界面 / TTS<br/>时间线、文本与语音反馈"]
   Response --> History[("AI 对话<br/>本轮内容 + 关联来源")]
 
-  subgraph Loop["有界工具循环 · 最多 6 步"]
-    Controller["工具控制器<br/>校验名称与参数<br/>限制范围、去重并控制步数"]
-    Tools["工具执行层<br/>search_notes · read_note · extract_todos"]
-    Observation["观察结果<br/>将工具结果追加到模型上下文"]
-    Controller --> Tools --> Observation
-  end
-
   Decision -->|调用工具| Controller
-  Tools <--> Knowledge[("本地知识<br/>笔记 · 待办 · 搜索索引")]
-  Observation -->|将证据返回模型| LLM
+  Controller["工具控制器<br/>校验参数、范围、重复调用和步数限制"]
+  Controller --> Tools["工具执行<br/>search_notes · read_note · extract_todos"]
+  Tools --> Observation["观察结果<br/>将工具结果追加到模型上下文"]
+  Observation --> Repeat["进入下一轮模型推理<br/>回答完成或达到 6 步后停止"]
+  Tools --> Knowledge[("本地知识<br/>笔记 · 待办 · 搜索索引")]
+
+  classDef input fill:#f5f3ff,stroke:#7657d5,color:#172033
+  classDef decision fill:#fff7cc,stroke:#b59f27,color:#4b3b00
+  classDef tool fill:#ecfeff,stroke:#0891b2,color:#172033
+  classDef result fill:#ecfdf5,stroke:#059669,color:#172033
+  class Query,Context,LLM input
+  class Decision decision
+  class Controller,Tools,Observation tool
+  class Response,Delivery,History,Repeat,Knowledge result
 ```
 
 <p align="center"><em>图 6：有界 Agent 控制器工作流。</em></p>

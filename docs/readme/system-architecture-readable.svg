@@ -8,6 +8,8 @@
     <style>
       .canvas { fill: #ffffff; }
       .group { fill: #fffef0; stroke: #b59f27; stroke-width: 2; }
+      .group-tag { fill: #fff7cc; stroke: #d6bd3f; stroke-width: 1.5; }
+      .edge-tag { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.25; }
       .box { fill: #f3f0ff; stroke: #7657d5; stroke-width: 2; }
       .heading { fill: #172033; font: 700 28px Arial, sans-serif; text-anchor: middle; }
       .group-title { fill: #4b3b00; font: 700 22px Arial, sans-serif; text-anchor: middle; }
@@ -24,7 +26,8 @@
   <text class="label" x="550" y="110">User</text>
 
   <rect class="group" x="40" y="170" width="1020" height="290" rx="18"/>
-  <text class="group-title" x="550" y="205">Electron BrowserWindow</text>
+  <rect class="group-tag" x="65" y="185" width="300" height="43" rx="10"/>
+  <text class="group-title" x="215" y="214">Electron BrowserWindow</text>
   <rect class="box" x="90" y="255" width="255" height="105" rx="12"/>
   <text class="label" x="217" y="292">
     <tspan x="217">Tray, shortcuts, HUDs</tspan>
@@ -47,7 +50,8 @@
   <text class="small" x="716" y="230">typed API calls</text>
 
   <rect class="group" x="40" y="520" width="1020" height="495" rx="18"/>
-  <text class="group-title" x="550" y="555">Electron Main Process</text>
+  <rect class="group-tag" x="65" y="535" width="280" height="43" rx="10"/>
+  <text class="group-title" x="205" y="564">Electron Main Process</text>
   <rect class="box" x="390" y="600" width="320" height="72" rx="12"/>
   <text class="label" x="550" y="644">18 IPC capability modules</text>
   <rect class="box" x="370" y="735" width="360" height="108" rx="12"/>
@@ -70,14 +74,16 @@
     <tspan x="880" dy="28">model state</tspan>
   </text>
   <path class="arrow" d="M 882 360 C 882 460, 550 470, 550 600"/>
-  <text class="small" x="750" y="486">ipcRenderer.invoke</text>
+  <rect class="edge-tag" x="650" y="462" width="220" height="34" rx="9"/>
+  <text class="small" x="760" y="485">ipcRenderer.invoke</text>
   <path class="arrow" d="M 550 672 L 550 735"/>
   <path class="arrow" d="M 475 843 C 420 870, 320 875, 220 900"/>
   <path class="arrow" d="M 550 843 L 550 885"/>
   <path class="arrow" d="M 625 843 C 680 870, 780 875, 880 900"/>
 
   <rect class="group" x="40" y="1070" width="1020" height="235" rx="18"/>
-  <text class="group-title" x="550" y="1105">Local userData</text>
+  <rect class="group-tag" x="65" y="1085" width="260" height="43" rx="10"/>
+  <text class="group-title" x="195" y="1114">Local userData</text>
   <rect class="box" x="70" y="1160" width="210" height="78" rx="12"/>
   <text class="label" x="175" y="1207">speakspace.db</text>
   <rect class="box" x="320" y="1160" width="210" height="78" rx="12"/>
@@ -92,8 +98,8 @@
     <tspan x="925">app-settings.json</tspan>
     <tspan x="925" dy="28">model-state</tspan>
   </text>
-  <path class="arrow" d="M 220 978 L 175 1160"/>
-  <path class="arrow" d="M 445 843 C 390 990, 425 1050, 425 1160"/>
+  <path class="arrow" d="M 220 978 C 150 1025, 25 1025, 25 1135 C 25 1150, 95 1150, 175 1160"/>
+  <path class="arrow" d="M 445 843 C 410 860, 380 870, 380 900 L 380 1110 C 380 1140, 405 1145, 425 1160"/>
   <path class="arrow" d="M 550 993 C 550 1060, 675 1075, 675 1145"/>
   <path class="arrow" d="M 880 978 L 925 1145"/>
 </svg>

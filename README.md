@@ -82,14 +82,14 @@ SpeakSpace Local is an Electron desktop application that brings recording, audio
 ## System architecture
 
 <p align="center">
-  <img src="docs/readme/system-architecture-readable.svg" width="900" alt="SpeakSpace Local system architecture" />
+  <img src="docs/readme/system-architecture-readable.svg" width="100%" alt="SpeakSpace Local system architecture" />
 </p>
 <p align="center"><em>Figure 1. SpeakSpace Local process-boundary architecture.</em></p>
 
 The scalable diagram above preserves the repository's process-boundary view in a vertical layout. The following implementation view adds the current model, persistence, and core-flow summary without replacing that view.
 
 <p align="center">
-  <img src="docs/readme/tech-implementation.png" width="900" alt="SpeakSpace Local technical implementation" />
+  <img src="docs/readme/tech-implementation-readable.svg" width="100%" alt="SpeakSpace Local technical implementation" />
 </p>
 <p align="center"><em>Figure 2. Current technical implementation overview.</em></p>
 
@@ -110,7 +110,7 @@ Direct Renderer imports from the main process are prohibited and enforced throug
 After transcription completes, the application does not generate a separate summary and then repeat the same work for a structured note. It performs one structured extraction. The review dialog displays the draft's `summary`, and saving binds that draft to the real `noteId` before persisting it.
 
 <p align="center">
-  <img src="docs/readme/recording-to-knowledge-readable.svg" width="900" alt="Recording-to-knowledge pipeline" />
+  <img src="docs/readme/recording-to-knowledge-readable.svg" width="100%" alt="Recording-to-knowledge pipeline" />
 </p>
 <p align="center"><em>Figure 3. Recording-to-knowledge pipeline.</em></p>
 
@@ -146,7 +146,7 @@ Key invariants:
 ### SQLite relationship model
 
 <p align="center">
-  <img src="docs/readme/data-model-readable.svg" width="900" alt="SQLite relationship model" />
+  <img src="docs/readme/data-model-readable.svg" width="100%" alt="SQLite relationship model" />
 </p>
 <p align="center"><em>Figure 4. SQLite relationship model.</em></p>
 
@@ -225,16 +225,21 @@ flowchart TB
   Response --> Delivery["Agent UI / TTS<br/>Timeline, text, and voice feedback"]
   Response --> History[("AI conversation<br/>Turn + linked sources")]
 
-  subgraph Loop["Bounded tool loop · at most 6 steps"]
-    Controller["Tool controller<br/>Validate name and arguments<br/>Enforce scope, deduplication, and step limit"]
-    Tools["Tool execution layer<br/>search_notes · read_note · extract_todos"]
-    Observation["Observation<br/>Append the tool result to model context"]
-    Controller --> Tools --> Observation
-  end
-
   Decision -->|Tool call| Controller
-  Tools <--> Knowledge[("Local knowledge<br/>Notes · todos · search index")]
-  Observation -->|Return evidence to the model| LLM
+  Controller["Tool controller<br/>Validate arguments, scope, duplicates, and step limit"]
+  Controller --> Tools["Tool execution<br/>search_notes · read_note · extract_todos"]
+  Tools --> Observation["Observation<br/>Append the tool result to model context"]
+  Observation --> Repeat["Next model step<br/>Repeat until answered or the 6-step limit is reached"]
+  Tools --> Knowledge[("Local knowledge<br/>Notes · todos · search index")]
+
+  classDef input fill:#f5f3ff,stroke:#7657d5,color:#172033
+  classDef decision fill:#fff7cc,stroke:#b59f27,color:#4b3b00
+  classDef tool fill:#ecfeff,stroke:#0891b2,color:#172033
+  classDef result fill:#ecfdf5,stroke:#059669,color:#172033
+  class Query,Context,LLM input
+  class Decision decision
+  class Controller,Tools,Observation tool
+  class Response,Delivery,History,Repeat,Knowledge result
 ```
 
 <p align="center"><em>Figure 6. Bounded Agent controller workflow.</em></p>

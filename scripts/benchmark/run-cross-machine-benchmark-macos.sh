@@ -44,6 +44,39 @@ if ! command -v node >/dev/null 2>&1 && [[ -s "$HOME/.nvm/nvm.sh" ]]; then
   set -u
 fi
 
+configure_node_proxy() {
+  local proxy_output enabled host port proxy_url bypass
+  proxy_url="${HTTPS_PROXY:-${https_proxy:-}}"
+  if [[ -z "$proxy_url" ]]; then
+    proxy_output="$(scutil --proxy 2>/dev/null || true)"
+    enabled="$(printf '%s\n' "$proxy_output" | awk '/HTTPSEnable/ { print $3; exit }')"
+    host="$(printf '%s\n' "$proxy_output" | awk '/HTTPSProxy/ { print $3; exit }')"
+    port="$(printf '%s\n' "$proxy_output" | awk '/HTTPSPort/ { print $3; exit }')"
+    if [[ "$enabled" == '1' && -n "$host" && -n "$port" ]]; then
+      proxy_url="http://$host:$port"
+    fi
+  fi
+  if [[ -z "$proxy_url" ]]; then
+    return 0
+  fi
+
+  export HTTPS_PROXY="$proxy_url"
+  export HTTP_PROXY="${HTTP_PROXY:-${http_proxy:-$proxy_url}}"
+  export https_proxy="$HTTPS_PROXY"
+  export http_proxy="$HTTP_PROXY"
+  export NODE_USE_ENV_PROXY=1
+  bypass="${NO_PROXY:-${no_proxy:-}}"
+  case ",$bypass," in
+    *,127.0.0.1,*) ;;
+    *) bypass="${bypass:+$bypass,}127.0.0.1,localhost" ;;
+  esac
+  export NO_PROXY="$bypass"
+  export no_proxy="$bypass"
+  printf 'Node 下载代理：%s\n' "$HTTPS_PROXY"
+}
+
+configure_node_proxy
+
 usage() {
   cat <<'EOF'
 用法：一键跨机硬件测速-Mac.command [选项]
@@ -272,7 +305,7 @@ if [[ "$MODE" != 'tts' ]]; then
 fi
 
 section '开始测速'
-benchmark_args=(run bench -- --machine "$MACHINE")
+benchmark_args=(run bench -- --machine "$MACHINE" --strict)
 case "$MODE" in
   llm) benchmark_args+=(--only llm) ;;
   tts) benchmark_args+=(--only tts,tts-memory,tts-length) ;;

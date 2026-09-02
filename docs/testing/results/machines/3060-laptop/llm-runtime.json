@@ -911,7 +911,7 @@
       ],
       "disk_size_bytes": 1942583381,
       "details": {
-        "parent_model": "/Users/runner/.ollama/models/blobs/sha256-c698c78e895740f0e707eb7f8e92894f83f6d5b3f2f2f0b446dfe9635fa0063e",
+        "parent_model": "models/blobs/sha256-c698c78e895740f0e707eb7f8e92894f83f6d5b3f2f2f0b446dfe9635fa0063e",
         "format": "gguf",
         "family": "granitehybrid",
         "families": [

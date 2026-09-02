@@ -36,9 +36,14 @@ import {
 import type { MachineProfile } from './machine-profile';
 import {
   benchmarkResultsRoot,
+  makeBenchmarkArtifactPortable,
   PROJECT_ROOT,
   resolveWhisper,
 } from './tts-paths';
+import {
+  BenchmarkStepResult,
+  isCompleteBenchmarkRun,
+} from './benchmark-run-status';
 
 type Step = {
   id: string;
@@ -247,7 +252,11 @@ function collectOutputs(
     const source = path.join(flat, name);
     const stat = fs.statSync(source);
     if (before.get(name) === `${stat.mtimeMs}:${stat.size}`) continue;
-    fs.copyFileSync(source, path.join(target, name));
+    const artifact = JSON.parse(fs.readFileSync(source, 'utf8')) as unknown;
+    fs.writeFileSync(
+      path.join(target, name),
+      `${JSON.stringify(makeBenchmarkArtifactPortable(artifact), null, 2)}\n`,
+    );
     copied.push(name);
   }
 
@@ -264,6 +273,7 @@ function collectOutputs(
 async function main(): Promise<void> {
   const profile = captureMachineProfile();
   const withAccuracy = process.argv.includes('--with-accuracy');
+  const strict = process.argv.includes('--strict');
   const only = flagValue('--only');
   const steps = [
     ...HARDWARE_STEPS,
@@ -298,7 +308,7 @@ async function main(): Promise<void> {
   }
   process.stdout.write('\n');
 
-  const executed: Record<string, unknown>[] = [];
+  const executed: BenchmarkStepResult[] = [];
   for (const [index, step] of steps.entries()) {
     const available =
       step.requires === 'none' ||
@@ -349,6 +359,17 @@ async function main(): Promise<void> {
       '  npm run bench:aggregate\n' +
       '即可生成多机对比总表与图表。\n',
   );
+
+  if (strict && !isCompleteBenchmarkRun(executed)) {
+    const incomplete = executed
+      .filter((step) => step.status !== 'ok')
+      .map((step) => `${step.id}:${step.status}`)
+      .join('、');
+    process.stderr.write(
+      `\n严格模式失败：存在未完成步骤（${incomplete || '没有选中步骤'}）。\n`,
+    );
+    process.exitCode = 1;
+  }
 }
 
 main().catch((error) => {

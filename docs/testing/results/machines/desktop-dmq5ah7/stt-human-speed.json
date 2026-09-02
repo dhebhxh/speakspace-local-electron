@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "measured_at": "2026-09-01T23:52:33.226Z",
-  "whisper_binary": "C:\\Users\\MSI\\AppData\\Roaming\\SpeakSpace Local\\runtimes\\stt\\whisper\\bin\\whisper-cli.exe",
+  "whisper_binary": "runtimes/stt/whisper/bin/whisper-cli.exe",
   "recording_count": 56,
   "thread_count": 8,
   "speed_only": true,
   "note": "只测转写速度（RTF），用于跨机器硬件对比。同一批录音在不同机器上转写内容不会变，CER/内容覆盖率不属于随机器变化的指标，因此本次运行未计算、未写入。",
   "models": {
     "small": {
-      "model_path": "C:\\Users\\MSI\\AppData\\Roaming\\SpeakSpace Local\\models\\stt\\ggml-small.bin",
+      "model_path": "models/stt/ggml-small.bin",
       "timed_count": 56,
       "scored_count": 0,
       "failed_count": 0,

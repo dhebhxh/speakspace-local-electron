@@ -1,7 +1,8 @@
 # 测试与评测总览
 
 这个目录下带「生成」标记的报告都由脚本生成，数据来自实际运行，不是手写的。
-手写的文档只负责协议、方法和缺口清单，不重复报告里已经有的数字。
+手写文档负责协议、方法和缺口清单；结论性分析会明确标为「手写分析」，并链接自动报告与
+原始 JSON，不作为数据源的替代品。
 
 ## 先看这两份，再决定读哪份报告
 
@@ -43,6 +44,8 @@ datasets/                          手写  测试集本身：条数、分类、�
   stt-human-recordings/            原始 .m4a 音频（56 个文件）
 
 cross-machine-benchmark.md         生成  多机硬件对比总表
+m2-pro-16gb-hardware-benchmark-conclusion.md
+                                    手写分析  M2 Pro 16GB 全套硬件基准结论与建议
 tts-model-benchmark-windows.md     生成  三个 TTS 模型的完整基准
 stt-human-eval.md                  生成  真人 STT 准确率（tiny/base/small/large-v1）
 llm-model-sweep.md                 生成  五个 LLM 横向扫描 + 逐模型调优
@@ -75,6 +78,7 @@ results/                            生成  各评测脚本的原始输出，报
 | 报告 | 回答的问题 | 对应图表 |
 | --- | --- | --- |
 | [cross-machine-benchmark.md](./cross-machine-benchmark.md) | 换台机器会快多少、够不够跑 | `cross-tts-rtf` `cross-tts-memory` `cross-llm-throughput` `cross-llm-gpu` |
+| [m2-pro-16gb-hardware-benchmark-conclusion.md](./m2-pro-16gb-hardware-benchmark-conclusion.md) | M2 Pro 16GB 全套测试通过后应怎样选型、有哪些风险（手写分析） | 引用跨机总表与本机原始 JSON |
 | [tts-model-benchmark-windows.md](./tts-model-benchmark-windows.md) | 三个 TTS 模型的速度、内存、可懂度 | `panel-tts-speed` `panel-tts-memory` `panel-tts-quality` |
 
 ### 与机器无关（模型能力）
@@ -140,7 +144,7 @@ npm run bench:tuning-diff               # 调优前后对比
 - STT 真人评测只有单一说话人；待办提取的输入是干净文本，没引入 ASR 错误；
   Agent 未达可用水平（保留集最好 60.0%）；Agent 的 LLM Judge 未经人类校准；
   检索质量评测的查询词比真实用户提问更规整；TTS 音质只有回转录代理指标，没有人工 MOS；
-  硬件基准只测了一台机器。
+  硬件基准已收集三台机器，但其中两台只有部分阶段数据，完整的全套结果仍只有一台。
 
 这个项目反复踩到的五个坑（并行污染数据、内存指标定义错、小开发集骗人、结果文件静默覆盖、
 语料扩容后旧结果不会自己失效）也写在 test-coverage-gaps.md 里，不在这里重复。

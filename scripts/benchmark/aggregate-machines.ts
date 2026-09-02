@@ -25,6 +25,7 @@ import {
   table,
   DOCS,
 } from './report-format';
+import { machineResultsMarkdownLink } from './tts-paths';
 
 type MachineBundle = {
   id: string;
@@ -186,8 +187,8 @@ function main(): void {
     );
     lines.push('');
     lines.push(
-      '峰值内存跨机器基本不变（取决于模型而非硬件），但**它决定这台机器跑不跑得动**：' +
-        '把它和「内存」一列对照，就能看出哪台机器会被哪个模型顶爆。',
+      '峰值内存会受模型、运行时和平台影响，并且**它决定这台机器跑不跑得动**：' +
+        '把每台机器的峰值和「内存」一列对照，才能判断容量是否足够。',
     );
     lines.push('');
   }
@@ -286,7 +287,7 @@ function main(): void {
   lines.push(
     [
       '- **速度差异**主要来自 CPU 单核性能（TTS、STT 都走 CPU）与 GPU 显存带宽（LLM）。',
-      '- **内存/显存**跨机器几乎不变，变的是「这台机器够不够」。把峰值和总量对照着看。',
+      '- **内存/显存**还会受运行时与平台影响，不能假设跨机器不变；应把各机实测峰值和总量对照着看。',
       '- **GPU 卸载比例掉到 100% 以下**是最重要的信号：说明这台机器带不动这个模型，',
       '  此时吞吐的下降往往是数倍，而不是几个百分点。',
       '- 准确率不在这份表里。它取决于模型与提示词，换机器不会变；',
@@ -297,7 +298,9 @@ function main(): void {
   lines.push('## 各机器原始结果');
   lines.push('');
   for (const machine of machines) {
-    lines.push(`- \`${machine.id}\`：\`${machine.dir}\``);
+    lines.push(
+      `- [\`${machine.id}\`](${machineResultsMarkdownLink(machine.id)})`,
+    );
   }
   lines.push('');
 

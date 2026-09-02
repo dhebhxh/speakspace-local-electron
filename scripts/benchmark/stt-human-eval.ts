@@ -31,7 +31,11 @@ import { spawnSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { benchmarkResultsRoot, resolveWhisper } from './tts-paths';
+import {
+  benchmarkResultsRoot,
+  resolveSystemCommand,
+  resolveWhisper,
+} from './tts-paths';
 import { RECORDING_CASES, RecordingCase } from './stt-recording-corpus';
 
 type CorpusCase = {
@@ -178,15 +182,14 @@ function resolveFfmpegTool(executable: string): string | null {
     'SpeakSpace',
     'electron-react-boilerplate',
   ];
-  return (
-    roots
-      .flatMap((root) =>
-        names.map((name) =>
-          path.join(root, name, 'runtimes', 'ffmpeg', 'bin', executable),
-        ),
-      )
-      .find((item) => fs.existsSync(item)) ?? null
-  );
+  const managed = roots
+    .flatMap((root) =>
+      names.map((name) =>
+        path.join(root, name, 'runtimes', 'ffmpeg', 'bin', executable),
+      ),
+    )
+    .find((item) => fs.existsSync(item));
+  return managed ?? resolveSystemCommand([executable]);
 }
 
 function toSixteenKiloHertzMono(

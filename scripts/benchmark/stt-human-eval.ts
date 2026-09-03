@@ -505,6 +505,14 @@ function main(): void {
         whisper_binary: whisper.binary,
         recording_count: RECORDING_CASES.length,
         thread_count: threadCount,
+        platform: {
+          os: `${os.type()} ${os.release()}`,
+          arch: os.arch(),
+          cpu: os.cpus()[0]?.model ?? 'unknown',
+          cpu_threads: os.cpus().length,
+          total_memory_bytes: os.totalmem(),
+          node: process.version,
+        },
         speed_only: speedOnly,
         note: speedOnly
           ? '只测转写速度（RTF），用于跨机器硬件对比。同一批录音在不同机器上转写内容不会变，' +

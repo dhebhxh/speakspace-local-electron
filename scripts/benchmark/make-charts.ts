@@ -118,6 +118,62 @@ function shortModelName(value: string): string {
   return labels[value] ?? value;
 }
 
+function compactCpuName(value: unknown): string {
+  return String(value ?? 'Unknown CPU')
+    .replace(/^\d+(?:st|nd|rd|th) Gen /, '')
+    .replace(/^Intel\(R\) Core\(TM\) /, '')
+    .replace(/^Intel Core /, '')
+    .replace(/^Apple /, '');
+}
+
+function compactGpuName(value: unknown): string {
+  return String(value ?? 'GPU not recorded')
+    .replace(/^NVIDIA GeForce /, '')
+    .replace(/^NVIDIA /, '')
+    .replace(/ Laptop GPU$/, ' Laptop');
+}
+
+function roundedGiB(bytes: unknown): string {
+  const size = Number(bytes);
+  return Number.isFinite(size) && size > 0
+    ? `${Math.round(size / 1024 / 1024 / 1024)} GiB`
+    : 'unrecorded';
+}
+
+function compactGpuLine(value: unknown): string {
+  const [rawName, rawMemory] = String(value ?? 'GPU not recorded')
+    .split(',')
+    .map((item) => item.trim());
+  const memoryMiB = Number(rawMemory?.match(/[\d.]+/)?.[0] ?? NaN);
+  const memory = Number.isFinite(memoryMiB)
+    ? ` ${Math.round(memoryMiB / 1024)} GiB VRAM`
+    : '';
+  return `${compactGpuName(rawName)}${memory}`;
+}
+
+function compactPlatformLine(platform: Json | undefined): string {
+  if (!platform) return 'Hardware not recorded';
+  return `${compactCpuName(platform.cpu)} · ${roundedGiB(platform.total_memory_bytes)} RAM`;
+}
+
+/** 从 machine.json 生成，避免设备变化后图里的硬件说明变成手写旧数据。 */
+function machineHardwareLine(id: string, profile: Json): string {
+  const cpu = compactCpuName(profile.cpu_model);
+  const cores = `${profile.cpu_physical_cores ?? '?'}C/${profile.cpu_logical_cores ?? '?'}T`;
+  const memory = roundedGiB(profile.total_memory_bytes);
+  const gpu = profile.gpu as Json | null;
+  let system = String(profile.os ?? 'OS not recorded');
+  if (system.startsWith('Windows')) system = 'Windows';
+  else if (system.startsWith('Darwin')) system = 'macOS';
+  if (profile.accelerator_class === 'apple-silicon') {
+    return `${id} - ${cpu} · ${cores} · ${memory} unified memory · ${system}`;
+  }
+  const vram = gpu?.memory_total_mib
+    ? `${Math.round(Number(gpu.memory_total_mib) / 1024)} GiB VRAM`
+    : '';
+  return `${id} - ${cpu} · ${cores} · ${compactGpuName(gpu?.name)} ${vram} · ${memory} RAM · ${system}`;
+}
+
 /* ------------------------------ TTS 性能 ------------------------------ */
 
 function ttsCharts(): void {
@@ -126,7 +182,7 @@ function ttsCharts(): void {
   );
   if (models.length === 0) return;
   const names = models.map((model) => String(model.model_name));
-  const env = `${models[0].platform.cpu} · ${models[0].repeat_count} repetitions · 4 CPU threads`;
+  const env = `${compactPlatformLine(models[0].platform as Json)} · CPU-only, 4 threads · ${models[0].repeat_count} repetitions`;
 
   write(
     'tts-rtf-by-language.svg',
@@ -162,9 +218,26 @@ function ttsCharts(): void {
       })),
       yLabel: 'P95 RTF',
       referenceLine: { value: 1, label: 'RTF = 1' },
-      showValues: false,
-      caption:
-        'P95 exposes the worst case: Kokoro crosses the real-time threshold on Chinese-English text.',
+      caption: (() => {
+        // 每个模型在所有类目上的最差 P95：它决定这个模型还剩多少实时余量。
+        const worst = models
+          .map((model) => ({
+            name: String(model.model_name),
+            p95: Math.max(
+              ...categories
+                .map((category) =>
+                  Number(model.by_category[category]?.p95_rtf ?? NaN),
+                )
+                .filter((value) => Number.isFinite(value)),
+            ),
+          }))
+          .filter((item) => Number.isFinite(item.p95))
+          .sort((a, b) => b.p95 - a.p95);
+        if (worst.length === 0) return undefined;
+        const tightest = worst[0];
+        const safest = worst[worst.length - 1];
+        return `P95 exposes the worst case, not the average. ${tightest.name} peaks at ${tightest.p95.toFixed(2)} - still under real time, but with only ${((1 - tightest.p95) * 100).toFixed(0)}% headroom, so a slower host would cross it; ${safest.name} keeps ${((1 - safest.p95) * 100).toFixed(0)}%.`;
+      })(),
     }),
   );
 
@@ -246,7 +319,7 @@ function memoryCharts(): void {
       'tts-memory-iterations.svg',
       lineChart({
         title: 'Resident memory across repeated synthesis calls',
-        subtitle: `Forced GC before each sample · calls 1–8: short text (24 chars) · calls 9–16: long text (315 chars)`,
+        subtitle: `${compactPlatformLine(probes[0].platform as Json | undefined)} · CPU inference · forced GC before each sample`,
         series: probes.map((probe) => ({
           name: String(probe.model_name),
           points: (probe.phases as Json[]).flatMap((phase, phaseIndex) =>
@@ -276,7 +349,7 @@ function memoryCharts(): void {
       'tts-memory-vs-length.svg',
       lineChart({
         title: 'Peak memory by input length',
-        subtitle: `Peak RSS sampled every 50 ms during synthesis · host memory ${(machineMemory / 1024).toFixed(1)} GiB`,
+        subtitle: `Host RAM ${(machineMemory / 1024).toFixed(1)} GiB · CPU inference · 50 ms sampling${lengths[0].platform?.cpu ? ` · ${compactCpuName(lengths[0].platform.cpu)}` : ' · CPU model not recorded'}`,
         series: lengths.map((probe) => ({
           name: String(probe.model_name),
           points: (probe.samples as Json[])
@@ -355,9 +428,23 @@ function asrCharts(): void {
       })),
       yLabel: 'CER',
       format: (value) => pct(value),
-      showValues: false,
-      caption:
-        'MeloTTS is weaker on names (35%) and abbreviations (29%), consistent with its runtime out-of-vocabulary warnings.',
+      caption: (() => {
+        // 找出「模型之间差距最大的那个类目」——差异集中在哪里比平均 CER 有用得多。
+        const spread = categories
+          .map((category) => {
+            const values = entries
+              .map((item) =>
+                Number(item.data.mean_cer_by_category[category] ?? NaN),
+              )
+              .filter((value) => Number.isFinite(value));
+            return { category, gap: Math.max(...values) - Math.min(...values) };
+          })
+          .filter((item) => Number.isFinite(item.gap))
+          .sort((a, b) => b.gap - a.gap)[0];
+        return spread
+          ? `Differences concentrate in vocabulary, not in general speech: the models are within a few points on plain text but split by ${pct(spread.gap)} on ${spread.category}. Pick by the categories your content actually contains.`
+          : undefined;
+      })(),
     }),
   );
 
@@ -414,6 +501,8 @@ function sttCharts(): void {
   if (modelIds.length === 0) return;
   const models = data.models as Json;
   const subtitle = `Human recordings · Chinese-native speaker · ${modelIds.length} whisper.cpp models · docs/testing/stt-recording-protocol.md`;
+  // 旧版结果缺少 platform，不能用另一个测试文件的设备配置代替。
+  const speedSubtitle = `${compactPlatformLine(data.platform as Json | undefined)} · whisper.cpp · ${data.thread_count} threads · ${data.recording_count} human recordings`;
 
   write(
     'stt-cer-by-segment.svg',
@@ -484,7 +573,7 @@ function sttCharts(): void {
     'stt-speed-vs-accuracy.svg',
     scatterChart({
       title: 'STT model selection: speed vs accuracy',
-      subtitle: `${subtitle} · lower RTF is faster; lower CER is more accurate`,
+      subtitle: speedSubtitle,
       series: modelIds.map((id) => ({
         name: `${id} (CER ${pct(models[id].mean_cer_strict_AC as number)})`,
         points: [
@@ -661,8 +750,32 @@ function todoCharts(): void {
       formatX: (value) => `Round ${value.toFixed(0)}`,
       formatY: (value) => pct(value),
       showPointLabels: true,
-      caption:
-        'The nearly overlapping rounds show near-deterministic output at this temperature rather than a lucky single sample.',
+      // 四条线全在 82%-95% 之间。y 轴从 0 起会把它们压成一束，
+      // 点上的数值互相重叠，也看不出「哪个指标其实在抖」。
+      yFromZero: false,
+      caption: (() => {
+        // 逐个指标算跨轮次的极差，挑出唯一真正在抖的那个。
+        const metrics = [
+          ['Precision', 'precision'],
+          ['Recall', 'recall'],
+          ['F1', 'f1'],
+          ['Date accuracy', 'date_accuracy'],
+        ] as const;
+        const spreads = metrics
+          .map(([label, key]) => {
+            const values = rounds
+              .map((round) => Number((round.overall as Json)[key]))
+              .filter((value) => Number.isFinite(value));
+            return {
+              label,
+              spread: (Math.max(...values) - Math.min(...values)) * 100,
+            };
+          })
+          .sort((a, b) => b.spread - a.spread);
+        const worst = spreads[0];
+        const rest = spreads[spreads.length - 1];
+        return `Note the zoomed axis: the whole range is only a few points. ${rest.label} varies by ${rest.spread.toFixed(1)}pt across rounds, while ${worst.label} spans ${worst.spread.toFixed(1)}pt; repeat runs matter most for the latter.`;
+      })(),
     }),
   );
 }
@@ -675,6 +788,7 @@ function agentCharts(): void {
   const rounds = data.rounds as Json[];
   const mean = data.mean_across_rounds as Json;
   const subtitle = `${data.model} · ${data.embedding_model} · ${data.rounds_run} round(s) · ${data.dataset.task_count} tasks`;
+  const latencySubtitle = `${subtitle} · ${compactPlatformLine(data.platform as Json)} · local inference`;
 
   write(
     'agent-dev-vs-holdout.svg',
@@ -840,7 +954,7 @@ function agentCharts(): void {
     'agent-latency-by-scenario.svg',
     groupedBarChart({
       title: 'End-to-end Agent latency (excluding Judge)',
-      subtitle,
+      subtitle: latencySubtitle,
       categories: ordered,
       series: [
         {
@@ -1076,8 +1190,7 @@ function llmCharts(): void {
       : shortModelName(String(item.model)),
   );
   const shortNames = usable.map((item) => shortModelName(String(item.model)));
-  const gpuLine = String(source.gpu ?? 'No GPU detected');
-  const env = `${gpuLine} · Ollama`;
+  const env = `${compactGpuLine(source.gpu)} · ${compactPlatformLine(source.platform as Json)} · Ollama`;
 
   write(
     'llm-throughput.svg',
@@ -1434,15 +1547,23 @@ function crossMachineCharts(): void {
   if (machines.length < 2) return;
 
   const names = machines.map((m) => m.id);
+  const hardwareItems = machines.map((m) =>
+    machineHardwareLine(m.id, m.profile),
+  );
   const ttsModels = [
     ...new Set(machines.flatMap((m) => m.tts.map((x) => String(x.model_id)))),
   ].sort();
   if (ttsModels.length > 0) {
+    const rtfs = machines
+      .flatMap((m) => m.tts.map((result) => Number(result.overall.p50_rtf)))
+      .filter(Number.isFinite);
     write(
       'cross-tts-rtf.svg',
       groupedBarChart({
         title: 'Cross-machine TTS synthesis speed (P50 RTF)',
-        subtitle: `${machines.length} machines · same 36-text corpus`,
+        subtitle: `${machines.length} machines · same 36-text corpus · CPU inference`,
+        width: 1180,
+        headerItems: hardwareItems,
         categories: names,
         series: ttsModels.map((modelId) => ({
           name: modelId,
@@ -1453,8 +1574,7 @@ function crossMachineCharts(): void {
         })),
         yLabel: 'P50 RTF',
         referenceLine: { value: 1, label: 'RTF = 1 (real-time threshold)' },
-        caption:
-          'Values above the red line are slower than playback. Differences mainly reflect single-core CPU performance.',
+        caption: `P50 RTF spans ${Math.min(...rtfs).toFixed(2)}-${Math.max(...rtfs).toFixed(2)} across ${rtfs.length} model-host pairs. Rankings vary by host; these runs do not isolate CPU performance from runtime differences.`,
       }),
     );
 
@@ -1463,7 +1583,9 @@ function crossMachineCharts(): void {
       groupedBarChart({
         title: 'Cross-machine TTS peak memory',
         subtitle:
-          'Peak allocation is model-dependent; host capacity determines whether it fits',
+          'Same models and corpus · process RSS; host capacity determines whether each model fits',
+        width: 1180,
+        headerItems: hardwareItems,
         categories: names,
         series: ttsModels.map((modelId) => ({
           name: modelId,
@@ -1488,11 +1610,35 @@ function crossMachineCharts(): void {
     ),
   ].sort();
   if (llmModels.length > 0) {
+    // 同机不同模型的卸载/吞吐关联；不是固定模型的卸载因果实验。
+    const offloadSplit = machines
+      .map((m, index) => {
+        const rows = ((m.llm?.models as Json[]) ?? []).map((x) => ({
+          tps: Number(x.median_tokens_per_second),
+          offload: Number(x.gpu_offload_ratio ?? NaN),
+        }));
+        const partial = rows
+          .filter((r) => r.offload < 0.999 && Number.isFinite(r.tps))
+          .map((r) => r.tps);
+        const full = rows
+          .filter((r) => r.offload >= 0.999 && Number.isFinite(r.tps))
+          .map((r) => r.tps);
+        return { name: names[index], partial, full };
+      })
+      .find((row) => row.partial.length > 0 && row.full.length > 0);
+    const range = (values: number[]) =>
+      `${Math.min(...values).toFixed(0)}-${Math.max(...values).toFixed(0)}`;
+    const throughputCaption = offloadSplit
+      ? `On ${offloadSplit.name}, partial-offload models reach ${range(offloadSplit.partial)} tok/s versus ${range(offloadSplit.full)} for full-offload models. Different models are compared: this association does not isolate the offload effect.`
+      : 'Values use Ollama-reported eval_count / eval_duration and are independent of sampling intervals.';
+
     write(
       'cross-llm-throughput.svg',
       groupedBarChart({
         title: 'Cross-machine LLM generation throughput',
-        subtitle: `${machines.length} machines · identical probe texts`,
+        subtitle: `${machines.length} machines · identical probe texts · Ollama GPU offload where available`,
+        width: 1180,
+        headerItems: hardwareItems,
         categories: names,
         series: llmModels.map((model) => ({
           name: model,
@@ -1505,9 +1651,7 @@ function crossMachineCharts(): void {
         })),
         yLabel: 'tokens/s',
         format: (value) => value.toFixed(0),
-        showValues: false,
-        caption:
-          'Values use Ollama-reported eval_count / eval_duration and are independent of sampling intervals.',
+        caption: throughputCaption,
       }),
     );
 
@@ -1516,7 +1660,9 @@ function crossMachineCharts(): void {
       groupedBarChart({
         title: 'Cross-machine GPU offload ratio',
         subtitle:
-          '1 = fully in VRAM; below 1 means some layers fall back to CPU',
+          'Ollama-reported GPU residency · Apple Silicon uses unified memory, not separate VRAM',
+        width: 1180,
+        headerItems: hardwareItems,
         categories: names,
         series: llmModels.map((model) => ({
           name: model,
@@ -1524,14 +1670,18 @@ function crossMachineCharts(): void {
             const hit = ((m.llm?.models as Json[]) ?? []).find(
               (x) => x.model === model,
             );
-            return hit ? Number(hit.gpu_offload_ratio ?? 0) : null;
+            return hit?.gpu_offload_ratio !== undefined &&
+              hit.gpu_offload_ratio !== null
+              ? Number(hit.gpu_offload_ratio)
+              : null;
           }),
         })),
         yLabel: 'Offload ratio',
         format: pct,
         referenceLine: { value: 1, label: 'Full GPU offload' },
-        caption:
-          'This directly indicates the largest model a host can sustain; throughput often drops sharply below full offload.',
+        caption: offloadSplit
+          ? `On ${offloadSplit.name}, partial offload coincides with lower throughput. Check model residency alongside speed; parameter count alone does not describe memory fit.`
+          : 'This directly indicates the largest model a host can sustain; throughput often drops sharply below full offload.',
       }),
     );
   }
@@ -1542,11 +1692,34 @@ function crossMachineCharts(): void {
     ),
   ].sort();
   if (sttModels.length > 0) {
+    // 统计实时阈值，不把相同计数当成 CPU/GPU 归因证据。
+    const threads = [
+      ...new Set(machines.map((m) => m.stt?.thread_count).filter(Boolean)),
+    ];
+    const realtimeCounts = machines
+      .map((m, index) => {
+        const rtfs = Object.values((m.stt?.models as Json) ?? {})
+          .map((entry) => Number((entry as Json)?.mean_rtf))
+          .filter((value) => Number.isFinite(value));
+        return {
+          name: names[index],
+          under: rtfs.filter((value) => value < 1).length,
+          total: rtfs.length,
+        };
+      })
+      .filter((row) => row.total > 0);
+    const realtimeSummary = realtimeCounts
+      .map((row) => `${row.name} ${row.under}/${row.total}`)
+      .join(', ');
+
     write(
       'cross-stt-rtf.svg',
       groupedBarChart({
         title: 'Cross-machine STT transcription speed',
-        subtitle: `${machines.length} machines · identical human recordings · accuracy excluded`,
+        subtitle: `${machines.length} machines · identical human recordings · whisper.cpp · ${threads.join('/')} threads · accuracy excluded`,
+        // 16 个模型 x 4 台机器：加宽画布，柱子才不至于挤成一片。
+        width: 1180,
+        headerItems: hardwareItems,
         categories: names,
         series: sttModels.map((model) => ({
           name: model,
@@ -1564,8 +1737,7 @@ function crossMachineCharts(): void {
           value: 1,
           label: 'RTF = 1 (transcription equals audio duration)',
         },
-        caption:
-          'This chart measures runtime only. Accuracy for the same recordings is reported in the human STT evaluation.',
+        caption: `Faster-than-real-time models: ${realtimeSummary}. Backend/GPU activity was not recorded; the speed differences do not isolate CPU, GPU or runtime effects.`,
       }),
     );
   }

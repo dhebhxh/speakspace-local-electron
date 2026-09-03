@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="860" height="316" viewBox="0 0 860 316" role="img">
-<rect width="860" height="316" fill="#FFFFFF" rx="8"/>
-<rect x="0.5" y="0.5" width="859" height="315" fill="none" stroke="#E3E8EF" rx="8"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="331" viewBox="0 0 860 331" role="img">
+<rect width="860" height="331" fill="#FFFFFF" rx="8"/>
+<rect x="0.5" y="0.5" width="859" height="330" fill="none" stroke="#E3E8EF" rx="8"/>
 <text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">Todo extraction: failure types (round 1, all 54 cases)</text>
 <text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Occurrences by problem type; one case may contain multiple failure types</text>
 <text x="217" y="91" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="end" font-weight="400">Complete miss</text>
@@ -18,5 +18,5 @@
 <text x="217" y="243" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="end" font-weight="400">Incorrect recurrence</text>
 <rect x="227" y="230" width="60.1" height="18" fill="#2E86AB" rx="2"/>
 <text x="295.1111111111111" y="243" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="start" font-weight="400">1</text>
-<text x="24" y="302" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">A merge compresses parallel clauses into one task: the content remains visible but loses a separate item and date, unlike a complete miss.</text>
+<text x="24" y="302" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">A merge compresses parallel clauses into one task: the content remains visible but loses a separate item and date, unlike a</text><text x="24" y="317" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">complete miss.</text>
 </svg>

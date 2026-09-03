@@ -2,7 +2,7 @@
 <rect width="860" height="436" fill="#FFFFFF" rx="8"/>
 <rect x="0.5" y="0.5" width="859" height="435" fill="none" stroke="#E3E8EF" rx="8"/>
 <text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="16" fill="#1F2933" text-anchor="start" font-weight="600">GPU offload ratio and VRAM utilisation</text>
-<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">NVIDIA GeForce RTX 3060 Laptop GPU, 6144 MiB, 591.86 · Ollama</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">RTX 3060 Laptop 6 GiB VRAM · i9-12900H · 40 GiB RAM · Ollama</text>
 <rect x="24.0" y="63" width="11" height="11" rx="2" fill="#2E86AB"/><text x="40" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">GPU offload ratio (1 = fully in VRAM)</text><rect x="306.2" y="63" width="11" height="11" rx="2" fill="#E8871A"/><text x="322.1999999999998" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#6B7280" text-anchor="start" font-weight="400">Used VRAM / total VRAM</text>
 <line x1="64" y1="362" x2="836" y2="362" stroke="#E3E8EF"/>
 <text x="56" y="366" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#6B7280" text-anchor="end" font-weight="400">0%</text>
@@ -44,6 +44,6 @@
 <text x="758.8000000000001" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#1F2933" text-anchor="middle" font-weight="400">Granite-4 Micro-H</text>
 <line x1="64" y1="108" x2="836" y2="108" stroke="#D64545" stroke-width="1.5" stroke-dasharray="5 4"/>
 <text x="832" y="89" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#D64545" text-anchor="end" font-weight="400">VRAM limit / full offload</text>
-<line x1="64" y1="362" x2="836" y2="362" stroke="#6B7280"/>
+<line x1="64" y1="362.0" x2="836" y2="362.0" stroke="#6B7280"/>
 <text x="24" y="422" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif" font-size="11.5" fill="#6B7280" text-anchor="start" font-weight="400">The offload ratio is Ollama /api/ps size_vram divided by size. Values below 1 mean some layers fall back to CPU.</text>
 </svg>

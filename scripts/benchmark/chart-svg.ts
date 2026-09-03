@@ -185,6 +185,18 @@ function legendRows(names: string[], startX: number, maxWidth = 812): number {
   return rows;
 }
 
+/**
+ * 图注按画布宽度折行。以前是单行硬画，写长一点就顶出画布右边被裁掉，
+ * 于是图注只能写成一句空泛的话。折行之后才放得下「结论 + 支撑数字」。
+ * 高度由调用方按行数预留，见各图的 bottom 计算。
+ */
+const CAPTION_LINE_HEIGHT = 15;
+
+function wrapCaption(caption: string | undefined, width: number): string[] {
+  if (!caption) return [];
+  return wrapText(caption, width - 48, 11.5);
+}
+
 function frame(
   width: number,
   height: number,
@@ -193,9 +205,17 @@ function frame(
   body: string,
   caption?: string,
 ): string {
-  const captionBlock = caption
-    ? text(24, height - 14, caption, { size: 11.5, fill: MUTED })
-    : '';
+  const lines = wrapCaption(caption, width);
+  const captionBlock = lines
+    .map((line, index) =>
+      text(
+        24,
+        height - 14 - (lines.length - 1 - index) * CAPTION_LINE_HEIGHT,
+        line,
+        { size: 11.5, fill: MUTED },
+      ),
+    )
+    .join('');
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img">`,
     `<rect width="${width}" height="${height}" fill="${BACKGROUND}" rx="8"/>`,
@@ -219,6 +239,12 @@ export function groupedBarChart(
     /** 参考线，例如 RTF = 1（合成速度等于播放速度）。 */
     referenceLine?: { value: number; label: string };
     showValues?: boolean;
+    /**
+     * 标题区里的紧凑上下文说明。跨机器图用它列出设备硬件，而不是把长配置塞进横轴。
+     * 宽图按两列排，普通宽度按一列排。
+     */
+    headerItems?: string[];
+    headerLabel?: string;
   },
 ): string {
   const {
@@ -232,11 +258,18 @@ export function groupedBarChart(
     referenceLine,
     showValues = true,
     width = 860,
+    headerItems = [],
+    headerLabel = 'Test hardware (C = CPU cores; T = threads; memory rounded)',
   } = options;
+  const legendMaxWidth = width - 48;
+  const headerColumns = width >= 1100 ? 2 : 1;
+  const headerRows = Math.ceil(headerItems.length / headerColumns);
+  const headerShift = headerItems.length > 0 ? 23 + headerRows * 15 : 0;
   const legendShift =
     (legendRows(
       series.map((item) => item.name),
       24,
+      legendMaxWidth,
     ) -
       1) *
     18;
@@ -246,7 +279,14 @@ export function groupedBarChart(
       (value): value is number => value !== null && Number.isFinite(value),
     );
   const upper = Math.max(...allValues, referenceLine?.value ?? -Infinity);
-  const scale = niceScale(0, upper);
+  /**
+   * 有负值时轴必须延伸到负半区。否则零线就是绘图区底边，负数柱子会画到区外、
+   * 和下面的类目标签叠在一起（实测：dev/holdout 差值图里 -1.6 和 -0.3 两根
+   * 就压在 "Ministral-3 3B" 上）。没有负值时 Math.min(0, ...) 仍然得到 0，
+   * 其余所有图的效果完全不变。
+   */
+  const lower = Math.min(0, ...allValues);
+  const scale = niceScale(lower, upper);
 
   /**
    * 柱顶数值标签画在柱顶上方，参考线标签画在线的上方 —— 当有柱子正好落在参考线上
@@ -268,11 +308,13 @@ export function groupedBarChart(
     );
   // 高度和 top 一起加，图整体高一点，绘图区大小不变。
   const extraTop = referenceCollidesWithValues ? 16 : 0;
-  const height = (options.height ?? 420) + legendShift + extraTop;
+  const height = (options.height ?? 420) + legendShift + extraTop + headerShift;
   const left = 64;
   const right = 24;
-  const top = 92 + legendShift + extraTop;
-  const bottom = caption ? 74 : 58;
+  const top = 92 + legendShift + extraTop + headerShift;
+  const extraCaptionRows =
+    (wrapCaption(caption, width).length - 1) * CAPTION_LINE_HEIGHT;
+  const bottom = caption ? 74 + extraCaptionRows : 58;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
   const toY = (value: number) =>
@@ -281,12 +323,27 @@ export function groupedBarChart(
     ((value - scale.min) / (scale.max - scale.min)) * plotHeight;
 
   const parts: string[] = [];
+  if (headerItems.length > 0) {
+    parts.push(text(24, 70, headerLabel, { size: 11.5, weight: 600 }));
+    const columnWidth = (width - 48) / headerColumns;
+    headerItems.forEach((item, index) => {
+      const column = index % headerColumns;
+      const row = Math.floor(index / headerColumns);
+      parts.push(
+        text(24 + column * columnWidth, 85 + row * 15, item, {
+          size: 11.5,
+          fill: MUTED,
+        }),
+      );
+    });
+  }
   parts.push(
     legend(
       24,
-      72,
+      72 + headerShift,
       series.map((item) => item.name),
       SERIES_COLORS,
+      legendMaxWidth,
     ),
   );
 
@@ -316,6 +373,25 @@ export function groupedBarChart(
 
   const groupWidth = plotWidth / categories.length;
   const barWidth = Math.min(34, (groupWidth * 0.72) / series.length);
+  const baseline = toY(0);
+
+  /**
+   * 数值标签只在放得下的时候画。相邻柱子的中心相距 barWidth，标签又是居中的，
+   * 所以标签一旦比 barWidth 宽就必然和邻居的标签叠在一起 —— 系列多的图
+   * （跨机器 STT 有 16 个模型、每根柱子只有 9px 宽）硬标出来就是一团糊。
+   * 判定按整张图统一取舍，避免同一组里有的标有的不标。
+   * 确切数值在 cross-machine-benchmark.md 的表里，不会因此丢失。
+   */
+  const valuesFit = series.every((item) =>
+    item.values.every(
+      (value) =>
+        value === null ||
+        !Number.isFinite(value) ||
+        textWidth(format(value), 10) <= barWidth - 1,
+    ),
+  );
+  const drawValues = showValues && valuesFit;
+
   categories.forEach((category, categoryIndex) => {
     const groupCenter = left + groupWidth * (categoryIndex + 0.5);
     const groupStart = groupCenter - (barWidth * series.length) / 2;
@@ -324,16 +400,19 @@ export function groupedBarChart(
       if (value === null || !Number.isFinite(value)) return;
       const x = groupStart + barWidth * seriesIndex;
       const y = toY(value);
+      // 柱子在零线和数值之间：负数时从零线往下长。
       parts.push(
-        `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(barWidth - 3).toFixed(1)}" height="${(top + plotHeight - y).toFixed(1)}" fill="${SERIES_COLORS[seriesIndex % SERIES_COLORS.length]}" rx="2"/>`,
+        `<rect x="${x.toFixed(1)}" y="${Math.min(y, baseline).toFixed(1)}" width="${(barWidth - 3).toFixed(1)}" height="${Math.abs(baseline - y).toFixed(1)}" fill="${SERIES_COLORS[seriesIndex % SERIES_COLORS.length]}" rx="2"/>`,
       );
-      if (showValues) {
+      if (drawValues) {
+        // 正数标在柱顶上方，负数标在柱底下方，都在柱子外侧。
         parts.push(
-          text(x + (barWidth - 3) / 2, y - 5, format(value), {
-            size: 10,
-            fill: MUTED,
-            anchor: 'middle',
-          }),
+          text(
+            x + (barWidth - 3) / 2,
+            value < 0 ? y + 12 : y - 5,
+            format(value),
+            { size: 10, fill: MUTED, anchor: 'middle' },
+          ),
         );
       }
     });
@@ -364,8 +443,9 @@ export function groupedBarChart(
     );
   }
 
+  // 零线。没有负值时它就是绘图区底边，和以前一样。
   parts.push(
-    `<line x1="${left}" y1="${top + plotHeight}" x2="${width - right}" y2="${top + plotHeight}" stroke="${MUTED}"/>`,
+    `<line x1="${left}" y1="${baseline.toFixed(1)}" x2="${width - right}" y2="${baseline.toFixed(1)}" stroke="${MUTED}"/>`,
   );
   return frame(width, height, title, subtitle, parts.join('\n'), caption);
 }
@@ -383,6 +463,13 @@ export function lineChart(
     logY?: boolean;
     referenceLine?: { value: number; label: string };
     showPointLabels?: boolean;
+    /**
+     * 默认 y 轴从 0 起，柱状/比例图看绝对量时这样才诚实。
+     * 但当几条线都挤在高位窄区间时（稳定性图：4 条线全在 82%–95%），
+     * 从 0 起会把它们压成一束，点上的数值互相重叠、也看不出差异。
+     * 这类「看波动而不是看绝对量」的图传 false，轴改为贴着数据范围。
+     */
+    yFromZero?: boolean;
   },
 ): string {
   const {
@@ -397,6 +484,7 @@ export function lineChart(
     logY = false,
     referenceLine,
     showPointLabels = false,
+    yFromZero = true,
     width = 860,
   } = options;
   const legendShift =
@@ -410,7 +498,9 @@ export function lineChart(
   const left = 72;
   const right = 28;
   const top = 92 + legendShift;
-  const bottom = caption ? 78 : 62;
+  const extraCaptionRows =
+    (wrapCaption(caption, width).length - 1) * CAPTION_LINE_HEIGHT;
+  const bottom = caption ? 78 + extraCaptionRows : 62;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
 
@@ -418,12 +508,37 @@ export function lineChart(
   const ys = series.flatMap((item) => item.points.map((point) => point.y));
   if (referenceLine) ys.push(referenceLine.value);
   const xScale = niceScale(Math.min(...xs), Math.max(...xs));
+  /**
+   * x 是离散序号（第几轮、第几个长度档）时，niceScale 会在整数之间插入半格刻度，
+   * formatX 再四舍五入，于是出现 "Round 1 / Round 2 / Round 2 / Round 3 / Round 3"
+   * 这种重复标签。整数且档数不多时直接用实际取值当刻度。
+   */
+  const distinctXs = [...new Set(xs)].sort((a, b) => a - b);
+  const candidateXTicks =
+    distinctXs.every((value) => Number.isInteger(value)) &&
+    distinctXs.length <= 12
+      ? distinctXs
+      : xScale.ticks;
+  // 数值型长度档可能很接近（24、35、52），保留位置但省略相邻重叠刻度。
+  const xTicks = candidateXTicks.filter((value, index, ticks) => {
+    if (index === 0) return true;
+    const previous = ticks[index - 1];
+    const gap = ((value - previous) / (xScale.max - xScale.min)) * plotWidth;
+    return (
+      gap >=
+      (textWidth(formatX(value), 11) + textWidth(formatX(previous), 11)) / 2 + 8
+    );
+  });
 
   const logMin = Math.max(Math.min(...ys) / 2, 1e-9);
   const logMax = Math.max(...ys) * 1.6;
+  const yLow = Math.min(...ys);
+  const yHigh = Math.max(...ys);
+  // 贴着数据范围时上下各留 15% 余量，端点不会顶在边框上。
+  const yPad = Math.max((yHigh - yLow) * 0.15, 1e-9);
   const yScale = logY
     ? { min: logMin, max: logMax, ticks: [] as number[] }
-    : niceScale(0, Math.max(...ys));
+    : niceScale(yFromZero ? 0 : yLow - yPad, yHigh + (yFromZero ? 0 : yPad));
   if (logY) {
     const start = Math.floor(Math.log10(logMin));
     const end = Math.ceil(Math.log10(logMax));
@@ -475,7 +590,7 @@ export function lineChart(
       }),
     );
   }
-  for (const tick of xScale.ticks) {
+  for (const tick of xTicks) {
     const x = toX(tick);
     parts.push(
       text(x, top + plotHeight + 18, formatX(tick), {
@@ -590,7 +705,9 @@ export function scatterChart(
   const left = 72;
   const right = 28;
   const top = 92 + legendShift;
-  const bottom = caption ? 78 : 62;
+  const extraCaptionRows =
+    (wrapCaption(caption, width).length - 1) * CAPTION_LINE_HEIGHT;
+  const bottom = caption ? 78 + extraCaptionRows : 62;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
 
@@ -725,7 +842,9 @@ export function horizontalBarChart(
         18
       : 0;
   const top = (series.length > 1 ? 92 : 74) + legendShift;
-  const bottom = caption ? 52 : 28;
+  const extraCaptionRows =
+    (wrapCaption(caption, width).length - 1) * CAPTION_LINE_HEIGHT;
+  const bottom = caption ? 52 + extraCaptionRows : 28;
   const height = options.height ?? top + categories.length * rowHeight + bottom;
   const labelWidth = Math.max(
     0,
@@ -826,7 +945,9 @@ export function stackedBarChart(
     ) -
       1) *
       18;
-  const bottom = caption ? 52 : 28;
+  const extraCaptionRows =
+    (wrapCaption(caption, width).length - 1) * CAPTION_LINE_HEIGHT;
+  const bottom = caption ? 52 + extraCaptionRows : 28;
   const height = options.height ?? top + categories.length * rowHeight + bottom;
   const labelWidth = Math.max(
     0,

@@ -173,6 +173,13 @@ async function probeModel(modelId: string): Promise<void> {
   const result = {
     schema_version: 1,
     measured_at: new Date().toISOString(),
+    platform: {
+      os: `${os.type()} ${os.release()}`,
+      arch: os.arch(),
+      cpu: os.cpus()[0]?.model ?? 'unknown',
+      cpu_threads: os.cpus().length,
+      total_memory_bytes: os.totalmem(),
+    },
     model_id: modelId,
     model_name: catalogItem?.name ?? modelId,
     engine: catalogItem?.engine ?? 'unknown',

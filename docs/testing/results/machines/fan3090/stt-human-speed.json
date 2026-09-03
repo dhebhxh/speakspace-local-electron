@@ -2626,6 +2626,879 @@
         }
       ]
     },
+    "large-v2": {
+      "model_path": "models/stt/ggml-large-v2.bin",
+      "timed_count": 56,
+      "scored_count": 0,
+      "failed_count": 0,
+      "mean_cer_strict_AC": null,
+      "mean_cer_by_language_AC": {
+        "zh": null,
+        "en": null,
+        "zh-en": null
+      },
+      "by_segment": {
+        "A": {
+          "mean_cer": null,
+          "mean_content_recall": null,
+          "count": 35
+        },
+        "B": {
+          "mean_cer": null,
+          "mean_content_recall": null,
+          "count": 12
+        },
+        "C": {
+          "mean_cer": null,
+          "mean_content_recall": null,
+          "count": 9
+        }
+      },
+      "mean_rtf": 2.393585347236896,
+      "entries": [
+        {
+          "file": "rec_01.wav",
+          "segment": "A",
+          "ids": [
+            "zh_short"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.831112172597723,
+          "audio_seconds": 7.850625,
+          "error": null
+        },
+        {
+          "file": "rec_02.wav",
+          "segment": "A",
+          "ids": [
+            "zh_basic_02"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.40825,
+          "audio_seconds": 8,
+          "error": null
+        },
+        {
+          "file": "rec_03.wav",
+          "segment": "A",
+          "ids": [
+            "zh_basic_03",
+            "zh_numeric_01"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.1834343107280958,
+          "audio_seconds": 20.074625,
+          "error": null
+        },
+        {
+          "file": "rec_04.wav",
+          "segment": "A",
+          "ids": [
+            "zh_numeric_02"
+          ],
+          "language": "zh",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.4793113425925926,
+          "audio_seconds": 13.824,
+          "error": null
+        },
+        {
+          "file": "rec_05.wav",
+          "segment": "A",
+          "ids": [
+            "zh_datetime_01"
+          ],
+          "language": "zh",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.6127451071511727,
+          "audio_seconds": 12.373313,
+          "error": null
+        },
+        {
+          "file": "rec_06.wav",
+          "segment": "A",
+          "ids": [
+            "zh_datetime_02"
+          ],
+          "language": "zh",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.7163690457982477,
+          "audio_seconds": 11.605313,
+          "error": null
+        },
+        {
+          "file": "rec_07.wav",
+          "segment": "A",
+          "ids": [
+            "zh_proper_01"
+          ],
+          "language": "zh",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.046875,
+          "audio_seconds": 9.728,
+          "error": null
+        },
+        {
+          "file": "rec_08.wav",
+          "segment": "A",
+          "ids": [
+            "zh_acronym_01"
+          ],
+          "language": "zh",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.6601859178701777,
+          "audio_seconds": 12.373313,
+          "error": null
+        },
+        {
+          "file": "rec_09.wav",
+          "segment": "A",
+          "ids": [
+            "zh_technical_01"
+          ],
+          "language": "zh",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.544894366197183,
+          "audio_seconds": 13.632,
+          "error": null
+        },
+        {
+          "file": "rec_10.wav",
+          "segment": "A",
+          "ids": [
+            "zh_punct_01"
+          ],
+          "language": "zh",
+          "category": "punctuation",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.8434693113772453,
+          "audio_seconds": 10.688,
+          "error": null
+        },
+        {
+          "file": "rec_11.wav",
+          "segment": "A",
+          "ids": [
+            "zh_long_01"
+          ],
+          "language": "zh",
+          "category": "long",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.1295944623806085,
+          "audio_seconds": 80.106625,
+          "error": null
+        },
+        {
+          "file": "rec_12.wav",
+          "segment": "A",
+          "ids": [
+            "en_short"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.7533531574258794,
+          "audio_seconds": 9.962625,
+          "error": null
+        },
+        {
+          "file": "rec_13.wav",
+          "segment": "A",
+          "ids": [
+            "en_basic_02"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.084078581656381,
+          "audio_seconds": 8.853313,
+          "error": null
+        },
+        {
+          "file": "rec_14.wav",
+          "segment": "A",
+          "ids": [
+            "en_basic_03"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.3548893540669857,
+          "audio_seconds": 13.376,
+          "error": null
+        },
+        {
+          "file": "rec_15.wav",
+          "segment": "A",
+          "ids": [
+            "en_numeric_01"
+          ],
+          "language": "en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.9396432487458886,
+          "audio_seconds": 19.605313,
+          "error": null
+        },
+        {
+          "file": "rec_16.wav",
+          "segment": "A",
+          "ids": [
+            "en_numeric_02"
+          ],
+          "language": "en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.221821581196581,
+          "audio_seconds": 14.976,
+          "error": null
+        },
+        {
+          "file": "rec_17.wav",
+          "segment": "A",
+          "ids": [
+            "en_datetime_01"
+          ],
+          "language": "en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.2368351063829788,
+          "audio_seconds": 15.04,
+          "error": null
+        },
+        {
+          "file": "rec_18.wav",
+          "segment": "A",
+          "ids": [
+            "en_datetime_02"
+          ],
+          "language": "en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.4186714090003016,
+          "audio_seconds": 13.205313,
+          "error": null
+        },
+        {
+          "file": "rec_19.wav",
+          "segment": "A",
+          "ids": [
+            "en_proper_01"
+          ],
+          "language": "en",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.9462516669171617,
+          "audio_seconds": 19.541313,
+          "error": null
+        },
+        {
+          "file": "rec_20.wav",
+          "segment": "A",
+          "ids": [
+            "en_acronym_01"
+          ],
+          "language": "en",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.9691787347560975,
+          "audio_seconds": 20.992,
+          "error": null
+        },
+        {
+          "file": "rec_21.wav",
+          "segment": "A",
+          "ids": [
+            "en_technical_01"
+          ],
+          "language": "en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.289672160257605,
+          "audio_seconds": 14.805313,
+          "error": null
+        },
+        {
+          "file": "rec_22.wav",
+          "segment": "A",
+          "ids": [
+            "en_punct_01"
+          ],
+          "language": "en",
+          "category": "punctuation",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.6059697887060163,
+          "audio_seconds": 11.541313,
+          "error": null
+        },
+        {
+          "file": "rec_23.wav",
+          "segment": "A",
+          "ids": [
+            "en_long_01"
+          ],
+          "language": "en",
+          "category": "long",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.9101570200828214,
+          "audio_seconds": 132.245313,
+          "error": null
+        },
+        {
+          "file": "rec_24.wav",
+          "segment": "A",
+          "ids": [
+            "zh_en_mixed"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 3.686552135691981,
+          "audio_seconds": 8.874688,
+          "error": null
+        },
+        {
+          "file": "rec_25.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_basic_02"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 4.426719056542357,
+          "audio_seconds": 7.274688,
+          "error": null
+        },
+        {
+          "file": "rec_26.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_basic_03"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 3.96600628980081,
+          "audio_seconds": 8.170688,
+          "error": null
+        },
+        {
+          "file": "rec_27.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_numeric_01"
+          ],
+          "language": "zh-en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.967205668604651,
+          "audio_seconds": 11.008,
+          "error": null
+        },
+        {
+          "file": "rec_28.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_numeric_02"
+          ],
+          "language": "zh-en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.373839880906524,
+          "audio_seconds": 14.122688,
+          "error": null
+        },
+        {
+          "file": "rec_29.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_datetime_01"
+          ],
+          "language": "zh-en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 4.604119318181818,
+          "audio_seconds": 7.04,
+          "error": null
+        },
+        {
+          "file": "rec_30.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_proper_01"
+          ],
+          "language": "zh-en",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 3.8476269531986094,
+          "audio_seconds": 8.490688,
+          "error": null
+        },
+        {
+          "file": "rec_31.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_acronym_01"
+          ],
+          "language": "zh-en",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 3.1105575917161867,
+          "audio_seconds": 10.538625,
+          "error": null
+        },
+        {
+          "file": "rec_32.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_technical_01"
+          ],
+          "language": "zh-en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.640388257575758,
+          "audio_seconds": 12.672,
+          "error": null
+        },
+        {
+          "file": "rec_33.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_technical_02"
+          ],
+          "language": "zh-en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 3.066143936015568,
+          "audio_seconds": 11.050688,
+          "error": null
+        },
+        {
+          "file": "rec_34.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_punct_01"
+          ],
+          "language": "zh-en",
+          "category": "punctuation",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 4.20002247443533,
+          "audio_seconds": 7.786625,
+          "error": null
+        },
+        {
+          "file": "rec_35.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_long_01"
+          ],
+          "language": "zh-en",
+          "category": "long",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.30493450767841,
+          "audio_seconds": 70.848,
+          "error": null
+        },
+        {
+          "file": "rec_36.wav",
+          "segment": "B",
+          "ids": [
+            "zh_basic_02"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 3.3770785238716585,
+          "audio_seconds": 5.738688,
+          "error": null
+        },
+        {
+          "file": "rec_37.wav",
+          "segment": "B",
+          "ids": [
+            "zh_numeric_01"
+          ],
+          "language": "zh",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.7820645644813229,
+          "audio_seconds": 11.093313,
+          "error": null
+        },
+        {
+          "file": "rec_38.wav",
+          "segment": "B",
+          "ids": [
+            "zh_datetime_01"
+          ],
+          "language": "zh",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.9028624516547148,
+          "audio_seconds": 10.517313,
+          "error": null
+        },
+        {
+          "file": "rec_39.wav",
+          "segment": "B",
+          "ids": [
+            "zh_technical_01"
+          ],
+          "language": "zh",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.3669023722627736,
+          "audio_seconds": 8.768,
+          "error": null
+        },
+        {
+          "file": "rec_40.wav",
+          "segment": "B",
+          "ids": [
+            "en_basic_02"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.1293019487273,
+          "audio_seconds": 8.533313,
+          "error": null
+        },
+        {
+          "file": "rec_41.wav",
+          "segment": "B",
+          "ids": [
+            "en_numeric_01"
+          ],
+          "language": "en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.51709326722039,
+          "audio_seconds": 12.053313,
+          "error": null
+        },
+        {
+          "file": "rec_42.wav",
+          "segment": "B",
+          "ids": [
+            "en_datetime_01"
+          ],
+          "language": "en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.56228454299823,
+          "audio_seconds": 12.074625,
+          "error": null
+        },
+        {
+          "file": "rec_43.wav",
+          "segment": "B",
+          "ids": [
+            "en_technical_01"
+          ],
+          "language": "en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.1719367588932805,
+          "audio_seconds": 16.192,
+          "error": null
+        },
+        {
+          "file": "rec_44.wav",
+          "segment": "B",
+          "ids": [
+            "zh_en_mixed"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 3.743888770660424,
+          "audio_seconds": 8.810625,
+          "error": null
+        },
+        {
+          "file": "rec_45.wav",
+          "segment": "B",
+          "ids": [
+            "mixed_numeric_01"
+          ],
+          "language": "zh-en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 3.679972627737226,
+          "audio_seconds": 8.768,
+          "error": null
+        },
+        {
+          "file": "rec_46.wav",
+          "segment": "B",
+          "ids": [
+            "mixed_datetime_01"
+          ],
+          "language": "zh-en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 5.465779186176126,
+          "audio_seconds": 5.909313,
+          "error": null
+        },
+        {
+          "file": "rec_47.wav",
+          "segment": "B",
+          "ids": [
+            "mixed_technical_01"
+          ],
+          "language": "zh-en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 3.8665726090899932,
+          "audio_seconds": 8.682625,
+          "error": null
+        },
+        {
+          "file": "rec_48.wav",
+          "segment": "C",
+          "ids": [
+            "zh_short"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 3.166857246981525,
+          "audio_seconds": 6.058688,
+          "error": null
+        },
+        {
+          "file": "rec_49.wav",
+          "segment": "C",
+          "ids": [
+            "zh_proper_01"
+          ],
+          "language": "zh",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.6333421610169494,
+          "audio_seconds": 7.552,
+          "error": null
+        },
+        {
+          "file": "rec_50.wav",
+          "segment": "C",
+          "ids": [
+            "zh_acronym_01"
+          ],
+          "language": "zh",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.0559076962409875,
+          "audio_seconds": 10.005313,
+          "error": null
+        },
+        {
+          "file": "rec_51.wav",
+          "segment": "C",
+          "ids": [
+            "en_short"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.374677954818574,
+          "audio_seconds": 7.402688,
+          "error": null
+        },
+        {
+          "file": "rec_52.wav",
+          "segment": "C",
+          "ids": [
+            "en_proper_01"
+          ],
+          "language": "en",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.6202324849800498,
+          "audio_seconds": 11.669313,
+          "error": null
+        },
+        {
+          "file": "rec_53.wav",
+          "segment": "C",
+          "ids": [
+            "en_acronym_01"
+          ],
+          "language": "en",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.3021727467811157,
+          "audio_seconds": 14.912,
+          "error": null
+        },
+        {
+          "file": "rec_54.wav",
+          "segment": "C",
+          "ids": [
+            "mixed_basic_02"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 4.717196696169595,
+          "audio_seconds": 6.805313,
+          "error": null
+        },
+        {
+          "file": "rec_55.wav",
+          "segment": "C",
+          "ids": [
+            "mixed_proper_01"
+          ],
+          "language": "zh-en",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 4.636814711371667,
+          "audio_seconds": 7.061313,
+          "error": null
+        },
+        {
+          "file": "rec_56.wav",
+          "segment": "C",
+          "ids": [
+            "mixed_acronym_01"
+          ],
+          "language": "zh-en",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 3.586961206896552,
+          "audio_seconds": 9.28,
+          "error": null
+        }
+      ]
+    },
     "large-v2-q5_0": {
       "model_path": "models/stt/ggml-large-v2-q5_0.bin",
       "timed_count": 56,
@@ -3499,8 +4372,8 @@
         }
       ]
     },
-    "large-v2": {
-      "model_path": "models/stt/ggml-large-v2.bin",
+    "large-v3": {
+      "model_path": "models/stt/ggml-large-v3.bin",
       "timed_count": 56,
       "scored_count": 0,
       "failed_count": 0,
@@ -3527,7 +4400,7 @@
           "count": 9
         }
       },
-      "mean_rtf": 2.393585347236896,
+      "mean_rtf": 2.53873768263935,
       "entries": [
         {
           "file": "rec_01.wav",
@@ -3540,7 +4413,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.831112172597723,
+          "rtf": 2.936836239152934,
           "audio_seconds": 7.850625,
           "error": null
         },
@@ -3555,7 +4428,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.40825,
+          "rtf": 2.5325,
           "audio_seconds": 8,
           "error": null
         },
@@ -3571,7 +4444,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.1834343107280958,
+          "rtf": 1.2326506721794306,
           "audio_seconds": 20.074625,
           "error": null
         },
@@ -3586,7 +4459,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.4793113425925926,
+          "rtf": 1.5344328703703705,
           "audio_seconds": 13.824,
           "error": null
         },
@@ -3601,7 +4474,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.6127451071511727,
+          "rtf": 1.6855631147454204,
           "audio_seconds": 12.373313,
           "error": null
         },
@@ -3616,7 +4489,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.7163690457982477,
+          "rtf": 1.79581541661134,
           "audio_seconds": 11.605313,
           "error": null
         },
@@ -3631,7 +4504,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.046875,
+          "rtf": 2.1584087171052633,
           "audio_seconds": 9.728,
           "error": null
         },
@@ -3646,7 +4519,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.6601859178701777,
+          "rtf": 1.7330847445627537,
           "audio_seconds": 12.373313,
           "error": null
         },
@@ -3661,7 +4534,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.544894366197183,
+          "rtf": 1.622212441314554,
           "audio_seconds": 13.632,
           "error": null
         },
@@ -3676,7 +4549,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.8434693113772453,
+          "rtf": 1.9165419161676647,
           "audio_seconds": 10.688,
           "error": null
         },
@@ -3691,7 +4564,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.1295944623806085,
+          "rtf": 1.1872176614605847,
           "audio_seconds": 80.106625,
           "error": null
         },
@@ -3706,7 +4579,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.7533531574258794,
+          "rtf": 1.85563543744746,
           "audio_seconds": 9.962625,
           "error": null
         },
@@ -3721,7 +4594,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.084078581656381,
+          "rtf": 2.1829116399702575,
           "audio_seconds": 8.853313,
           "error": null
         },
@@ -3736,7 +4609,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.3548893540669857,
+          "rtf": 1.4107356459330145,
           "audio_seconds": 13.376,
           "error": null
         },
@@ -3751,7 +4624,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 0.9396432487458886,
+          "rtf": 0.9895276856839776,
           "audio_seconds": 19.605313,
           "error": null
         },
@@ -3766,7 +4639,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.221821581196581,
+          "rtf": 1.276241987179487,
           "audio_seconds": 14.976,
           "error": null
         },
@@ -3781,7 +4654,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.2368351063829788,
+          "rtf": 1.3177526595744682,
           "audio_seconds": 15.04,
           "error": null
         },
@@ -3796,7 +4669,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.4186714090003016,
+          "rtf": 1.4847054363648935,
           "audio_seconds": 13.205313,
           "error": null
         },
@@ -3811,7 +4684,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 0.9462516669171617,
+          "rtf": 0.9866276641697517,
           "audio_seconds": 19.541313,
           "error": null
         },
@@ -3826,7 +4699,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 0.9691787347560975,
+          "rtf": 0.9670826981707316,
           "audio_seconds": 20.992,
           "error": null
         },
@@ -3841,7 +4714,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.289672160257605,
+          "rtf": 1.333913035138129,
           "audio_seconds": 14.805313,
           "error": null
         },
@@ -3856,7 +4729,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.6059697887060163,
+          "rtf": 1.6997199538735324,
           "audio_seconds": 11.541313,
           "error": null
         },
@@ -3871,7 +4744,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 0.9101570200828214,
+          "rtf": 1.7866568927096869,
           "audio_seconds": 132.245313,
           "error": null
         },
@@ -3886,7 +4759,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.686552135691981,
+          "rtf": 3.939969495265636,
           "audio_seconds": 8.874688,
           "error": null
         },
@@ -3901,7 +4774,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 4.426719056542357,
+          "rtf": 4.689273271925889,
           "audio_seconds": 7.274688,
           "error": null
         },
@@ -3916,7 +4789,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.96600628980081,
+          "rtf": 4.190956746849225,
           "audio_seconds": 8.170688,
           "error": null
         },
@@ -3931,7 +4804,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.967205668604651,
+          "rtf": 3.0921148255813953,
           "audio_seconds": 11.008,
           "error": null
         },
@@ -3946,7 +4819,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.373839880906524,
+          "rtf": 2.470988525697091,
           "audio_seconds": 14.122688,
           "error": null
         },
@@ -3961,7 +4834,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 4.604119318181818,
+          "rtf": 4.923579545454546,
           "audio_seconds": 7.04,
           "error": null
         },
@@ -3976,7 +4849,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.8476269531986094,
+          "rtf": 4.097430031582835,
           "audio_seconds": 8.490688,
           "error": null
         },
@@ -3991,7 +4864,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.1105575917161867,
+          "rtf": 3.284204533323844,
           "audio_seconds": 10.538625,
           "error": null
         },
@@ -4006,7 +4879,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.640388257575758,
+          "rtf": 2.7889046717171717,
           "audio_seconds": 12.672,
           "error": null
         },
@@ -4021,7 +4894,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.066143936015568,
+          "rtf": 3.2552724319065023,
           "audio_seconds": 11.050688,
           "error": null
         },
@@ -4036,7 +4909,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 4.20002247443533,
+          "rtf": 4.456616313229415,
           "audio_seconds": 7.786625,
           "error": null
         },
@@ -4051,7 +4924,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.30493450767841,
+          "rtf": 1.4054313459801264,
           "audio_seconds": 70.848,
           "error": null
         },
@@ -4066,7 +4939,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.3770785238716585,
+          "rtf": 3.5605699421191743,
           "audio_seconds": 5.738688,
           "error": null
         },
@@ -4081,7 +4954,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.7820645644813229,
+          "rtf": 1.8963676586065856,
           "audio_seconds": 11.093313,
           "error": null
         },
@@ -4096,7 +4969,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.9028624516547148,
+          "rtf": 2.0040289758420236,
           "audio_seconds": 10.517313,
           "error": null
         },
@@ -4111,7 +4984,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.3669023722627736,
+          "rtf": 2.5153968978102186,
           "audio_seconds": 8.768,
           "error": null
         },
@@ -4126,7 +4999,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.1293019487273,
+          "rtf": 2.283403878423304,
           "audio_seconds": 8.533313,
           "error": null
         },
@@ -4141,7 +5014,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.51709326722039,
+          "rtf": 1.6310868223533233,
           "audio_seconds": 12.053313,
           "error": null
         },
@@ -4156,7 +5029,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.56228454299823,
+          "rtf": 1.6521424060788639,
           "audio_seconds": 12.074625,
           "error": null
         },
@@ -4171,7 +5044,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.1719367588932805,
+          "rtf": 1.2214056324110671,
           "audio_seconds": 16.192,
           "error": null
         },
@@ -4186,7 +5059,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.743888770660424,
+          "rtf": 3.934567638504646,
           "audio_seconds": 8.810625,
           "error": null
         },
@@ -4201,7 +5074,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.679972627737226,
+          "rtf": 3.894616788321168,
           "audio_seconds": 8.768,
           "error": null
         },
@@ -4216,7 +5089,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 5.465779186176126,
+          "rtf": 5.798982047490123,
           "audio_seconds": 5.909313,
           "error": null
         },
@@ -4231,7 +5104,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.8665726090899932,
+          "rtf": 4.027929341644952,
           "audio_seconds": 8.682625,
           "error": null
         },
@@ -4246,7 +5119,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.166857246981525,
+          "rtf": 3.285529804472519,
           "audio_seconds": 6.058688,
           "error": null
         },
@@ -4261,7 +5134,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.6333421610169494,
+          "rtf": 2.788930084745763,
           "audio_seconds": 7.552,
           "error": null
         },
@@ -4276,7 +5149,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.0559076962409875,
+          "rtf": 2.1300682947150182,
           "audio_seconds": 10.005313,
           "error": null
         },
@@ -4291,7 +5164,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.374677954818574,
+          "rtf": 2.481531033051778,
           "audio_seconds": 7.402688,
           "error": null
         },
@@ -4306,7 +5179,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.6202324849800498,
+          "rtf": 1.6792762350277175,
           "audio_seconds": 11.669313,
           "error": null
         },
@@ -4321,7 +5194,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.3021727467811157,
+          "rtf": 1.371177575107296,
           "audio_seconds": 14.912,
           "error": null
         },
@@ -4336,7 +5209,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 4.717196696169595,
+          "rtf": 5.045469620574395,
           "audio_seconds": 6.805313,
           "error": null
         },
@@ -4351,7 +5224,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 4.636814711371667,
+          "rtf": 4.963524489000841,
           "audio_seconds": 7.061313,
           "error": null
         },
@@ -4366,7 +5239,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.586961206896552,
+          "rtf": 3.7817887931034484,
           "audio_seconds": 9.28,
           "error": null
         }
@@ -5245,879 +6118,6 @@
         }
       ]
     },
-    "large-v3-turbo-q5_0": {
-      "model_path": "models/stt/ggml-large-v3-turbo-q5_0.bin",
-      "timed_count": 56,
-      "scored_count": 0,
-      "failed_count": 0,
-      "mean_cer_strict_AC": null,
-      "mean_cer_by_language_AC": {
-        "zh": null,
-        "en": null,
-        "zh-en": null
-      },
-      "by_segment": {
-        "A": {
-          "mean_cer": null,
-          "mean_content_recall": null,
-          "count": 35
-        },
-        "B": {
-          "mean_cer": null,
-          "mean_content_recall": null,
-          "count": 12
-        },
-        "C": {
-          "mean_cer": null,
-          "mean_content_recall": null,
-          "count": 9
-        }
-      },
-      "mean_rtf": 1.7063229074063224,
-      "entries": [
-        {
-          "file": "rec_01.wav",
-          "segment": "A",
-          "ids": [
-            "zh_short"
-          ],
-          "language": "zh",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.7253403391449724,
-          "audio_seconds": 7.850625,
-          "error": null
-        },
-        {
-          "file": "rec_02.wav",
-          "segment": "A",
-          "ids": [
-            "zh_basic_02"
-          ],
-          "language": "zh",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.624,
-          "audio_seconds": 8,
-          "error": null
-        },
-        {
-          "file": "rec_03.wav",
-          "segment": "A",
-          "ids": [
-            "zh_basic_03",
-            "zh_numeric_01"
-          ],
-          "language": "zh",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.6796640036862457,
-          "audio_seconds": 20.074625,
-          "error": null
-        },
-        {
-          "file": "rec_04.wav",
-          "segment": "A",
-          "ids": [
-            "zh_numeric_02"
-          ],
-          "language": "zh",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.9452401620370371,
-          "audio_seconds": 13.824,
-          "error": null
-        },
-        {
-          "file": "rec_05.wav",
-          "segment": "A",
-          "ids": [
-            "zh_datetime_01"
-          ],
-          "language": "zh",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.0520222029459694,
-          "audio_seconds": 12.373313,
-          "error": null
-        },
-        {
-          "file": "rec_06.wav",
-          "segment": "A",
-          "ids": [
-            "zh_datetime_02"
-          ],
-          "language": "zh",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.1287933380168202,
-          "audio_seconds": 11.605313,
-          "error": null
-        },
-        {
-          "file": "rec_07.wav",
-          "segment": "A",
-          "ids": [
-            "zh_proper_01"
-          ],
-          "language": "zh",
-          "category": "proper-noun",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.3475534539473684,
-          "audio_seconds": 9.728,
-          "error": null
-        },
-        {
-          "file": "rec_08.wav",
-          "segment": "A",
-          "ids": [
-            "zh_acronym_01"
-          ],
-          "language": "zh",
-          "category": "acronym",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.0687517563000306,
-          "audio_seconds": 12.373313,
-          "error": null
-        },
-        {
-          "file": "rec_09.wav",
-          "segment": "A",
-          "ids": [
-            "zh_technical_01"
-          ],
-          "language": "zh",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.9702904929577465,
-          "audio_seconds": 13.632,
-          "error": null
-        },
-        {
-          "file": "rec_10.wav",
-          "segment": "A",
-          "ids": [
-            "zh_punct_01"
-          ],
-          "language": "zh",
-          "category": "punctuation",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.2167851796407185,
-          "audio_seconds": 10.688,
-          "error": null
-        },
-        {
-          "file": "rec_11.wav",
-          "segment": "A",
-          "ids": [
-            "zh_long_01"
-          ],
-          "language": "zh",
-          "category": "long",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.5468836066929545,
-          "audio_seconds": 80.106625,
-          "error": null
-        },
-        {
-          "file": "rec_12.wav",
-          "segment": "A",
-          "ids": [
-            "en_short"
-          ],
-          "language": "en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.27084980113173,
-          "audio_seconds": 9.962625,
-          "error": null
-        },
-        {
-          "file": "rec_13.wav",
-          "segment": "A",
-          "ids": [
-            "en_basic_02"
-          ],
-          "language": "en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.4495138712479725,
-          "audio_seconds": 8.853313,
-          "error": null
-        },
-        {
-          "file": "rec_14.wav",
-          "segment": "A",
-          "ids": [
-            "en_basic_03"
-          ],
-          "language": "en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.9567882775119617,
-          "audio_seconds": 13.376,
-          "error": null
-        },
-        {
-          "file": "rec_15.wav",
-          "segment": "A",
-          "ids": [
-            "en_numeric_01"
-          ],
-          "language": "en",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.6526292133157987,
-          "audio_seconds": 19.605313,
-          "error": null
-        },
-        {
-          "file": "rec_16.wav",
-          "segment": "A",
-          "ids": [
-            "en_numeric_02"
-          ],
-          "language": "en",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.859508547008547,
-          "audio_seconds": 14.976,
-          "error": null
-        },
-        {
-          "file": "rec_17.wav",
-          "segment": "A",
-          "ids": [
-            "en_datetime_01"
-          ],
-          "language": "en",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.8544547872340427,
-          "audio_seconds": 15.04,
-          "error": null
-        },
-        {
-          "file": "rec_18.wav",
-          "segment": "A",
-          "ids": [
-            "en_datetime_02"
-          ],
-          "language": "en",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.9794542545110441,
-          "audio_seconds": 13.205313,
-          "error": null
-        },
-        {
-          "file": "rec_19.wav",
-          "segment": "A",
-          "ids": [
-            "en_proper_01"
-          ],
-          "language": "en",
-          "category": "proper-noun",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.6572741555288532,
-          "audio_seconds": 19.541313,
-          "error": null
-        },
-        {
-          "file": "rec_20.wav",
-          "segment": "A",
-          "ids": [
-            "en_acronym_01"
-          ],
-          "language": "en",
-          "category": "acronym",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.6174733231707317,
-          "audio_seconds": 20.992,
-          "error": null
-        },
-        {
-          "file": "rec_21.wav",
-          "segment": "A",
-          "ids": [
-            "en_technical_01"
-          ],
-          "language": "en",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.8691474472711249,
-          "audio_seconds": 14.805313,
-          "error": null
-        },
-        {
-          "file": "rec_22.wav",
-          "segment": "A",
-          "ids": [
-            "en_punct_01"
-          ],
-          "language": "en",
-          "category": "punctuation",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.1165107470874414,
-          "audio_seconds": 11.541313,
-          "error": null
-        },
-        {
-          "file": "rec_23.wav",
-          "segment": "A",
-          "ids": [
-            "en_long_01"
-          ],
-          "language": "en",
-          "category": "long",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.5888677506476164,
-          "audio_seconds": 132.245313,
-          "error": null
-        },
-        {
-          "file": "rec_24.wav",
-          "segment": "A",
-          "ids": [
-            "zh_en_mixed"
-          ],
-          "language": "zh-en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 2.8373955230876846,
-          "audio_seconds": 8.874688,
-          "error": null
-        },
-        {
-          "file": "rec_25.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_basic_02"
-          ],
-          "language": "zh-en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 3.399321043046794,
-          "audio_seconds": 7.274688,
-          "error": null
-        },
-        {
-          "file": "rec_26.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_basic_03"
-          ],
-          "language": "zh-en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 3.037810279868721,
-          "audio_seconds": 8.170688,
-          "error": null
-        },
-        {
-          "file": "rec_27.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_numeric_01"
-          ],
-          "language": "zh-en",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 2.2703488372093026,
-          "audio_seconds": 11.008,
-          "error": null
-        },
-        {
-          "file": "rec_28.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_numeric_02"
-          ],
-          "language": "zh-en",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.7594384298513144,
-          "audio_seconds": 14.122688,
-          "error": null
-        },
-        {
-          "file": "rec_29.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_datetime_01"
-          ],
-          "language": "zh-en",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 3.513778409090909,
-          "audio_seconds": 7.04,
-          "error": null
-        },
-        {
-          "file": "rec_30.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_proper_01"
-          ],
-          "language": "zh-en",
-          "category": "proper-noun",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 2.922378021663262,
-          "audio_seconds": 8.490688,
-          "error": null
-        },
-        {
-          "file": "rec_31.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_acronym_01"
-          ],
-          "language": "zh-en",
-          "category": "acronym",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 2.3612188497076234,
-          "audio_seconds": 10.538625,
-          "error": null
-        },
-        {
-          "file": "rec_32.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_technical_01"
-          ],
-          "language": "zh-en",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.9757733585858583,
-          "audio_seconds": 12.672,
-          "error": null
-        },
-        {
-          "file": "rec_33.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_technical_02"
-          ],
-          "language": "zh-en",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 2.269813427001106,
-          "audio_seconds": 11.050688,
-          "error": null
-        },
-        {
-          "file": "rec_34.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_punct_01"
-          ],
-          "language": "zh-en",
-          "category": "punctuation",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 3.190213988730676,
-          "audio_seconds": 7.786625,
-          "error": null
-        },
-        {
-          "file": "rec_35.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_long_01"
-          ],
-          "language": "zh-en",
-          "category": "long",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.7614752710027101,
-          "audio_seconds": 70.848,
-          "error": null
-        },
-        {
-          "file": "rec_36.wav",
-          "segment": "B",
-          "ids": [
-            "zh_basic_02"
-          ],
-          "language": "zh",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 2.2621895457637704,
-          "audio_seconds": 5.738688,
-          "error": null
-        },
-        {
-          "file": "rec_37.wav",
-          "segment": "B",
-          "ids": [
-            "zh_numeric_01"
-          ],
-          "language": "zh",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.1806211543837264,
-          "audio_seconds": 11.093313,
-          "error": null
-        },
-        {
-          "file": "rec_38.wav",
-          "segment": "B",
-          "ids": [
-            "zh_datetime_01"
-          ],
-          "language": "zh",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.2531717939743734,
-          "audio_seconds": 10.517313,
-          "error": null
-        },
-        {
-          "file": "rec_39.wav",
-          "segment": "B",
-          "ids": [
-            "zh_technical_01"
-          ],
-          "language": "zh",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.5019388686131385,
-          "audio_seconds": 8.768,
-          "error": null
-        },
-        {
-          "file": "rec_40.wav",
-          "segment": "B",
-          "ids": [
-            "en_basic_02"
-          ],
-          "language": "en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.494964499720097,
-          "audio_seconds": 8.533313,
-          "error": null
-        },
-        {
-          "file": "rec_41.wav",
-          "segment": "B",
-          "ids": [
-            "en_numeric_01"
-          ],
-          "language": "en",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.056473021151944,
-          "audio_seconds": 12.053313,
-          "error": null
-        },
-        {
-          "file": "rec_42.wav",
-          "segment": "B",
-          "ids": [
-            "en_datetime_01"
-          ],
-          "language": "en",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.0681905235152231,
-          "audio_seconds": 12.074625,
-          "error": null
-        },
-        {
-          "file": "rec_43.wav",
-          "segment": "B",
-          "ids": [
-            "en_technical_01"
-          ],
-          "language": "en",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.7988512845849802,
-          "audio_seconds": 16.192,
-          "error": null
-        },
-        {
-          "file": "rec_44.wav",
-          "segment": "B",
-          "ids": [
-            "zh_en_mixed"
-          ],
-          "language": "zh-en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 2.818869262963751,
-          "audio_seconds": 8.810625,
-          "error": null
-        },
-        {
-          "file": "rec_45.wav",
-          "segment": "B",
-          "ids": [
-            "mixed_numeric_01"
-          ],
-          "language": "zh-en",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 2.8264142335766422,
-          "audio_seconds": 8.768,
-          "error": null
-        },
-        {
-          "file": "rec_46.wav",
-          "segment": "B",
-          "ids": [
-            "mixed_datetime_01"
-          ],
-          "language": "zh-en",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 4.206411134424593,
-          "audio_seconds": 5.909313,
-          "error": null
-        },
-        {
-          "file": "rec_47.wav",
-          "segment": "B",
-          "ids": [
-            "mixed_technical_01"
-          ],
-          "language": "zh-en",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 2.874591497387023,
-          "audio_seconds": 8.682625,
-          "error": null
-        },
-        {
-          "file": "rec_48.wav",
-          "segment": "C",
-          "ids": [
-            "zh_short"
-          ],
-          "language": "zh",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 2.146504325688994,
-          "audio_seconds": 6.058688,
-          "error": null
-        },
-        {
-          "file": "rec_49.wav",
-          "segment": "C",
-          "ids": [
-            "zh_proper_01"
-          ],
-          "language": "zh",
-          "category": "proper-noun",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.7155720338983051,
-          "audio_seconds": 7.552,
-          "error": null
-        },
-        {
-          "file": "rec_50.wav",
-          "segment": "C",
-          "ids": [
-            "zh_acronym_01"
-          ],
-          "language": "zh",
-          "category": "acronym",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.312902454925698,
-          "audio_seconds": 10.005313,
-          "error": null
-        },
-        {
-          "file": "rec_51.wav",
-          "segment": "C",
-          "ids": [
-            "en_short"
-          ],
-          "language": "en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.712756231250054,
-          "audio_seconds": 7.402688,
-          "error": null
-        },
-        {
-          "file": "rec_52.wav",
-          "segment": "C",
-          "ids": [
-            "en_proper_01"
-          ],
-          "language": "en",
-          "category": "proper-noun",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.1040067225894101,
-          "audio_seconds": 11.669313,
-          "error": null
-        },
-        {
-          "file": "rec_53.wav",
-          "segment": "C",
-          "ids": [
-            "en_acronym_01"
-          ],
-          "language": "en",
-          "category": "acronym",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.8938438841201717,
-          "audio_seconds": 14.912,
-          "error": null
-        },
-        {
-          "file": "rec_54.wav",
-          "segment": "C",
-          "ids": [
-            "mixed_basic_02"
-          ],
-          "language": "zh-en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 3.651264827936643,
-          "audio_seconds": 6.805313,
-          "error": null
-        },
-        {
-          "file": "rec_55.wav",
-          "segment": "C",
-          "ids": [
-            "mixed_proper_01"
-          ],
-          "language": "zh-en",
-          "category": "proper-noun",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 3.5279557781959245,
-          "audio_seconds": 7.061313,
-          "error": null
-        },
-        {
-          "file": "rec_56.wav",
-          "segment": "C",
-          "ids": [
-            "mixed_acronym_01"
-          ],
-          "language": "zh-en",
-          "category": "acronym",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 2.6698275862068965,
-          "audio_seconds": 9.28,
-          "error": null
-        }
-      ]
-    },
     "large-v3-turbo": {
       "model_path": "models/stt/ggml-large-v3-turbo.bin",
       "timed_count": 56,
@@ -6991,8 +6991,8 @@
         }
       ]
     },
-    "large-v3": {
-      "model_path": "models/stt/ggml-large-v3.bin",
+    "large-v3-turbo-q5_0": {
+      "model_path": "models/stt/ggml-large-v3-turbo-q5_0.bin",
       "timed_count": 56,
       "scored_count": 0,
       "failed_count": 0,
@@ -7019,7 +7019,7 @@
           "count": 9
         }
       },
-      "mean_rtf": 2.53873768263935,
+      "mean_rtf": 1.7063229074063224,
       "entries": [
         {
           "file": "rec_01.wav",
@@ -7032,7 +7032,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.936836239152934,
+          "rtf": 1.7253403391449724,
           "audio_seconds": 7.850625,
           "error": null
         },
@@ -7047,7 +7047,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.5325,
+          "rtf": 1.624,
           "audio_seconds": 8,
           "error": null
         },
@@ -7063,7 +7063,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.2326506721794306,
+          "rtf": 0.6796640036862457,
           "audio_seconds": 20.074625,
           "error": null
         },
@@ -7078,7 +7078,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.5344328703703705,
+          "rtf": 0.9452401620370371,
           "audio_seconds": 13.824,
           "error": null
         },
@@ -7093,7 +7093,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.6855631147454204,
+          "rtf": 1.0520222029459694,
           "audio_seconds": 12.373313,
           "error": null
         },
@@ -7108,7 +7108,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.79581541661134,
+          "rtf": 1.1287933380168202,
           "audio_seconds": 11.605313,
           "error": null
         },
@@ -7123,7 +7123,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.1584087171052633,
+          "rtf": 1.3475534539473684,
           "audio_seconds": 9.728,
           "error": null
         },
@@ -7138,7 +7138,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.7330847445627537,
+          "rtf": 1.0687517563000306,
           "audio_seconds": 12.373313,
           "error": null
         },
@@ -7153,7 +7153,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.622212441314554,
+          "rtf": 0.9702904929577465,
           "audio_seconds": 13.632,
           "error": null
         },
@@ -7168,7 +7168,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.9165419161676647,
+          "rtf": 1.2167851796407185,
           "audio_seconds": 10.688,
           "error": null
         },
@@ -7183,7 +7183,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.1872176614605847,
+          "rtf": 0.5468836066929545,
           "audio_seconds": 80.106625,
           "error": null
         },
@@ -7198,7 +7198,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.85563543744746,
+          "rtf": 1.27084980113173,
           "audio_seconds": 9.962625,
           "error": null
         },
@@ -7213,7 +7213,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.1829116399702575,
+          "rtf": 1.4495138712479725,
           "audio_seconds": 8.853313,
           "error": null
         },
@@ -7228,7 +7228,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.4107356459330145,
+          "rtf": 0.9567882775119617,
           "audio_seconds": 13.376,
           "error": null
         },
@@ -7243,7 +7243,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 0.9895276856839776,
+          "rtf": 0.6526292133157987,
           "audio_seconds": 19.605313,
           "error": null
         },
@@ -7258,7 +7258,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.276241987179487,
+          "rtf": 0.859508547008547,
           "audio_seconds": 14.976,
           "error": null
         },
@@ -7273,7 +7273,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.3177526595744682,
+          "rtf": 0.8544547872340427,
           "audio_seconds": 15.04,
           "error": null
         },
@@ -7288,7 +7288,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.4847054363648935,
+          "rtf": 0.9794542545110441,
           "audio_seconds": 13.205313,
           "error": null
         },
@@ -7303,7 +7303,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 0.9866276641697517,
+          "rtf": 0.6572741555288532,
           "audio_seconds": 19.541313,
           "error": null
         },
@@ -7318,7 +7318,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 0.9670826981707316,
+          "rtf": 0.6174733231707317,
           "audio_seconds": 20.992,
           "error": null
         },
@@ -7333,7 +7333,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.333913035138129,
+          "rtf": 0.8691474472711249,
           "audio_seconds": 14.805313,
           "error": null
         },
@@ -7348,7 +7348,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.6997199538735324,
+          "rtf": 1.1165107470874414,
           "audio_seconds": 11.541313,
           "error": null
         },
@@ -7363,7 +7363,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.7866568927096869,
+          "rtf": 0.5888677506476164,
           "audio_seconds": 132.245313,
           "error": null
         },
@@ -7378,7 +7378,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.939969495265636,
+          "rtf": 2.8373955230876846,
           "audio_seconds": 8.874688,
           "error": null
         },
@@ -7393,7 +7393,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 4.689273271925889,
+          "rtf": 3.399321043046794,
           "audio_seconds": 7.274688,
           "error": null
         },
@@ -7408,7 +7408,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 4.190956746849225,
+          "rtf": 3.037810279868721,
           "audio_seconds": 8.170688,
           "error": null
         },
@@ -7423,7 +7423,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.0921148255813953,
+          "rtf": 2.2703488372093026,
           "audio_seconds": 11.008,
           "error": null
         },
@@ -7438,7 +7438,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.470988525697091,
+          "rtf": 1.7594384298513144,
           "audio_seconds": 14.122688,
           "error": null
         },
@@ -7453,7 +7453,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 4.923579545454546,
+          "rtf": 3.513778409090909,
           "audio_seconds": 7.04,
           "error": null
         },
@@ -7468,7 +7468,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 4.097430031582835,
+          "rtf": 2.922378021663262,
           "audio_seconds": 8.490688,
           "error": null
         },
@@ -7483,7 +7483,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.284204533323844,
+          "rtf": 2.3612188497076234,
           "audio_seconds": 10.538625,
           "error": null
         },
@@ -7498,7 +7498,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.7889046717171717,
+          "rtf": 1.9757733585858583,
           "audio_seconds": 12.672,
           "error": null
         },
@@ -7513,7 +7513,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.2552724319065023,
+          "rtf": 2.269813427001106,
           "audio_seconds": 11.050688,
           "error": null
         },
@@ -7528,7 +7528,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 4.456616313229415,
+          "rtf": 3.190213988730676,
           "audio_seconds": 7.786625,
           "error": null
         },
@@ -7543,7 +7543,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.4054313459801264,
+          "rtf": 0.7614752710027101,
           "audio_seconds": 70.848,
           "error": null
         },
@@ -7558,7 +7558,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.5605699421191743,
+          "rtf": 2.2621895457637704,
           "audio_seconds": 5.738688,
           "error": null
         },
@@ -7573,7 +7573,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.8963676586065856,
+          "rtf": 1.1806211543837264,
           "audio_seconds": 11.093313,
           "error": null
         },
@@ -7588,7 +7588,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.0040289758420236,
+          "rtf": 1.2531717939743734,
           "audio_seconds": 10.517313,
           "error": null
         },
@@ -7603,7 +7603,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.5153968978102186,
+          "rtf": 1.5019388686131385,
           "audio_seconds": 8.768,
           "error": null
         },
@@ -7618,7 +7618,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.283403878423304,
+          "rtf": 1.494964499720097,
           "audio_seconds": 8.533313,
           "error": null
         },
@@ -7633,7 +7633,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.6310868223533233,
+          "rtf": 1.056473021151944,
           "audio_seconds": 12.053313,
           "error": null
         },
@@ -7648,7 +7648,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.6521424060788639,
+          "rtf": 1.0681905235152231,
           "audio_seconds": 12.074625,
           "error": null
         },
@@ -7663,7 +7663,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.2214056324110671,
+          "rtf": 0.7988512845849802,
           "audio_seconds": 16.192,
           "error": null
         },
@@ -7678,7 +7678,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.934567638504646,
+          "rtf": 2.818869262963751,
           "audio_seconds": 8.810625,
           "error": null
         },
@@ -7693,7 +7693,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.894616788321168,
+          "rtf": 2.8264142335766422,
           "audio_seconds": 8.768,
           "error": null
         },
@@ -7708,7 +7708,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 5.798982047490123,
+          "rtf": 4.206411134424593,
           "audio_seconds": 5.909313,
           "error": null
         },
@@ -7723,7 +7723,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 4.027929341644952,
+          "rtf": 2.874591497387023,
           "audio_seconds": 8.682625,
           "error": null
         },
@@ -7738,7 +7738,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.285529804472519,
+          "rtf": 2.146504325688994,
           "audio_seconds": 6.058688,
           "error": null
         },
@@ -7753,7 +7753,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.788930084745763,
+          "rtf": 1.7155720338983051,
           "audio_seconds": 7.552,
           "error": null
         },
@@ -7768,7 +7768,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.1300682947150182,
+          "rtf": 1.312902454925698,
           "audio_seconds": 10.005313,
           "error": null
         },
@@ -7783,7 +7783,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 2.481531033051778,
+          "rtf": 1.712756231250054,
           "audio_seconds": 7.402688,
           "error": null
         },
@@ -7798,7 +7798,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.6792762350277175,
+          "rtf": 1.1040067225894101,
           "audio_seconds": 11.669313,
           "error": null
         },
@@ -7813,7 +7813,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 1.371177575107296,
+          "rtf": 0.8938438841201717,
           "audio_seconds": 14.912,
           "error": null
         },
@@ -7828,7 +7828,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 5.045469620574395,
+          "rtf": 3.651264827936643,
           "audio_seconds": 6.805313,
           "error": null
         },
@@ -7843,7 +7843,7 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 4.963524489000841,
+          "rtf": 3.5279557781959245,
           "audio_seconds": 7.061313,
           "error": null
         },
@@ -7858,7 +7858,880 @@
           "transcript": "",
           "cer": null,
           "content_recall": null,
-          "rtf": 3.7817887931034484,
+          "rtf": 2.6698275862068965,
+          "audio_seconds": 9.28,
+          "error": null
+        }
+      ]
+    },
+    "medium": {
+      "model_path": "models/stt/ggml-medium.bin",
+      "timed_count": 56,
+      "scored_count": 0,
+      "failed_count": 0,
+      "mean_cer_strict_AC": null,
+      "mean_cer_by_language_AC": {
+        "zh": null,
+        "en": null,
+        "zh-en": null
+      },
+      "by_segment": {
+        "A": {
+          "mean_cer": null,
+          "mean_content_recall": null,
+          "count": 35
+        },
+        "B": {
+          "mean_cer": null,
+          "mean_content_recall": null,
+          "count": 12
+        },
+        "C": {
+          "mean_cer": null,
+          "mean_content_recall": null,
+          "count": 9
+        }
+      },
+      "mean_rtf": 1.1738725151176372,
+      "entries": [
+        {
+          "file": "rec_01.wav",
+          "segment": "A",
+          "ids": [
+            "zh_short"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.2471618501711648,
+          "audio_seconds": 7.850625,
+          "error": null
+        },
+        {
+          "file": "rec_02.wav",
+          "segment": "A",
+          "ids": [
+            "zh_basic_02"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.101375,
+          "audio_seconds": 8,
+          "error": null
+        },
+        {
+          "file": "rec_03.wav",
+          "segment": "A",
+          "ids": [
+            "zh_basic_03",
+            "zh_numeric_01"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.5589643642160189,
+          "audio_seconds": 20.074625,
+          "error": null
+        },
+        {
+          "file": "rec_04.wav",
+          "segment": "A",
+          "ids": [
+            "zh_numeric_02"
+          ],
+          "language": "zh",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.7315538194444444,
+          "audio_seconds": 13.824,
+          "error": null
+        },
+        {
+          "file": "rec_05.wav",
+          "segment": "A",
+          "ids": [
+            "zh_datetime_01"
+          ],
+          "language": "zh",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.8139291392693291,
+          "audio_seconds": 12.373313,
+          "error": null
+        },
+        {
+          "file": "rec_06.wav",
+          "segment": "A",
+          "ids": [
+            "zh_datetime_02"
+          ],
+          "language": "zh",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.8574520997408687,
+          "audio_seconds": 11.605313,
+          "error": null
+        },
+        {
+          "file": "rec_07.wav",
+          "segment": "A",
+          "ids": [
+            "zh_proper_01"
+          ],
+          "language": "zh",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.021484375,
+          "audio_seconds": 9.728,
+          "error": null
+        },
+        {
+          "file": "rec_08.wav",
+          "segment": "A",
+          "ids": [
+            "zh_acronym_01"
+          ],
+          "language": "zh",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.8237890692654425,
+          "audio_seconds": 12.373313,
+          "error": null
+        },
+        {
+          "file": "rec_09.wav",
+          "segment": "A",
+          "ids": [
+            "zh_technical_01"
+          ],
+          "language": "zh",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.8023767605633804,
+          "audio_seconds": 13.632,
+          "error": null
+        },
+        {
+          "file": "rec_10.wav",
+          "segment": "A",
+          "ids": [
+            "zh_punct_01"
+          ],
+          "language": "zh",
+          "category": "punctuation",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.9705276946107784,
+          "audio_seconds": 10.688,
+          "error": null
+        },
+        {
+          "file": "rec_11.wav",
+          "segment": "A",
+          "ids": [
+            "zh_long_01"
+          ],
+          "language": "zh",
+          "category": "long",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.6147306792665401,
+          "audio_seconds": 80.106625,
+          "error": null
+        },
+        {
+          "file": "rec_12.wav",
+          "segment": "A",
+          "ids": [
+            "en_short"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.899361363094566,
+          "audio_seconds": 9.962625,
+          "error": null
+        },
+        {
+          "file": "rec_13.wav",
+          "segment": "A",
+          "ids": [
+            "en_basic_02"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.0242493403316928,
+          "audio_seconds": 8.853313,
+          "error": null
+        },
+        {
+          "file": "rec_14.wav",
+          "segment": "A",
+          "ids": [
+            "en_basic_03"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.6530352870813397,
+          "audio_seconds": 13.376,
+          "error": null
+        },
+        {
+          "file": "rec_15.wav",
+          "segment": "A",
+          "ids": [
+            "en_numeric_01"
+          ],
+          "language": "en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.4799209275567292,
+          "audio_seconds": 19.605313,
+          "error": null
+        },
+        {
+          "file": "rec_16.wav",
+          "segment": "A",
+          "ids": [
+            "en_numeric_02"
+          ],
+          "language": "en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.6001602564102564,
+          "audio_seconds": 14.976,
+          "error": null
+        },
+        {
+          "file": "rec_17.wav",
+          "segment": "A",
+          "ids": [
+            "en_datetime_01"
+          ],
+          "language": "en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.6307845744680851,
+          "audio_seconds": 15.04,
+          "error": null
+        },
+        {
+          "file": "rec_18.wav",
+          "segment": "A",
+          "ids": [
+            "en_datetime_02"
+          ],
+          "language": "en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.7000212717411545,
+          "audio_seconds": 13.205313,
+          "error": null
+        },
+        {
+          "file": "rec_19.wav",
+          "segment": "A",
+          "ids": [
+            "en_proper_01"
+          ],
+          "language": "en",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.46046035903523985,
+          "audio_seconds": 19.541313,
+          "error": null
+        },
+        {
+          "file": "rec_20.wav",
+          "segment": "A",
+          "ids": [
+            "en_acronym_01"
+          ],
+          "language": "en",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.46255716463414637,
+          "audio_seconds": 20.992,
+          "error": null
+        },
+        {
+          "file": "rec_21.wav",
+          "segment": "A",
+          "ids": [
+            "en_technical_01"
+          ],
+          "language": "en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.6370010549591217,
+          "audio_seconds": 14.805313,
+          "error": null
+        },
+        {
+          "file": "rec_22.wav",
+          "segment": "A",
+          "ids": [
+            "en_punct_01"
+          ],
+          "language": "en",
+          "category": "punctuation",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.7921975601909419,
+          "audio_seconds": 11.541313,
+          "error": null
+        },
+        {
+          "file": "rec_23.wav",
+          "segment": "A",
+          "ids": [
+            "en_long_01"
+          ],
+          "language": "en",
+          "category": "long",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.4469118690051419,
+          "audio_seconds": 132.245313,
+          "error": null
+        },
+        {
+          "file": "rec_24.wav",
+          "segment": "A",
+          "ids": [
+            "zh_en_mixed"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.7663719558366444,
+          "audio_seconds": 8.874688,
+          "error": null
+        },
+        {
+          "file": "rec_25.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_basic_02"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.153631880844924,
+          "audio_seconds": 7.274688,
+          "error": null
+        },
+        {
+          "file": "rec_26.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_basic_03"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.9119564961971378,
+          "audio_seconds": 8.170688,
+          "error": null
+        },
+        {
+          "file": "rec_27.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_numeric_01"
+          ],
+          "language": "zh-en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.4537609011627908,
+          "audio_seconds": 11.008,
+          "error": null
+        },
+        {
+          "file": "rec_28.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_numeric_02"
+          ],
+          "language": "zh-en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.1511972791581886,
+          "audio_seconds": 14.122688,
+          "error": null
+        },
+        {
+          "file": "rec_29.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_datetime_01"
+          ],
+          "language": "zh-en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.2397727272727272,
+          "audio_seconds": 7.04,
+          "error": null
+        },
+        {
+          "file": "rec_30.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_proper_01"
+          ],
+          "language": "zh-en",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.854855578252316,
+          "audio_seconds": 8.490688,
+          "error": null
+        },
+        {
+          "file": "rec_31.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_acronym_01"
+          ],
+          "language": "zh-en",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.5107283919866206,
+          "audio_seconds": 10.538625,
+          "error": null
+        },
+        {
+          "file": "rec_32.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_technical_01"
+          ],
+          "language": "zh-en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.29229797979798,
+          "audio_seconds": 12.672,
+          "error": null
+        },
+        {
+          "file": "rec_33.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_technical_02"
+          ],
+          "language": "zh-en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.512394522404397,
+          "audio_seconds": 11.050688,
+          "error": null
+        },
+        {
+          "file": "rec_34.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_punct_01"
+          ],
+          "language": "zh-en",
+          "category": "punctuation",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.047485271218275,
+          "audio_seconds": 7.786625,
+          "error": null
+        },
+        {
+          "file": "rec_35.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_long_01"
+          ],
+          "language": "zh-en",
+          "category": "long",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.6454945799457995,
+          "audio_seconds": 70.848,
+          "error": null
+        },
+        {
+          "file": "rec_36.wav",
+          "segment": "B",
+          "ids": [
+            "zh_basic_02"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.670939420299553,
+          "audio_seconds": 5.738688,
+          "error": null
+        },
+        {
+          "file": "rec_37.wav",
+          "segment": "B",
+          "ids": [
+            "zh_numeric_01"
+          ],
+          "language": "zh",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.8846771023228137,
+          "audio_seconds": 11.093313,
+          "error": null
+        },
+        {
+          "file": "rec_38.wav",
+          "segment": "B",
+          "ids": [
+            "zh_datetime_01"
+          ],
+          "language": "zh",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.9393083575624306,
+          "audio_seconds": 10.517313,
+          "error": null
+        },
+        {
+          "file": "rec_39.wav",
+          "segment": "B",
+          "ids": [
+            "zh_technical_01"
+          ],
+          "language": "zh",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.2158987226277371,
+          "audio_seconds": 8.768,
+          "error": null
+        },
+        {
+          "file": "rec_40.wav",
+          "segment": "B",
+          "ids": [
+            "en_basic_02"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.0548072009077833,
+          "audio_seconds": 8.533313,
+          "error": null
+        },
+        {
+          "file": "rec_41.wav",
+          "segment": "B",
+          "ids": [
+            "en_numeric_01"
+          ],
+          "language": "en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.7448574512252357,
+          "audio_seconds": 12.053313,
+          "error": null
+        },
+        {
+          "file": "rec_42.wav",
+          "segment": "B",
+          "ids": [
+            "en_datetime_01"
+          ],
+          "language": "en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.7754278083170285,
+          "audio_seconds": 12.074625,
+          "error": null
+        },
+        {
+          "file": "rec_43.wav",
+          "segment": "B",
+          "ids": [
+            "en_technical_01"
+          ],
+          "language": "en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.5739871541501976,
+          "audio_seconds": 16.192,
+          "error": null
+        },
+        {
+          "file": "rec_44.wav",
+          "segment": "B",
+          "ids": [
+            "zh_en_mixed"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.8483365255018798,
+          "audio_seconds": 8.810625,
+          "error": null
+        },
+        {
+          "file": "rec_45.wav",
+          "segment": "B",
+          "ids": [
+            "mixed_numeric_01"
+          ],
+          "language": "zh-en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.7883211678832116,
+          "audio_seconds": 8.768,
+          "error": null
+        },
+        {
+          "file": "rec_46.wav",
+          "segment": "B",
+          "ids": [
+            "mixed_datetime_01"
+          ],
+          "language": "zh-en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.6591923629701117,
+          "audio_seconds": 5.909313,
+          "error": null
+        },
+        {
+          "file": "rec_47.wav",
+          "segment": "B",
+          "ids": [
+            "mixed_technical_01"
+          ],
+          "language": "zh-en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.9129007644577536,
+          "audio_seconds": 8.682625,
+          "error": null
+        },
+        {
+          "file": "rec_48.wav",
+          "segment": "C",
+          "ids": [
+            "zh_short"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.5288788595814804,
+          "audio_seconds": 6.058688,
+          "error": null
+        },
+        {
+          "file": "rec_49.wav",
+          "segment": "C",
+          "ids": [
+            "zh_proper_01"
+          ],
+          "language": "zh",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.2939618644067798,
+          "audio_seconds": 7.552,
+          "error": null
+        },
+        {
+          "file": "rec_50.wav",
+          "segment": "C",
+          "ids": [
+            "zh_acronym_01"
+          ],
+          "language": "zh",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.0127619195921207,
+          "audio_seconds": 10.005313,
+          "error": null
+        },
+        {
+          "file": "rec_51.wav",
+          "segment": "C",
+          "ids": [
+            "en_short"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.1374246760095792,
+          "audio_seconds": 7.402688,
+          "error": null
+        },
+        {
+          "file": "rec_52.wav",
+          "segment": "C",
+          "ids": [
+            "en_proper_01"
+          ],
+          "language": "en",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.7868500913464228,
+          "audio_seconds": 11.669313,
+          "error": null
+        },
+        {
+          "file": "rec_53.wav",
+          "segment": "C",
+          "ids": [
+            "en_acronym_01"
+          ],
+          "language": "en",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.6767703862660944,
+          "audio_seconds": 14.912,
+          "error": null
+        },
+        {
+          "file": "rec_54.wav",
+          "segment": "C",
+          "ids": [
+            "mixed_basic_02"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.3317075937579945,
+          "audio_seconds": 6.805313,
+          "error": null
+        },
+        {
+          "file": "rec_55.wav",
+          "segment": "C",
+          "ids": [
+            "mixed_proper_01"
+          ],
+          "language": "zh-en",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 2.2619022836121268,
+          "audio_seconds": 7.061313,
+          "error": null
+        },
+        {
+          "file": "rec_56.wav",
+          "segment": "C",
+          "ids": [
+            "mixed_acronym_01"
+          ],
+          "language": "zh-en",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.7679956896551725,
           "audio_seconds": 9.28,
           "error": null
         }
@@ -9610,879 +10483,6 @@
         }
       ]
     },
-    "small.en-tdrz": {
-      "model_path": "models/stt/ggml-small.en-tdrz.bin",
-      "timed_count": 56,
-      "scored_count": 0,
-      "failed_count": 0,
-      "mean_cer_strict_AC": null,
-      "mean_cer_by_language_AC": {
-        "zh": null,
-        "en": null,
-        "zh-en": null
-      },
-      "by_segment": {
-        "A": {
-          "mean_cer": null,
-          "mean_content_recall": null,
-          "count": 35
-        },
-        "B": {
-          "mean_cer": null,
-          "mean_content_recall": null,
-          "count": 12
-        },
-        "C": {
-          "mean_cer": null,
-          "mean_content_recall": null,
-          "count": 9
-        }
-      },
-      "mean_rtf": 0.3957318526966489,
-      "entries": [
-        {
-          "file": "rec_01.wav",
-          "segment": "A",
-          "ids": [
-            "zh_short"
-          ],
-          "language": "zh",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.550784173234615,
-          "audio_seconds": 7.850625,
-          "error": null
-        },
-        {
-          "file": "rec_02.wav",
-          "segment": "A",
-          "ids": [
-            "zh_basic_02"
-          ],
-          "language": "zh",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.428,
-          "audio_seconds": 8,
-          "error": null
-        },
-        {
-          "file": "rec_03.wav",
-          "segment": "A",
-          "ids": [
-            "zh_basic_03",
-            "zh_numeric_01"
-          ],
-          "language": "zh",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.21559555907021924,
-          "audio_seconds": 20.074625,
-          "error": null
-        },
-        {
-          "file": "rec_04.wav",
-          "segment": "A",
-          "ids": [
-            "zh_numeric_02"
-          ],
-          "language": "zh",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.5045572916666666,
-          "audio_seconds": 13.824,
-          "error": null
-        },
-        {
-          "file": "rec_05.wav",
-          "segment": "A",
-          "ids": [
-            "zh_datetime_01"
-          ],
-          "language": "zh",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.5806852214924167,
-          "audio_seconds": 12.373313,
-          "error": null
-        },
-        {
-          "file": "rec_06.wav",
-          "segment": "A",
-          "ids": [
-            "zh_datetime_02"
-          ],
-          "language": "zh",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.5661200176160694,
-          "audio_seconds": 11.605313,
-          "error": null
-        },
-        {
-          "file": "rec_07.wav",
-          "segment": "A",
-          "ids": [
-            "zh_proper_01"
-          ],
-          "language": "zh",
-          "category": "proper-noun",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.46391858552631576,
-          "audio_seconds": 9.728,
-          "error": null
-        },
-        {
-          "file": "rec_08.wav",
-          "segment": "A",
-          "ids": [
-            "zh_acronym_01"
-          ],
-          "language": "zh",
-          "category": "acronym",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.26185387858530695,
-          "audio_seconds": 12.373313,
-          "error": null
-        },
-        {
-          "file": "rec_09.wav",
-          "segment": "A",
-          "ids": [
-            "zh_technical_01"
-          ],
-          "language": "zh",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.5660944835680751,
-          "audio_seconds": 13.632,
-          "error": null
-        },
-        {
-          "file": "rec_10.wav",
-          "segment": "A",
-          "ids": [
-            "zh_punct_01"
-          ],
-          "language": "zh",
-          "category": "punctuation",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.6581212574850299,
-          "audio_seconds": 10.688,
-          "error": null
-        },
-        {
-          "file": "rec_11.wav",
-          "segment": "A",
-          "ids": [
-            "zh_long_01"
-          ],
-          "language": "zh",
-          "category": "long",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.3065913711880884,
-          "audio_seconds": 80.106625,
-          "error": null
-        },
-        {
-          "file": "rec_12.wav",
-          "segment": "A",
-          "ids": [
-            "en_short"
-          ],
-          "language": "en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.3085532176509705,
-          "audio_seconds": 9.962625,
-          "error": null
-        },
-        {
-          "file": "rec_13.wav",
-          "segment": "A",
-          "ids": [
-            "en_basic_02"
-          ],
-          "language": "en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.35658967439646605,
-          "audio_seconds": 8.853313,
-          "error": null
-        },
-        {
-          "file": "rec_14.wav",
-          "segment": "A",
-          "ids": [
-            "en_basic_03"
-          ],
-          "language": "en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.246561004784689,
-          "audio_seconds": 13.376,
-          "error": null
-        },
-        {
-          "file": "rec_15.wav",
-          "segment": "A",
-          "ids": [
-            "en_numeric_01"
-          ],
-          "language": "en",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.17444250953810328,
-          "audio_seconds": 19.605313,
-          "error": null
-        },
-        {
-          "file": "rec_16.wav",
-          "segment": "A",
-          "ids": [
-            "en_numeric_02"
-          ],
-          "language": "en",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.21788194444444442,
-          "audio_seconds": 14.976,
-          "error": null
-        },
-        {
-          "file": "rec_17.wav",
-          "segment": "A",
-          "ids": [
-            "en_datetime_01"
-          ],
-          "language": "en",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.22539893617021278,
-          "audio_seconds": 15.04,
-          "error": null
-        },
-        {
-          "file": "rec_18.wav",
-          "segment": "A",
-          "ids": [
-            "en_datetime_02"
-          ],
-          "language": "en",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.24883923614684483,
-          "audio_seconds": 13.205313,
-          "error": null
-        },
-        {
-          "file": "rec_19.wav",
-          "segment": "A",
-          "ids": [
-            "en_proper_01"
-          ],
-          "language": "en",
-          "category": "proper-noun",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.16866829777507786,
-          "audio_seconds": 19.541313,
-          "error": null
-        },
-        {
-          "file": "rec_20.wav",
-          "segment": "A",
-          "ids": [
-            "en_acronym_01"
-          ],
-          "language": "en",
-          "category": "acronym",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.1798780487804878,
-          "audio_seconds": 20.992,
-          "error": null
-        },
-        {
-          "file": "rec_21.wav",
-          "segment": "A",
-          "ids": [
-            "en_technical_01"
-          ],
-          "language": "en",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.24295332358052815,
-          "audio_seconds": 14.805313,
-          "error": null
-        },
-        {
-          "file": "rec_22.wav",
-          "segment": "A",
-          "ids": [
-            "en_punct_01"
-          ],
-          "language": "en",
-          "category": "punctuation",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.2861892749984339,
-          "audio_seconds": 11.541313,
-          "error": null
-        },
-        {
-          "file": "rec_23.wav",
-          "segment": "A",
-          "ids": [
-            "en_long_01"
-          ],
-          "language": "en",
-          "category": "long",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.2526063059792523,
-          "audio_seconds": 132.245313,
-          "error": null
-        },
-        {
-          "file": "rec_24.wav",
-          "segment": "A",
-          "ids": [
-            "zh_en_mixed"
-          ],
-          "language": "zh-en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.351561654899868,
-          "audio_seconds": 8.874688,
-          "error": null
-        },
-        {
-          "file": "rec_25.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_basic_02"
-          ],
-          "language": "zh-en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.4752093835501948,
-          "audio_seconds": 7.274688,
-          "error": null
-        },
-        {
-          "file": "rec_26.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_basic_03"
-          ],
-          "language": "zh-en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.42811572293544925,
-          "audio_seconds": 8.170688,
-          "error": null
-        },
-        {
-          "file": "rec_27.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_numeric_01"
-          ],
-          "language": "zh-en",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.3108648255813954,
-          "audio_seconds": 11.008,
-          "error": null
-        },
-        {
-          "file": "rec_28.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_numeric_02"
-          ],
-          "language": "zh-en",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.651434061277853,
-          "audio_seconds": 14.122688,
-          "error": null
-        },
-        {
-          "file": "rec_29.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_datetime_01"
-          ],
-          "language": "zh-en",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.5911931818181818,
-          "audio_seconds": 7.04,
-          "error": null
-        },
-        {
-          "file": "rec_30.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_proper_01"
-          ],
-          "language": "zh-en",
-          "category": "proper-noun",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.447549126760988,
-          "audio_seconds": 8.490688,
-          "error": null
-        },
-        {
-          "file": "rec_31.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_acronym_01"
-          ],
-          "language": "zh-en",
-          "category": "acronym",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.349476331115302,
-          "audio_seconds": 10.538625,
-          "error": null
-        },
-        {
-          "file": "rec_32.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_technical_01"
-          ],
-          "language": "zh-en",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.29340277777777773,
-          "audio_seconds": 12.672,
-          "error": null
-        },
-        {
-          "file": "rec_33.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_technical_02"
-          ],
-          "language": "zh-en",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.2612507022187216,
-          "audio_seconds": 11.050688,
-          "error": null
-        },
-        {
-          "file": "rec_34.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_punct_01"
-          ],
-          "language": "zh-en",
-          "category": "punctuation",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.5007304191482189,
-          "audio_seconds": 7.786625,
-          "error": null
-        },
-        {
-          "file": "rec_35.wav",
-          "segment": "A",
-          "ids": [
-            "mixed_long_01"
-          ],
-          "language": "zh-en",
-          "category": "long",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.23440322944896114,
-          "audio_seconds": 70.848,
-          "error": null
-        },
-        {
-          "file": "rec_36.wav",
-          "segment": "B",
-          "ids": [
-            "zh_basic_02"
-          ],
-          "language": "zh",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.5689453756677485,
-          "audio_seconds": 5.738688,
-          "error": null
-        },
-        {
-          "file": "rec_37.wav",
-          "segment": "B",
-          "ids": [
-            "zh_numeric_01"
-          ],
-          "language": "zh",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.27133463195350205,
-          "audio_seconds": 11.093313,
-          "error": null
-        },
-        {
-          "file": "rec_38.wav",
-          "segment": "B",
-          "ids": [
-            "zh_datetime_01"
-          ],
-          "language": "zh",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.6889592427267307,
-          "audio_seconds": 10.517313,
-          "error": null
-        },
-        {
-          "file": "rec_39.wav",
-          "segment": "B",
-          "ids": [
-            "zh_technical_01"
-          ],
-          "language": "zh",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.4413777372262773,
-          "audio_seconds": 8.768,
-          "error": null
-        },
-        {
-          "file": "rec_40.wav",
-          "segment": "B",
-          "ids": [
-            "en_basic_02"
-          ],
-          "language": "en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.3673836879064438,
-          "audio_seconds": 8.533313,
-          "error": null
-        },
-        {
-          "file": "rec_41.wav",
-          "segment": "B",
-          "ids": [
-            "en_numeric_01"
-          ],
-          "language": "en",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.27087988173873856,
-          "audio_seconds": 12.053313,
-          "error": null
-        },
-        {
-          "file": "rec_42.wav",
-          "segment": "B",
-          "ids": [
-            "en_datetime_01"
-          ],
-          "language": "en",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.2763646904148162,
-          "audio_seconds": 12.074625,
-          "error": null
-        },
-        {
-          "file": "rec_43.wav",
-          "segment": "B",
-          "ids": [
-            "en_technical_01"
-          ],
-          "language": "en",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.2010869565217391,
-          "audio_seconds": 16.192,
-          "error": null
-        },
-        {
-          "file": "rec_44.wav",
-          "segment": "B",
-          "ids": [
-            "zh_en_mixed"
-          ],
-          "language": "zh-en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.4571752855217422,
-          "audio_seconds": 8.810625,
-          "error": null
-        },
-        {
-          "file": "rec_45.wav",
-          "segment": "B",
-          "ids": [
-            "mixed_numeric_01"
-          ],
-          "language": "zh-en",
-          "category": "numeric",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.3982664233576642,
-          "audio_seconds": 8.768,
-          "error": null
-        },
-        {
-          "file": "rec_46.wav",
-          "segment": "B",
-          "ids": [
-            "mixed_datetime_01"
-          ],
-          "language": "zh-en",
-          "category": "datetime",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.5103808175332734,
-          "audio_seconds": 5.909313,
-          "error": null
-        },
-        {
-          "file": "rec_47.wav",
-          "segment": "B",
-          "ids": [
-            "mixed_technical_01"
-          ],
-          "language": "zh-en",
-          "category": "technical",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.35979902391269925,
-          "audio_seconds": 8.682625,
-          "error": null
-        },
-        {
-          "file": "rec_48.wav",
-          "segment": "C",
-          "ids": [
-            "zh_short"
-          ],
-          "language": "zh",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 1.1733563438156909,
-          "audio_seconds": 6.058688,
-          "error": null
-        },
-        {
-          "file": "rec_49.wav",
-          "segment": "C",
-          "ids": [
-            "zh_proper_01"
-          ],
-          "language": "zh",
-          "category": "proper-noun",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.504104872881356,
-          "audio_seconds": 7.552,
-          "error": null
-        },
-        {
-          "file": "rec_50.wav",
-          "segment": "C",
-          "ids": [
-            "zh_acronym_01"
-          ],
-          "language": "zh",
-          "category": "acronym",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.3862947615931656,
-          "audio_seconds": 10.005313,
-          "error": null
-        },
-        {
-          "file": "rec_51.wav",
-          "segment": "C",
-          "ids": [
-            "en_short"
-          ],
-          "language": "en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.4178212022443739,
-          "audio_seconds": 7.402688,
-          "error": null
-        },
-        {
-          "file": "rec_52.wav",
-          "segment": "C",
-          "ids": [
-            "en_proper_01"
-          ],
-          "language": "en",
-          "category": "proper-noun",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.2783368652464802,
-          "audio_seconds": 11.669313,
-          "error": null
-        },
-        {
-          "file": "rec_53.wav",
-          "segment": "C",
-          "ids": [
-            "en_acronym_01"
-          ],
-          "language": "en",
-          "category": "acronym",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.2839994635193133,
-          "audio_seconds": 14.912,
-          "error": null
-        },
-        {
-          "file": "rec_54.wav",
-          "segment": "C",
-          "ids": [
-            "mixed_basic_02"
-          ],
-          "language": "zh-en",
-          "category": "basic",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.5594158564051352,
-          "audio_seconds": 6.805313,
-          "error": null
-        },
-        {
-          "file": "rec_55.wav",
-          "segment": "C",
-          "ids": [
-            "mixed_proper_01"
-          ],
-          "language": "zh-en",
-          "category": "proper-noun",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.47087560061422007,
-          "audio_seconds": 7.061313,
-          "error": null
-        },
-        {
-          "file": "rec_56.wav",
-          "segment": "C",
-          "ids": [
-            "mixed_acronym_01"
-          ],
-          "language": "zh-en",
-          "category": "acronym",
-          "transcript": "",
-          "cer": null,
-          "content_recall": null,
-          "rtf": 0.36875,
-          "audio_seconds": 9.28,
-          "error": null
-        }
-      ]
-    },
     "small.en": {
       "model_path": "models/stt/ggml-small.en.bin",
       "timed_count": 56,
@@ -11351,6 +11351,879 @@
           "cer": null,
           "content_recall": null,
           "rtf": 0.8075431034482758,
+          "audio_seconds": 9.28,
+          "error": null
+        }
+      ]
+    },
+    "small.en-tdrz": {
+      "model_path": "models/stt/ggml-small.en-tdrz.bin",
+      "timed_count": 56,
+      "scored_count": 0,
+      "failed_count": 0,
+      "mean_cer_strict_AC": null,
+      "mean_cer_by_language_AC": {
+        "zh": null,
+        "en": null,
+        "zh-en": null
+      },
+      "by_segment": {
+        "A": {
+          "mean_cer": null,
+          "mean_content_recall": null,
+          "count": 35
+        },
+        "B": {
+          "mean_cer": null,
+          "mean_content_recall": null,
+          "count": 12
+        },
+        "C": {
+          "mean_cer": null,
+          "mean_content_recall": null,
+          "count": 9
+        }
+      },
+      "mean_rtf": 0.3957318526966489,
+      "entries": [
+        {
+          "file": "rec_01.wav",
+          "segment": "A",
+          "ids": [
+            "zh_short"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.550784173234615,
+          "audio_seconds": 7.850625,
+          "error": null
+        },
+        {
+          "file": "rec_02.wav",
+          "segment": "A",
+          "ids": [
+            "zh_basic_02"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.428,
+          "audio_seconds": 8,
+          "error": null
+        },
+        {
+          "file": "rec_03.wav",
+          "segment": "A",
+          "ids": [
+            "zh_basic_03",
+            "zh_numeric_01"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.21559555907021924,
+          "audio_seconds": 20.074625,
+          "error": null
+        },
+        {
+          "file": "rec_04.wav",
+          "segment": "A",
+          "ids": [
+            "zh_numeric_02"
+          ],
+          "language": "zh",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.5045572916666666,
+          "audio_seconds": 13.824,
+          "error": null
+        },
+        {
+          "file": "rec_05.wav",
+          "segment": "A",
+          "ids": [
+            "zh_datetime_01"
+          ],
+          "language": "zh",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.5806852214924167,
+          "audio_seconds": 12.373313,
+          "error": null
+        },
+        {
+          "file": "rec_06.wav",
+          "segment": "A",
+          "ids": [
+            "zh_datetime_02"
+          ],
+          "language": "zh",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.5661200176160694,
+          "audio_seconds": 11.605313,
+          "error": null
+        },
+        {
+          "file": "rec_07.wav",
+          "segment": "A",
+          "ids": [
+            "zh_proper_01"
+          ],
+          "language": "zh",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.46391858552631576,
+          "audio_seconds": 9.728,
+          "error": null
+        },
+        {
+          "file": "rec_08.wav",
+          "segment": "A",
+          "ids": [
+            "zh_acronym_01"
+          ],
+          "language": "zh",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.26185387858530695,
+          "audio_seconds": 12.373313,
+          "error": null
+        },
+        {
+          "file": "rec_09.wav",
+          "segment": "A",
+          "ids": [
+            "zh_technical_01"
+          ],
+          "language": "zh",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.5660944835680751,
+          "audio_seconds": 13.632,
+          "error": null
+        },
+        {
+          "file": "rec_10.wav",
+          "segment": "A",
+          "ids": [
+            "zh_punct_01"
+          ],
+          "language": "zh",
+          "category": "punctuation",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.6581212574850299,
+          "audio_seconds": 10.688,
+          "error": null
+        },
+        {
+          "file": "rec_11.wav",
+          "segment": "A",
+          "ids": [
+            "zh_long_01"
+          ],
+          "language": "zh",
+          "category": "long",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.3065913711880884,
+          "audio_seconds": 80.106625,
+          "error": null
+        },
+        {
+          "file": "rec_12.wav",
+          "segment": "A",
+          "ids": [
+            "en_short"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.3085532176509705,
+          "audio_seconds": 9.962625,
+          "error": null
+        },
+        {
+          "file": "rec_13.wav",
+          "segment": "A",
+          "ids": [
+            "en_basic_02"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.35658967439646605,
+          "audio_seconds": 8.853313,
+          "error": null
+        },
+        {
+          "file": "rec_14.wav",
+          "segment": "A",
+          "ids": [
+            "en_basic_03"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.246561004784689,
+          "audio_seconds": 13.376,
+          "error": null
+        },
+        {
+          "file": "rec_15.wav",
+          "segment": "A",
+          "ids": [
+            "en_numeric_01"
+          ],
+          "language": "en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.17444250953810328,
+          "audio_seconds": 19.605313,
+          "error": null
+        },
+        {
+          "file": "rec_16.wav",
+          "segment": "A",
+          "ids": [
+            "en_numeric_02"
+          ],
+          "language": "en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.21788194444444442,
+          "audio_seconds": 14.976,
+          "error": null
+        },
+        {
+          "file": "rec_17.wav",
+          "segment": "A",
+          "ids": [
+            "en_datetime_01"
+          ],
+          "language": "en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.22539893617021278,
+          "audio_seconds": 15.04,
+          "error": null
+        },
+        {
+          "file": "rec_18.wav",
+          "segment": "A",
+          "ids": [
+            "en_datetime_02"
+          ],
+          "language": "en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.24883923614684483,
+          "audio_seconds": 13.205313,
+          "error": null
+        },
+        {
+          "file": "rec_19.wav",
+          "segment": "A",
+          "ids": [
+            "en_proper_01"
+          ],
+          "language": "en",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.16866829777507786,
+          "audio_seconds": 19.541313,
+          "error": null
+        },
+        {
+          "file": "rec_20.wav",
+          "segment": "A",
+          "ids": [
+            "en_acronym_01"
+          ],
+          "language": "en",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.1798780487804878,
+          "audio_seconds": 20.992,
+          "error": null
+        },
+        {
+          "file": "rec_21.wav",
+          "segment": "A",
+          "ids": [
+            "en_technical_01"
+          ],
+          "language": "en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.24295332358052815,
+          "audio_seconds": 14.805313,
+          "error": null
+        },
+        {
+          "file": "rec_22.wav",
+          "segment": "A",
+          "ids": [
+            "en_punct_01"
+          ],
+          "language": "en",
+          "category": "punctuation",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.2861892749984339,
+          "audio_seconds": 11.541313,
+          "error": null
+        },
+        {
+          "file": "rec_23.wav",
+          "segment": "A",
+          "ids": [
+            "en_long_01"
+          ],
+          "language": "en",
+          "category": "long",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.2526063059792523,
+          "audio_seconds": 132.245313,
+          "error": null
+        },
+        {
+          "file": "rec_24.wav",
+          "segment": "A",
+          "ids": [
+            "zh_en_mixed"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.351561654899868,
+          "audio_seconds": 8.874688,
+          "error": null
+        },
+        {
+          "file": "rec_25.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_basic_02"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.4752093835501948,
+          "audio_seconds": 7.274688,
+          "error": null
+        },
+        {
+          "file": "rec_26.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_basic_03"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.42811572293544925,
+          "audio_seconds": 8.170688,
+          "error": null
+        },
+        {
+          "file": "rec_27.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_numeric_01"
+          ],
+          "language": "zh-en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.3108648255813954,
+          "audio_seconds": 11.008,
+          "error": null
+        },
+        {
+          "file": "rec_28.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_numeric_02"
+          ],
+          "language": "zh-en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.651434061277853,
+          "audio_seconds": 14.122688,
+          "error": null
+        },
+        {
+          "file": "rec_29.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_datetime_01"
+          ],
+          "language": "zh-en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.5911931818181818,
+          "audio_seconds": 7.04,
+          "error": null
+        },
+        {
+          "file": "rec_30.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_proper_01"
+          ],
+          "language": "zh-en",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.447549126760988,
+          "audio_seconds": 8.490688,
+          "error": null
+        },
+        {
+          "file": "rec_31.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_acronym_01"
+          ],
+          "language": "zh-en",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.349476331115302,
+          "audio_seconds": 10.538625,
+          "error": null
+        },
+        {
+          "file": "rec_32.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_technical_01"
+          ],
+          "language": "zh-en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.29340277777777773,
+          "audio_seconds": 12.672,
+          "error": null
+        },
+        {
+          "file": "rec_33.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_technical_02"
+          ],
+          "language": "zh-en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.2612507022187216,
+          "audio_seconds": 11.050688,
+          "error": null
+        },
+        {
+          "file": "rec_34.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_punct_01"
+          ],
+          "language": "zh-en",
+          "category": "punctuation",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.5007304191482189,
+          "audio_seconds": 7.786625,
+          "error": null
+        },
+        {
+          "file": "rec_35.wav",
+          "segment": "A",
+          "ids": [
+            "mixed_long_01"
+          ],
+          "language": "zh-en",
+          "category": "long",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.23440322944896114,
+          "audio_seconds": 70.848,
+          "error": null
+        },
+        {
+          "file": "rec_36.wav",
+          "segment": "B",
+          "ids": [
+            "zh_basic_02"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.5689453756677485,
+          "audio_seconds": 5.738688,
+          "error": null
+        },
+        {
+          "file": "rec_37.wav",
+          "segment": "B",
+          "ids": [
+            "zh_numeric_01"
+          ],
+          "language": "zh",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.27133463195350205,
+          "audio_seconds": 11.093313,
+          "error": null
+        },
+        {
+          "file": "rec_38.wav",
+          "segment": "B",
+          "ids": [
+            "zh_datetime_01"
+          ],
+          "language": "zh",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.6889592427267307,
+          "audio_seconds": 10.517313,
+          "error": null
+        },
+        {
+          "file": "rec_39.wav",
+          "segment": "B",
+          "ids": [
+            "zh_technical_01"
+          ],
+          "language": "zh",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.4413777372262773,
+          "audio_seconds": 8.768,
+          "error": null
+        },
+        {
+          "file": "rec_40.wav",
+          "segment": "B",
+          "ids": [
+            "en_basic_02"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.3673836879064438,
+          "audio_seconds": 8.533313,
+          "error": null
+        },
+        {
+          "file": "rec_41.wav",
+          "segment": "B",
+          "ids": [
+            "en_numeric_01"
+          ],
+          "language": "en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.27087988173873856,
+          "audio_seconds": 12.053313,
+          "error": null
+        },
+        {
+          "file": "rec_42.wav",
+          "segment": "B",
+          "ids": [
+            "en_datetime_01"
+          ],
+          "language": "en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.2763646904148162,
+          "audio_seconds": 12.074625,
+          "error": null
+        },
+        {
+          "file": "rec_43.wav",
+          "segment": "B",
+          "ids": [
+            "en_technical_01"
+          ],
+          "language": "en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.2010869565217391,
+          "audio_seconds": 16.192,
+          "error": null
+        },
+        {
+          "file": "rec_44.wav",
+          "segment": "B",
+          "ids": [
+            "zh_en_mixed"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.4571752855217422,
+          "audio_seconds": 8.810625,
+          "error": null
+        },
+        {
+          "file": "rec_45.wav",
+          "segment": "B",
+          "ids": [
+            "mixed_numeric_01"
+          ],
+          "language": "zh-en",
+          "category": "numeric",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.3982664233576642,
+          "audio_seconds": 8.768,
+          "error": null
+        },
+        {
+          "file": "rec_46.wav",
+          "segment": "B",
+          "ids": [
+            "mixed_datetime_01"
+          ],
+          "language": "zh-en",
+          "category": "datetime",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.5103808175332734,
+          "audio_seconds": 5.909313,
+          "error": null
+        },
+        {
+          "file": "rec_47.wav",
+          "segment": "B",
+          "ids": [
+            "mixed_technical_01"
+          ],
+          "language": "zh-en",
+          "category": "technical",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.35979902391269925,
+          "audio_seconds": 8.682625,
+          "error": null
+        },
+        {
+          "file": "rec_48.wav",
+          "segment": "C",
+          "ids": [
+            "zh_short"
+          ],
+          "language": "zh",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 1.1733563438156909,
+          "audio_seconds": 6.058688,
+          "error": null
+        },
+        {
+          "file": "rec_49.wav",
+          "segment": "C",
+          "ids": [
+            "zh_proper_01"
+          ],
+          "language": "zh",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.504104872881356,
+          "audio_seconds": 7.552,
+          "error": null
+        },
+        {
+          "file": "rec_50.wav",
+          "segment": "C",
+          "ids": [
+            "zh_acronym_01"
+          ],
+          "language": "zh",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.3862947615931656,
+          "audio_seconds": 10.005313,
+          "error": null
+        },
+        {
+          "file": "rec_51.wav",
+          "segment": "C",
+          "ids": [
+            "en_short"
+          ],
+          "language": "en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.4178212022443739,
+          "audio_seconds": 7.402688,
+          "error": null
+        },
+        {
+          "file": "rec_52.wav",
+          "segment": "C",
+          "ids": [
+            "en_proper_01"
+          ],
+          "language": "en",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.2783368652464802,
+          "audio_seconds": 11.669313,
+          "error": null
+        },
+        {
+          "file": "rec_53.wav",
+          "segment": "C",
+          "ids": [
+            "en_acronym_01"
+          ],
+          "language": "en",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.2839994635193133,
+          "audio_seconds": 14.912,
+          "error": null
+        },
+        {
+          "file": "rec_54.wav",
+          "segment": "C",
+          "ids": [
+            "mixed_basic_02"
+          ],
+          "language": "zh-en",
+          "category": "basic",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.5594158564051352,
+          "audio_seconds": 6.805313,
+          "error": null
+        },
+        {
+          "file": "rec_55.wav",
+          "segment": "C",
+          "ids": [
+            "mixed_proper_01"
+          ],
+          "language": "zh-en",
+          "category": "proper-noun",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.47087560061422007,
+          "audio_seconds": 7.061313,
+          "error": null
+        },
+        {
+          "file": "rec_56.wav",
+          "segment": "C",
+          "ids": [
+            "mixed_acronym_01"
+          ],
+          "language": "zh-en",
+          "category": "acronym",
+          "transcript": "",
+          "cer": null,
+          "content_recall": null,
+          "rtf": 0.36875,
           "audio_seconds": 9.28,
           "error": null
         }

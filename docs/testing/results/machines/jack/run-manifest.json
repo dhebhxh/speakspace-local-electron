@@ -1,51 +1,38 @@
 {
   "schema_version": 1,
-  "machine": {
-    "machine_id": "jack",
-    "label": "jack",
-    "captured_at": "2026-09-02T01:28:21.617Z",
-    "hostname_hash": "58e0cb625165",
-    "os": "Windows_NT 10.0.26200",
-    "arch": "x64",
-    "cpu_model": "12th Gen Intel(R) Core(TM) i7-12700H",
-    "cpu_physical_cores": 14,
-    "cpu_logical_cores": 20,
-    "total_memory_bytes": 16782102528,
-    "gpu": {
-      "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
-      "memory_total_mib": 4096,
-      "driver_version": "591.74"
-    },
-    "node_version": "v24.16.0",
-    "accelerator_class": "nvidia-gpu"
-  },
-  "ran_at": "2026-09-02T03:27:33.273Z",
+  "ran_at": "2026-09-03T01:06:27.949Z",
   "with_accuracy": false,
+  "note": "这台机器的结果来自两次运行：TTS 三步来自 2026-09-02T03:27:33.273Z 那次；LLM 与 STT 来自 2026-09-03T01:06:27.949Z 那次（用 --only llm,stt 补跑，刻意跳过已经测好的 TTS）。后一次误用了机器标签 jackpot，硬件指纹与 jack 完全一致（同一 hostname_hash），已合并回 jack。",
   "steps": [
     {
       "id": "tts",
       "status": "ok",
-      "elapsed_ms": 3126764
+      "elapsed_ms": 3126764,
+      "ran_at": "2026-09-02T03:27:33.273Z"
     },
     {
       "id": "tts-memory",
       "status": "ok",
-      "elapsed_ms": 1241175
+      "elapsed_ms": 1241175,
+      "ran_at": "2026-09-02T03:27:33.273Z"
     },
     {
       "id": "tts-length",
       "status": "ok",
-      "elapsed_ms": 569127
+      "elapsed_ms": 569127,
+      "ran_at": "2026-09-02T03:27:33.273Z"
     },
     {
       "id": "llm",
       "status": "ok",
-      "elapsed_ms": 181719
+      "elapsed_ms": 280333,
+      "ran_at": "2026-09-03T01:06:27.949Z"
     },
     {
       "id": "stt",
       "status": "ok",
-      "elapsed_ms": 2030841
+      "elapsed_ms": 14274340,
+      "ran_at": "2026-09-03T01:06:27.949Z"
     }
   ],
   "files": [

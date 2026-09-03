@@ -4,16 +4,20 @@ The Electron app remains at the repository root. The Expo / React Native app is 
 
 ## Source and history
 
-The import uses the published `main` branch of [speakspace-local-mobile](https://github.com/dhebhxh/speakspace-local-mobile). It preserves all 415 tracked files and the 97 commits reachable from that revision, including source code, native modules, plugins, tests, assets, documentation, and licence notices.
+The import uses the published `main` branch of [speakspace-local-mobile](https://github.com/dhebhxh/speakspace-local-mobile). The initial import used revision `218a6be`; a later history-preserving update brought the subtree to revision `0fd7903`. The current integration preserves all 439 tracked files and the 111 commits reachable from the updated revision, including source code, native modules, plugins, tests, assets, documentation, and licence notices.
 
 | Item | Revision |
 | --- | --- |
 | Desktop base | `1ee910326c517b71f24b2710720f6e7bf58c81df` |
-| Mobile source | `218a6be2eaa3ae21d6ee88b38e4101e0b0a98b93` |
-| Unmodified mobile tree | `52e6678086d1681a5c392b7f195dfc4e73805baf` |
+| Initial mobile source | `218a6be2eaa3ae21d6ee88b38e4101e0b0a98b93` |
+| Initial unmodified mobile tree | `52e6678086d1681a5c392b7f195dfc4e73805baf` |
 | History-preserving import | `e6756ffc298b9b1e51823c11bca8fcd5c99781d9` |
+| Updated mobile source | `0fd7903adc48eaaf15327ba7d83a6b8797726f61` |
+| Updated upstream mobile tree | `672143183b2f6f6e3c0d56b31345d9ed44c166e2` |
+| History-preserving update | `006dcf1015b0385b9ac5d0eb4d89b3d849be6e32` |
+| Current integrated mobile tree | `b08272e90005fd1f8efe258180b425ed05c2bcf1` |
 
-The import commit was made with `git subtree add --prefix=mobile` without squashing. Its second parent is the mobile source revision. Its `mobile/` tree is byte-for-byte identical to that source tree. Later integration changes add a mobile `typecheck` command and make the auxiliary static-check helper work from a nested directory.
+The import commit was made with `git subtree add --prefix=mobile` without squashing. Its second parent is the initial mobile source revision. Its `mobile/` tree is byte-for-byte identical to that source tree. The update was made with `git subtree pull --prefix=mobile` without squashing, and its second parent is the updated mobile source revision. The current integrated tree differs from the upstream tree only by two repository-level adjustments: a mobile `typecheck` command and nested-directory support in the auxiliary static-check helper.
 
 Unmerged development branches and uncommitted local changes are not part of this import. The original repository remains intact. GitHub issues, pull requests, repository settings, tags, and uploaded release assets are not copied by a source import. Existing mobile release links continue to point to the original repository. The imported app retains its upstream product names and versions.
 
@@ -66,6 +70,14 @@ The 2026-09-03 integration was checked on Windows with Node.js 24.16.0 and npm 1
 - `npm ci` reported 19 advisories in the imported mobile dependency tree (18 moderate and one high). Dependency versions were not changed as part of this source integration.
 
 The bundle checks do not compile Xcode or Android Studio projects. Native builds, signing, microphones, notifications, downloads, and on-device inference still require their platform-specific and physical-device acceptance runs.
+
+The follow-up mobile sync on 2026-09-03 was checked from the nested `mobile/` path with the same Node.js and npm versions:
+
+- `npm ci` applied all seven locked postinstall patches and retained the existing dependency audit result of 18 moderate and one high advisory.
+- All 187 mobile tests and the TypeScript check passed.
+- Mobile ESLint reported no errors and retained 12 existing React Hook dependency warnings.
+- All four application-boundary tests passed.
+- The integrated mobile tree matched revision `0fd7903` except for the two documented repository-level adjustments.
 
 ## Future upstream imports
 

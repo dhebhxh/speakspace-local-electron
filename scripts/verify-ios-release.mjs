@@ -174,7 +174,7 @@ export function verifyRelease(appArgument, { requireSigned = false } = {}) {
 }
 
 function printUsage() {
-  console.error("Usage: npm run verify:ios-release -- /absolute/path/to/SpeakSpace.app [--require-signed]");
+  console.error("Usage: npm run verify:ios-release -- /absolute/path/to/speakspacelocalmobile.app [--require-signed]");
 }
 
 function main() {

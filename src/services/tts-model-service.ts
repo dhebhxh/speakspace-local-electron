@@ -214,8 +214,8 @@ export class TtsModelService {
     const lexiconDirectory = namedLexicon?.parentDirectory ?? defaultLexicon?.parentDirectory;
     if (!lexiconDirectory) throw new ValidationError("The selected TTS model lexicon is missing.");
 
-    const generatedMarker = new File(lexiconDirectory, ".speakspace-generated-lexicon");
-    const backup = new File(lexiconDirectory, ".speakspace-default-lexicon.backup");
+    const generatedMarker = new File(lexiconDirectory, ".letsvoice-generated-lexicon");
+    const backup = new File(lexiconDirectory, ".letsvoice-default-lexicon.backup");
     if (defaultLexicon?.exists && !generatedMarker.exists && !backup.exists) {
       backup.create();
       backup.write(await defaultLexicon.bytes());
@@ -227,7 +227,7 @@ export class TtsModelService {
       defaultLexicon = new File(lexiconDirectory, "lexicon.txt");
       defaultLexicon.create();
       generatedMarker.create();
-      generatedMarker.write("managed by SpeakSpace");
+      generatedMarker.write("managed by LetsVoice");
     }
     defaultLexicon.write(await selected.bytes());
     this.configuredLexicons.set(modelPath, lexiconLanguage);

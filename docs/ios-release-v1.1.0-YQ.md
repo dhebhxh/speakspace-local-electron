@@ -1,4 +1,4 @@
-# SpeakSpace iOS v1.1.0 稳定版发布记录（YQ）
+# LetsVoice iOS v1.1.0 稳定版发布记录（YQ）
 
 ## 发布定位
 
@@ -40,4 +40,4 @@ Windows + SideStore 的安装与七天刷新仍需要每位测试者使用自己
 
 ## 回滚
 
-旧版保留在 <https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.0.0>。不要为了回滚直接卸载已有 SpeakSpace；卸载会删除当前 iPhone 应用容器中的笔记、录音、Workspace、聊天和模型。需要回退时先备份本地数据，并使用相同 SideStore 安装记录评估覆盖安装。
+旧版保留在 <https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.0.0>。不要为了回滚直接卸载已有 LetsVoice；卸载会删除当前 iPhone 应用容器中的笔记、录音、Workspace、聊天和模型。需要回退时先备份本地数据，并使用相同 SideStore 安装记录评估覆盖安装。

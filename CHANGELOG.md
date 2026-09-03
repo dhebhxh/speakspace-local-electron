@@ -1,6 +1,6 @@
 # Changelog
 
-本文件记录 SpeakSpace Local Mobile 面向组内测试的稳定版本。iOS 安装包不发布到 App Store，二进制资产附在团队仓库对应的 GitHub Release 中。
+本文件记录 LetsVoice Mobile 面向组内测试的稳定版本。iOS 安装包不发布到 App Store，二进制资产附在团队仓库对应的 GitHub Release 中。
 
 ## [1.3.0] - 2026-08-24
 
@@ -24,7 +24,7 @@
 - 修复单 Note 与多 Note 会话可能错误恢复到不同来源集合的问题。
 - 修复周期 Task 完成后重复生成、遗漏工作日跳转或恢复到错误 occurrence 的边界情况。
 
-发布记录：[SpeakSpace iOS v1.3.0](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.3.0)
+发布记录：[LetsVoice iOS v1.3.0](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.3.0)
 
 ## [1.2.0] - 2026-08-24
 
@@ -47,7 +47,7 @@
 - 修复 Move note 及其他编辑弹窗可能顶到 iPhone 状态栏的问题。
 - 修复跨页面返回后 Ask AI 对话消失的问题。
 
-发布记录：[SpeakSpace iOS v1.2.0](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.2.0)
+发布记录：[LetsVoice iOS v1.2.0](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.2.0)
 
 ## [1.1.0] - 2026-08-23
 
@@ -55,10 +55,10 @@
 - Home 展示完整 Task 列表并支持完成和恢复。
 - AI、Structured Note 和 Knowledge 内容支持本地 TTS 朗读、暂停和续播。
 
-发布记录：[SpeakSpace iOS v1.1.0](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.1.0)
+发布记录：[LetsVoice iOS v1.1.0](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.1.0)
 
 ## [1.0.0] - 2026-08-21
 
 - 首个组内 iPhone 稳定版，包含本地录音转写、音频导入、笔记、Workspace、模型管理和 Ask AI 基础能力。
 
-发布记录：[SpeakSpace iOS v1.0.0](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.0.0)
+发布记录：[LetsVoice iOS v1.0.0](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.0.0)

@@ -1,4 +1,4 @@
-# SpeakSpace iOS v1.2.0 稳定版发布记录（YQ）
+# LetsVoice iOS v1.2.0 稳定版发布记录（YQ）
 
 ## 发布定位
 
@@ -46,10 +46,10 @@
 ## 安装限制
 
 - LLM、STT 和 TTS 模型不打入 IPA，首次使用时由用户在 AI 页面主动下载。
-- SideStore 免费 Personal Team 签名通常需要每 7 天刷新；刷新前不要卸载 SpeakSpace。
+- SideStore 免费 Personal Team 签名通常需要每 7 天刷新；刷新前不要卸载 LetsVoice。
 - Release 验证器保留一条 Expo 生成的 ATS local-network 审计提示。当前应用不提供 Bonjour 或局域网发现，应用自有联网范围仍限于用户主动发起的模型目录和模型下载。
 - `npm audit` 仍列出 12 个 Expo CLI/Xcode 工具链间接依赖 `uuid` 的 moderate 公告；建议的强制修复会降级到 Expo 46，因此本版没有执行破坏性的 `npm audit fix --force`。
 
 ## 回滚
 
-上一稳定版保留在 <https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.1.0>。不要为了回滚直接卸载当前 SpeakSpace；卸载会删除 iPhone 应用容器中的笔记、录音、Workspace、聊天和模型。需要回退时先备份本地数据，再评估使用同一 Bundle ID 覆盖安装。
+上一稳定版保留在 <https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.1.0>。不要为了回滚直接卸载当前 LetsVoice；卸载会删除 iPhone 应用容器中的笔记、录音、Workspace、聊天和模型。需要回退时先备份本地数据，再评估使用同一 Bundle ID 覆盖安装。

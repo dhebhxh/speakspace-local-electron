@@ -1,12 +1,12 @@
-# SpeakSpace Local Mobile
+# LetsVoice Mobile
 
-SpeakSpace is a local-first mobile transcription, notes, and on-device AI app.
+LetsVoice is a local-first mobile transcription, notes, and on-device AI app.
 The repository targets Android phones and iPhone; it does not contain an iPad,
 Mac, or App Store distribution target.
 
 ## Windows 组员：没有 Mac 也能安装 iPhone 测试版
 
-SpeakSpace 没有发布到 App Store。没有 Mac、没有付费 Apple Developer Program
+LetsVoice 没有发布到 App Store。没有 Mac、没有付费 Apple Developer Program
 账号的组员，可以使用 **Windows + SideStore + 自己的免费 Apple Account** 安装
 小组提供的 IPA。Windows 电脑只在第一次配置 SideStore 时需要；之后通常可以在
 iPhone 上连接 Wi-Fi 和 LocalDevVPN 完成刷新。
@@ -38,7 +38,7 @@ SideStore 的系统要求和下载入口可能变化，开始前先打开
 8. 连接 `LocalDevVPN`，打开 SideStore，使用和 iloader 相同的 Apple Account 登录。
 9. 进入 `My Apps`，点击 SideStore 右侧的 `7 DAYS`，完成第一次手动 Refresh。
 
-### 3. 下载并校验 SpeakSpace
+### 3. 下载并校验 LetsVoice
 
 从小组仓库的
 [iOS v1.3.0 Release](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.3.0)
@@ -70,13 +70,13 @@ Get-Content .\SpeakSpace-iOS-v1.3.0.ipa.sha256
 2. 连接 `LocalDevVPN`，使用共享菜单选择 SideStore；也可以在 SideStore 中使用
    添加 IPA 的入口。
 3. 等待 SideStore 完成重新签名和安装，过程中不要关闭 SideStore 或 VPN。
-4. 打开 SpeakSpace 并允许麦克风权限，然后在 `AI` 页面下载并启用所需的 STT、
-   LLM 和 TTS 模型。模型下载时保持 SpeakSpace 在前台。
+4. 打开 LetsVoice 并允许麦克风权限，然后在 `AI` 页面下载并启用所需的 STT、
+   LLM 和 TTS 模型。模型下载时保持 LetsVoice 在前台。
 5. 建议每 5 至 6 天连接一次 `LocalDevVPN`，打开 SideStore 的 `My Apps`，点击
-   SpeakSpace 旁边的剩余天数完成 Refresh。
+   LetsVoice 旁边的剩余天数完成 Refresh。
 
 免费 Personal Team 的 provisioning profile 只有 7 天有效期，因此免费方案不能变成
-“安装一次永久使用”。Refresh 不会主动清除数据，但**不要卸载 SpeakSpace**；卸载会由
+“安装一次永久使用”。Refresh 不会主动清除数据，但**不要卸载 LetsVoice**；卸载会由
 iOS 删除本地笔记、录音、Workspace、聊天和已下载模型。不要从第三方网盘、共享企业
 证书或所谓“永久免签”网站下载安装包。
 
@@ -126,7 +126,7 @@ npm run ios:device:release
 ```
 
 When a Personal Team needs its own unique bundle identifier, prefix the Expo
-command with `IOS_BUNDLE_IDENTIFIER=com.example.speakspace.local`. The checked-in
+command with `IOS_BUNDLE_IDENTIFIER=com.example.letsvoice.local`. The checked-in
 default remains the team identifier and contains no contributor-specific signing
 information.
 
@@ -160,6 +160,6 @@ GitHub Release instead.
 ## Model downloads
 
 Speech, language, and voice models are not bundled with the app. Install them
-from the AI screens after the app is running. SpeakSpace checks free storage
+from the AI screens after the app is running. LetsVoice checks free storage
 before each large operation and never deletes user data automatically. Keep the
 app in the foreground while a model download is running.

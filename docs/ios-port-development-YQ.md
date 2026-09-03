@@ -1,8 +1,8 @@
-# SpeakSpace iPhone 端移植开发记录（YQ）
+# LetsVoice iPhone 端移植开发记录（YQ）
 
 ## 摘要
 
-本阶段把已有的 SpeakSpace Android/Expo 手机项目扩展为可在 iPhone 上独立运行的本地优先应用。目标不是发布 App Store，也不包含 iPad 或 Mac 版本；重点是让录音转写、音频导入、Workspace、本地模型管理、TTS 和基于转录的 Ask AI 在 iPhone 真机上可用，并为没有 Mac、没有付费开发者账号的组员准备可由 SideStore 重新签名的 IPA。
+本阶段把已有的 LetsVoice Android/Expo 手机项目扩展为可在 iPhone 上独立运行的本地优先应用。目标不是发布 App Store，也不包含 iPad 或 Mac 版本；重点是让录音转写、音频导入、Workspace、本地模型管理、TTS 和基于转录的 Ask AI 在 iPhone 真机上可用，并为没有 Mac、没有付费开发者账号的组员准备可由 SideStore 重新签名的 IPA。
 
 最终交付不只是“能够编译”：代码中增加了 iOS 原生音频转换和音频中断模块、Whisper 中文模型路径、存储与时长保护、iPhone 安全区布局、可重复执行的 Release 检查、SideStore IPA 打包脚本和物理设备验收文档。
 
@@ -215,7 +215,7 @@ git diff --check
 ### 5.2 设备 Release
 
 ```bash
-IOS_BUNDLE_IDENTIFIER=com.example.speakspace.local \
+IOS_BUNDLE_IDENTIFIER=com.example.letsvoice.local \
   npm run ios:device:release
 
 npm run verify:ios-release -- \
@@ -249,7 +249,7 @@ npm run package:ios:sidestore -- \
 ## 七、已知限制和后续工作
 
 1. 免费 SideStore 签名需要周期性刷新，无法做到永久的一键安装。
-2. SideStore 本身和 SpeakSpace 会占用 Personal Team 的开发应用名额。
+2. SideStore 本身和 LetsVoice 会占用 Personal Team 的开发应用名额。
 3. iOS 版本升级可能使 pairing file 失效，需要重新配置。
 4. 所有用户数据只在设备本地；卸载应用会删除容器，当前没有自动导出/恢复功能。
 5. 大模型能否连续运行受 iPhone 内存限制影响；不能通过免费签名开启额外内存 entitlement。
@@ -335,7 +335,7 @@ TTS 模型页面原本只有下载、激活和模型检测，没有生成音频�
 
 真机为 iPhone 16 Pro Max，系统 iOS 27.0，使用 Xcode 26.6 和 Personal Team 本地签名。测试前先备份应用 Documents/SQLite；测试数据库原本为空，因此写入一组只带 `Codex QA` 前缀的 Workspace、Note、Structured Note 和 pending Task。语音样本使用一段说明主题、Task 和 TTS 验收目标的中文长摘要，保证播放时间足以验证暂停位置。
 
-本地生成的 `ios/SpeakSpaceDeviceUITests` XCUITest Target 被 `/ios` ignore 规则排除，不进入 Git。测试动作依次为：
+本地生成的 `ios/LetsVoiceDeviceUITests` XCUITest Target 被 `/ios` ignore 规则排除，不进入 Git。测试动作依次为：
 
 1. 启动并确认 Home 显示 1 个 Note 和 1 个 open Task。
 2. 选择 Dark，再选择 System。
@@ -602,7 +602,7 @@ xcodebuild \
   -scheme speakspacelocalmobile \
   -configuration Release \
   -destination 'platform=iOS,id=<DEVICE_UDID>' \
-  -only-testing:speakspacelocalmobileTests/SpeakSpaceDeviceAcceptanceTests/testFullSeededFeatureWorkflowOnPhysicalDevice \
+  -only-testing:speakspacelocalmobileTests/LetsVoiceDeviceAcceptanceTests/testFullSeededFeatureWorkflowOnPhysicalDevice \
   -allowProvisioningUpdates test
 ```
 

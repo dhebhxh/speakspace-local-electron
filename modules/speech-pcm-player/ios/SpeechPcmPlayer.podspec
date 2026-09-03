@@ -3,7 +3,7 @@ Pod::Spec.new do |s|
   s.version        = '1.0.0'
   s.summary        = 'Immediate, session-safe PCM speech playback'
   s.description    = 'Owns the native PCM player so speech can be flushed independently of TTS synthesis.'
-  s.author         = 'SpeakSpace Local Mobile contributors'
+  s.author         = 'LetsVoice Mobile contributors'
   s.homepage       = 'https://docs.expo.dev/modules/'
   s.platforms      = { :ios => '16.4' }
   s.source         = { git: '' }

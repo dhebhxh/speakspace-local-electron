@@ -9,7 +9,7 @@ test("UI language setting exposes exactly the eight supported locales", async ()
   assert.match(source, /UI_LANGUAGES = \["en", "zh-CN", "es", "fr", "de", "ja", "ko", "pt"\] as const/);
   assert.match(source, /UI_LANGUAGE_STORAGE_KEY = "settings\.ui-language"/);
   assert.doesNotMatch(source, /iPhone/);
-  assert.match(source, /选择 SpeakSpace 在此设备上的显示方式。/);
+  assert.match(source, /选择 LetsVoice 在此设备上的显示方式。/);
   assert.match(source, /跟随系统的外观设置。/);
 });
 

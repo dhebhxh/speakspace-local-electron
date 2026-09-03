@@ -36,7 +36,7 @@ import {
 
 type SessionStatus = "idle" | "starting" | "recording" | "paused" | "finishing";
 type FinishedSession = { transcript: string; audioRelativePath: string };
-const LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG = "speakspace-live-transcription";
+const LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG = "letsvoice-live-transcription";
 
 export default function TranscriptionScreen() {
   const router = useRouter();
@@ -88,7 +88,7 @@ export default function TranscriptionScreen() {
         () => setError(message),
         () => {
           setError(
-            "SpeakSpace could not fully pause the recording. Return to the app and finish or discard it.",
+            "LetsVoice could not fully pause the recording. Return to the app and finish or discard it.",
           );
         },
       );
@@ -97,7 +97,7 @@ export default function TranscriptionScreen() {
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active" || statusRef.current !== "recording") return;
       pauseForSystem(
-        "Recording paused because SpeakSpace left the foreground or the device was locked. Tap Resume when you are ready.",
+        "Recording paused because LetsVoice left the foreground or the device was locked. Tap Resume when you are ready.",
       );
     });
     const interruptionSubscription = addAudioInterruptionListener((event) => {
@@ -222,7 +222,7 @@ export default function TranscriptionScreen() {
       if (result.transcript.trim().length === 0) {
         Alert.alert(
           "No speech detected",
-          "SpeakSpace cannot create a note because no speech was transcribed. Discard the empty recording and try again.",
+          "LetsVoice cannot create a note because no speech was transcribed. Discard the empty recording and try again.",
           [
             {
               text: "Discard recording",

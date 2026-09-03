@@ -31,7 +31,7 @@ Models requiring a different inference framework or additional native runtime ar
 
 ## 2. Language Coverage
 
-SpeakSpace Local is designed to support multilingual speech transcription. Language coverage is therefore used as an application-level eligibility criterion.
+LetsVoice is designed to support multilingual speech transcription. Language coverage is therefore used as an application-level eligibility criterion.
 
 Whisper provides both multilingual models and English-only variants identified by the `.en` suffix. Where an equivalent multilingual model is available, the English-only variant is excluded.
 
@@ -79,7 +79,7 @@ After applying the three pre-selection criteria—runtime compatibility, multili
 
 ### 5.1 Whisper
 
-English-only (`.en`) variants were excluded because they do not satisfy the multilingual requirement of SpeakSpace Local. For the Large family, the superseded Large v1 and Large v2 generations and their quantised variants were also excluded in favour of the current Large v3 generation.
+English-only (`.en`) variants were excluded because they do not satisfy the multilingual requirement of LetsVoice. For the Large family, the superseded Large v1 and Large v2 generations and their quantised variants were also excluded in favour of the current Large v3 generation.
 
 No remaining model was excluded because of model size, quantisation level, expected latency, or expected memory consumption.
 

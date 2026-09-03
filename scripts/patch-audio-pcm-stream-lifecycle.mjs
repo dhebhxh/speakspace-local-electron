@@ -154,7 +154,7 @@ const newLifecycle = `    @ReactMethod
                     }
                 }
             }
-        }, "SpeakSpaceAudioCapture");
+        }, "LetsVoiceAudioCapture");
 
         recordingThread.start();
         promise.resolve(null);

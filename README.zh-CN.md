@@ -87,6 +87,11 @@
 - 使用工作空间整理笔记、置顶重要内容、通过回收站安全删除，并将完整笔记导出为 Word 或 PDF。
 - 下载和管理 STT、LLM、Embedding 与 TTS 模型及其本地运行时；模型不会进入 Git 或桌面安装包。
 
+<p align="center">
+  <img src="docs/readme/recording-to-knowledge-readable-zh.svg" width="100%" alt="SpeakSpace Local 桌面端从录音到知识的处理流程" />
+</p>
+<p align="center"><em>图 1：桌面端从录音到知识的处理流程。</em></p>
+
 ### LetsVoice 移动端
 
 - 录制或导入最长两小时的 WAV、MP3、M4A、AAC 或 FLAC 音频，并直接在设备上转写。
@@ -108,6 +113,11 @@
 - 模型不提交到 Git，也不随任一安装包分发。
 - 笔记、工作空间、AI 会话和自定义 Knowledge 模板会先进入回收站，再执行永久删除。临时内容、已安装模型和单条 Knowledge 结果使用各自明确的移除流程。
 
+<p align="center">
+  <img src="docs/readme/data-model-readable.svg" width="100%" alt="SpeakSpace Local 桌面端 SQLite 关系模型" />
+</p>
+<p align="center"><em>图 2：桌面端 SQLite 关系模型。</em></p>
+
 ## 架构
 
 桌面端严格区分 Electron 进程边界：
@@ -121,10 +131,84 @@
 | `src/shared/`         | 跨进程共享的纯类型和数据契约                               |
 
 <p align="center">
-  <img src="docs/readme/system-architecture-readable.svg" width="100%" alt="SpeakSpace Local 桌面端进程架构" />
+  <img src="docs/readme/system-architecture-readable-zh.svg" width="100%" alt="SpeakSpace Local 桌面端进程架构" />
 </p>
+<p align="center"><em>图 3：SpeakSpace Local 桌面端进程边界架构。</em></p>
+
+<p align="center">
+  <img src="docs/readme/tech-implementation-readable-zh.svg" width="100%" alt="SpeakSpace Local 桌面端技术实现" />
+</p>
+<p align="center"><em>图 4：当前桌面端技术实现概览。</em></p>
 
 LetsVoice 使用独立的移动端调用链：Expo Router 页面调用应用服务，服务协调 Repository 与本地模型运行时，Repository 负责 Expo SQLite 持久化，自定义 Expo 模块处理原生音频。原生工程由已提交的 Expo 配置与 `mobile/modules/` 生成。
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User as 用户
+  participant UI as Agent 界面
+  participant Agent as AgentOrchestrator
+  participant Data as 笔记 / SQLite
+  participant LLM as 本地 Ollama
+
+  User->>UI: 问题 + 作用范围
+  UI->>Agent: 类型化 IPC 请求
+  Agent->>Agent: 校验限制并保留最近对话
+
+  alt 已显式关联笔记
+    Agent->>Data: 并行 read_note（最多 8 篇）
+    Data-->>Agent: 确定性上下文（最多 8000 字符）
+    Note over Agent,LLM: 移除 search_notes
+  else 工作区或全库范围
+    Note over Agent,LLM: 保留 search_notes
+  end
+
+  loop 有界工具循环（最多 6 步）
+    Agent->>LLM: 提示词 + 运行状态 + 证据
+    alt 请求调用工具
+      LLM-->>Agent: search_notes / read_note / extract_todos
+      Agent->>Data: 执行已注册工具
+      Data-->>Agent: 工具观察结果
+    else 返回最终回答
+      LLM-->>Agent: 基于证据的回答
+    end
+  end
+
+  Agent->>Data: 保存本轮对话和关联来源
+  Agent-->>UI: 步骤时间线 + 最终回答
+  UI-->>User: 文本或 TTS 输出
+```
+
+<p align="center"><em>图 5：Agent 请求时序图。</em></p>
+
+```mermaid
+flowchart TB
+  Query["1 · 用户问题<br/>指令与作用范围"] --> Context["2 · 上下文组装<br/>历史 + 关联笔记 + 工具策略"]
+  Context --> LLM["3 · 本地 LLM<br/>在有界上下文中推理"]
+  LLM --> Decision{"下一步操作？"}
+
+  Decision -->|最终回答| Response["4 · 最终回答<br/>基于证据生成"]
+  Response --> Delivery["Agent 界面 / TTS<br/>时间线、文本与语音反馈"]
+  Response --> History[("AI 对话<br/>本轮内容 + 关联来源")]
+
+  Decision -->|调用工具| Controller
+  Controller["工具控制器<br/>校验参数、范围、重复调用和步数限制"]
+  Controller --> Tools["工具执行<br/>search_notes · read_note · extract_todos"]
+  Tools --> Observation["观察结果<br/>将工具结果追加到模型上下文"]
+  Observation --> Repeat["进入下一轮模型推理<br/>回答完成或达到 6 步后停止"]
+  Tools --> Knowledge[("本地知识<br/>笔记 · 待办 · 搜索索引")]
+
+  classDef input fill:#f5f3ff,stroke:#7657d5,color:#172033
+  classDef decision fill:#fff7cc,stroke:#b59f27,color:#4b3b00
+  classDef tool fill:#ecfeff,stroke:#0891b2,color:#172033
+  classDef result fill:#ecfdf5,stroke:#059669,color:#172033
+  class Query,Context,LLM input
+  class Decision decision
+  class Controller,Tools,Observation tool
+  class Response,Delivery,History,Repeat,Knowledge result
+```
+
+<p align="center"><em>图 6：有界 Agent 控制器工作流。</em></p>
 
 ## 仓库结构
 
@@ -243,6 +327,36 @@ LetsVoice 包含自定义原生模块，无法在 Expo Go 中完成全部验证�
 先从[测试与评测索引](docs/testing/README.md)进入；引用结果前请阅读[覆盖范围与限制清单](docs/testing/test-coverage-gaps.md)。跨机器采集方法见[基准指南](docs/testing/multi-machine-benchmark-guide.md)，生成结果见[跨机器汇总](docs/testing/cross-machine-benchmark.md)。
 
 移动端的 187 项确定性测试用于验证应用行为和原生补丁契约，不衡量模型质量，也不替代真机验收。
+
+<p align="center">
+  <img src="docs/testing/charts/panel-tts-speed.svg" width="100%" alt="TTS 速度评测面板" />
+</p>
+<p align="center"><em>图 7：各测试引擎的 TTS 合成速度。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-stt.svg" width="100%" alt="STT 真人录音评测面板" />
+</p>
+<p align="center"><em>图 8：基于真人录音的 STT 评测。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/llm-accuracy-vs-speed.svg" width="100%" alt="LLM 速度与准确率权衡" />
+</p>
+<p align="center"><em>图 9：本地 LLM 准确率与速度权衡。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-retrieval.svg" width="100%" alt="Embedding 混合检索评测面板" />
+</p>
+<p align="center"><em>图 10：基于 Embedding 的混合检索评测。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-agent.svg" width="100%" alt="Agent 端到端评测面板" />
+</p>
+<p align="center"><em>图 11：Agent 端到端评测。</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/jest-by-area.svg" width="100%" alt="按功能域划分的 Jest 回归测试" />
+</p>
+<p align="center"><em>图 12：按功能域划分的 Jest 回归覆盖。</em></p>
 
 ## 更新移动端来源
 

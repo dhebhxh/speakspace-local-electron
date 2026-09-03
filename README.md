@@ -87,6 +87,11 @@ The mobile source revision is `0fd7903`. It entered this repository through the 
 - Organise notes in workspaces, pin important content, use Trash for recoverable deletion, and export complete notes to Word or PDF.
 - Download and manage STT, LLM, embedding, and TTS models together with their local runtimes, without placing models in Git or the installer.
 
+<p align="center">
+  <img src="docs/readme/recording-to-knowledge-readable.svg" width="100%" alt="SpeakSpace Local desktop recording-to-knowledge pipeline" />
+</p>
+<p align="center"><em>Figure 1. Desktop recording-to-knowledge pipeline.</em></p>
+
 ### LetsVoice mobile
 
 - Record or import up to two hours of WAV, MP3, M4A, AAC, or FLAC audio and transcribe it on the device.
@@ -108,6 +113,11 @@ User data remains on the device. Once the required models are installed, core ST
 - Models are not committed to Git and are not bundled with either installer.
 - Notes, workspaces, AI conversations, and custom Knowledge templates use Trash before permanent deletion. Temporary content, installed models, and individual Knowledge results follow their own explicit removal flows.
 
+<p align="center">
+  <img src="docs/readme/data-model-readable.svg" width="100%" alt="SpeakSpace Local desktop SQLite relationship model" />
+</p>
+<p align="center"><em>Figure 2. Desktop SQLite relationship model.</em></p>
+
 ## Architecture
 
 The desktop application enforces an Electron process boundary:
@@ -123,8 +133,82 @@ The desktop application enforces an Electron process boundary:
 <p align="center">
   <img src="docs/readme/system-architecture-readable.svg" width="100%" alt="SpeakSpace Local desktop process architecture" />
 </p>
+<p align="center"><em>Figure 3. SpeakSpace Local desktop process-boundary architecture.</em></p>
+
+<p align="center">
+  <img src="docs/readme/tech-implementation-readable.svg" width="100%" alt="SpeakSpace Local technical implementation" />
+</p>
+<p align="center"><em>Figure 4. Current desktop technical implementation overview.</em></p>
 
 LetsVoice follows a separate mobile path: Expo Router screens call application services, services coordinate repositories and local model runtimes, repositories own Expo SQLite persistence, and custom Expo modules provide native audio behaviour. Native projects are generated from the checked-in Expo configuration and `mobile/modules/`.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Agent UI
+  participant Agent as AgentOrchestrator
+  participant Data as Notes / SQLite
+  participant LLM as Local Ollama
+
+  User->>UI: Question + scope
+  UI->>Agent: Typed IPC request
+  Agent->>Agent: Validate limits and retain recent history
+
+  alt Explicitly linked notes
+    Agent->>Data: Parallel read_note (up to 8)
+    Data-->>Agent: Deterministic context (up to 8,000 characters)
+    Note over Agent,LLM: search_notes is removed
+  else Workspace or library scope
+    Note over Agent,LLM: search_notes remains available
+  end
+
+  loop Bounded tool loop (at most 6 steps)
+    Agent->>LLM: Prompt + run state + evidence
+    alt Tool requested
+      LLM-->>Agent: search_notes / read_note / extract_todos
+      Agent->>Data: Execute the registered tool
+      Data-->>Agent: Tool observation
+    else Final answer
+      LLM-->>Agent: Evidence-grounded response
+    end
+  end
+
+  Agent->>Data: Persist turn and linked sources
+  Agent-->>UI: Step timeline + final answer
+  UI-->>User: Text or TTS output
+```
+
+<p align="center"><em>Figure 5. Agent request sequence.</em></p>
+
+```mermaid
+flowchart TB
+  Query["1 · User query<br/>Instruction and scope"] --> Context["2 · Context assembly<br/>History + linked notes + tool policy"]
+  Context --> LLM["3 · Local LLM<br/>Reason over the bounded context"]
+  LLM --> Decision{"Next action?"}
+
+  Decision -->|Final answer| Response["4 · Final response<br/>Evidence-grounded answer"]
+  Response --> Delivery["Agent UI / TTS<br/>Timeline, text, and voice feedback"]
+  Response --> History[("AI conversation<br/>Turn + linked sources")]
+
+  Decision -->|Tool call| Controller
+  Controller["Tool controller<br/>Validate arguments, scope, duplicates, and step limit"]
+  Controller --> Tools["Tool execution<br/>search_notes · read_note · extract_todos"]
+  Tools --> Observation["Observation<br/>Append the tool result to model context"]
+  Observation --> Repeat["Next model step<br/>Repeat until answered or the 6-step limit is reached"]
+  Tools --> Knowledge[("Local knowledge<br/>Notes · todos · search index")]
+
+  classDef input fill:#f5f3ff,stroke:#7657d5,color:#172033
+  classDef decision fill:#fff7cc,stroke:#b59f27,color:#4b3b00
+  classDef tool fill:#ecfeff,stroke:#0891b2,color:#172033
+  classDef result fill:#ecfdf5,stroke:#059669,color:#172033
+  class Query,Context,LLM input
+  class Decision decision
+  class Controller,Tools,Observation tool
+  class Response,Delivery,History,Repeat,Knowledge result
+```
+
+<p align="center"><em>Figure 6. Bounded Agent controller workflow.</em></p>
 
 ## Repository layout
 
@@ -243,6 +327,36 @@ Desktop evaluation covers TTS, STT, local LLM task extraction, embedding retriev
 Start with the [testing and evaluation index](docs/testing/README.md), then read the [coverage and limitations ledger](docs/testing/test-coverage-gaps.md) before quoting results. Cross-machine collection is documented in the [benchmark guide](docs/testing/multi-machine-benchmark-guide.md), with generated results in the [cross-machine aggregate](docs/testing/cross-machine-benchmark.md).
 
 Mobile's 187 deterministic tests verify application behaviour and native patch contracts. They do not measure model quality or replace device acceptance.
+
+<p align="center">
+  <img src="docs/testing/charts/panel-tts-speed.svg" width="100%" alt="TTS speed evaluation panel" />
+</p>
+<p align="center"><em>Figure 7. TTS synthesis speed across the tested engines.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-stt.svg" width="100%" alt="STT human-recording evaluation panel" />
+</p>
+<p align="center"><em>Figure 8. STT evaluation on human recordings.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/llm-accuracy-vs-speed.svg" width="100%" alt="LLM speed and accuracy trade-off" />
+</p>
+<p align="center"><em>Figure 9. Local LLM accuracy and speed trade-off.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-retrieval.svg" width="100%" alt="Embedding-based hybrid retrieval evaluation panel" />
+</p>
+<p align="center"><em>Figure 10. Embedding-based hybrid retrieval evaluation.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/panel-agent.svg" width="100%" alt="Agent end-to-end evaluation panel" />
+</p>
+<p align="center"><em>Figure 11. Agent end-to-end evaluation.</em></p>
+
+<p align="center">
+  <img src="docs/testing/charts/jest-by-area.svg" width="100%" alt="Jest regression tests by feature area" />
+</p>
+<p align="center"><em>Figure 12. Jest regression coverage by feature area.</em></p>
 
 ## Mobile source updates
 

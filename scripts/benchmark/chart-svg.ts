@@ -240,14 +240,6 @@ export function groupedBarChart(
     ) -
       1) *
     18;
-  const height = (options.height ?? 420) + legendShift;
-  const left = 64;
-  const right = 24;
-  const top = 92 + legendShift;
-  const bottom = caption ? 74 : 58;
-  const plotWidth = width - left - right;
-  const plotHeight = height - top - bottom;
-
   const allValues = series
     .flatMap((item) => item.values)
     .filter(
@@ -255,6 +247,34 @@ export function groupedBarChart(
     );
   const upper = Math.max(...allValues, referenceLine?.value ?? -Infinity);
   const scale = niceScale(0, upper);
+
+  /**
+   * 柱顶数值标签画在柱顶上方，参考线标签画在线的上方 —— 当有柱子正好落在参考线上
+   * 时，两者会被挤到同一行并重叠（实测：GPU 卸载图里几乎所有柱子都是 100%，
+   * 右侧的 "Full GPU offload" 和一排 "100%" 糊成一团）。
+   * 判定到这种重合就多留一行的高度，把参考线标签抬到数值标签上方去。
+   */
+  const referenceCollidesWithValues =
+    referenceLine !== undefined &&
+    showValues &&
+    series.some((item) =>
+      item.values.some(
+        (value) =>
+          value !== null &&
+          Number.isFinite(value) &&
+          Math.abs(value - referenceLine.value) <=
+            (scale.max - scale.min) * 0.02,
+      ),
+    );
+  // 高度和 top 一起加，图整体高一点，绘图区大小不变。
+  const extraTop = referenceCollidesWithValues ? 16 : 0;
+  const height = (options.height ?? 420) + legendShift + extraTop;
+  const left = 64;
+  const right = 24;
+  const top = 92 + legendShift + extraTop;
+  const bottom = caption ? 74 : 58;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
   const toY = (value: number) =>
     top +
     plotHeight -
@@ -331,11 +351,16 @@ export function groupedBarChart(
       `<line x1="${left}" y1="${y}" x2="${width - right}" y2="${y}" stroke="#D64545" stroke-width="1.5" stroke-dasharray="5 4"/>`,
     );
     parts.push(
-      text(width - right - 4, y - 6, referenceLine.label, {
-        size: 11,
-        fill: '#D64545',
-        anchor: 'end',
-      }),
+      text(
+        width - right - 4,
+        y - (referenceCollidesWithValues ? 19 : 6),
+        referenceLine.label,
+        {
+          size: 11,
+          fill: '#D64545',
+          anchor: 'end',
+        },
+      ),
     );
   }
 

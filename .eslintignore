@@ -34,3 +34,6 @@ npm-debug.log.*
 
 # Lint / analysis output
 lint-results.json
+
+# Mobile uses its own Expo / ESLint configuration and dependencies.
+/mobile/

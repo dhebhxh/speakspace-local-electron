@@ -41,7 +41,7 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     [[ -f "$f" ]] && CHANGED_FILES+=("$f")
   done < <(
     {
-      git diff --name-only HEAD -- '*.ts' '*.tsx' '*.js' '*.jsx'
+      git diff --relative --name-only HEAD -- '*.ts' '*.tsx' '*.js' '*.jsx'
       git ls-files --others --exclude-standard -- '*.ts' '*.tsx' '*.js' '*.jsx'
     } | sort -u
   )

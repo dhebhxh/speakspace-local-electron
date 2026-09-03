@@ -9,6 +9,7 @@
 | 文档 | 用途 |
 | --- | --- |
 | [项目结构](./project-structure.md) | 目录职责、进程边界、路径别名和代码放置规则 |
+| [移动端整合](./mobile-integration.md) | 双应用目录、移动端开发命令、独立检查与导入来源 |
 | [测试与评测总览](./testing/README.md) | 所有基准、评测与报告的入口 |
 | [测试集总览](./testing/datasets/README.md) | 每份测试集是什么、多少条、开发集/保留集怎么拆 |
 | [跨机器基准](./testing/multi-machine-benchmark-guide.md) | 在新机器上一键跑硬件基准 |

@@ -2,6 +2,8 @@
 
 本文件适用于人工开发和自动化编码代理。目标是让改动保持小、可解释、可验证。
 
+本仓库包含两个独立应用：根目录为 Electron 桌面端，`mobile/` 为 Expo / React Native 移动端。下文的进程、品牌、`userData` 和构建约定描述桌面端；移动端遵循 `mobile/AGENTS.md` 与其自身配置。两端保留独立的依赖和锁文件，不直接互相导入源码。根目录的 `npm test`、类型检查和 Lint 只检查桌面端；移动端使用 `npm run mobile:test`、`npm run mobile:typecheck` 和 `npm run mobile:lint`。修改整合入口时另运行 `npm run check:apps`。
+
 ## 1. 先定义范围
 
 - 开始修改前写清可观察的完成条件；不把相邻重构混入当前任务。

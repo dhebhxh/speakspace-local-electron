@@ -45,6 +45,15 @@
     "start:renderer": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack serve --config ./.erb/configs/webpack.config.renderer.dev.ts",
     "smoke:tts": "cross-env NODE_PATH=release/app/node_modules node -r ts-node/register/transpile-only scripts/smoke/tts-model-smoke.ts",
     "test": "jest",
+    "check:apps": "node --test scripts/integration/app-boundaries.test.mjs",
+    "mobile:install": "npm --prefix mobile ci",
+    "mobile:start": "npm --prefix mobile start",
+    "mobile:android": "npm --prefix mobile run android",
+    "mobile:ios": "npm --prefix mobile run ios",
+    "mobile:web": "npm --prefix mobile run web",
+    "mobile:test": "npm --prefix mobile test",
+    "mobile:typecheck": "npm --prefix mobile run typecheck",
+    "mobile:lint": "npm --prefix mobile run lint",
     "test:trash:electron": "cross-env ELECTRON_RUN_AS_NODE=1 electron ./node_modules/jest/bin/jest.js --runInBand src/main/trash/__tests__/TrashService.test.ts",
     "check:electron": "node .erb/scripts/check-electron-binary.js",
     "check:audit": "npm audit --omit=dev --audit-level=high",
@@ -122,14 +131,16 @@
     "testPathIgnorePatterns": [
       "release/app/dist",
       ".erb/dll",
-      "<rootDir>/.claude/"
+      "<rootDir>/.claude/",
+      "<rootDir>/mobile/"
     ],
     "transform": {
       "\\.(ts|tsx|js|jsx)$": "ts-jest"
     },
     "modulePathIgnorePatterns": [
       "<rootDir>/.claude/",
-      "<rootDir>/release/build/"
+      "<rootDir>/release/build/",
+      "<rootDir>/mobile/"
     ]
   },
   "dependencies": {

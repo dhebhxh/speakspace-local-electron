@@ -49,6 +49,12 @@ SpeakSpace Local 是一个 Electron 桌面应用，将录音、文件导入、�
 
 “Local”指推理和用户知识库在本机运行：数据库、录音和受管模型均位于 Electron `userData`；模型不进入 Git，也不塞进安装包。首次使用相关能力时，用户再从模型管理页按需下载运行时和模型。
 
+## 桌面端与移动端
+
+本仓库包含两个独立构建的应用。Electron 桌面端保留在根目录；完整的 Expo / React Native 移动端放在 [`mobile/`](mobile/README.md)，保留独立依赖、原生模块、测试、资源和文档。普通 `git clone` 即可取得两端源码，不需要初始化子模块。
+
+只开发移动端时，使用 Node.js 24，在仓库根目录运行 `npm run mobile:install`，再运行 `npm run mobile:start`；无需安装桌面端依赖。原生构建前提、检查命令和保留的源码历史见[移动端整合指南](docs/mobile-integration.md)。本 README 后续章节仍介绍桌面端。
+
 ## 目录
 
 - [功能版图](#功能版图)
@@ -359,6 +365,7 @@ Agent 的代码级边界：
 assets/             应用 Logo 与平台图标
 config/             LLM / STT 模型目录
 docs/               文档索引、测试报告、历史日志和归档
+mobile/             独立的 Expo / React Native 应用及源码历史
 scripts/            benchmark、smoke 与开发辅助脚本
 src/
 ├─ main/            Electron 主进程、IPC、数据库、模型与领域服务
@@ -375,7 +382,7 @@ release/
 
 ## 本地开发
 
-建议使用 Node.js 22 和 npm。
+桌面端建议使用 Node.js 22 和 npm。移动端开发使用 Node.js 24，见[桌面端与移动端](#桌面端与移动端)。
 
 ```bash
 git clone https://github.com/dhebhxh/speakspace-local-electron.git
@@ -429,6 +436,7 @@ npm run package
 完整索引见 [docs/README.md](docs/README.md)。
 
 - [项目结构与代码边界](docs/project-structure.md)
+- [移动端开发与仓库整合](docs/mobile-integration.md)
 - [测试与评测总览](docs/testing/README.md)
 - [数据集与开发集/保留集拆分](docs/testing/datasets/README.md)
 - [TTS 模型基准](docs/testing/tts-model-benchmark-windows.md)

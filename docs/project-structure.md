@@ -5,6 +5,7 @@
 ```
 assets/            应用图标、entitlements
 config/            模型目录（llm-catalog.json / stt-catalog.json）
+mobile/            独立 Expo / React Native 应用（依赖、原生模块、测试、资源与文档）
 docs/              文档
   README.md         文档索引与归类规则
   archive/         已完成阶段的历史方案与迁移记录
@@ -22,6 +23,8 @@ release/installers/ 本地验收后的安装包，不提交
 ```
 
 ## src/ 的三段划分
+
+下文的 `src/`、路径别名和进程边界均指根目录的桌面端。`mobile/src/` 使用自己的 Expo 配置、依赖及别名，不直接引用桌面端源码。移动端开发与检查入口见[移动端整合指南](./mobile-integration.md)。
 
 ```
 src/main/          主进程：Node/Electron 侧，可以用 fs、child_process、electron

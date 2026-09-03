@@ -47,6 +47,12 @@ SpeakSpace Local is an Electron desktop application that brings recording, audio
 
 “Local” means that inference and the user's knowledge base run on the user's computer. The database, recordings, and application-managed models live under Electron's `userData` directory. Models are neither committed to Git nor bundled with the installer; users download the runtimes and models they need from Model Management.
 
+## Desktop and mobile
+
+This repository contains two independently built applications. The Electron desktop app stays at the repository root. The complete Expo / React Native mobile app lives in [`mobile/`](mobile/README.md), with its own dependencies, native modules, tests, assets, and documentation. A normal clone includes both applications; no submodule setup is needed.
+
+To work on mobile only, use Node.js 24 and run `npm run mobile:install`, then `npm run mobile:start` from the repository root. You do not need to install the desktop dependencies. See the [integration guide](docs/mobile-integration.md) for native build prerequisites, validation commands, and the preserved source history. The remaining sections of this README describe the desktop application.
+
 ## Contents
 
 - [Feature map](#feature-map)
@@ -357,6 +363,7 @@ As of 2026-09-02, the result archive contains five machine profiles spanning App
 assets/             Product logo and platform icons
 config/             LLM / STT model catalogs
 docs/               Documentation index, test reports, changelogs, and archive
+mobile/             Independent Expo / React Native application and source history
 scripts/            Benchmarks, smoke tests, and development helpers
 src/
 ├─ main/            Electron main process, IPC, database, models, domain services
@@ -373,7 +380,7 @@ See [Project Structure](docs/project-structure.md) and [AGENTS.md](AGENTS.md) fo
 
 ## Local development
 
-Node.js 22 and npm are recommended.
+Node.js 22 and npm are recommended for the desktop app. Mobile development uses Node.js 24; see [Desktop and mobile](#desktop-and-mobile).
 
 ```bash
 git clone https://github.com/dhebhxh/speakspace-local-electron.git
@@ -427,6 +434,7 @@ npm run package
 See [docs/README.md](docs/README.md) for the complete index.
 
 - [Project structure and process boundaries](docs/project-structure.md)
+- [Mobile development and repository integration](docs/mobile-integration.md)
 - [Testing and evaluation overview](docs/testing/README.md)
 - [Datasets and development/holdout splits](docs/testing/datasets/README.md)
 - [TTS model benchmark](docs/testing/tts-model-benchmark-windows.md)

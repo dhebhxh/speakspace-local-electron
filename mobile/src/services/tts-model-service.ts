@@ -214,6 +214,7 @@ export class TtsModelService {
     const lexiconDirectory = namedLexicon?.parentDirectory ?? defaultLexicon?.parentDirectory;
     if (!lexiconDirectory) throw new ValidationError("The selected TTS model lexicon is missing.");
 
+    // These hidden filenames are persisted compatibility identifiers, not display branding.
     const generatedMarker = new File(lexiconDirectory, ".speakspace-generated-lexicon");
     const backup = new File(lexiconDirectory, ".speakspace-default-lexicon.backup");
     if (defaultLexicon?.exists && !generatedMarker.exists && !backup.exists) {

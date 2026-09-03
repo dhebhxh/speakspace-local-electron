@@ -83,7 +83,7 @@ test("Ask AI core path performs one completion without evidence pre-classificati
     "utf8",
   );
 
-  assert.equal((source.match(/context\.completion\(/g) ?? []).length, 1);
+  assert.equal((source.match(/this\.requests\.complete\(/g) ?? []).length, 1);
   assert.doesNotMatch(source, /ask-ai-evidence-gate/);
   assert.doesNotMatch(source, /classifySelectedEvidence/);
   assert.doesNotMatch(source, /fitEvidenceExtractionMessagesToBudget/);

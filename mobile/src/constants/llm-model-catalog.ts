@@ -12,6 +12,7 @@ export type LlmModelCatalogEntry = {
   sizeBytes: number;
   fileName: string;
   downloadUrl: string;
+  recommendedForChinese?: boolean;
 };
 
 /**
@@ -20,6 +21,20 @@ export type LlmModelCatalogEntry = {
  * Q4_K_M filename below was separately checked in the linked GGUF repository.
  */
 export const LLM_MODEL_CATALOG: readonly LlmModelCatalogEntry[] = [
+  {
+    id: "qwen2.5-1.5b-instruct-q4-k-m",
+    engine: "llama.rn",
+    name: "Qwen2.5 1.5B Instruct",
+    description:
+      "Recommended for Chinese and mixed Chinese/English notes, with stronger grounded question answering and structured JSON output.",
+    format: "GGUF",
+    quantization: "Q4_K_M",
+    sizeBytes: 986_000_000,
+    fileName: "Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+    downloadUrl:
+      "https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf?download=true",
+    recommendedForChinese: true,
+  },
   {
     id: "llama-3.2-1b-instruct-q4-k-m",
     engine: "llama.rn",

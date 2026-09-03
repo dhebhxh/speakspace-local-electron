@@ -15,6 +15,7 @@ export type LlmModelCardStatus =
 type LlmModelCardProps = {
   name: string;
   description: string;
+  recommendedForChinese: boolean;
   format: string;
   quantization: string | null;
   sizeBytes: number;
@@ -46,6 +47,13 @@ export function LlmModelCard(props: LlmModelCardProps) {
           <Text style={[styles.description, { color: colors.textMuted }]}>
             {props.description}
           </Text>
+          {props.recommendedForChinese && (
+            <View style={styles.recommendationRow}>
+              <View style={[styles.recommendationBadge, { backgroundColor: colors.accentSoft }]}>
+                <Text style={[styles.recommendationText, { color: colors.accent }]}>Recommended for Chinese notes</Text>
+              </View>
+            </View>
+          )}
         </View>
         {props.status === "active" && (
           <View style={[styles.badge, { backgroundColor: colors.accentSoft }]}>
@@ -108,6 +116,9 @@ const styles = StyleSheet.create({
   name: { fontSize: 17, fontWeight: "700" },
   meta: { fontSize: 13, fontWeight: "600" },
   description: { fontSize: 13, lineHeight: 18 },
+  recommendationRow: { alignItems: "flex-start", flexDirection: "row" },
+  recommendationBadge: { borderRadius: 999, paddingHorizontal: Spacing.sm, paddingVertical: 4 },
+  recommendationText: { fontSize: 12, fontWeight: "800" },
   badge: { alignSelf: "flex-start", borderRadius: Radius.sm, flexShrink: 0, paddingHorizontal: Spacing.sm, paddingVertical: 4 },
   badgeLabel: { fontSize: 12, fontWeight: "800" },
   progressSection: { gap: Spacing.xs },

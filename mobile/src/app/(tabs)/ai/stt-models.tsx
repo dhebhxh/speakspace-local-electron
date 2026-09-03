@@ -206,7 +206,7 @@ export default function SttModelsScreen() {
         <OnboardingModelBackButton />
         <View style={styles.heading}>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            Download models to run speech recognition fully on this device.
+            For Chinese speech, install and activate Whisper Small Multilingual. Parakeet models support English only. All transcription stays on this device.
           </Text>
         </View>
 
@@ -236,6 +236,8 @@ export default function SttModelsScreen() {
                 key={entry.id}
                 name={entry.name}
                 description={tr(entry.description)}
+                languageLabel={entry.languageLabel}
+                recommendedForChinese={entry.recommendedForChinese === true}
                 format={entry.format}
                 quantization={entry.quantization}
                 sizeBytes={installed?.getSizeBytes() ?? entry.sizeBytes}

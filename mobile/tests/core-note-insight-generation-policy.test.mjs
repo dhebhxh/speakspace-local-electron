@@ -12,7 +12,7 @@ import {
   sanitizeIntentOutput,
   splitIntentTranscript,
 } from "../src/services/core-note-insight-generation-policy.ts";
-import { resolveCoreNoteTime } from "../src/services/core-note-time.ts";
+import { extractCoreNoteTimeExpression, resolveCoreNoteTime } from "../src/services/core-note-time.ts";
 import { annotateTaskRecurrences } from "../src/services/task-recurrence.ts";
 
 const emptyIntents = () => ({ tasks: [] });
@@ -246,6 +246,35 @@ test("explicit recurring actions survive when the small model omits them", () =>
 test("negated intents are not recreated by deterministic coverage", () => {
   const transcript = "No reminder is required. The meeting was cancelled.";
   assert.deepEqual(sanitizeIntentOutput(emptyIntents(), transcript), emptyIntents());
+});
+
+test("polluted task time fields are reduced to grounded time phrases", () => {
+  const transcript = "Please submit them before next Thursday.";
+  const sanitized = sanitizeIntentOutput({
+    tasks: [{ title: "Submit them", dueAtExpression: "Please submit them before next Thursday", actionItems: [] }],
+  }, transcript);
+
+  assert.equal(sanitized.tasks[0].dueAtExpression, "before next Thursday");
+  assert.equal(extractCoreNoteTimeExpression("This has no date"), null);
+
+  const recovered = sanitizeIntentOutput(emptyIntents(), transcript);
+  assert.equal(recovered.tasks[0].dueAtExpression, "before next Thursday");
+});
+
+test("negated and advisory task clauses are rejected even when the model emits tasks", () => {
+  const transcript = [
+    "You do not need to memorize these definitions by Friday.",
+    "I'd recommend starting the optional reading next Thursday.",
+  ].join(" ");
+  const modelOutput = {
+    ...emptyIntents(),
+    tasks: [
+      { title: "Memorize these definitions", dueAtExpression: "by Friday", actionItems: [] },
+      { title: "Start the optional reading", dueAtExpression: "next Thursday", actionItems: [] },
+    ],
+  };
+
+  assert.deepEqual(sanitizeIntentOutput(modelOutput, transcript), emptyIntents());
 });
 
 test("English date and time evidence in a full grounded clause resolves locally", () => {
@@ -670,7 +699,7 @@ test("content fallback remains useful and bounded when a model never closes JSON
   assert.ok(fallback.keyPoints.length <= 8);
 });
 
-test("CoreNoteInsightService integrates adaptive batching, stop detection, and semantic filtering", async () => {
+test("CoreNoteInsightService defaults to one structured completion and keeps adaptive generation as fallback", async () => {
   const service = await readFile(
     new URL("../src/services/core-note-insight-service.ts", import.meta.url),
     "utf8",
@@ -681,6 +710,11 @@ test("CoreNoteInsightService integrates adaptive batching, stop detection, and s
   );
 
   assert.match(service, /runAdaptiveStructuredBatches/);
+  assert.match(service, /structuredSchema/);
+  assert.match(service, /generateStructured/);
+  assert.match(service, /Single-stage pipeline completed/);
+  assert.match(service, /Falling back to content and batched tasks/);
+  assert.match(service, /promptTokens > maxPrompt/);
   assert.match(service, /completionHitOutputLimit/);
   assert.match(service, /splitIntentTranscript/);
   assert.match(service, /sanitizeAdaptiveIntentBatches/);
@@ -689,4 +723,49 @@ test("CoreNoteInsightService integrates adaptive batching, stop detection, and s
   assert.match(service, /annotateCoreNoteDates\(annotateTaskRecurrences\(input, reference\.instant\), reference\.instant\)/);
   assert.match(service, /stripCoreNoteDateAnnotations/);
   assert.match(noteDetail, /coreNoteInsightService\.generate\([\s\S]*?state\.note\.getCreatedAt\(\)/);
+});
+
+test("Structured Note streaming only builds changed previews after throttling", async () => {
+  const service = await readFile(
+    new URL("../src/services/core-note-insight-service.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(service, /publishStreamingPreview/);
+  assert.match(service, /sameCoreInsightPreview/);
+  assert.match(service, /previousStatus !== state\.status/);
+  assert.match(service, /< 100/);
+  assert.doesNotMatch(service, /publishPartial/);
+});
+
+test("single-stage schema preserves the stable task-only contract", async () => {
+  const service = await readFile(
+    new URL("../src/services/core-note-insight-service.ts", import.meta.url),
+    "utf8",
+  );
+
+  for (const field of [
+    "summary", "keyPoints", "tasks", "actionItems", "recurrence",
+    "description", "startsAtExpression", "dueAtExpression",
+  ]) assert.match(service, new RegExp(field));
+  assert.match(service, /status: "pending"/);
+  assert.match(service, /completedAt: null/);
+  assert.match(service, /resolveCoreNoteTime\(item\.startsAtExpression/);
+  assert.match(service, /resolveCoreNoteTime\(item\.dueAtExpression/);
+  assert.doesNotMatch(service, /remindAtExpression|endsAtExpression|calendarIntents/);
+});
+
+test("Structured Note key points prefer a concise selection and are schema-capped at six", async () => {
+  const service = await readFile(
+    new URL("../src/services/core-note-insight-service.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(service, /Prefer 3 to 5 key points for an ordinary note/);
+  assert.match(service, /Use 1 or 2 when the note contains little meaningful information/);
+  assert.match(service, /Never return more than 6 key points/);
+  assert.match(service, /Merge semantically related information instead of extracting sentence by sentence/);
+  assert.match(service, /omitting it would materially reduce the user's understanding/);
+  assert.match(service, /keyPoints: \{ type: "array", items: \{ type: "string" \}, maxItems: 6 \}/);
+  assert.doesNotMatch(service, /Select at most 12 non-overlapping items/);
 });

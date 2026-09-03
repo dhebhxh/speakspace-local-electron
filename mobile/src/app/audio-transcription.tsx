@@ -11,11 +11,19 @@ import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
 import { ModalCloseButton } from "@/components/modal-close-button";
 import { SafeAreaModal } from "@/components/safe-area-modal";
+import { TranscriptionLanguageSelector } from "@/components/transcription-language-selector";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import type { Workspace } from "@/domain/workspace/workspace";
+import type { SttModelEngine } from "@/domain/stt-model/stt-model";
 import { validateImportedAudio } from "@/domain/audio-import/audio-import";
 import { useTheme } from "@/hooks/use-theme";
 import { formatBytes } from "@/utils/format-bytes";
+import { InferenceCancelledError } from "@/services/local-llm-coordinator";
+import {
+  readTranscriptionLanguage,
+  saveTranscriptionLanguage,
+  type TranscriptionLanguage,
+} from "@/services/transcription-language";
 
 type Status = "empty" | "selected" | "preparing" | "transcribing" | "complete";
 type SelectedAudio = { uri: string; name: string; size: number };
@@ -25,7 +33,12 @@ export default function AudioTranscriptionScreen() {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const colors = Colors[theme.mode];
-  const { noteService, transcriptionService, workspaceService } = appContainer;
+  const {
+    noteService,
+    transcriptionService,
+    workspaceService,
+    sttModelService,
+  } = appContainer;
   const selectedRef = useRef<SelectedAudio | null>(null);
   const saveDraftSourceUriRef = useRef<string | null>(null);
   const [selected, setSelected] = useState<SelectedAudio | null>(null);
@@ -37,6 +50,10 @@ export default function AudioTranscriptionScreen() {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
   const [noteName, setNoteName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [language, setLanguage] = useState<TranscriptionLanguage>(
+    readTranscriptionLanguage,
+  );
+  const [activeEngine, setActiveEngine] = useState<SttModelEngine | null>(null);
 
   useEffect(() => () => {
     if (selectedRef.current !== null) {
@@ -46,6 +63,18 @@ export default function AudioTranscriptionScreen() {
       transcriptionService.deleteTemporaryImport(selectedRef.current.uri);
     }
   }, [transcriptionService]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void sttModelService.getActiveModel().then(
+      (model) => {
+        if (!cancelled) setActiveEngine(model?.getEngine() ?? null);
+      },
+      () => undefined,
+    );
+    void transcriptionService.ensureReady().catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [sttModelService, transcriptionService]);
 
   const replaceSelection = (audio: SelectedAudio | null) => {
     if (selectedRef.current !== null && selectedRef.current.uri !== audio?.uri) {
@@ -84,7 +113,11 @@ export default function AudioTranscriptionScreen() {
         sizeBytes,
         mimeType: asset.mimeType ?? null,
       });
-      const validationError = validateImportedAudio(asset.name, sizeBytes);
+      const validationError = validateImportedAudio(
+        asset.name,
+        sizeBytes,
+        asset.mimeType,
+      );
       if (validationError !== null) {
         transcriptionService.deleteTemporaryImport(asset.uri);
         setError(validationError);
@@ -122,7 +155,9 @@ export default function AudioTranscriptionScreen() {
             durationMs: Date.now() - startedAt,
           });
         },
-      }, requestId);
+      }, requestId, {
+        language: activeEngine === "parakeet" ? "en" : language,
+      });
       if (text.length === 0) {
         throw new Error("The model did not detect any speech in this audio.");
       }
@@ -134,6 +169,10 @@ export default function AudioTranscriptionScreen() {
         transcriptLength: text.length,
       });
     } catch (caught) {
+      if (caught instanceof InferenceCancelledError) {
+        setStatus("selected");
+        return;
+      }
       console.error("[AudioImport] Imported audio transcription failed", {
         requestId,
         phase,
@@ -237,6 +276,12 @@ export default function AudioTranscriptionScreen() {
   };
 
   const busy = status === "preparing" || status === "transcribing";
+  const changeLanguage = (next: TranscriptionLanguage) => {
+    setLanguage(next);
+    void saveTranscriptionLanguage(next).catch(() => {
+      setError("Unable to save the speech language setting.");
+    });
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -247,6 +292,20 @@ export default function AudioTranscriptionScreen() {
       >
         <View style={styles.header}>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>Choose an audio file from anywhere on your device. It never leaves this device.</Text>
+        </View>
+
+        <View
+          style={[
+            styles.languageCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <TranscriptionLanguageSelector
+            value={activeEngine === "parakeet" ? "en" : language}
+            disabled={busy}
+            englishOnly={activeEngine === "parakeet"}
+            onChange={changeLanguage}
+          />
         </View>
 
         {selected === null ? (
@@ -264,7 +323,7 @@ export default function AudioTranscriptionScreen() {
               </View>
               {status !== "complete" && (
                 <View style={styles.actions}>
-                  <AppButton label={busy ? (status === "preparing" ? "Preparing audio…" : "Transcribing…") : "Start transcription"} disabled={busy} onPress={() => void startTranscription()} />
+                  <AppButton label={busy ? "Cancel transcription" : "Start transcription"} onPress={() => busy ? void transcriptionService.cancelFileTranscription() : void startTranscription()} />
                   <AppButton label="Choose another audio" variant="secondary" disabled={busy} onPress={() => void chooseAudio()} />
                 </View>
               )}
@@ -272,9 +331,18 @@ export default function AudioTranscriptionScreen() {
 
             {(busy || status === "complete") && (
               <View style={[styles.transcript, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.status, { color: busy ? colors.accent : colors.textMuted }]}>
-                  {status === "preparing" ? "Preparing audio" : status === "transcribing" ? "Transcribing" : "Transcription complete"}
-                </Text>
+                <View accessibilityLiveRegion="polite" style={styles.statusRow}>
+                  {busy && (
+                    <ActivityIndicator
+                      accessibilityLabel={status === "preparing" ? "Preparing audio" : "Transcribing"}
+                      color={colors.accent}
+                      size="large"
+                    />
+                  )}
+                  <Text style={[styles.status, { color: busy ? colors.accent : colors.textMuted }]}>
+                    {status === "preparing" ? "Preparing audio" : status === "transcribing" ? "Transcribing" : "Transcription complete"}
+                  </Text>
+                </View>
                 <Text selectable style={[styles.body, { color: transcript ? colors.text : colors.textMuted }]}>
                   {transcript || (status === "preparing" ? "Converting audio locally when needed…" : "The full transcript will appear here.")}
                 </Text>
@@ -325,12 +393,14 @@ const styles = StyleSheet.create({
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 36, fontWeight: "800", lineHeight: 42 },
   subtitle: { fontSize: 16, lineHeight: 24 },
+  languageCard: { borderRadius: Radius.md, borderWidth: 1, padding: Spacing.md },
   emptyCard: { borderRadius: Radius.md, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg },
   cardTitle: { fontSize: 20, fontWeight: "800" },
   fileCard: { borderRadius: Radius.md, borderWidth: 1, gap: Spacing.lg, padding: Spacing.lg },
   fileDetails: { gap: Spacing.xs },
   fileName: { fontSize: 18, fontWeight: "800" },
   transcript: { borderRadius: Radius.md, borderWidth: 1, gap: Spacing.md, minHeight: 260, padding: Spacing.lg },
+  statusRow: { alignItems: "center", flexDirection: "row", gap: Spacing.md, minHeight: 40 },
   status: { fontSize: 14, fontWeight: "800" },
   body: { fontSize: 18, lineHeight: 29 },
   actions: { gap: Spacing.sm },

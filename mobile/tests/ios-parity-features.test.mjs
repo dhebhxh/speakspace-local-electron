@@ -98,7 +98,7 @@ test("Trash undo refreshes the visible collection after restoring data", async (
   ]);
 
   assert.match(templatesScreen, /undo: async \(\) => \{[\s\S]*?restore\("template"[\s\S]*?await load\(\)/);
-  assert.match(templatesScreen, /useFocusEffect\(useCallback\(\(\) => \{ void load\(\); \}, \[load\]\)\)/);
+  assert.match(templatesScreen, /useFocusEffect\(useCallback\(\(\) => \{[\s\S]*?void load\(\);[\s\S]*?\}, \[load\]\)\)/);
   assert.match(searchScreen, /undo: async \(\) => \{[\s\S]*?restoreNotes\(ids\)[\s\S]*?searchNoteResults/);
   assert.match(workspaceScreen, /undo: async \(\) => \{[\s\S]*?restoreNotes\(ids\)[\s\S]*?await loadWorkspace\(\)/);
 });
@@ -122,6 +122,33 @@ test("a newly generated Knowledge result collapses the previously newest result"
 
   assert.match(noteDetail, /initiallyExpanded=\{index === 0 \|\| document\.getId\(\) === knowledgeResultId\}/);
   assert.match(noteDetail, /useEffect\(\(\) => setExpanded\(initiallyExpanded\), \[initiallyExpanded\]\)/);
+});
+
+test("Knowledge generation caps section size, uses compact output, and records actionable timing", async () => {
+  const service = await readFile(new URL("../src/services/knowledge-service.ts", import.meta.url), "utf8");
+
+  assert.match(service, /const MAX_PREDICTED_TOKENS = 1280/);
+  assert.match(service, /const RECOVERY_PREDICTED_TOKENS = 1792/);
+  assert.match(service, /const MAX_SECTION_ITEMS = 6/);
+  assert.match(service, /slice\(0, MAX_SECTION_ITEMS\)/);
+  assert.match(service, /Prefer 2 to 5 items for an ordinary supported section/);
+  assert.doesNotMatch(service, /There is no fixed item count/);
+  assert.match(service, /publishStreamingPreview/);
+  assert.match(service, /sameKnowledgeSections/);
+  for (const metric of ["queueWaitMs", "contextPrepareMs", "promptTokens", "timeToFirstTokenMs", "timeToFirstVisibleContentMs", "generationMs", "tokensPredicted", "tokensPerSecond"]) {
+    assert.match(service, new RegExp(metric));
+  }
+});
+
+test("Knowledge generation uses plain JSON with runtime validation", async () => {
+  const service = await readFile(new URL("../src/services/knowledge-service.ts", import.meta.url), "utf8");
+
+  assert.match(service, /const KNOWLEDGE_JSON_MODE = "plain" as const/);
+  assert.doesNotMatch(service, /EXPO_PUBLIC_KNOWLEDGE_JSON_MODE/);
+  assert.doesNotMatch(service, /response_format|json_schema/);
+  assert.match(service, /JSON\.parse/);
+  assert.match(service, /Model omitted required section arrays/);
+  assert.match(service, /jsonMode: KNOWLEDGE_JSON_MODE/);
 });
 
 test("the redundant floating Ask AI control does not cover note-detail actions", async () => {

@@ -103,6 +103,66 @@ The mobile source revision is `0fd7903`. It entered this repository through the 
 
 The mobile UI is currently English. Multilingual transcription, content processing, and speech do not imply a translated interface.
 
+## Product interface
+
+These source-derived interface previews use illustrative local data and reproduce the current screen structure and wording. Native control details can vary slightly by operating system.
+
+### SpeakSpace Local desktop
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/readme/screenshots/desktop-studio.png" width="100%" alt="SpeakSpace Local Studio with a note library, local AI conversation, and recording controls" />
+      <br />
+      <sub><strong>Studio</strong> — recording, linked notes, and local Q&amp;A</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/readme/screenshots/desktop-dashboard.png" width="100%" alt="SpeakSpace Local dashboard with note metrics, calendar tasks, and a note list" />
+      <br />
+      <sub><strong>Dashboard</strong> — notes, metrics, and action items</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/readme/screenshots/desktop-workspaces.png" width="100%" alt="SpeakSpace Local workspace directory with local note collections" />
+      <br />
+      <sub><strong>Workspaces</strong> — organised local knowledge</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/readme/screenshots/desktop-models.png" width="100%" alt="SpeakSpace Local model management for STT, TTS, embedding, and LLM runtimes" />
+      <br />
+      <sub><strong>Model management</strong> — an example configured local environment</sub>
+    </td>
+  </tr>
+</table>
+
+### LetsVoice mobile
+
+<table>
+  <tr>
+    <td width="25%" align="center">
+      <img src="docs/readme/screenshots/mobile-home.png" width="100%" alt="LetsVoice mobile home screen with recording, audio import, and local tasks" />
+      <br />
+      <sub><strong>Home</strong><br />record or import audio</sub>
+    </td>
+    <td width="25%" align="center">
+      <img src="docs/readme/screenshots/mobile-library.png" width="100%" alt="LetsVoice mobile note library with search and filters" />
+      <br />
+      <sub><strong>Library</strong><br />search notes and workspaces</sub>
+    </td>
+    <td width="25%" align="center">
+      <img src="docs/readme/screenshots/mobile-note.png" width="100%" alt="LetsVoice mobile note detail showing the transcript tab" />
+      <br />
+      <sub><strong>Note detail</strong><br />review and process a transcript</sub>
+    </td>
+    <td width="25%" align="center">
+      <img src="docs/readme/screenshots/mobile-ai.png" width="100%" alt="LetsVoice mobile AI management screen for local models and knowledge templates" />
+      <br />
+      <sub><strong>AI management</strong><br />manage on-device models</sub>
+    </td>
+  </tr>
+</table>
+
 ## Local-first boundaries
 
 User data remains on the device. Once the required models are installed, core STT, LLM, and TTS inference also runs locally. Model downloads still require network access.

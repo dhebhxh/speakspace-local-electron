@@ -103,6 +103,66 @@
 
 移动端界面目前以英文为主。多语言转写、内容处理和语音能力不代表界面已经完成多语言翻译。
 
+## 产品界面
+
+以下为依据当前源码还原的界面预览，内容均为示例本地数据，并沿用现有画面结构与措辞。原生控件细节可能因操作系统略有不同。
+
+### SpeakSpace Local 桌面端
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/readme/screenshots/desktop-studio.png" width="100%" alt="SpeakSpace Local Studio 笔记资料库、本地 AI 对话与录音控制界面" />
+      <br />
+      <sub><strong>Studio</strong> — 录音、关联笔记与本地问答</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/readme/screenshots/desktop-dashboard.png" width="100%" alt="SpeakSpace Local 显示笔记指标、日历任务与笔记列表的仪表板" />
+      <br />
+      <sub><strong>仪表板</strong> — 笔记、指标与行动事项</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/readme/screenshots/desktop-workspaces.png" width="100%" alt="SpeakSpace Local 工作空间目录与本地笔记集合" />
+      <br />
+      <sub><strong>工作空间</strong> — 整理本地知识</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/readme/screenshots/desktop-models.png" width="100%" alt="SpeakSpace Local 管理 STT、TTS、Embedding 与 LLM 运行时的界面" />
+      <br />
+      <sub><strong>模型管理</strong> — 已配置本地环境示例</sub>
+    </td>
+  </tr>
+</table>
+
+### LetsVoice 移动端
+
+<table>
+  <tr>
+    <td width="25%" align="center">
+      <img src="docs/readme/screenshots/mobile-home.png" width="100%" alt="LetsVoice 移动端录音、音频导入与本地任务首页" />
+      <br />
+      <sub><strong>首页</strong><br />录制或导入音频</sub>
+    </td>
+    <td width="25%" align="center">
+      <img src="docs/readme/screenshots/mobile-library.png" width="100%" alt="LetsVoice 移动端含搜索与筛选功能的笔记资料库" />
+      <br />
+      <sub><strong>资料库</strong><br />搜索笔记与工作空间</sub>
+    </td>
+    <td width="25%" align="center">
+      <img src="docs/readme/screenshots/mobile-note.png" width="100%" alt="LetsVoice 移动端显示转写分页的笔记详情" />
+      <br />
+      <sub><strong>笔记详情</strong><br />复核及处理转写</sub>
+    </td>
+    <td width="25%" align="center">
+      <img src="docs/readme/screenshots/mobile-ai.png" width="100%" alt="LetsVoice 移动端本地模型与知识模板管理界面" />
+      <br />
+      <sub><strong>AI 管理</strong><br />管理设备端模型</sub>
+    </td>
+  </tr>
+</table>
+
 ## 本地优先的数据边界
 
 用户数据始终保存在本机或移动设备上。安装所需模型后，核心 STT、LLM 和 TTS 推理也会在本地执行。下载模型仍然需要网络。

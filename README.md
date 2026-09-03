@@ -126,7 +126,7 @@ npm run ios:device:release
 ```
 
 When a Personal Team needs its own unique bundle identifier, prefix the Expo
-command with `IOS_BUNDLE_IDENTIFIER=com.example.speakspace.local`. The checked-in
+command with `IOS_BUNDLE_IDENTIFIER=com.example.letsvoice.local`. The checked-in
 default remains the team identifier and contains no contributor-specific signing
 information.
 

@@ -15,6 +15,8 @@ export type SttModelCatalogEntry = {
   fileName: string;
   downloadUrl: string;
   transcriptionLanguage?: string;
+  languageLabel: string;
+  recommendedForChinese?: boolean;
 };
 
 type ModelDefinition = readonly [id: string, sizeMiB: number];
@@ -65,6 +67,8 @@ function createWhisperEntry([id, sizeMiB]: ModelDefinition): SttModelCatalogEntr
     sizeBytes: sizeMiB * 1024 * 1024,
     fileName: `ggml-${id}.bin`,
     downloadUrl: `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${id}.bin?download=true`,
+    languageLabel: "Multilingual",
+    recommendedForChinese: id === "small",
   };
 }
 
@@ -74,12 +78,13 @@ function createParakeetEntry([id, sizeMiB]: ModelDefinition): SttModelCatalogEnt
     id,
     engine: "parakeet",
     name: `Parakeet TDT 0.6B v3 (${quantization})`,
-    description: `NVIDIA Parakeet TDT 0.6B v3 speech recognition model (${quantization}).`,
+    description: `English-only NVIDIA Parakeet TDT 0.6B v3 speech recognition model (${quantization}).`,
     format: "GGUF",
     quantization,
     sizeBytes: sizeMiB * 1024 * 1024,
     fileName: `ggml-${id}.bin`,
     downloadUrl: `https://huggingface.co/ggml-org/parakeet-GGUF/resolve/main/ggml-${id}.bin?download=true`,
+    languageLabel: "English only",
   };
 }
 

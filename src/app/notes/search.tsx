@@ -37,6 +37,7 @@ export default function NoteSearchScreen() {
   const [frozenResults, setFrozenResults] = useState<NoteSearchResult[] | null>(null);
   const [batchBusy, setBatchBusy] = useState(false);
   const [searchRevision, setSearchRevision] = useState(0);
+  const [pinningNoteId, setPinningNoteId] = useState<string | null>(null);
 
   useEffect(() => { void appContainer.workspaceService.getWorkspaces().then(setWorkspaces); }, []);
 
@@ -102,6 +103,20 @@ export default function NoteSearchScreen() {
       Alert.alert("Unable to update selected notes", error instanceof Error ? error.message : "Please try again.");
     } finally {
       setBatchBusy(false);
+    }
+  };
+  const togglePinned = async (result: NoteSearchResult) => {
+    if (pinningNoteId !== null) return;
+    const wasPinned = result.note.getIsPinned();
+    setPinningNoteId(result.note.getId());
+    try {
+      await appContainer.noteService.setNotePinned(result.note.getId(), !wasPinned);
+      const normalized = query.trim();
+      setState(normalized ? { status: "success", results: await appContainer.noteService.searchNoteResults(normalized) } : { status: "idle" });
+    } catch {
+      Alert.alert(wasPinned ? "Unable to unpin note" : "Unable to pin note", "Please try again.");
+    } finally {
+      setPinningNoteId(null);
     }
   };
 
@@ -177,6 +192,8 @@ export default function NoteSearchScreen() {
               match={{ source: result.source, excerpt: result.excerpt, query: query.trim(), resourceTitle: result.resourceTitle }}
               selectionMode={frozenResults !== null}
               selected={selectedIds.has(result.note.getId())}
+              isPinning={pinningNoteId === result.note.getId()}
+              onPinPress={frozenResults === null ? () => void togglePinned(result) : undefined}
               onLongPress={() => toggle(result.note.getId())}
               onPress={() => frozenResults !== null ? toggle(result.note.getId()) : openResult(result)}
             />

@@ -24,14 +24,21 @@ import { appContainer } from "@/application";
 import { AppButton } from "@/components/app-button";
 import { ModalCloseButton } from "@/components/modal-close-button";
 import { SafeAreaModal } from "@/components/safe-area-modal";
+import { TranscriptionLanguageSelector } from "@/components/transcription-language-selector";
 import { Backgrounds, Colors, Radius, Shadows, Spacing } from "@/constants/theme";
+import type { SttModelEngine } from "@/domain/stt-model/stt-model";
 import type { Workspace } from "@/domain/workspace/workspace";
 import { useTheme } from "@/hooks/use-theme";
 import { createDefaultNoteTitle } from "@/services/note-title";
+import {
+  readTranscriptionLanguage,
+  saveTranscriptionLanguage,
+  type TranscriptionLanguage,
+} from "@/services/transcription-language";
 
 type SessionStatus = "idle" | "starting" | "recording" | "paused" | "finishing";
 type FinishedSession = { transcript: string; audioRelativePath: string };
-const LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG = "speakspace-live-transcription";
+const LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG = "letsvoice-live-transcription";
 
 export default function TranscriptionScreen() {
   const router = useRouter();
@@ -41,6 +48,7 @@ export default function TranscriptionScreen() {
   const {
     noteService,
     noteTitleGenerationService,
+    sttModelService,
     transcriptionService,
     workspaceService,
   } = appContainer;
@@ -58,6 +66,20 @@ export default function TranscriptionScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingNoteTitle, setIsGeneratingNoteTitle] = useState(false);
   const [isCompletingPausedTranscript, setIsCompletingPausedTranscript] = useState(false);
+  const [language, setLanguage] = useState<TranscriptionLanguage>(readTranscriptionLanguage);
+  const [activeEngine, setActiveEngine] = useState<SttModelEngine | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void sttModelService.getActiveModel().then(
+      (model) => {
+        if (!cancelled) setActiveEngine(model?.getEngine() ?? null);
+      },
+      () => undefined,
+    );
+    void transcriptionService.ensureReady().catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [sttModelService, transcriptionService]);
 
   useEffect(() => {
     const pauseForSystem = (message: string) => {
@@ -86,7 +108,7 @@ export default function TranscriptionScreen() {
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active" || statusRef.current !== "recording") return;
       pauseForSystem(
-        "Recording paused because LetsVoice left the foreground or the iPhone was locked. Tap Resume when you are ready.",
+        "Recording paused because LetsVoice left the foreground or the device was locked. Tap Resume when you are ready.",
       );
     });
     const interruptionSubscription = addAudioInterruptionListener((event) => {
@@ -126,19 +148,22 @@ export default function TranscriptionScreen() {
     try {
       const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) throw new Error("Microphone permission is required.");
-      await transcriptionService.start({
-        onText: setTranscript,
-        onError: setError,
-        onDurationWarning: () => {
-          Alert.alert(
-            "Five minutes remaining",
-            "Live transcription will finish automatically at the two-hour limit.",
-          );
+      await transcriptionService.start(
+        {
+          onText: setTranscript,
+          onError: setError,
+          onDurationWarning: () => {
+            Alert.alert(
+              "Five minutes remaining",
+              "Live transcription will finish automatically at the two-hour limit.",
+            );
+          },
+          onDurationLimitReached: () => {
+            void finish();
+          },
         },
-        onDurationLimitReached: () => {
-          void finish();
-        },
-      });
+        { language: activeEngine === "parakeet" ? "en" : language },
+      );
       statusRef.current = "recording";
       setStatus("recording");
       void activateKeepAwakeAsync(LIVE_TRANSCRIPTION_KEEP_AWAKE_TAG).catch(
@@ -149,6 +174,13 @@ export default function TranscriptionScreen() {
       statusRef.current = "idle";
       setStatus("idle");
     }
+  };
+
+  const changeLanguage = (next: TranscriptionLanguage) => {
+    setLanguage(next);
+    void saveTranscriptionLanguage(next).catch(() => {
+      setError("Unable to save the speech language setting.");
+    });
   };
 
   const togglePause = async () => {
@@ -239,8 +271,11 @@ export default function TranscriptionScreen() {
       void prepareSave(result);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to finish transcription.");
-      statusRef.current = "idle";
-      setStatus("idle");
+      const recoveryStatus: SessionStatus = transcriptionService.hasActiveSession()
+        ? "paused"
+        : "idle";
+      statusRef.current = recoveryStatus;
+      setStatus(recoveryStatus);
     }
   };
 
@@ -323,6 +358,14 @@ export default function TranscriptionScreen() {
       >
         <View style={styles.header}>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>Audio and transcription stay on this device.</Text>
+        </View>
+        <View style={[styles.languageCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TranscriptionLanguageSelector
+            value={activeEngine === "parakeet" ? "en" : language}
+            disabled={status !== "idle"}
+            englishOnly={activeEngine === "parakeet"}
+            onChange={changeLanguage}
+          />
         </View>
         <View style={[styles.sessionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.transcript}>
@@ -455,6 +498,7 @@ const styles = StyleSheet.create({
   kicker: { fontSize: 12, fontWeight: "800", letterSpacing: 1.4 },
   title: { fontSize: 32, fontWeight: "800", lineHeight: 38 },
   subtitle: { fontSize: 16, lineHeight: 24 },
+  languageCard: { borderRadius: Radius.md, borderWidth: 1, padding: Spacing.md },
   sessionCard: { borderCurve: "continuous", borderRadius: Radius.lg, borderWidth: 1, boxShadow: Shadows.raised, overflow: "hidden" },
   transcript: { gap: Spacing.md, minHeight: 300, padding: Spacing.lg },
   status: { fontSize: 14, fontWeight: "800" },

@@ -79,6 +79,15 @@ export default function HomeScreen() {
     [loadOverview],
   );
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!appContainer.inferenceScheduler.isBusy()) {
+        void appContainer.transcriptionService.ensureReady().catch(() => undefined);
+      }
+    }, 750);
+    return () => clearTimeout(timer);
+  }, []);
+
   const overviewData = useMemo(() => {
     if (overview.status !== "success") return null;
     const weekAgo = overview.loadedAt - 7 * 24 * 60 * 60 * 1000;

@@ -26,7 +26,7 @@ export class CoreNoteInsightRepository {
       if (!row) return null;
       const [keyPoints, taskRows, actionRows] = await Promise.all([
         database.getAllAsync<KeyPointRow>("SELECT content FROM core_note_key_points WHERE insight_id = ? ORDER BY position", row.id),
-        database.getAllAsync<TaskRow>(`SELECT * FROM core_note_tasks WHERE insight_id = ?
+        database.getAllAsync<TaskRow>(`SELECT * FROM core_note_tasks WHERE insight_id = ? AND is_current = 1
           ORDER BY is_current DESC, CASE status WHEN 'pending' THEN 0 ELSE 1 END,
             completed_at DESC, occurrence_index DESC, position`, row.id),
         database.getAllAsync<ActionRow>("SELECT * FROM core_note_action_items WHERE insight_id = ? ORDER BY position", row.id),

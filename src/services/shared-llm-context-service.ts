@@ -2,7 +2,7 @@ import { initLlama, type LlamaContext } from "llama.rn";
 
 import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 
-const SHARED_CONTEXT_SIZE = 4096;
+const SHARED_CONTEXT_SIZE = 6144;
 const GPU_LAYERS = 99;
 
 export type PreparedLlmContext = {
@@ -23,7 +23,12 @@ export class SharedLlmContextService {
   private cacheIdentity: string | null = null;
 
   public constructor(coordinator: LocalLlmCoordinator) {
-    coordinator.registerIdleCleanup("shared-llm", () => this.release(), ["ask-ai", "translation", "note-title"]);
+    // A loaded LLM is compatible with every LLM feature. Serialization is handled
+    // by the application scheduler; completion/cancellation does not unload it.
+    coordinator.registerIdleCleanup("shared-llm", () => this.release(), [
+      "ask-ai", "translation", "note-title", "knowledge", "knowledge-template",
+      "note-classification", "core-insights", "tts",
+    ]);
   }
 
   public getLoadedModelId(): string | null { return this.modelId; }

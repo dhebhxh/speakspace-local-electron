@@ -46,7 +46,7 @@ const artifactBaseName = `LetsVoice-iOS-v${version}`;
 const ipaPath = join(outputDirectory, `${artifactBaseName}.ipa`);
 const checksumPath = `${ipaPath}.sha256`;
 const workingDirectory = await mkdtemp(
-  join(tmpdir(), "speakspace-sidestore-"),
+  join(tmpdir(), "letsvoice-sidestore-"),
 );
 
 try {

@@ -28,6 +28,8 @@ test("note detail exposes independent persisted translation controls", async () 
   assert.match(service, /promptPrefillMs/);
   assert.doesNotMatch(service, /response_format|json_schema|parseTranslation|batchStructured|retry|fallback/i);
   assert.match(screen, /livePayload/);
+  assert.match(screen, /knowledgeTranslationVisible = liveSection === "knowledge" \|\| knowledgeTranslated/);
+  assert.match(screen, /knowledgeTranslationVisible && displayKnowledge/);
   assert.doesNotMatch(screen, /Translate all/);
 });
 

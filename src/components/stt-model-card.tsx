@@ -15,6 +15,8 @@ export type SttModelCardStatus =
 type SttModelCardProps = {
   name: string;
   description: string;
+  languageLabel: string;
+  recommendedForChinese: boolean;
   format: string;
   quantization: string | null;
   sizeBytes: number;
@@ -30,6 +32,8 @@ type SttModelCardProps = {
 export function SttModelCard({
   name,
   description,
+  languageLabel,
+  recommendedForChinese,
   format,
   quantization,
   sizeBytes,
@@ -63,6 +67,13 @@ export function SttModelCard({
             {quantization ? ` · ${quantization}` : ""} ·{" "}
             {formatBytes(sizeBytes)}
           </Text>
+          <View style={styles.languageRow}>
+            <View style={[styles.languageBadge, { backgroundColor: recommendedForChinese ? colors.accentSoft : colors.surfaceMuted }]}>
+              <Text style={[styles.languageBadgeText, { color: recommendedForChinese ? colors.accent : colors.textMuted }]}>
+                {recommendedForChinese ? `Recommended · ${languageLabel}` : languageLabel}
+              </Text>
+            </View>
+          </View>
           <Text style={[styles.description, { color: colors.textMuted }]}>
             {description}
           </Text>
@@ -181,6 +192,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+  languageRow: { alignItems: "flex-start", flexDirection: "row" },
+  languageBadge: {
+    borderRadius: 999,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+  },
+  languageBadgeText: { fontSize: 12, fontWeight: "800" },
   badge: {
     alignSelf: "flex-start",
     borderRadius: Radius.sm,

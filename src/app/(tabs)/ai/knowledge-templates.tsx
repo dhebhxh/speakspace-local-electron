@@ -12,6 +12,7 @@ import { Colors, Radius, Shadows, Spacing } from "@/constants/theme";
 import type { KnowledgeTemplateSection } from "@/domain/knowledge/knowledge-template";
 import { useTheme } from "@/hooks/use-theme";
 import { useTrashUndo } from "@/providers/trash-undo-provider";
+import { InferenceCancelledError } from "@/services/local-llm-coordinator";
 
 type Template = Awaited<ReturnType<typeof appContainer.knowledgeTemplateService.getTemplates>>[number];
 type Editor = { id?: string; name: string; requirement: string; sections: KnowledgeTemplateSection[] };
@@ -24,6 +25,7 @@ export default function KnowledgeTemplatesScreen() {
   const [state, setState] = useState<State>({ status: "loading" });
   const [editor, setEditor] = useState<Editor | null>(null);
   const [busy, setBusy] = useState(false);
+  const [proposing, setProposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -34,19 +36,25 @@ export default function KnowledgeTemplatesScreen() {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { void load(); }, [load]));
+  useFocusEffect(useCallback(() => {
+    void load();
+    void appContainer.knowledgeTemplateService.ensureReady().catch(() => undefined);
+  }, [load]));
 
   const propose = async () => {
     if (!editor) return;
     setBusy(true);
+    setProposing(true);
     setError(null);
     try {
       const sections = await appContainer.knowledgeTemplateService.proposeSections(editor.name, editor.requirement);
       setEditor({ ...editor, sections });
     } catch (caught) {
+      if (caught instanceof InferenceCancelledError) return;
       setError(caught instanceof Error ? caught.message : "Unable to propose sections.");
     } finally {
       setBusy(false);
+      setProposing(false);
     }
   };
 
@@ -131,7 +139,7 @@ export default function KnowledgeTemplatesScreen() {
             <Field label="What should this template extract?" multiline value={editor.requirement} onChangeText={(requirement) => setEditor({ ...editor, requirement })} placeholder="Describe the information and organization you need…" />
             {editor.sections.length === 0 ? (
               <View style={styles.actions}>
-                <AppButton label={busy ? "Proposing…" : error ? "Retry Proposal" : "Propose Sections"} disabled={busy} onPress={() => void propose()} />
+                <AppButton label={proposing ? "Cancel Proposal" : error ? "Retry Proposal" : "Propose Sections"} onPress={() => proposing ? void appContainer.knowledgeTemplateService.cancelProposal() : void propose()} />
                 <AppButton label="Build Manually" variant="secondary" disabled={busy} onPress={() => setEditor({ ...editor, sections: appContainer.knowledgeTemplateService.manualSections() })} />
               </View>
             ) : (
@@ -153,6 +161,7 @@ export default function KnowledgeTemplatesScreen() {
                 <View style={styles.actions}>
                   <AppButton label={busy ? "Saving…" : "Save Template"} disabled={busy} onPress={() => void save()} />
                   <AppButton label="Propose Again" variant="secondary" disabled={busy} onPress={() => void propose()} />
+                  {proposing && <AppButton label="Cancel Proposal" variant="quiet" onPress={() => void appContainer.knowledgeTemplateService.cancelProposal()} />}
                 </View>
               </>
             )}

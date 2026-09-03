@@ -1,3 +1,5 @@
+import { extractCoreNoteTimeExpression } from "./core-note-time.ts";
+
 export type StructuredCompletionSignals = {
   truncated?: boolean;
   stopped_limit?: number;
@@ -349,14 +351,14 @@ const REMINDER_RELATIVE_DATE_EN = /\b(?:today|tomorrow|tonight|the\s+day\s+after
 const REMINDER_CLOCK_EN = /\b(?:1[0-2]|0?\d)(?::[0-5]\d)?\s*(?:am|pm)\b|\b(?:[01]?\d|2[0-3]):[0-5]\d\b/giu;
 const REMINDER_REQUEST_EN = /\b(?:remind|notify|alert)\s+(?:me|us)\b|\bremember\s+to\b|\b(?:set|create|schedule)\s+(?:a\s+)?(?:reminder|notification|alert)\b/giu;
 const REMINDER_FILLER_EN = new Set(["a", "about", "alert", "an", "at", "create", "for", "have", "has", "i", "in", "is", "me", "my", "notification", "on", "our", "please", "reminder", "schedule", "set", "the", "there", "to", "us", "we", "will", "you"]);
-const TEMPORAL_EN = /\b(?:today|tomorrow|tonight|morning|afternoon|evening|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}:\d{2}|\d{4})\b/iu;
-const TEMPORAL_ZH = /(?:今天|今日|明天|明日|后天|後天|今晚|上午|下午|晚上|星期[一二三四五六日天]|[周週][一二三四五六日天]|\d{1,4}\s*年|(?:\d{1,2}|[一二两兩三四五六七八九十]{1,3})\s*月|(?:\d{1,2}|[一二两兩三四五六七八九十]{1,3})\s*[日号號点點时時])/u;
 const CLOCK_EN = /\b(?:1[0-2]|0?\d)(?::[0-5]\d)?\s*(?:am|pm)\b|\b(?:[01]?\d|2[0-3]):[0-5]\d\b/iu;
 const CLOCK_ZH = /(?:上午|早上|中午|下午|晚上)?\s*(?:\d{1,2}|[一二三四五六七八九十]+)\s*[点點时時]/u;
 const NEGATED_INTENT_EN = /\b(?:no\s+(?:task|action)|not\s+(?:required|needed)|(?:(?:do|does)\s+not|(?:don|doesn)['’]?t)\s+(?:need\s+to|have\s+to)|(?:there(?:['’]s|\s+is)\s+)?no\s+need\s+to|need\s+not|(?:do\s+not|don['’]?t)\s+(?:submit|send|finish|complete|prepare|call|email|review))\b/iu;
 const NEGATED_INTENT_ZH = /(?:无需|不需要|不要|没有)(?:.{0,8})(?:任务|待办|行动)|(?:任务|待办)(?:已)?取消|(?:不需要|无需|不用|不必).{0,20}(?:参加|參加|提交|发送|發送|完成|准备|準備|检查|檢查|联系|聯繫|续保|續保|续费|續費)/u;
 const NEGATED_REMINDER_EN = /\b(?:(?:(?:do|does|did)\s+not|(?:don|doesn|didn)['’]?t|never)\s+(?:remind|notify|alert|remember\s+to)|no\s+(?:reminder|notification|alert)|cancel(?:led)?\s+(?:the\s+)?(?:reminder|notification|alert))\b/iu;
 const NEGATED_REMINDER_ZH = /(?:不要|不需要|无需|不用|取消|不再|别|別|没有|沒有)(?:.{0,8})(?:提醒|通知|闹钟|鬧鐘)/u;
+const ADVISORY_INTENT_EN = /\b(?:i(?:'d|\s+would)\s+recommend|we\s+recommend|recommend(?:ed|ing)?|suggest(?:ed|ing)?|consider|might\s+want\s+to|could\s+try|it\s+(?:may|might)\s+help\s+to)\b/iu;
+const ADVISORY_INTENT_ZH = /(?:我(?:会|會)?(?:建议|建議)|(?:建议|建議)(?:可以|先|从|從)?|(?:推荐|推薦)(?:可以|先|从|從)?|不妨|可以考虑|可以考慮|最好考虑|最好考慮)/u;
 
 function completedFact(clause: string): boolean {
   return COMPLETED_FACT_EN.test(clause) || COMPLETED_FACT_ZH.test(clause);
@@ -459,18 +461,18 @@ function isNegatedIntent(clause: string): boolean {
     NEGATED_REMINDER_EN.test(clause) || NEGATED_REMINDER_ZH.test(clause);
 }
 
-function cleanEvidenceTitle(clause: string): string {
-  return truncateCharacters(stripRecurrenceAnnotations(clause).replace(/[.!?。！？;；]+$/u, "").trim(), 240);
+function isAdvisoryIntent(clause: string): boolean {
+  return ADVISORY_INTENT_EN.test(clause) || ADVISORY_INTENT_ZH.test(clause);
 }
 
-function hasTemporalEvidence(clause: string): boolean {
-  return TEMPORAL_EN.test(clause) || TEMPORAL_ZH.test(clause);
+function cleanEvidenceTitle(clause: string): string {
+  return truncateCharacters(stripRecurrenceAnnotations(clause).replace(/[.!?。！？;；]+$/u, "").trim(), 240);
 }
 
 function explicitEvidenceCategory(
   clause: string,
 ): keyof SanitizedIntentOutput | null {
-  if (!clause || isNegatedIntent(clause)) return null;
+  if (!clause || isNegatedIntent(clause) || isAdvisoryIntent(clause)) return null;
   if (hasTaskEvidence(clause) || hasRecurringTaskEvidence(clause)) return "tasks";
   return null;
 }
@@ -484,7 +486,7 @@ function deterministicIntentItem(
     title,
     description: null,
     startsAtExpression: null,
-    dueAtExpression: recurrence ? recurrenceDueExpression(clause, recurrence) : (hasTemporalEvidence(clause) ? clause : null),
+    dueAtExpression: recurrence ? recurrenceDueExpression(clause, recurrence) : extractCoreNoteTimeExpression(clause),
     recurrence: recurrence?.kind ?? null,
     actionItems: [],
   };
@@ -516,7 +518,8 @@ function addMissingExplicitEvidence(
 function groundedExpression(value: unknown, clause: string): string | null | undefined {
   if (value === null || value === undefined) return value;
   if (typeof value !== "string" || !value.trim()) return null;
-  return normalized(clause).includes(normalized(value)) ? value.trim() : null;
+  if (!normalized(clause).includes(normalized(value))) return null;
+  return extractCoreNoteTimeExpression(value);
 }
 
 function groundedItem(item: UnknownItem, clause: string): UnknownItem {
@@ -532,17 +535,17 @@ export function sanitizeIntentOutput(value: unknown, transcript: string): Saniti
   const tasks = items(output.tasks).flatMap((item) => {
     const clause = supportingClause(item, transcript);
     const recurrence = recurrenceEvidence(clause);
-    if ((!hasTaskEvidence(clause) && !recurrence) || isNegatedIntent(clause)) return [];
+    if ((!hasTaskEvidence(clause) && !recurrence) || isNegatedIntent(clause) || isAdvisoryIntent(clause)) return [];
     const actionItems = items(item.actionItems).flatMap((action) => {
       const actionClause = supportingClause(action, transcript);
-      return hasTaskEvidence(actionClause) && !isNegatedIntent(actionClause)
+      return hasTaskEvidence(actionClause) && !isNegatedIntent(actionClause) && !isAdvisoryIntent(actionClause)
         ? [groundedItem(action, actionClause)]
         : [];
     });
     const grounded = groundedItem(item, clause);
     const recoveredDueExpression = grounded.dueAtExpression ?? (
-      grounded.startsAtExpression === null && hasTemporalEvidence(clause)
-        ? clause
+      grounded.startsAtExpression === null
+        ? extractCoreNoteTimeExpression(clause)
         : null
     );
     return [{

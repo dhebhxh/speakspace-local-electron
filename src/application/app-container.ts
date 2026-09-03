@@ -32,6 +32,7 @@ import { AppPreferencesService } from "@/services/app-preferences-service";
 import { NoteNotificationService } from "@/services/note-notification-service";
 import { NotePdfExportService } from "@/services/note-pdf-export-service";
 import { NoteTitleGenerationService } from "@/services/note-title-generation-service";
+import { LlmRequestService } from "@/services/llm-request-service";
 
 export class AppContainer {
   public readonly workspaceService: WorkspaceService;
@@ -52,6 +53,8 @@ export class AppContainer {
   public readonly noteNotificationService: NoteNotificationService;
   public readonly notePdfExportService: NotePdfExportService;
   public readonly noteTitleGenerationService: NoteTitleGenerationService;
+  public readonly inferenceScheduler: LocalLlmCoordinator;
+  public readonly llmRequestService: LlmRequestService;
 
   public constructor(databaseManager: DatabaseManager) {
     this.preferencesService = new AppPreferencesService();
@@ -69,6 +72,7 @@ export class AppContainer {
       databaseManager,
     );
     const localLlmCoordinator = new LocalLlmCoordinator();
+    this.inferenceScheduler = localLlmCoordinator;
     const sharedLlmContextService = new SharedLlmContextService(localLlmCoordinator);
     const noteTranslationRepository = new NoteTranslationRepository(databaseManager);
     this.llmModelService = new LlmModelService(llmModelRepository, localLlmCoordinator);
@@ -77,11 +81,14 @@ export class AppContainer {
       localLlmCoordinator,
       sharedLlmContextService,
     );
-    this.noteTranslationService = new NoteTranslationService(noteTranslationRepository, this.llmModelService, localLlmCoordinator, sharedLlmContextService);
+    this.llmRequestService = new LlmRequestService(this.llmModelService, sharedLlmContextService);
+    this.noteTranslationService = new NoteTranslationService(noteTranslationRepository, this.llmModelService, localLlmCoordinator, sharedLlmContextService, this.llmRequestService);
     const noteClassificationService = new NoteClassificationService(
       noteRepository,
       this.llmModelService,
       localLlmCoordinator,
+      this.llmRequestService,
+      sharedLlmContextService,
     );
     this.workspaceService = new WorkspaceService(workspaceRepository, noteRepository);
     this.noteService = new NoteService(
@@ -93,13 +100,15 @@ export class AppContainer {
       databaseManager,
       () => this.noteService.notifyExternalContentChange(),
     );
-    this.knowledgeService = new KnowledgeService(knowledgeDocumentRepository, this.llmModelService, localLlmCoordinator);
+    this.knowledgeService = new KnowledgeService(knowledgeDocumentRepository, this.llmModelService, localLlmCoordinator, this.llmRequestService, sharedLlmContextService);
     this.knowledgeTemplateService = new KnowledgeTemplateService(
       knowledgeTemplateRepository,
       this.llmModelService,
       localLlmCoordinator,
+      this.llmRequestService,
+      sharedLlmContextService,
     );
-    this.coreNoteInsightService = new CoreNoteInsightService(coreNoteInsightRepository, this.llmModelService, localLlmCoordinator);
+    this.coreNoteInsightService = new CoreNoteInsightService(coreNoteInsightRepository, this.llmModelService, localLlmCoordinator, this.llmRequestService, sharedLlmContextService);
     this.noteNotificationService = new NoteNotificationService(
       this.coreNoteInsightService,
       this.noteService,
@@ -134,6 +143,7 @@ export class AppContainer {
       this.aiConversationService,
       localLlmCoordinator,
       sharedLlmContextService,
+      this.llmRequestService,
       this.preferencesService,
       this.speechPlaybackService,
     );

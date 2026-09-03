@@ -35,19 +35,19 @@ From the repository root:
 
 ```bash
 npm ci
-IOS_BUNDLE_IDENTIFIER=com.example.speakspace.local \
+IOS_BUNDLE_IDENTIFIER=com.example.letsvoice.local \
   npx expo prebuild --platform ios
 npx pod-install ios
 open ios/LetsVoice.xcworkspace
 ```
 
-Replace `com.example.speakspace.local` with a unique reverse-DNS identifier for
+Replace `com.example.letsvoice.local` with a unique reverse-DNS identifier for
 the Apple Account used on that Mac. The repository default is the team-neutral
 `com.dhebhxh.speakspacelocalmobile`; the environment variable prevents a local
 Personal Team identifier from being committed. In PowerShell, use:
 
 ```powershell
-$env:IOS_BUNDLE_IDENTIFIER = "com.example.speakspace.local"
+$env:IOS_BUNDLE_IDENTIFIER = "com.example.letsvoice.local"
 npx expo prebuild --platform ios
 ```
 

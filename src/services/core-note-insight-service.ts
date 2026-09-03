@@ -1,4 +1,4 @@
-import { initLlama, type LlamaContext, type RNLlamaOAICompatibleMessage } from "llama.rn";
+import { type LlamaContext, type RNLlamaOAICompatibleMessage } from "llama.rn";
 
 import { CoreNoteInsight, type CoreActionItem, type CoreTask } from "@/domain/core-note-insight/core-note-insight";
 import { CoreNoteInsightGenerationError } from "@/errors/core-note-insight-generation-error";
@@ -21,28 +21,38 @@ import {
   type ResolvedCoreNoteTime,
 } from "@/services/core-note-time";
 import { LlmModelService } from "@/services/llm-model-service";
-import { LocalLlmCoordinator } from "@/services/local-llm-coordinator";
 import { InferenceDeadline, type InferenceAbortReason } from "@/services/inference-deadline";
 import { STRUCTURED_NOTE_GENERATION_DEADLINE_MS } from "@/constants/local-ai-deadlines";
+import { InferenceCancelledError, type InferenceTask, type InferenceTaskContext, LocalLlmCoordinator } from "@/services/local-llm-coordinator";
+import { LlmRequestService } from "@/services/llm-request-service";
+import { SharedLlmContextService } from "@/services/shared-llm-context-service";
+import { extractStreamingObjectStringFields, extractStreamingString, extractStreamingStringArray } from "@/services/structured-stream-preview";
 import {
   annotateTaskRecurrences,
   normalizeTaskRecurrence,
   recurrenceValue,
   recurringSeriesKey,
+  stripTaskRecurrenceAnnotations,
 } from "@/services/task-recurrence";
 
 type OutputItem = { title?: unknown; description?: unknown; startsAtExpression?: unknown; dueAtExpression?: unknown };
 type OutputTask = OutputItem & { actionItems?: unknown; recurrence?: unknown };
 type ContentOutput = { summary?: unknown; keyPoints?: unknown };
 type TaskOutput = { tasks?: unknown };
-type ActiveCoreRequest = { requestId: string; deadline: InferenceDeadline; context: LlamaContext | null };
+type StructuredOutput = ContentOutput & TaskOutput;
+type ActiveCoreRequest = {
+  requestId: string;
+  deadline: InferenceDeadline;
+  task: InferenceTask<CoreNoteInsight>;
+  startedAt: number;
+};
 
 const CONTEXT_SIZE = 6144;
-const BATCH_SIZE = 128;
 const CONTENT_TOKENS = 1536;
 const CONTENT_RETRY_TOKENS = 2304;
 const TASK_TOKENS = 1536;
 const TASK_RETRY_TOKENS = 2304;
+const STRUCTURED_TOKENS = 3072;
 const SAFETY_TOKENS = 192;
 const EMPTY_VALUE_STRINGS = new Set(["null", "unknown", "undefined", "none", "n/a", "na", "not specified", "unspecified"]);
 const SYSTEM = `Perform grounded summarization and extraction from the user's NOTE.
@@ -58,8 +68,11 @@ KEY POINTS
 - Each item states one specific supported fact, explanation, cause/effect, condition, limitation, conclusion, decision, method, caution, or consequential detail.
 - Say what the note says about a subject, not merely that it discusses the subject.
 - Keep each item concise: use one short, self-contained sentence and include only one main point.
-- Prefer direct wording. Remove setup, repetition, filler, and details already clear from another key point.
-- Select at most 12 non-overlapping items that cover the most important information.
+- Prefer 3 to 5 key points for an ordinary note. Use 1 or 2 when the note contains little meaningful information, and use more only when the content is genuinely complex.
+- Never return more than 6 key points.
+- Merge semantically related information instead of extracting sentence by sentence.
+- Prefer direct wording. Remove setup, repetition, filler, examples, secondary details, repeated explanations, and details already clear from another key point.
+- Include a key point only when omitting it would materially reduce the user's understanding of the note.
 - Avoid semantic duplicates and do not turn examples into general facts.
 
 Silently identify important propositions and check coverage before answering. Do not output that analysis.`;
@@ -95,17 +108,24 @@ TIME FIELDS
 - For an unknown optional field, output the JSON literal null. Never output the strings "null", "unknown", "undefined", "N/A", or "none".
 
 Silently test every candidate against these rules before answering. Do not output that analysis.`;
+const STRUCTURED_PROMPT = `${CONTENT_PROMPT}\n\n${TASK_PROMPT}`;
 
 const nullableString = { anyOf: [{ type: "string" }, { type: "null" }] } as const;
 const itemProperties = { title: { type: "string" }, description: nullableString, startsAtExpression: nullableString, dueAtExpression: nullableString } as const;
 const itemRequired = ["title", "description", "startsAtExpression", "dueAtExpression"];
-const contentSchema = { type: "object", properties: { summary: { type: "string" }, keyPoints: { type: "array", items: { type: "string" } } }, required: ["summary", "keyPoints"], additionalProperties: false } as const;
+const contentSchema = { type: "object", properties: { summary: { type: "string" }, keyPoints: { type: "array", items: { type: "string" }, maxItems: 6 } }, required: ["summary", "keyPoints"], additionalProperties: false } as const;
 const taskSchema = {
   type: "object",
   properties: {
     tasks: { type: "array", items: { type: "object", properties: { ...itemProperties, recurrence: nullableString, actionItems: { type: "array", items: { type: "object", properties: itemProperties, required: itemRequired, additionalProperties: false } } }, required: [...itemRequired, "recurrence", "actionItems"], additionalProperties: false } },
   },
   required: ["tasks"], additionalProperties: false,
+} as const;
+const structuredSchema = {
+  type: "object",
+  properties: { ...contentSchema.properties, ...taskSchema.properties },
+  required: [...contentSchema.required, ...taskSchema.required],
+  additionalProperties: false,
 } as const;
 
 export class CoreNoteInsightService {
@@ -118,12 +138,18 @@ export class CoreNoteInsightService {
   private readonly activeRequests = new Map<string, ActiveCoreRequest>();
   private readonly listeners = new Map<string, Set<(state: CoreInsightGenerationState) => void>>();
   private readonly changeListeners = new Set<() => void>();
+  private readonly lastPartialPublishedAt = new Map<string, number>();
+  private cacheSequence = 0;
 
   public constructor(
     private readonly repository: CoreNoteInsightRepository,
     private readonly llmModelService: LlmModelService,
     private readonly coordinator: LocalLlmCoordinator,
+    private readonly requests: LlmRequestService,
+    private readonly sharedContext: SharedLlmContextService,
   ) {}
+  public cancelGeneration(noteId: string): Promise<void> { return this.stopGeneration(noteId); }
+  public async ensureReady(): Promise<void> { await this.coordinator.runExclusive("core-insights", async () => { await this.requests.ensureReady(); }); }
   public getForNote(noteId: string): Promise<CoreNoteInsight | null> { return this.repository.findByNoteId(noteId); }
 
   public subscribeToChanges(listener: () => void): () => void {
@@ -176,20 +202,27 @@ export class CoreNoteInsightService {
     const requestId = `core-insights-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const startedAt = Date.now();
     const deadline = new InferenceDeadline(STRUCTURED_NOTE_GENERATION_DEADLINE_MS);
-    const request: ActiveCoreRequest = { requestId, deadline, context: null };
+    this.lastPartialPublishedAt.delete(noteId);
+    this.publish(noteId, { status: "queued", requestId, startedAt });
+    const task = this.coordinator.schedule("core-insights", async (lifecycle) => {
+      deadline.throwIfAborted((reason) => this.abortError(reason));
+      this.publish(noteId, {
+        status: "generating",
+        requestId,
+        startedAt: Date.now(),
+        partial: emptyCoreInsightPreview("content"),
+      });
+      return this.runGeneration(noteId, transcript, requestId, lifecycle, deadline, referenceTime);
+    });
+    const request: ActiveCoreRequest = { requestId, deadline, task, startedAt };
     this.activeRequests.set(noteId, request);
     deadline.signal.addEventListener("abort", () => {
       const active = this.activeRequests.get(noteId);
       if (active !== request) return;
       this.publish(noteId, { status: "stopping", requestId, startedAt });
-      void active.context?.stopCompletion().catch(() => undefined);
+      void task.cancel();
     }, { once: true });
-    this.publish(noteId, { status: "queued", requestId, startedAt });
-    const promise = this.coordinator.runExclusive("core-insights", async () => {
-      deadline.throwIfAborted((reason) => this.abortError(reason));
-      this.publish(noteId, { status: "generating", requestId, startedAt });
-      return this.runGeneration(noteId, transcript, requestId, request, referenceTime);
-    }, { signal: deadline.signal }).catch((error: unknown) => {
+    const promise = task.promise.catch((error: unknown) => {
       if (deadline.reason) throw this.abortError(deadline.reason);
       throw error;
     });
@@ -199,12 +232,18 @@ export class CoreNoteInsightService {
         deadline.dispose();
         this.activeGenerations.delete(noteId);
         if (this.activeRequests.get(noteId) === request) this.activeRequests.delete(noteId);
+        this.lastPartialPublishedAt.delete(noteId);
         this.publish(noteId, { status: "completed", requestId, finishedAt: Date.now() });
       },
       (error: unknown) => {
         deadline.dispose();
         this.activeGenerations.delete(noteId);
         if (this.activeRequests.get(noteId) === request) this.activeRequests.delete(noteId);
+        this.lastPartialPublishedAt.delete(noteId);
+        if (error instanceof InferenceCancelledError && !deadline.reason) {
+          this.publish(noteId, { status: "idle" });
+          return;
+        }
         this.publish(noteId, { status: "failed", requestId, finishedAt: Date.now(), message: error instanceof Error ? error.message : "Structured Note did not finish. Please try again." });
       },
     );
@@ -215,17 +254,23 @@ export class CoreNoteInsightService {
     const request = this.activeRequests.get(noteId);
     if (!request) return;
     request.deadline.abort("cancelled");
-    await request.context?.stopCompletion().catch(() => undefined);
   }
 
   public async stopAllGenerations(): Promise<void> {
     await Promise.all([...this.activeRequests.keys()].map((noteId) => this.stopGeneration(noteId)));
   }
 
-  private async runGeneration(noteId: string, transcript: string, requestId: string, request: ActiveCoreRequest, referenceTime?: string): Promise<CoreNoteInsight> {
+  private async runGeneration(
+    noteId: string,
+    transcript: string,
+    requestId: string,
+    lifecycle: InferenceTaskContext,
+    deadline: InferenceDeadline,
+    referenceTime?: string,
+  ): Promise<CoreNoteInsight> {
     const startedAt = Date.now();
     const input = transcript.trim();
-    request.deadline.throwIfAborted((reason) => this.abortError(reason));
+    this.throwIfStopped(lifecycle, deadline);
     console.info("[CoreInsights] Input received", { requestId, noteId, inputLength: input.length });
     if (!input) throw new CoreNoteInsightGenerationError("empty-transcript", "This note has no text to analyze yet.");
     const model = await this.llmModelService.getActiveModel();
@@ -233,45 +278,64 @@ export class CoreNoteInsightService {
     const modelFile = this.llmModelService.resolveModelFile(model);
     if (!modelFile.exists) throw new CoreNoteInsightGenerationError("model-file-missing", "The active model file is missing. Reinstall it from AI Models.");
 
-    let context: LlamaContext | null = null;
     try {
       console.info("[CoreInsights] Local LLM starting", { requestId, noteId, modelId: model.getId(), contextSize: CONTEXT_SIZE, pipeline: "content+batched-tasks" });
-      context = await initLlama({ model: modelFile.uri, n_ctx: CONTEXT_SIZE, n_batch: BATCH_SIZE });
-      request.context = context;
-      request.deadline.throwIfAborted((reason) => this.abortError(reason));
+      const context = await this.requests.ensureReady();
+      this.throwIfStopped(lifecycle, deadline);
       const parsedReference = referenceTime ? new Date(referenceTime) : null;
       const reference = getLocalReferenceTime(
         parsedReference && !Number.isNaN(parsedReference.getTime()) ? parsedReference : new Date(),
       );
       console.info("[CoreInsights] Local time reference captured", { requestId, referenceTime: reference.localIso, timezone: reference.timezone });
-      const content = await this.generateContent(context, input, requestId, request.deadline);
       const timeContext = `${TASK_PROMPT}\n\nREFERENCE TIME (device local clock; context only, do not copy it unless NOTE contains that time):\n${reference.localIso}\nDEVICE TIMEZONE:\n${reference.timezone}`;
       const annotatedTaskInput = annotateCoreNoteDates(annotateTaskRecurrences(input, reference.instant), reference.instant);
-      const tasks = await this.generateTasks(context, timeContext, annotatedTaskInput, requestId, request.deadline);
+      const structuredInstruction = `${STRUCTURED_PROMPT}\n\nREFERENCE TIME (device local clock; context only, do not copy it unless NOTE contains that time):\n${reference.localIso}\nDEVICE TIMEZONE:\n${reference.timezone}\nRecurrence annotations inside NOTE are extraction hints only. Do not repeat them in summary, key points, titles, or descriptions.`;
+      const primary = await this.generateStructured(context, structuredInstruction, annotatedTaskInput, requestId, noteId, lifecycle, deadline);
+      let content: ContentOutput;
+      let tasks: TaskOutput;
+      if (primary) {
+        content = cleanStructuredContent(primary);
+        tasks = sanitizeAdaptiveIntentBatches({ values: [{ input: annotatedTaskInput, value: primary }], failures: [] });
+        console.info("[CoreInsights] Single-stage pipeline completed", { requestId });
+      } else {
+        console.info("[CoreInsights] Falling back to content and batched tasks", { requestId });
+        this.publish(noteId, { status: "generating", requestId, startedAt, partial: emptyCoreInsightPreview("content") });
+        content = await this.generateContent(context, input, requestId, noteId, lifecycle, deadline);
+        this.publish(noteId, { status: "generating", requestId, startedAt, partial: {
+          phase: "intents",
+          summary: typeof content.summary === "string" ? content.summary.trim() : "",
+          keyPoints: Array.isArray(content.keyPoints) ? this.uniqueStrings(content.keyPoints) : [],
+          tasks: [],
+        } });
+        tasks = await this.generateTasks(context, timeContext, annotatedTaskInput, requestId, noteId, content, lifecycle, deadline);
+      }
       const insight = this.parse(noteId, model.getId(), content, tasks, requestId, reference.instant, reference.localIso, reference.timezone);
-      request.deadline.throwIfAborted((reason) => this.abortError(reason));
+      this.throwIfStopped(lifecycle, deadline);
       console.info("[CoreInsights] Structured output parsed", { requestId, summaryLength: insight.getSummary().length, keyPointCount: insight.getKeyPoints().length, taskCount: insight.getTasks().length, actionItemCount: insight.getActionItems().length });
       await this.repository.save(insight);
       this.changeListeners.forEach((listener) => listener());
       console.info("[CoreInsights] Saved and ready for display", { requestId, noteId, durationMs: Date.now() - startedAt });
       return insight;
     } catch (error) {
+      if (error instanceof InferenceCancelledError) {
+        console.info("[CoreInsights] Generation cancelled", { requestId, noteId });
+        throw error;
+      }
       console.error("[CoreInsights] Generation failed", { requestId, noteId, durationMs: Date.now() - startedAt, errorCode: error instanceof CoreNoteInsightGenerationError ? error.code : "unexpected", error });
-      if (request.deadline.reason) throw this.abortError(request.deadline.reason);
+      if (deadline.reason) throw this.abortError(deadline.reason);
       if (error instanceof CoreNoteInsightGenerationError) throw error;
       throw new CoreNoteInsightGenerationError("generation-failed", "Structured Note did not finish. Please try again.", { cause: error instanceof Error ? error : undefined });
-    } finally {
-      if (context) try {
-        const releaseStartedAt = Date.now();
-        console.info("[CoreInsights] Releasing model context", { requestId, noteId });
-        await context.release();
-        console.info("[CoreInsights] Model context released", { requestId, noteId, durationMs: Date.now() - releaseStartedAt });
-      } catch (error) { console.warn("[CoreInsights] Could not release model context", { requestId, error }); }
-      if (request.context === context) request.context = null;
-    }
+    } finally { /* Shared runtime remains READY. */ }
   }
 
-  private async generateContent(context: LlamaContext, input: string, requestId: string, deadline: InferenceDeadline): Promise<ContentOutput> {
+  private async generateContent(
+    context: LlamaContext,
+    input: string,
+    requestId: string,
+    noteId: string,
+    lifecycle: InferenceTaskContext,
+    deadline: InferenceDeadline,
+  ): Promise<ContentOutput> {
     const attempts = [
       { instruction: CONTENT_PROMPT, tokens: CONTENT_TOKENS, stage: "content" },
       {
@@ -281,7 +345,14 @@ export class CoreNoteInsightService {
       },
     ];
     for (const attempt of attempts) {
-      const result = await this.runStage(context, attempt.instruction, input, contentSchema, attempt.tokens, requestId, attempt.stage, deadline);
+      const result = await this.runStage(context, attempt.instruction, input, contentSchema, attempt.tokens, requestId, attempt.stage, (raw) => {
+        this.publishStreamingPreview(noteId, () => ({ status: "generating", requestId, startedAt: Date.now(), partial: {
+          phase: "content",
+          summary: extractStreamingString(raw, "summary"),
+          keyPoints: extractStreamingStringArray(raw, "keyPoints"),
+          tasks: [],
+        } }));
+      }, lifecycle, deadline);
       if (result.hitOutputLimit) continue;
       try {
         const parsed = this.parseJson<ContentOutput>(result.raw);
@@ -303,8 +374,29 @@ export class CoreNoteInsightService {
     return fallback;
   }
 
-  private async generateTasks(context: LlamaContext, instruction: string, input: string, requestId: string, deadline: InferenceDeadline): Promise<TaskOutput> {
+  private async generateTasks(
+    context: LlamaContext,
+    instruction: string,
+    input: string,
+    requestId: string,
+    noteId: string,
+    content: ContentOutput,
+    lifecycle: InferenceTaskContext,
+    deadline: InferenceDeadline,
+  ): Promise<TaskOutput> {
     const chunks = splitIntentTranscript(input);
+    const completed: string[] = [];
+    const publishTaskPreview = (raw = "", force = false) => {
+      const createState = () => ({ status: "generating" as const, requestId, startedAt: Date.now(), partial: {
+        phase: "intents" as const,
+        summary: typeof content.summary === "string" ? content.summary.trim() : "",
+        keyPoints: Array.isArray(content.keyPoints) ? this.uniqueStrings(content.keyPoints) : [],
+        tasks: this.uniqueStrings([...completed, ...extractStreamingObjectStringFields(raw, "tasks", "title")]),
+      } });
+      if (force) this.publishPreview(noteId, createState());
+      else this.publishStreamingPreview(noteId, createState);
+    };
+    publishTaskPreview("", true);
     console.info("[CoreInsights] Task evidence batches ready", {
       requestId,
       batchCount: chunks.length,
@@ -312,12 +404,23 @@ export class CoreNoteInsightService {
     });
     const batches = await runAdaptiveStructuredBatches<TaskOutput>({
       inputs: chunks,
-      complete: (chunk, mode) => this.runTaskStage(context, instruction, chunk, mode, requestId, deadline),
+      complete: (chunk, mode) => this.runTaskStage(
+        context,
+        instruction,
+        chunk,
+        mode,
+        requestId,
+        publishTaskPreview,
+        lifecycle,
+        deadline,
+      ),
       parse: (raw) => {
         const parsed = this.parseJson<TaskOutput>(raw);
         if (!Array.isArray(parsed.tasks)) {
           throw new CoreNoteInsightGenerationError("invalid-output", "Task output did not contain the required array.");
         }
+        completed.push(...parsed.tasks.map((item) => typeof item?.title === "string" ? item.title : ""));
+        publishTaskPreview("", true);
         return parsed;
       },
     });
@@ -345,6 +448,8 @@ export class CoreNoteInsightService {
     input: string,
     mode: AdaptiveCompletionMode,
     requestId: string,
+    onPartial: (raw: string) => void,
+    lifecycle: InferenceTaskContext,
     deadline: InferenceDeadline,
   ): Promise<StructuredStageResult> {
     const recovery = mode === "expanded"
@@ -358,6 +463,8 @@ export class CoreNoteInsightService {
       mode === "expanded" ? TASK_RETRY_TOKENS : TASK_TOKENS,
       requestId,
       `task-${mode}`,
+      onPartial,
+      lifecycle,
       deadline,
     );
   }
@@ -365,12 +472,69 @@ export class CoreNoteInsightService {
   private publish(noteId: string, state: CoreInsightGenerationState): void {
     const previousStatus = this.getGenerationState(noteId).status;
     this.generationStates.set(noteId, state);
-    console.info("[CoreInsights] Generation state changed", { noteId, requestId: "requestId" in state ? state.requestId : null, previousStatus, status: state.status, observerCount: this.listeners.get(noteId)?.size ?? 0 });
+    if (previousStatus !== state.status) console.info("[CoreInsights] Generation state changed", { noteId, requestId: "requestId" in state ? state.requestId : null, previousStatus, status: state.status, observerCount: this.listeners.get(noteId)?.size ?? 0 });
     this.listeners.get(noteId)?.forEach((listener) => listener(state));
   }
 
-  private async runStage(context: LlamaContext, instruction: string, input: string, schema: object, outputTokens: number, requestId: string, stage: string, deadline: InferenceDeadline): Promise<StructuredStageResult> {
-    deadline.throwIfAborted((reason) => this.abortError(reason));
+  private async generateStructured(
+    context: LlamaContext,
+    instruction: string,
+    input: string,
+    requestId: string,
+    noteId: string,
+    lifecycle: InferenceTaskContext,
+    deadline: InferenceDeadline,
+  ): Promise<StructuredOutput | null> {
+    const messages: RNLlamaOAICompatibleMessage[] = [
+      { role: "system", content: SYSTEM },
+      { role: "user", content: `${instruction}\n\nNOTE:\n---\n${input}\n---` },
+    ];
+    const promptTokens = await this.countTokens(context, messages, lifecycle, deadline);
+    const maxPrompt = CONTEXT_SIZE - STRUCTURED_TOKENS - SAFETY_TOKENS;
+    if (promptTokens > maxPrompt) {
+      console.info("[CoreInsights] Single-stage pipeline skipped for long input", { requestId, promptTokens, maxPrompt, inputLength: input.length });
+      return null;
+    }
+    this.publish(noteId, { status: "generating", requestId, startedAt: Date.now(), partial: emptyCoreInsightPreview("structured") });
+    const result = await this.runStage(context, instruction, input, structuredSchema, STRUCTURED_TOKENS, requestId, "structured", (raw) => {
+      this.publishStreamingPreview(noteId, () => ({ status: "generating", requestId, startedAt: Date.now(), partial: previewStructuredOutput(raw) }));
+    }, lifecycle, deadline);
+    if (result.hitOutputLimit) return null;
+    try {
+      const parsed = this.parseJson<StructuredOutput>(result.raw);
+      if (typeof parsed.summary !== "string" || !Array.isArray(parsed.keyPoints) || !Array.isArray(parsed.tasks)) return null;
+      return parsed;
+    } catch (error) {
+      console.warn("[CoreInsights] Single-stage JSON fallback required", { requestId, errorCode: error instanceof CoreNoteInsightGenerationError ? error.code : "unexpected" });
+      return null;
+    }
+  }
+
+  private publishStreamingPreview(noteId: string, createState: () => Extract<CoreInsightGenerationState, { status: "generating" }>): void {
+    const now = Date.now();
+    if (now - (this.lastPartialPublishedAt.get(noteId) ?? 0) < 100) return;
+    this.lastPartialPublishedAt.set(noteId, now);
+    this.publishPreview(noteId, createState());
+  }
+
+  private publishPreview(noteId: string, state: Extract<CoreInsightGenerationState, { status: "generating" }>): void {
+    const current = this.getGenerationState(noteId);
+    if (current.status === "generating" && sameCoreInsightPreview(current.partial, state.partial)) return;
+    this.publish(noteId, state);
+  }
+
+  private async runStage(
+    context: LlamaContext,
+    instruction: string,
+    input: string,
+    schema: object,
+    outputTokens: number,
+    requestId: string,
+    stage: string,
+    onPartial: ((raw: string) => void) | undefined,
+    lifecycle: InferenceTaskContext,
+    deadline: InferenceDeadline,
+  ): Promise<StructuredStageResult> {
     const makeMessages = (note: string): RNLlamaOAICompatibleMessage[] => [
       { role: "system", content: SYSTEM },
       { role: "user", content: `${instruction}\n\nNOTE:\n---\n${note}\n---` },
@@ -378,26 +542,31 @@ export class CoreNoteInsightService {
     const maxPrompt = CONTEXT_SIZE - outputTokens - SAFETY_TOKENS;
     let used = input;
     let messages = makeMessages(used);
-    let promptTokens = await this.countTokens(context, messages, deadline);
+    let promptTokens = await this.countTokens(context, messages, lifecycle, deadline);
     if (promptTokens > maxPrompt) {
       let low = 0;
       let high = input.length;
       while (low < high) {
         const mid = Math.ceil((low + high) / 2);
-        if (await this.countTokens(context, makeMessages(input.slice(0, mid)), deadline) <= maxPrompt) low = mid;
+        if (await this.countTokens(context, makeMessages(input.slice(0, mid)), lifecycle, deadline) <= maxPrompt) low = mid;
         else high = mid - 1;
       }
       used = input.slice(0, low).trimEnd();
       messages = makeMessages(used);
-      promptTokens = await this.countTokens(context, messages, deadline);
+      promptTokens = await this.countTokens(context, messages, lifecycle, deadline);
       console.warn("[CoreInsights] Input truncated by token budget", { requestId, stage, originalCharacters: input.length, usedCharacters: used.length, promptTokens, outputTokens });
     } else {
       console.info("[CoreInsights] Prompt budget ready", { requestId, stage, promptTokens, outputTokens, inputTruncated: false });
     }
     const stageStartedAt = Date.now();
-    const result = await context.completion({ messages, response_format: { type: "json_schema", json_schema: { strict: true, schema } }, n_predict: outputTokens, temperature: 0 });
-    deadline.throwIfAborted((reason) => this.abortError(reason));
-    const raw = result.content || result.text;
+    let streamedRaw = "";
+    await this.sharedContext.activateCache(`core-insights:${requestId}:${stage}:${this.cacheSequence++}`);
+    this.throwIfStopped(lifecycle, deadline);
+    const { result, raw } = await this.requests.complete(context, { messages, response_format: { type: "json_schema", json_schema: { strict: true, schema } }, n_predict: outputTokens, temperature: 0 }, lifecycle, (data) => {
+      streamedRaw = data.accumulated_text ?? `${streamedRaw}${data.token ?? ""}`;
+      onPartial?.(streamedRaw);
+    });
+    this.throwIfStopped(lifecycle, deadline);
     const hitOutputLimit = completionHitOutputLimit(result, outputTokens);
     console.info("[CoreInsights] Stage completed", {
       requestId,
@@ -416,12 +585,21 @@ export class CoreNoteInsightService {
     return { raw, hitOutputLimit };
   }
 
-  private async countTokens(context: LlamaContext, messages: RNLlamaOAICompatibleMessage[], deadline: InferenceDeadline): Promise<number> {
-    deadline.throwIfAborted((reason) => this.abortError(reason));
-    const formatted = await context.getFormattedChat(messages, null, { jinja: true, enable_thinking: false, reasoning_format: "none" });
-    const count = (await context.tokenize(formatted.prompt ?? "")).tokens.length;
-    deadline.throwIfAborted((reason) => this.abortError(reason));
+  private async countTokens(
+    context: LlamaContext,
+    messages: RNLlamaOAICompatibleMessage[],
+    lifecycle: InferenceTaskContext,
+    deadline: InferenceDeadline,
+  ): Promise<number> {
+    this.throwIfStopped(lifecycle, deadline);
+    const count = await this.requests.countMessageTokens(context, messages);
+    this.throwIfStopped(lifecycle, deadline);
     return count;
+  }
+
+  private throwIfStopped(lifecycle: InferenceTaskContext, deadline: InferenceDeadline): void {
+    deadline.throwIfAborted((reason) => this.abortError(reason));
+    lifecycle.throwIfCancelled();
   }
 
   private abortError(reason: InferenceAbortReason): CoreNoteInsightGenerationError {
@@ -518,6 +696,43 @@ export class CoreNoteInsightService {
 
 export type CoreInsightGenerationState =
   | { status: "idle" }
-  | { status: "queued" | "generating" | "stopping"; requestId: string; startedAt: number }
+  | { status: "queued"; requestId: string; startedAt: number }
+  | { status: "generating"; requestId: string; startedAt: number; partial: CoreInsightPreview }
+  | { status: "stopping"; requestId: string; startedAt: number }
   | { status: "completed"; requestId: string; finishedAt: number }
   | { status: "failed"; requestId: string; finishedAt: number; message: string };
+
+export type CoreInsightPreview = {
+  phase: "structured" | "content" | "intents";
+  summary: string;
+  keyPoints: string[];
+  tasks: string[];
+};
+
+function emptyCoreInsightPreview(phase: CoreInsightPreview["phase"]): CoreInsightPreview {
+  return { phase, summary: "", keyPoints: [], tasks: [] };
+}
+
+function previewStructuredOutput(raw: string): CoreInsightPreview {
+  return {
+    phase: "structured",
+    summary: stripTaskRecurrenceAnnotations(extractStreamingString(raw, "summary")),
+    keyPoints: extractStreamingStringArray(raw, "keyPoints").map(stripTaskRecurrenceAnnotations),
+    tasks: extractStreamingObjectStringFields(raw, "tasks", "title"),
+  };
+}
+
+function cleanStructuredContent(value: StructuredOutput): ContentOutput {
+  return {
+    summary: typeof value.summary === "string" ? stripTaskRecurrenceAnnotations(value.summary) : value.summary,
+    keyPoints: Array.isArray(value.keyPoints)
+      ? value.keyPoints.map((item) => typeof item === "string" ? stripTaskRecurrenceAnnotations(item) : item)
+      : value.keyPoints,
+  };
+}
+
+function sameCoreInsightPreview(left: CoreInsightPreview, right: CoreInsightPreview): boolean {
+  const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((item, index) => item === b[index]);
+  return left.phase === right.phase && left.summary === right.summary
+    && sameList(left.keyPoints, right.keyPoints) && sameList(left.tasks, right.tasks);
+}

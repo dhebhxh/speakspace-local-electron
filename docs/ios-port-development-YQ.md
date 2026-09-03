@@ -1064,6 +1064,19 @@ SideStore packager 生成 `LetsVoice-iOS-v1.6.1.ipa` 与 checksum。IPA 为 34,3
 > - Method: 全量测试、TypeScript、Lint、Expo 配置与依赖诊断、干净 Prebuild/CocoaPods、unsigned iPhoneOS Release、iOS Simulator Release 安装与启动、IPA ZIP/entry/plist/architecture/SHA-256 独立验证
 > - Confidence: High；名称范围、兼容标识、自动质量门、两类原生构建、模拟器可见结果与 IPA 有直接证据；实体 iPhone 重签安装和 Windows SideStore 流程不由模拟器结果替代
 
+### 12.27 首页品牌文字精确修正与 iOS v1.6.2 封版
+
+本轮按用户截图只把 Home 顶部品牌文字从 `LETSVOICE-LOCAL` 调整为精确大小写 `LetsVoice`，没有改变布局、样式或其他产品功能。App version 提升为 1.6.2，iOS build number 提升为 9；Bundle ID、scheme、数据库、通知 ID 和 package/repository 名称等兼容标识继续保持不变。专项回归直接检查 Home 源码只包含新的显示文字，并拒绝旧的带后缀文字。
+
+干净 Expo Prebuild 安装 127 个 Pod dependencies。签名 iPhoneOS Release 为 arm64，项目 verifier 与严格 codesign 检查通过；业务 bundle 为 5,136,047 bytes，并独立确认不含旧 Home 品牌文字。iPhone 17 Pro / iOS 26.5 Simulator Release 构建、安装和直接启动通过，截图确认 Home 只显示 `LetsVoice` 且其他布局不变。连接的 iPhone 16 Pro Max 运行 iOS 27.0 Beta，Xcode 26.6 使用 iOS 26.5 SDK；App `1.6.2 (9)` 通过 USB 安装，在用户完成 Personal Team 信任后由 CoreDevice 直接启动，进程清单确认仍在运行。整个过程没有卸载 App、清理设备容器或使用 iPhone Mirroring。
+
+SideStore 资产 `LetsVoice-iOS-v1.6.2.ipa` 为 33,081,366 bytes，SHA-256 为 `d5568e676cf9efaa2f4f38fbff88c2e3ebfd13fdfd6bd2787a9067811481eaeb`。ZIP 完整性、归档根、签名与 provisioning 清理、Info.plist、arm64 架构与 checksum 均独立复核通过；详细证据记录在 `docs/ios-release-v1.6.2-YQ.md`。
+
+> Evidence:
+> - Source: `src/app/(tabs)/index.tsx`, `tests/letsvoice-branding.test.mjs`, `app.json`, `package.json`, `CHANGELOG.md`, `README.md`, `docs/ios-release-v1.6.2-YQ.md`
+> - Method: 精确文字回归、全量测试、TypeScript、Lint、Expo public config、干净 Prebuild、签名 iPhoneOS Release、codesign/verifier、CoreDevice 安装与启动、IPA ZIP/entry/plist/architecture/SHA-256 独立验证
+> - Confidence: High；源码、自动质量门、签名构建、实体机版本和进程、IPA 均有直接证据；真机逐页触控不由进程存活替代
+
 ## 十三、参考资料
 
 - Expo SDK 57 app config：<https://docs.expo.dev/versions/v57.0.0/config/app/>

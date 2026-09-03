@@ -41,27 +41,27 @@ SideStore 的系统要求和下载入口可能变化，开始前先打开
 ### 3. 下载并校验 LetsVoice
 
 从小组仓库的
-[iOS v1.6.1 Release](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.6.1)
+[iOS v1.6.2 Release](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.6.2)
 下载以下两个文件：
 
-- [`LetsVoice-iOS-v1.6.1.ipa`](https://github.com/dhebhxh/speakspace-local-mobile/releases/download/ios-v1.6.1/LetsVoice-iOS-v1.6.1.ipa)
-- [`LetsVoice-iOS-v1.6.1.ipa.sha256`](https://github.com/dhebhxh/speakspace-local-mobile/releases/download/ios-v1.6.1/LetsVoice-iOS-v1.6.1.ipa.sha256)
+- [`LetsVoice-iOS-v1.6.2.ipa`](https://github.com/dhebhxh/speakspace-local-mobile/releases/download/ios-v1.6.2/LetsVoice-iOS-v1.6.2.ipa)
+- [`LetsVoice-iOS-v1.6.2.ipa.sha256`](https://github.com/dhebhxh/speakspace-local-mobile/releases/download/ios-v1.6.2/LetsVoice-iOS-v1.6.2.ipa.sha256)
 
 把两个文件放进同一个文件夹，在 PowerShell 中运行：
 
 ```powershell
-Get-FileHash .\LetsVoice-iOS-v1.6.1.ipa -Algorithm SHA256
-Get-Content .\LetsVoice-iOS-v1.6.1.ipa.sha256
+Get-FileHash .\LetsVoice-iOS-v1.6.2.ipa -Algorithm SHA256
+Get-Content .\LetsVoice-iOS-v1.6.2.ipa.sha256
 ```
 
 两个 SHA-256 值必须完全相同。本次发布的正确值是：
 
 ```text
-37657ab606c42a5136d117029976dc3f08665b6990380dba013d815942da4ef5
+d5568e676cf9efaa2f4f38fbff88c2e3ebfd13fdfd6bd2787a9067811481eaeb
 ```
 
 如需回退，旧的
-[iOS v1.6.0 Release](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.6.0)
+[iOS v1.6.1 Release](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.6.1)
 仍然保留；不要在同一台 iPhone 上通过卸载重装来回退，否则本地数据会被删除。
 
 ### 4. 用 SideStore 安装和刷新
@@ -102,7 +102,7 @@ iPhone setup and signing procedure. Record the physical-device results in
 The engineering work, decisions, failures, and fixes behind the iPhone port are
 documented in [docs/ios-port-development-YQ.md](docs/ios-port-development-YQ.md).
 The current stable release is documented in
-[docs/ios-release-v1.6.1-YQ.md](docs/ios-release-v1.6.1-YQ.md), and version-level
+[docs/ios-release-v1.6.2-YQ.md](docs/ios-release-v1.6.2-YQ.md), and version-level
 changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Development

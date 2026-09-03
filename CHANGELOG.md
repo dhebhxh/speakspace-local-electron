@@ -2,6 +2,15 @@
 
 本文件记录 LetsVoice Local Mobile 面向组内测试的稳定版本。iOS 安装包不发布到 App Store，二进制资产附在团队仓库对应的 GitHub Release 中。
 
+## [1.6.2] - 2026-09-03
+
+### Changed
+
+- 首页品牌文字由 `LETSVOICE-LOCAL` 精确调整为 `LetsVoice`；其余界面、功能、样式与兼容标识保持不变。
+- App version 更新为 `1.6.2`，iOS build number 更新为 `9`。
+
+发布记录：[LetsVoice iOS v1.6.2](https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.6.2)
+
 ## [1.6.1] - 2026-09-03
 
 ### Changed

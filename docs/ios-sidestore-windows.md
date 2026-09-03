@@ -23,11 +23,11 @@ Apple 对免费 Personal Team 的限制见 [Choosing a Membership](https://devel
 6. iPhone 上安装的 `LocalDevVPN`。
 7. Windows 上按 SideStore 官方 Prerequisites 安装的 iTunes 和 `iloader`。
 8. GitHub Release 中的两个文件：
-   - `LetsVoice-iOS-v1.6.1.ipa`
-   - `LetsVoice-iOS-v1.6.1.ipa.sha256`
+   - `LetsVoice-iOS-v1.6.2.ipa`
+   - `LetsVoice-iOS-v1.6.2.ipa.sha256`
 
 本次已验证构建的小组仓库下载页：
-<https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.6.1>
+<https://github.com/dhebhxh/speakspace-local-mobile/releases/tag/ios-v1.6.2>
 
 测试者应只使用本文件列出的小组 GitHub 仓库和 SHA-256 校验，不使用第三方网盘
 重新打包的版本。
@@ -37,15 +37,15 @@ Apple 对免费 Personal Team 的限制见 [Choosing a Membership](https://devel
 把 IPA 和 SHA-256 文件放到同一文件夹，在 PowerShell 中进入该文件夹并运行：
 
 ```powershell
-Get-FileHash .\LetsVoice-iOS-v1.6.1.ipa -Algorithm SHA256
-Get-Content .\LetsVoice-iOS-v1.6.1.ipa.sha256
+Get-FileHash .\LetsVoice-iOS-v1.6.2.ipa -Algorithm SHA256
+Get-Content .\LetsVoice-iOS-v1.6.2.ipa.sha256
 ```
 
 两处显示的 64 位十六进制值必须完全一致。不同则不要安装，重新从 GitHub Release 下载。
 本版正确值为：
 
 ```text
-37657ab606c42a5136d117029976dc3f08665b6990380dba013d815942da4ef5
+d5568e676cf9efaa2f4f38fbff88c2e3ebfd13fdfd6bd2787a9067811481eaeb
 ```
 
 ## 第二步：安装并配置 SideStore
@@ -64,7 +64,7 @@ Get-Content .\LetsVoice-iOS-v1.6.1.ipa.sha256
 
 ## 第三步：安装 LetsVoice IPA
 
-1. 把 `LetsVoice-iOS-v1.6.1.ipa` 保存到 iPhone 的“文件”App，或从 iPhone 打开 GitHub Release 下载。
+1. 把 `LetsVoice-iOS-v1.6.2.ipa` 保存到 iPhone 的“文件”App，或从 iPhone 打开 GitHub Release 下载。
 2. 在共享菜单中选择 SideStore；如果没有显示，打开 SideStore 后使用添加 IPA 的入口。
 3. 等待 SideStore 完成重新签名和安装。不要在处理中关闭 SideStore 或 LocalDevVPN。
 4. 回到主屏幕打开 LetsVoice。

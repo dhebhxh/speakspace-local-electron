@@ -432,14 +432,14 @@ LetsVoice 包含自定义原生模块，无法在 Expo Go 中完成全部验证�
 
 ## 团队贡献
 
-下表依据桌面与移动两个仓库的 Git 历史合并整理，描述可追溯的工作范围，不用于比较相对工作量；提交数、merge 数、生成文件与代码行数均不等同于实际贡献。通过 subtree 导入的 111 个移动端提交只计算一次。当前桌面端克隆在 `1ee9103` 之前为浅历史，早期活动可能缺失。机器人身份已排除，AI co-author trailer 仍保留在底层 Git 历史中。
+下表依据桌面与移动两个仓库的 Git 历史合并整理，描述可追溯的工作范围，不用于比较相对工作量；提交数、merge 数、生成文件与代码行数均不等同于实际贡献。通过 subtree 导入的 111 个移动端提交只计算一次；其后独立仓库中仅修改 README 的提交 `d472f39` 单独纳入。当前桌面端克隆在 `1ee9103` 之前为浅历史，早期活动可能缺失。机器人身份已排除，AI co-author trailer 仍保留在底层 Git 历史中。
 
 本地证据只能高置信对应三组论文作者：`Fan` / `dhebhxh` 对应 Fan Lin，`Yanqing` / `Yanqing797` / `QiaoNimo` 对应 Yanqing Peng，`Wenlei Miao` 为同名身份。其余身份在团队确认前保持账号形式，避免错误映射。
 
 | Git identity | 由历史支持的贡献范围 | 代表提交 |
 | --- | --- | --- |
 | `37300112` | 桌面工作空间与服务重构、模型与运行时管理、音频导入、Whisper/Parakeet STT、本地对话、Structured Note/Knowledge、TTS、语义检索、有界 Agent、评测图表 | `c0be796`、`23a9f48`、`9351f52`、`e252250` |
-| `Greta` | 早期桌面录音、持久化与 IPC；移动端 SQLite/Repository、工作空间、STT、LLM/TTS 管理、Knowledge、任务、仪表板、流式输出、取消、播放与本地化 | `3d987a5`、`8f1d0ec`、`fab903a`、`d8ca504` |
+| `Greta` | 早期桌面录音、持久化与 IPC；移动端 SQLite/Repository、工作空间、STT、LLM/TTS 管理、Knowledge、任务、仪表板、流式输出、取消、播放、本地化与仓库文档 | `3d987a5`、`8f1d0ec`、`fab903a`、`d8ca504`、`d472f39` |
 | `Jack8ot` | 桌面仪表板、界面整合、导出与多笔记流程；移动端本地 AI/日历改进、导入反馈和笔记任务控制；subtree 整合、工具链与仓库文档 | `06d4aad`、`47d8626`、`40cc114`、`00c7ada` |
 | `Fan` / `dhebhxh`（Fan Lin） | 桌面本地化与 Studio、运行时/模型/硬件管理、Agent/Ask AI/任务提取可靠性、并发模型操作、可重复评测、基准自动化和跨机器证据 | `11aff94`、`b8ff539`、`f308695`、`65bf353` |
 | `Yanqing` / `Yanqing797` / `QiaoNimo`（Yanqing Peng） | 桌面可选 TTS、TTS 基准、回收站与 Apple M2 证据；iOS 音频准备、本地 AI、真机/发布证据、SideStore、任务、搜索、TTS 恢复、通知、PDF 导出与安全控制 | `c9aa9f3`、`45c3e53`、`dc773e0`、`d10829c` |

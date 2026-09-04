@@ -432,14 +432,14 @@ Mobile's 187 deterministic tests verify application behaviour and native patch c
 
 ## Team contributions
 
-The areas below were reconstructed from the Git histories of the desktop and mobile repositories. They describe traceable activity, not relative workload: commit totals, merge counts, generated artefacts and lines changed are not contribution measures. The 111 mobile commits imported through the subtree are counted once. The available desktop clone is shallow before `1ee9103`, so earlier activity may be absent. Bot identities are excluded; AI co-author trailers remain visible in the underlying history.
+The areas below were reconstructed from the Git histories of the desktop and mobile repositories. They describe traceable activity, not relative workload: commit totals, merge counts, generated artefacts and lines changed are not contribution measures. The 111 mobile commits imported through the subtree are counted once; the later standalone README-only commit `d472f39` is considered separately. The available desktop clone is shallow before `1ee9103`, so earlier activity may be absent. Bot identities are excluded; AI co-author trailers remain visible in the underlying history.
 
 Only three mappings to dissertation authors are directly supported by local Git evidence: `Fan` / `dhebhxh` is Fan Lin, `Yanqing` / `Yanqing797` / `QiaoNimo` is Yanqing Peng, and `Wenlei Miao` is an exact-name match. Other identities remain account-based until the team confirms their mapping.
 
 | Git identity | Evidence-based contribution areas | Representative commits |
 | --- | --- | --- |
 | `37300112` | Desktop workspace and service refactoring; managed models and runtimes; audio import; Whisper and Parakeet STT; local conversations; Structured Notes and Knowledge; TTS; semantic retrieval; bounded Agent; evaluation diagrams | `c0be796`, `23a9f48`, `9351f52`, `e252250` |
-| `Greta` | Early desktop recording, persistence and IPC; mobile SQLite/repository foundations, workspaces, STT, LLM/TTS management, knowledge, tasks, dashboard, streaming, cancellation, playback and localisation | `3d987a5`, `8f1d0ec`, `fab903a`, `d8ca504` |
+| `Greta` | Early desktop recording, persistence and IPC; mobile SQLite/repository foundations, workspaces, STT, LLM/TTS management, knowledge, tasks, dashboard, streaming, cancellation, playback, localisation and repository documentation | `3d987a5`, `8f1d0ec`, `fab903a`, `d8ca504`, `d472f39` |
 | `Jack8ot` | Desktop dashboard, UI consolidation, export and multi-note workflows; mobile grounded-AI/calendar improvements, import feedback and note/task controls; subtree integration, tooling and repository documentation | `06d4aad`, `47d8626`, `40cc114`, `00c7ada` |
 | `Fan` / `dhebhxh` (Fan Lin) | Desktop localisation and Studio; runtime/model/hardware management; Agent, Ask AI and task-extraction reliability; concurrent model operations; reproducible evaluation, benchmark automation and cross-machine evidence | `11aff94`, `b8ff539`, `f308695`, `65bf353` |
 | `Yanqing` / `Yanqing797` / `QiaoNimo` (Yanqing Peng) | Desktop selectable TTS, TTS benchmark, Trash and Apple M2 evidence; iOS audio preparation, local AI, device/release evidence, SideStore packaging, tasks, search, TTS resume, notifications, PDF export and safety controls | `c9aa9f3`, `45c3e53`, `dc773e0`, `d10829c` |

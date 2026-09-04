@@ -56,25 +56,20 @@
 
 移动端的用户可见品牌是 **LetsVoice**。仓库 slug、iOS Bundle ID、Android package ID、URL scheme 和数据库文件名等技术标识继续保留旧名称，避免破坏链接、现有安装和本地数据。
 
-## 本次移动端同步
+## 当前移动端实现
 
-本次 README 改写以 `1c180c2` 到 `eff6f3f` 的实际差异为依据。该范围共变更 69 个路径，新增 3,716 行、删除 513 行；其中 68 个路径位于 `mobile/`，另一个文件记录整合来源。桌面端产品代码没有变化。
+LetsVoice 已经是可运行的移动端实现，不再只是未来扩展。其核心成果是一条适合手机的“先保存、后生成”语音流程，并拥有独立的数据与原生运行时边界：
 
-本次同步带入以下移动端更新：
+- 录音与导入音频共用可选择语言的设备端转写；
+- 转写和音频先保存，之后才启动可选的 Structured Note 生成；
+- 本地推理由可取消的协调器串行执行，兼容 LLM 上下文由独立服务复用；
+- Structured Note 与 Knowledge 流式显示，Ask AI 只读取用户选定的本地笔记；
+- 原生录音、转换和 PCM 播放集成负责平台相关的音频行为；会话事件集成仅适用于 Apple 平台；
+- 笔记、任务、工作空间、搜索、PDF 导出、iPhone 任务通知与回收站均不依赖桌面端存储。
 
-- **可选择的转写语言。** 实时录音和音频导入共用一项本地保存的语言设置，支持自动识别、中文、英文、日文、韩文、西班牙文、法文、德文和葡萄牙文。Parakeet 仍只识别英文；Whisper 负责多语言转写，其中 Whisper Small 是中文转写的推荐选项。
-- **更可靠的录音收尾。** 完成录音时会等待队列中的最后一轮转写。对于不超过 45 秒的 Whisper 会话，如果仍保留 PCM 上下文，系统会尝试一次完整音频转写；失败时退回队列中的最后一个切片。同一会话始终使用开始时选定的 STT 模型。
-- **更稳妥的音频导入。** Android 文件提供器即使省略 M4A 的显示扩展名，只要提供受支持的音频 MIME 类型仍可识别。界面会显示准备与转写进度，并允许用户取消当前操作。
-- **流式本地 AI 输出。** Structured Note 和 Knowledge 会在生成期间显示实时局部预览。结构化提取优先使用一次完整生成，遇到长输出或无效输出时再进入自适应恢复；最终关键点与每个 Knowledge 分区最多保留 6 项。
-- **统一取消并复用运行时。** 排队中和执行中的 LLM/TTS 工作都可以取消，不会让调度器停在锁定状态；兼容任务之间可以复用共享模型上下文。界面也为导入音频转写、翻译、Knowledge 和模板建议提供取消入口。
-- **受资源与时限约束的 Ask AI 会话。** 移动端 Ask AI 使用 3,072 token 的上下文窗口，为回答保留 320 token，设置 90 秒完成期限，并在页面取得焦点时准备已经可用的本地 LLM 与 TTS 运行时。
-- **即时停止朗读。** iOS 与 Android 新增独立 PCM 播放模块，按下 Stop 后会直接停止并释放当前播放器。
-- **更完整的笔记与任务控制。** 搜索结果和笔记详情都可以置顶或取消置顶。任务提取会过滤更多否定或建议性语句，规范有原文依据的日期，并把已完成历史移出当前任务视图。
-- **更新模型建议。** 移动端目录现在包含 7 个可下载 LLM；Qwen2.5 1.5B Q4_K_M 被标记为中文和中英混合笔记的推荐选项。
-- **原生可靠性补丁。** 安装时会应用新增的 3 个锁定 patch，使 Whisper WAV 写入串行化、加强 Android PCM 录音资源释放，并缩短 Windows llama CMake 内部目标名；移动端安装流程现在共执行 7 个 postinstall patch。
-- **嵌套移动端工具。** 生成的 `artifacts/` 与 `outputs/` 不会进入 Git，移动端 ESLint 会从嵌套项目解析 TypeScript 与 Node 模块。
+模型获取仍需网络，耗时推理仍要求应用保持前台。两端没有内置同步，不共享数据库，也不宣称功能完全一致。
 
-移动端来源提交为 `0fd7903`，通过保留历史的 subtree merge `006dcf1` 进入本仓库。439 个已追踪移动端文件和可达的 111 个移动端提交都可以继续追溯。完整哈希与两项整合专用差异见[移动端整合说明](docs/mobile-integration.md)。
+当前移动端来源提交为 `0fd7903`，通过保留历史的 subtree merge `006dcf1` 进入本仓库，保留 439 个已追踪文件与 111 个可达移动端提交。详细来源与整合专用差异见[移动端整合说明](docs/mobile-integration.md)。
 
 ## 功能概览
 
@@ -96,12 +91,17 @@
 
 - 录制或导入最长两小时的 WAV、MP3、M4A、AAC 或 FLAC 音频，并直接在设备上转写。
 - 使用多语言 Whisper 或只支持英文的 Parakeet；显式指定语言可以改善短录音的识别准确度。
-- 在本地管理笔记与工作空间、搜索相关内容、置顶笔记和任务、安排任务通知，并从回收站恢复内容。
+- 在本地管理笔记与工作空间，对笔记标题和正文执行模糊文本搜索，置顶笔记和任务、在 iPhone 上安排本地任务通知，并从回收站恢复内容。
 - 流式生成 Structured Note 和模板化 Knowledge，翻译已保存的笔记分区，并按单篇笔记导出 PDF。
 - 针对本地笔记上下文使用 Ask AI，并通过下载到设备上的语音模型朗读。
 - 从 AI 页面下载 STT、LLM 和 TTS 模型；大文件操作会检查可用空间，并要求应用保持在前台。
 
 移动端界面目前以英文为主。多语言转写、内容处理和语音能力不代表界面已经完成多语言翻译。
+
+<p align="center">
+  <img src="docs/readme/mobile-recording-to-knowledge-readable.svg" width="100%" alt="LetsVoice 移动端从音频到本地知识的处理流程" />
+</p>
+<p align="center"><em>图 2：LetsVoice 先保存、后生成的移动端技术路线。</em></p>
 
 ## 产品界面
 
@@ -109,53 +109,48 @@
 
 ### SpeakSpace Local 桌面端
 
-<table>
-  <tr>
-    <td width="50%" align="center">
-      <img src="docs/readme/screenshots/desktop-studio.png" width="100%" alt="SpeakSpace Local Studio 笔记资料库、本地 AI 对话与录音控制界面" />
-      <br />
-      <sub><strong>Studio</strong> — 录音、关联笔记与本地问答</sub>
-    </td>
-    <td width="50%" align="center">
-      <img src="docs/readme/screenshots/desktop-dashboard.png" width="100%" alt="SpeakSpace Local 显示笔记指标、日历任务与笔记列表的仪表板" />
-      <br />
-      <sub><strong>仪表板</strong> — 笔记、指标与行动事项</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" align="center">
-      <img src="docs/readme/screenshots/desktop-workspaces.png" width="100%" alt="SpeakSpace Local 工作空间目录与本地笔记集合" />
-      <br />
-      <sub><strong>工作空间</strong> — 整理本地知识</sub>
-    </td>
-    <td width="50%" align="center">
-      <img src="docs/readme/screenshots/desktop-models.png" width="100%" alt="SpeakSpace Local 管理 STT、TTS、Embedding 与 LLM 运行时的界面" />
-      <br />
-      <sub><strong>模型管理</strong> — 已配置本地环境示例</sub>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs/readme/screenshots/desktop-studio-focus.png" width="100%" alt="SpeakSpace Local Studio 笔记资料库、本地 AI 对话与录音控制界面" />
+</p>
+<p align="center"><sub><strong>Studio</strong> — 录音、关联笔记与本地问答。</sub></p>
+
+<p align="center">
+  <img src="docs/readme/screenshots/desktop-dashboard-focus.png" width="100%" alt="SpeakSpace Local 显示笔记指标、日历任务与笔记列表的仪表板" />
+</p>
+<p align="center"><sub><strong>仪表板</strong> — 笔记、指标与行动事项。</sub></p>
+
+<p align="center">
+  <img src="docs/readme/screenshots/desktop-workspaces-focus.png" width="100%" alt="SpeakSpace Local 工作空间目录与本地笔记集合" />
+</p>
+<p align="center"><sub><strong>工作空间</strong> — 整理本地知识。</sub></p>
+
+<p align="center">
+  <img src="docs/readme/screenshots/desktop-models-focus.png" width="100%" alt="SpeakSpace Local 管理 STT、TTS、Embedding 与 LLM 运行时的界面" />
+</p>
+<p align="center"><sub><strong>模型管理</strong> — 已配置本地环境示例。</sub></p>
 
 ### LetsVoice 移动端
 
 <table>
   <tr>
-    <td width="25%" align="center">
+    <td width="50%" align="center">
       <img src="docs/readme/screenshots/mobile-home.png" width="100%" alt="LetsVoice 移动端录音、音频导入与本地任务首页" />
       <br />
       <sub><strong>首页</strong><br />录制或导入音频</sub>
     </td>
-    <td width="25%" align="center">
+    <td width="50%" align="center">
       <img src="docs/readme/screenshots/mobile-library.png" width="100%" alt="LetsVoice 移动端含搜索与筛选功能的笔记资料库" />
       <br />
       <sub><strong>资料库</strong><br />搜索笔记与工作空间</sub>
     </td>
-    <td width="25%" align="center">
+  </tr>
+  <tr>
+    <td width="50%" align="center">
       <img src="docs/readme/screenshots/mobile-note.png" width="100%" alt="LetsVoice 移动端显示转写分页的笔记详情" />
       <br />
       <sub><strong>笔记详情</strong><br />复核及处理转写</sub>
     </td>
-    <td width="25%" align="center">
+    <td width="50%" align="center">
       <img src="docs/readme/screenshots/mobile-ai.png" width="100%" alt="LetsVoice 移动端本地模型与知识模板管理界面" />
       <br />
       <sub><strong>AI 管理</strong><br />管理设备端模型</sub>
@@ -176,7 +171,7 @@
 <p align="center">
   <img src="docs/readme/data-model-readable.svg" width="100%" alt="SpeakSpace Local 桌面端 SQLite 关系模型" />
 </p>
-<p align="center"><em>图 2：桌面端 SQLite 关系模型。</em></p>
+<p align="center"><em>图 3：桌面端 SQLite 关系模型。</em></p>
 
 ## 架构
 
@@ -193,14 +188,19 @@
 <p align="center">
   <img src="docs/readme/system-architecture-readable-zh.svg" width="100%" alt="SpeakSpace Local 桌面端进程架构" />
 </p>
-<p align="center"><em>图 3：SpeakSpace Local 桌面端进程边界架构。</em></p>
+<p align="center"><em>图 4：SpeakSpace Local 桌面端进程边界架构。</em></p>
 
 <p align="center">
   <img src="docs/readme/tech-implementation-readable-zh.svg" width="100%" alt="SpeakSpace Local 桌面端技术实现" />
 </p>
-<p align="center"><em>图 4：当前桌面端技术实现概览。</em></p>
+<p align="center"><em>图 5：当前桌面端技术实现概览。</em></p>
 
-LetsVoice 使用独立的移动端调用链：Expo Router 页面调用应用服务，服务协调 Repository 与本地模型运行时，Repository 负责 Expo SQLite 持久化，自定义 Expo 模块处理原生音频。原生工程由已提交的 Expo 配置与 `mobile/modules/` 生成。
+LetsVoice 使用独立的移动端调用链。Expo Router 页面与 hooks 消费单例 `AppContainer` 提供的服务；`AppContainer` 是依赖组合根，而不是用户操作流程中的一步。应用服务排他调度本地推理，Repository 负责 Expo SQLite 持久化。原生音频由打过补丁的 PCM-stream 录音适配器、自定义转换/PCM 播放模块共同完成；会话事件集成仅用于 Apple 平台。原生工程由已提交的 Expo 配置与 `mobile/modules/` 生成。
+
+<p align="center">
+  <img src="docs/readme/mobile-architecture-readable.svg" width="100%" alt="LetsVoice 移动端分层架构与独立应用边界" />
+</p>
+<p align="center"><em>图 6：LetsVoice 移动端架构与资源所有权边界。</em></p>
 
 ```mermaid
 sequenceDiagram
@@ -239,7 +239,7 @@ sequenceDiagram
   UI-->>User: 文本或 TTS 输出
 ```
 
-<p align="center"><em>图 5：Agent 请求时序图。</em></p>
+<p align="center"><em>图 7：Agent 请求时序图。</em></p>
 
 ```mermaid
 flowchart TB
@@ -268,7 +268,19 @@ flowchart TB
   class Response,Delivery,History,Repeat,Knowledge result
 ```
 
-<p align="center"><em>图 6：有界 Agent 控制器工作流。</em></p>
+<p align="center"><em>图 8：有界 Agent 控制器工作流。</em></p>
+
+## 技术难点与已实现方案
+
+| 技术难点 | 已实现方案 | 当前边界 |
+| --- | --- | --- |
+| 避免网页界面直接接触桌面端高权限资源 | 类型化 preload 桥接、输入校验 IPC 与主进程领域服务 | Electron 隔离降低暴露面，但不等同于形式化安全证明 |
+| 移动端生成失败时仍保住录音 | 先保存 Note 与音频，再启动前台 Structured Note 生成 | 能保护采集内容，不能保证每个派生结果都可恢复 |
+| 避免移动端 STT、LLM、TTS 争抢原生资源 | FIFO `LocalLlmCoordinator` 负责取消与空闲清理；所需超时由具体服务设置；独立 `SharedLlmContextService` 负责兼容 LLM 上下文复用 | 耗时任务仍受前台状态与设备性能影响 |
+| 录音结束时不丢失队列中的音频 | 先清空切片队列；短时 Whisper 会话可执行有边界的完整音频回退 | 不提供说话人分离，也不保证所有语音场景准确 |
+| 立即停止移动端朗读 | iOS 与 Android 专用 PCM 播放器同步停止并清空播放 | 尚未通过真人听测确定声音质量 |
+| 让本地 AI 行为可控、可检查 | 限定上下文、注册工具、参数校验、去重与桌面 Agent 六步上限 | 检索命中不能自动保证 Agent 完成可靠 |
+| 在同一仓库保留两套独立演进的应用 | 保留历史的移动 subtree；两端各自维护清单、存储、测试与发布路径 | 两端不共享运行时，也不内置数据同步 |
 
 ## 仓库结构
 
@@ -391,32 +403,49 @@ LetsVoice 包含自定义原生模块，无法在 Expo Go 中完成全部验证�
 <p align="center">
   <img src="docs/testing/charts/panel-tts-speed.svg" width="100%" alt="TTS 速度评测面板" />
 </p>
-<p align="center"><em>图 7：各测试引擎的 TTS 合成速度。</em></p>
+<p align="center"><em>图 9：各测试引擎的 TTS 合成速度。</em></p>
 
 <p align="center">
   <img src="docs/testing/charts/panel-stt.svg" width="100%" alt="STT 真人录音评测面板" />
 </p>
-<p align="center"><em>图 8：基于真人录音的 STT 评测。</em></p>
+<p align="center"><em>图 10：基于真人录音的 STT 评测。</em></p>
 
 <p align="center">
   <img src="docs/testing/charts/llm-accuracy-vs-speed.svg" width="100%" alt="LLM 速度与准确率权衡" />
 </p>
-<p align="center"><em>图 9：本地 LLM 准确率与速度权衡。</em></p>
+<p align="center"><em>图 11：本地 LLM 准确率与速度权衡。</em></p>
 
 <p align="center">
   <img src="docs/testing/charts/panel-retrieval.svg" width="100%" alt="Embedding 混合检索评测面板" />
 </p>
-<p align="center"><em>图 10：基于 Embedding 的混合检索评测。</em></p>
+<p align="center"><em>图 12：基于 Embedding 的混合检索评测。</em></p>
 
 <p align="center">
   <img src="docs/testing/charts/panel-agent.svg" width="100%" alt="Agent 端到端评测面板" />
 </p>
-<p align="center"><em>图 11：Agent 端到端评测。</em></p>
+<p align="center"><em>图 13：Agent 端到端评测。</em></p>
 
 <p align="center">
   <img src="docs/testing/charts/jest-by-area.svg" width="100%" alt="按功能域划分的 Jest 回归测试" />
 </p>
-<p align="center"><em>图 12：按功能域划分的 Jest 回归覆盖。</em></p>
+<p align="center"><em>图 14：按功能域划分的 Jest 回归覆盖。</em></p>
+
+## 团队贡献
+
+下表依据桌面与移动两个仓库的 Git 历史合并整理，描述可追溯的工作范围，不用于比较相对工作量；提交数、merge 数、生成文件与代码行数均不等同于实际贡献。通过 subtree 导入的 111 个移动端提交只计算一次。当前桌面端克隆在 `1ee9103` 之前为浅历史，早期活动可能缺失。机器人身份已排除，AI co-author trailer 仍保留在底层 Git 历史中。
+
+本地证据只能高置信对应三组论文作者：`Fan` / `dhebhxh` 对应 Fan Lin，`Yanqing` / `Yanqing797` / `QiaoNimo` 对应 Yanqing Peng，`Wenlei Miao` 为同名身份。其余身份在团队确认前保持账号形式，避免错误映射。
+
+| Git identity | 由历史支持的贡献范围 | 代表提交 |
+| --- | --- | --- |
+| `37300112` | 桌面工作空间与服务重构、模型与运行时管理、音频导入、Whisper/Parakeet STT、本地对话、Structured Note/Knowledge、TTS、语义检索、有界 Agent、评测图表 | `c0be796`、`23a9f48`、`9351f52`、`e252250` |
+| `Greta` | 早期桌面录音、持久化与 IPC；移动端 SQLite/Repository、工作空间、STT、LLM/TTS 管理、Knowledge、任务、仪表板、流式输出、取消、播放与本地化 | `3d987a5`、`8f1d0ec`、`fab903a`、`d8ca504` |
+| `Jack8ot` | 桌面仪表板、界面整合、导出与多笔记流程；移动端本地 AI/日历改进、导入反馈和笔记任务控制；subtree 整合、工具链与仓库文档 | `06d4aad`、`47d8626`、`40cc114`、`00c7ada` |
+| `Fan` / `dhebhxh`（Fan Lin） | 桌面本地化与 Studio、运行时/模型/硬件管理、Agent/Ask AI/任务提取可靠性、并发模型操作、可重复评测、基准自动化和跨机器证据 | `11aff94`、`b8ff539`、`f308695`、`65bf353` |
+| `Yanqing` / `Yanqing797` / `QiaoNimo`（Yanqing Peng） | 桌面可选 TTS、TTS 基准、回收站与 Apple M2 证据；iOS 音频准备、本地 AI、真机/发布证据、SideStore、任务、搜索、TTS 恢复、通知、PDF 导出与安全控制 | `c9aa9f3`、`45c3e53`、`dc773e0`、`d10829c` |
+| `Wenlei Miao` | 桌面工作流及移动端 LLM、Knowledge、上传、仪表板、任务和模型推荐分支的合并；现有记录主要是 merge，不能据此认定每一行合入代码的作者 | `f328b05`、`3235552`、`bf8f3a3` |
+| `Gigi` | Ask AI 功能分支上的早期桌面后端/页面与响应式界面修复；浅克隆中的当前 `main` 无法单独确认这些提交的可达性 | `d3c7fa8`、`55eab6c`、`e7a903b` |
+| `Ranto11` / `Rannto11` | 桌面实时转写、语义摘要、音频上传和保存到工作空间；初始 iOS 设置与有依据的移动 Ask AI 兼容性 | `0aba234`、`39b4546`、`4dd6e0c` |
 
 ## 更新移动端来源
 

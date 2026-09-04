@@ -56,25 +56,20 @@ Each application has its own package manifest, lockfile, dependencies, data stor
 
 The mobile display name is **LetsVoice**. Technical identifiers such as the repository slug, bundle/package identifier, URL scheme, and database filename retain their earlier names to preserve links, installations, and local data.
 
-## Latest mobile integration
+## Current mobile implementation
 
-This README revision is based on the repository difference from `1c180c2` to `eff6f3f`. That range changes 69 paths with 3,716 insertions and 513 deletions: 68 paths are under `mobile/`, and the remaining path records integration provenance. Desktop product code is unchanged.
+LetsVoice is now a working mobile implementation rather than a future extension. Its main contribution is a phone-scale, save-first voice workflow with separate persistence and native runtime integration:
 
-The update brings these mobile changes into the combined repository:
+- recording and imported audio share language-aware on-device transcription;
+- a transcript and its audio are saved before optional Structured Note generation begins;
+- local inference is serialised through a cancellable coordinator, while a separate context service reuses compatible LLM contexts;
+- Structured Notes and Knowledge stream partial output, while Ask AI remains scoped to selected local notes;
+- native capture, conversion and PCM-playback integrations handle platform-sensitive audio behaviour, with session-event integration limited to Apple platforms; and
+- notes, tasks, workspaces, search, PDF export, iPhone task notifications and Trash remain independent of desktop storage.
 
-- **Language-aware transcription.** Live recording and imported audio share a persisted selector for Auto, Chinese, English, Japanese, Korean, Spanish, French, German, and Portuguese. Parakeet remains English-only; Whisper supports multilingual recognition, and Whisper Small is recommended for Chinese.
-- **More reliable recording finalisation.** Finishing waits for queued transcription work. For Whisper sessions up to 45 seconds, finalisation attempts one complete-audio pass when retained PCM context is available and falls back to the queued final slice if needed. A session keeps the STT model with which it started.
-- **Safer audio import.** Android providers can supply an M4A file without a display extension when they provide a supported audio MIME type. Preparation and transcription now show progress, and the active operation can be cancelled.
-- **Streaming local AI output.** Structured Notes and Knowledge show live partial previews while generation is active. Structured extraction tries one completion first and retains adaptive recovery for long or invalid output; final key points and Knowledge sections are capped at six items.
-- **Shared cancellation and runtime reuse.** Queued and active LLM/TTS work can be cancelled without leaving the scheduler locked, while shared model contexts remain reusable across compatible operations. The interface also exposes cancellation for imported STT, translation, Knowledge, and template proposals.
-- **Bounded Ask AI sessions.** Mobile Ask AI uses a 3,072-token context window, reserves 320 tokens for the answer, applies a 90-second completion deadline, and prepares available local LLM and TTS runtimes when the screen is focused.
-- **Immediate speech stop.** A dedicated iOS and Android PCM player owns playback so Stop can silence and release the active player directly.
-- **Better note and task controls.** Notes can be pinned from search or note detail. Task extraction rejects more negated or advisory clauses, normalises grounded dates, and keeps completed history out of the active task view.
-- **Updated model guidance.** The mobile catalog contains seven downloadable LLMs. Qwen2.5 1.5B Q4_K_M is the recommended option for Chinese and mixed-language notes.
-- **Native reliability patches.** Three new locked patch scripts are applied at install time; they make Whisper WAV writes serial, harden Android PCM capture, and avoid oversized Windows llama CMake target names. Mobile installation now applies seven postinstall patches in total.
-- **Nested mobile tooling.** Generated `artifacts/` and `outputs/` stay outside Git, and mobile ESLint resolves TypeScript and Node modules from the nested project.
+Model acquisition still needs network access and long inference operations remain foreground-bound. There is no built-in desktop/mobile synchronisation, shared database or claim of feature parity.
 
-The mobile source revision is `0fd7903`. It entered this repository through the history-preserving subtree merge `006dcf1`, so all 439 tracked mobile files and 111 reachable mobile commits remain inspectable. See [Mobile Integration](docs/mobile-integration.md) for full hashes and the two intentional integration-only differences.
+The current mobile source revision is `0fd7903`. It entered this repository through the history-preserving subtree merge `006dcf1`, retaining 439 tracked files and 111 reachable mobile commits. Detailed change provenance and integration-only differences are recorded in [Mobile Integration](docs/mobile-integration.md).
 
 ## Capabilities
 
@@ -96,12 +91,17 @@ The mobile source revision is `0fd7903`. It entered this repository through the 
 
 - Record or import up to two hours of WAV, MP3, M4A, AAC, or FLAC audio and transcribe it on the device.
 - Use multilingual Whisper or English-only Parakeet models, with an explicit language choice for better short-recording accuracy.
-- Organise local notes and workspaces, search related content, pin notes and tasks, schedule local task notifications, and restore items from Trash.
+- Organise local notes and workspaces, use fuzzy text search across note titles and content, pin notes and tasks, schedule local task notifications on iPhone, and restore items from Trash.
 - Generate streaming Structured Notes and template-based Knowledge, translate saved note sections, and export one note at a time to PDF.
 - Ask AI over local note context and listen with downloadable on-device voices.
 - Download STT, LLM, and TTS models from the AI screens; large operations check available storage and remain foreground-bound.
 
 The mobile UI is currently English. Multilingual transcription, content processing, and speech do not imply a translated interface.
+
+<p align="center">
+  <img src="docs/readme/mobile-recording-to-knowledge-readable.svg" width="100%" alt="LetsVoice mobile audio-to-local-knowledge pipeline" />
+</p>
+<p align="center"><em>Figure 2. LetsVoice save-first mobile processing route.</em></p>
 
 ## Product interface
 
@@ -109,53 +109,48 @@ These source-derived interface previews use illustrative local data and reproduc
 
 ### SpeakSpace Local desktop
 
-<table>
-  <tr>
-    <td width="50%" align="center">
-      <img src="docs/readme/screenshots/desktop-studio.png" width="100%" alt="SpeakSpace Local Studio with a note library, local AI conversation, and recording controls" />
-      <br />
-      <sub><strong>Studio</strong> — recording, linked notes, and local Q&amp;A</sub>
-    </td>
-    <td width="50%" align="center">
-      <img src="docs/readme/screenshots/desktop-dashboard.png" width="100%" alt="SpeakSpace Local dashboard with note metrics, calendar tasks, and a note list" />
-      <br />
-      <sub><strong>Dashboard</strong> — notes, metrics, and action items</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" align="center">
-      <img src="docs/readme/screenshots/desktop-workspaces.png" width="100%" alt="SpeakSpace Local workspace directory with local note collections" />
-      <br />
-      <sub><strong>Workspaces</strong> — organised local knowledge</sub>
-    </td>
-    <td width="50%" align="center">
-      <img src="docs/readme/screenshots/desktop-models.png" width="100%" alt="SpeakSpace Local model management for STT, TTS, embedding, and LLM runtimes" />
-      <br />
-      <sub><strong>Model management</strong> — an example configured local environment</sub>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs/readme/screenshots/desktop-studio-focus.png" width="100%" alt="SpeakSpace Local Studio with a note library, local AI conversation, and recording controls" />
+</p>
+<p align="center"><sub><strong>Studio</strong> — recording, linked notes, and local Q&amp;A.</sub></p>
+
+<p align="center">
+  <img src="docs/readme/screenshots/desktop-dashboard-focus.png" width="100%" alt="SpeakSpace Local dashboard with note metrics, calendar tasks, and a note list" />
+</p>
+<p align="center"><sub><strong>Dashboard</strong> — notes, metrics, and action items.</sub></p>
+
+<p align="center">
+  <img src="docs/readme/screenshots/desktop-workspaces-focus.png" width="100%" alt="SpeakSpace Local workspace directory with local note collections" />
+</p>
+<p align="center"><sub><strong>Workspaces</strong> — organised local knowledge.</sub></p>
+
+<p align="center">
+  <img src="docs/readme/screenshots/desktop-models-focus.png" width="100%" alt="SpeakSpace Local model management for STT, TTS, embedding, and LLM runtimes" />
+</p>
+<p align="center"><sub><strong>Model management</strong> — an example configured local environment.</sub></p>
 
 ### LetsVoice mobile
 
 <table>
   <tr>
-    <td width="25%" align="center">
+    <td width="50%" align="center">
       <img src="docs/readme/screenshots/mobile-home.png" width="100%" alt="LetsVoice mobile home screen with recording, audio import, and local tasks" />
       <br />
       <sub><strong>Home</strong><br />record or import audio</sub>
     </td>
-    <td width="25%" align="center">
+    <td width="50%" align="center">
       <img src="docs/readme/screenshots/mobile-library.png" width="100%" alt="LetsVoice mobile note library with search and filters" />
       <br />
       <sub><strong>Library</strong><br />search notes and workspaces</sub>
     </td>
-    <td width="25%" align="center">
+  </tr>
+  <tr>
+    <td width="50%" align="center">
       <img src="docs/readme/screenshots/mobile-note.png" width="100%" alt="LetsVoice mobile note detail showing the transcript tab" />
       <br />
       <sub><strong>Note detail</strong><br />review and process a transcript</sub>
     </td>
-    <td width="25%" align="center">
+    <td width="50%" align="center">
       <img src="docs/readme/screenshots/mobile-ai.png" width="100%" alt="LetsVoice mobile AI management screen for local models and knowledge templates" />
       <br />
       <sub><strong>AI management</strong><br />manage on-device models</sub>
@@ -176,7 +171,7 @@ User data remains on the device. Once the required models are installed, core ST
 <p align="center">
   <img src="docs/readme/data-model-readable.svg" width="100%" alt="SpeakSpace Local desktop SQLite relationship model" />
 </p>
-<p align="center"><em>Figure 2. Desktop SQLite relationship model.</em></p>
+<p align="center"><em>Figure 3. Desktop SQLite relationship model.</em></p>
 
 ## Architecture
 
@@ -193,14 +188,19 @@ The desktop application enforces an Electron process boundary:
 <p align="center">
   <img src="docs/readme/system-architecture-readable.svg" width="100%" alt="SpeakSpace Local desktop process architecture" />
 </p>
-<p align="center"><em>Figure 3. SpeakSpace Local desktop process-boundary architecture.</em></p>
+<p align="center"><em>Figure 4. SpeakSpace Local desktop process-boundary architecture.</em></p>
 
 <p align="center">
   <img src="docs/readme/tech-implementation-readable.svg" width="100%" alt="SpeakSpace Local technical implementation" />
 </p>
-<p align="center"><em>Figure 4. Current desktop technical implementation overview.</em></p>
+<p align="center"><em>Figure 5. Current desktop technical implementation overview.</em></p>
 
-LetsVoice follows a separate mobile path: Expo Router screens call application services, services coordinate repositories and local model runtimes, repositories own Expo SQLite persistence, and custom Expo modules provide native audio behaviour. Native projects are generated from the checked-in Expo configuration and `mobile/modules/`.
+LetsVoice follows a separate mobile path. Expo Router screens and hooks consume services from the singleton `AppContainer`, which is the dependency-composition root rather than a UI step. Application services schedule exclusive local inference, while repositories own Expo SQLite persistence. Native audio combines the patched PCM-stream capture adapter with custom converter and PCM-player modules; session-event integration is Apple-only. Native projects are generated from the checked-in Expo configuration and `mobile/modules/`.
+
+<p align="center">
+  <img src="docs/readme/mobile-architecture-readable.svg" width="100%" alt="LetsVoice layered mobile architecture and independent application boundary" />
+</p>
+<p align="center"><em>Figure 6. LetsVoice mobile architecture and ownership boundaries.</em></p>
 
 ```mermaid
 sequenceDiagram
@@ -239,7 +239,7 @@ sequenceDiagram
   UI-->>User: Text or TTS output
 ```
 
-<p align="center"><em>Figure 5. Agent request sequence.</em></p>
+<p align="center"><em>Figure 7. Agent request sequence.</em></p>
 
 ```mermaid
 flowchart TB
@@ -268,7 +268,19 @@ flowchart TB
   class Response,Delivery,History,Repeat,Knowledge result
 ```
 
-<p align="center"><em>Figure 6. Bounded Agent controller workflow.</em></p>
+<p align="center"><em>Figure 8. Bounded Agent controller workflow.</em></p>
+
+## Engineering challenges and achieved responses
+
+| Challenge | Implemented response | Current boundary |
+| --- | --- | --- |
+| Keep privileged desktop resources away from the web UI | Typed preload bridge, validated IPC modules and main-process domain services | Electron isolation reduces exposure; it is not a formal security proof |
+| Avoid losing a mobile recording when generation fails | Persist the Note and audio before starting foreground Structured Note generation | Recovery protects captured content, not every derived result |
+| Prevent mobile STT, LLM and TTS work from contending for native resources | FIFO `LocalLlmCoordinator` with cancellation and idle cleanup; service-level deadlines where configured; separate `SharedLlmContextService` for compatible LLM reuse | Long work remains foreground-bound and device-sensitive |
+| Finish mobile transcription without dropping queued audio | Drain queued slices and use a bounded full-audio Whisper fallback for short retained sessions | This does not provide speaker diarisation or universal accuracy |
+| Stop mobile TTS immediately | Dedicated iOS and Android PCM players synchronously stop and flush playback | Listening quality has not been established by a human panel |
+| Keep local AI actions inspectable and bounded | Scoped context, registered tools, argument checks, duplicate prevention and a six-step desktop Agent limit | Strong retrieval does not yet imply reliable Agent completion |
+| Preserve two independently evolved applications in one repository | History-preserving mobile subtree with separate manifests, stores, tests and release paths | The applications do not synchronise data or share runtimes |
 
 ## Repository layout
 
@@ -391,32 +403,49 @@ Mobile's 187 deterministic tests verify application behaviour and native patch c
 <p align="center">
   <img src="docs/testing/charts/panel-tts-speed.svg" width="100%" alt="TTS speed evaluation panel" />
 </p>
-<p align="center"><em>Figure 7. TTS synthesis speed across the tested engines.</em></p>
+<p align="center"><em>Figure 9. TTS synthesis speed across the tested engines.</em></p>
 
 <p align="center">
   <img src="docs/testing/charts/panel-stt.svg" width="100%" alt="STT human-recording evaluation panel" />
 </p>
-<p align="center"><em>Figure 8. STT evaluation on human recordings.</em></p>
+<p align="center"><em>Figure 10. STT evaluation on human recordings.</em></p>
 
 <p align="center">
   <img src="docs/testing/charts/llm-accuracy-vs-speed.svg" width="100%" alt="LLM speed and accuracy trade-off" />
 </p>
-<p align="center"><em>Figure 9. Local LLM accuracy and speed trade-off.</em></p>
+<p align="center"><em>Figure 11. Local LLM accuracy and speed trade-off.</em></p>
 
 <p align="center">
   <img src="docs/testing/charts/panel-retrieval.svg" width="100%" alt="Embedding-based hybrid retrieval evaluation panel" />
 </p>
-<p align="center"><em>Figure 10. Embedding-based hybrid retrieval evaluation.</em></p>
+<p align="center"><em>Figure 12. Embedding-based hybrid retrieval evaluation.</em></p>
 
 <p align="center">
   <img src="docs/testing/charts/panel-agent.svg" width="100%" alt="Agent end-to-end evaluation panel" />
 </p>
-<p align="center"><em>Figure 11. Agent end-to-end evaluation.</em></p>
+<p align="center"><em>Figure 13. Agent end-to-end evaluation.</em></p>
 
 <p align="center">
   <img src="docs/testing/charts/jest-by-area.svg" width="100%" alt="Jest regression tests by feature area" />
 </p>
-<p align="center"><em>Figure 12. Jest regression coverage by feature area.</em></p>
+<p align="center"><em>Figure 14. Jest regression coverage by feature area.</em></p>
+
+## Team contributions
+
+The areas below were reconstructed from the Git histories of the desktop and mobile repositories. They describe traceable activity, not relative workload: commit totals, merge counts, generated artefacts and lines changed are not contribution measures. The 111 mobile commits imported through the subtree are counted once. The available desktop clone is shallow before `1ee9103`, so earlier activity may be absent. Bot identities are excluded; AI co-author trailers remain visible in the underlying history.
+
+Only three mappings to dissertation authors are directly supported by local Git evidence: `Fan` / `dhebhxh` is Fan Lin, `Yanqing` / `Yanqing797` / `QiaoNimo` is Yanqing Peng, and `Wenlei Miao` is an exact-name match. Other identities remain account-based until the team confirms their mapping.
+
+| Git identity | Evidence-based contribution areas | Representative commits |
+| --- | --- | --- |
+| `37300112` | Desktop workspace and service refactoring; managed models and runtimes; audio import; Whisper and Parakeet STT; local conversations; Structured Notes and Knowledge; TTS; semantic retrieval; bounded Agent; evaluation diagrams | `c0be796`, `23a9f48`, `9351f52`, `e252250` |
+| `Greta` | Early desktop recording, persistence and IPC; mobile SQLite/repository foundations, workspaces, STT, LLM/TTS management, knowledge, tasks, dashboard, streaming, cancellation, playback and localisation | `3d987a5`, `8f1d0ec`, `fab903a`, `d8ca504` |
+| `Jack8ot` | Desktop dashboard, UI consolidation, export and multi-note workflows; mobile grounded-AI/calendar improvements, import feedback and note/task controls; subtree integration, tooling and repository documentation | `06d4aad`, `47d8626`, `40cc114`, `00c7ada` |
+| `Fan` / `dhebhxh` (Fan Lin) | Desktop localisation and Studio; runtime/model/hardware management; Agent, Ask AI and task-extraction reliability; concurrent model operations; reproducible evaluation, benchmark automation and cross-machine evidence | `11aff94`, `b8ff539`, `f308695`, `65bf353` |
+| `Yanqing` / `Yanqing797` / `QiaoNimo` (Yanqing Peng) | Desktop selectable TTS, TTS benchmark, Trash and Apple M2 evidence; iOS audio preparation, local AI, device/release evidence, SideStore packaging, tasks, search, TTS resume, notifications, PDF export and safety controls | `c9aa9f3`, `45c3e53`, `dc773e0`, `d10829c` |
+| `Wenlei Miao` | Feature-branch and pull-request integration across desktop workflow and mobile LLM, knowledge, upload, dashboard, task and model-recommendation streams; available records are merge commits and do not establish authorship of every merged line | `f328b05`, `3235552`, `bf8f3a3` |
+| `Gigi` | Initial desktop Ask AI backend/page work and responsive layout fixes recorded on the Ask AI feature branch; reachability from the shallow local copy of current `main` is not independently established | `d3c7fa8`, `55eab6c`, `e7a903b` |
+| `Ranto11` / `Rannto11` | Desktop real-time transcription, semantic summary, audio upload and workspace saving; initial iOS setup and grounded mobile Ask AI compatibility | `0aba234`, `39b4546`, `4dd6e0c` |
 
 ## Mobile source updates
 

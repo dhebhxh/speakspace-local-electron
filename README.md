@@ -400,6 +400,18 @@ Start with the [testing and evaluation index](docs/testing/README.md), then read
 
 Mobile's 187 deterministic tests verify application behaviour and native patch contracts. They do not measure model quality or replace device acceptance.
 
+### Evidence at a glance
+
+| Area | Current result | Evidence boundary |
+| --- | --- | --- |
+| STT | The scored read-speech aggregate for Whisper Small was 17.0% CER, with 0.45 RTF on the principal Windows machine. | 56 human recordings from one speaker; this is not an accent or population estimate. |
+| Task extraction | The 32-case holdout reached 90.2% F1 and a 65.6% strict case-pass rate. | Inputs were clean text, so the result does not include upstream ASR errors. |
+| Hybrid retrieval | Direct keyword and BGE-M3 retrieval reached 98.6% Recall@8 on 24 labelled queries over 80 notes. | The fixed corpus and queries are more controlled than natural workspace search. |
+| Bounded Agent | The 45-task holdout reached 40.0% strict completion and 94.8% fact coverage. | High fact coverage did not remove weaknesses in evidence use, refusal, or clarification. |
+| TTS | Kokoro, MeloTTS, and MOSS completed all 36 benchmark texts, with P95 RTF below 1 on the tested Windows machine. | The benchmark measures runtime and signal proxies, not human-perceived speech quality. |
+| Mobile | 187 deterministic tests passed for the integrated source, while the earlier iOS release supplies native device evidence. | The later source still needs renewed iPhone acceptance; Android native build and device evidence remain open. |
+| User evaluation | The bilingual desktop questionnaire is documented in the dissertation appendix. | No aggregate score is claimed here because an auditable anonymous primary-response export is not included in the repository. |
+
 <p align="center">
   <img src="docs/testing/charts/panel-tts-speed.svg" width="100%" alt="TTS speed evaluation panel" />
 </p>

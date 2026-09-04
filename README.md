@@ -451,13 +451,13 @@ Only three mappings to dissertation authors are directly supported by local Git 
 | Git identity | Evidence-based contribution areas | Representative commits |
 | --- | --- | --- |
 | `JIAYING WANG` | Desktop workspace and service refactoring; managed models and runtimes; audio import; Whisper and Parakeet STT; local conversations; Structured Notes and Knowledge; TTS; semantic retrieval; bounded Agent; evaluation diagrams | `c0be796`, `23a9f48`, `9351f52`, `e252250` |
-| `Greta` | Early desktop recording, persistence and IPC; mobile SQLite/repository foundations, workspaces, STT, LLM/TTS management, knowledge, tasks, dashboard, streaming, cancellation, playback, localisation and repository documentation | `3d987a5`, `8f1d0ec`, `fab903a`, `d8ca504`, `d472f39` |
 | `CHINWEI FENG` | Desktop dashboard, UI consolidation, export and multi-note workflows; mobile grounded-AI/calendar improvements, import feedback and note/task controls; subtree integration, tooling and repository documentation | `06d4aad`, `47d8626`, `40cc114`, `00c7ada` |
 | `Fan LIN` | Desktop localisation and Studio; runtime/model/hardware management; Agent, Ask AI and task-extraction reliability; concurrent model operations; reproducible evaluation, benchmark automation and cross-machine evidence | `11aff94`, `b8ff539`, `f308695`, `65bf353` |
-| `YANQING PENG` / `Yanqing797` / `QiaoNimo` (Yanqing Peng) | Desktop selectable TTS, TTS benchmark, Trash and Apple M2 evidence; iOS audio preparation, local AI, device/release evidence, SideStore packaging, tasks, search, TTS resume, notifications, PDF export and safety controls | `c9aa9f3`, `45c3e53`, `dc773e0`, `d10829c` |
+| `YANQING PENG` | Desktop selectable TTS, TTS benchmark, Trash and Apple M2 evidence; iOS audio preparation, local AI, device/release evidence, SideStore packaging, tasks, search, TTS resume, notifications, PDF export and safety controls | `c9aa9f3`, `45c3e53`, `dc773e0`, `d10829c` |
 | `WENLEI MIAO` | Feature-branch and pull-request integration across desktop workflow and mobile LLM, knowledge, upload, dashboard, task and model-recommendation streams; available records are merge commits and do not establish authorship of every merged line | `f328b05`, `3235552`, `bf8f3a3` |
-| `Gigi` | Initial desktop Ask AI backend/page work and responsive layout fixes recorded on the Ask AI feature branch; reachability from the shallow local copy of current `main` is not independently established | `d3c7fa8`, `55eab6c`, `e7a903b` |
+| `JINJIZHE` | Initial desktop Ask AI backend/page work and responsive layout fixes recorded on the Ask AI feature branch; reachability from the shallow local copy of current `main` is not independently established | `d3c7fa8`, `55eab6c`, `e7a903b` |
 | `JINGRAN ZHANG` / `Rannto11` | Desktop real-time transcription, semantic summary, audio upload and workspace saving; initial iOS setup and grounded mobile Ask AI compatibility | `0aba234`, `39b4546`, `4dd6e0c` |
+with help of Greta, About Early desktop recording, persistence and IPC; mobile SQLite/repository foundations, workspaces, STT, LLM/TTS management, knowledge, tasks, dashboard, streaming, cancellation, playback, localisation and repository documentation.
 
 ## Mobile source updates
 

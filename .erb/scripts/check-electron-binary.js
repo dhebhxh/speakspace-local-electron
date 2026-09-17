@@ -3,6 +3,7 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
+const { downloadArtifact } = require('@electron/get');
 
 /**
  * Electron 的二进制不随 npm 包发布，而是 postinstall 阶段单独下载 + 解压的。
@@ -18,13 +19,33 @@ const chalk = require('chalk');
 const electronPackagePath = path.dirname(
   require.resolve('electron/package.json'),
 );
+const electronPackageJsonPath = path.join(electronPackagePath, 'package.json');
+const electronPackage = require(electronPackageJsonPath);
 const distPath = path.join(electronPackagePath, 'dist');
+
+function getExpectedExecutableRelativePath() {
+  const platform = process.env.npm_config_platform || process.platform;
+  switch (platform) {
+    case 'mas':
+    case 'darwin':
+      return 'Electron.app/Contents/MacOS/Electron';
+    case 'freebsd':
+    case 'openbsd':
+    case 'linux':
+      return 'electron';
+    case 'win32':
+      return 'electron.exe';
+    default:
+      return null;
+  }
+}
 
 /** path.txt 记录了当前平台可执行文件在 dist 里的相对路径。 */
 function getExecutablePath() {
   const pathTxt = path.join(electronPackagePath, 'path.txt');
   if (!fs.existsSync(pathTxt)) return null;
   const relative = fs.readFileSync(pathTxt, 'utf8').trim();
+  if (relative !== getExpectedExecutableRelativePath()) return null;
   return relative ? path.join(distPath, relative) : null;
 }
 
@@ -32,7 +53,12 @@ function getExecutablePath() {
 function isBinaryComplete() {
   const executablePath = getExecutablePath();
   if (!executablePath || !fs.existsSync(executablePath)) return false;
-  if (!fs.existsSync(path.join(distPath, 'version'))) return false;
+  const versionPath = path.join(distPath, 'version');
+  if (!fs.existsSync(versionPath)) return false;
+  const installedVersion = fs.readFileSync(versionPath, 'utf8').trim();
+  if (installedVersion.replace(/^v/, '') !== electronPackage.version) {
+    return false;
+  }
   // 解压中断会留下 0 字节的占位文件，大小检查能识别出这种半成品。
   return fs.statSync(executablePath).size > 0;
 }
@@ -41,13 +67,18 @@ function isBinaryComplete() {
 function countRunningElectronProcesses() {
   try {
     if (process.platform === 'win32') {
+      const escapedDistPath = distPath.replace(/'/g, "''");
+      const command = [
+        `$target = [System.IO.Path]::GetFullPath('${escapedDistPath}')`,
+        '$comparison = [System.StringComparison]::OrdinalIgnoreCase',
+        '@(Get-Process -Name electron -ErrorAction SilentlyContinue | Where-Object { $_.Path -and [System.IO.Path]::GetFullPath($_.Path).StartsWith($target, $comparison) }).Count',
+      ].join('; ');
       const output = execFileSync(
-        'tasklist',
-        ['/FI', 'IMAGENAME eq electron.exe', '/FO', 'CSV', '/NH'],
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-Command', command],
         { encoding: 'utf8' },
       );
-      return output.split(/\r?\n/).filter((line) => line.includes('electron'))
-        .length;
+      return Number.parseInt(output.trim(), 10) || 0;
     }
     const output = execFileSync('pgrep', ['-f', distPath], {
       encoding: 'utf8',
@@ -59,7 +90,54 @@ function countRunningElectronProcesses() {
   }
 }
 
-function reinstallElectron() {
+/**
+ * extract-zip@2 can finish without extracting the complete archive on newer
+ * Node.js releases. Electron's installer then exits successfully even though
+ * path.txt and electron.exe are absent. Use Windows' built-in tar as a fallback
+ * so `npm start` can repair that half-installed state by itself.
+ */
+async function extractElectronWithSystemTar() {
+  const platform = process.env.npm_config_platform || process.platform;
+  const arch = process.env.npm_config_arch || process.arch;
+
+  if (platform !== 'win32') return;
+
+  console.log(
+    chalk.yellow(
+      'Electron 标准解压未完成，正在使用 Windows 内置解压工具重试… / Retrying with the Windows extractor…',
+    ),
+  );
+
+  const useRemoteChecksums =
+    process.env.electron_use_remote_checksums ??
+    process.env.npm_config_electron_use_remote_checksums;
+  const archivePath = await downloadArtifact({
+    version: electronPackage.version,
+    artifactName: 'electron',
+    force: process.env.force_no_cache === 'true',
+    cacheRoot: process.env.electron_config_cache,
+    checksums: useRemoteChecksums
+      ? undefined
+      : require(path.join(electronPackagePath, 'checksums.json')),
+    platform,
+    arch,
+  });
+
+  fs.rmSync(distPath, { recursive: true, force: true });
+  fs.mkdirSync(distPath, { recursive: true });
+  execFileSync('tar', ['-xf', archivePath, '-C', distPath], {
+    stdio: 'inherit',
+  });
+
+  if (fs.existsSync(path.join(distPath, 'electron.exe'))) {
+    fs.writeFileSync(
+      path.join(electronPackagePath, 'path.txt'),
+      'electron.exe',
+    );
+  }
+}
+
+async function reinstallElectron() {
   console.log(
     chalk.yellow(
       'Electron 可执行文件缺失，正在重新解压运行时… / Electron binary missing, reinstalling…',
@@ -74,10 +152,22 @@ function reinstallElectron() {
       chalk.yellow(`无法清空 ${distPath}（${error.code}），将尝试直接补齐。`),
     );
   }
-  execFileSync(process.execPath, ['install.js'], {
-    cwd: electronPackagePath,
-    stdio: 'inherit',
-  });
+  try {
+    execFileSync(process.execPath, ['install.js'], {
+      cwd: electronPackagePath,
+      stdio: 'inherit',
+    });
+  } catch (error) {
+    console.warn(
+      chalk.yellow(
+        `Electron 标准安装程序失败（${error.message}），尝试备用方式。`,
+      ),
+    );
+  }
+
+  if (!isBinaryComplete()) {
+    await extractElectronWithSystemTar();
+  }
 }
 
 function reportFailure(runningProcessCount) {
@@ -94,15 +184,17 @@ function reportFailure(runningProcessCount) {
       ` 检测到 ${runningProcessCount} 个 Electron 进程仍在运行，正锁住 dist 目录。 `,
       ` ${runningProcessCount} Electron process(es) are running and locking dist. `,
       '',
-      ' 修复方式 / Fix: 先关掉所有开发实例，再重新安装 ',
+      ' 修复方式 / Fix: 先关闭这个项目的开发窗口，再重试 ',
       process.platform === 'win32'
-        ? '   taskkill /F /IM electron.exe /T && npm install '
-        : '   pkill -f node_modules/electron/dist && npm install ',
+        ? '   npm start '
+        : '   pkill -f node_modules/electron/dist && npm start ',
     );
   } else {
     lines.push(
       ' 修复方式 / Fix: ',
-      '   rm -rf node_modules/electron && npm install ',
+      process.platform === 'win32'
+        ? '   Remove-Item -LiteralPath node_modules\\electron -Recurse -Force; npm start '
+        : '   rm -rf node_modules/electron && npm start ',
       ' 网络受限时可先设置镜像 / Behind a proxy set a mirror first: ',
       '   npm config set electron_mirror https://npmmirror.com/mirrors/electron/ ',
     );
@@ -112,7 +204,7 @@ function reportFailure(runningProcessCount) {
   console.error(chalk.whiteBright.bgRed.bold(lines.join('\n')));
 }
 
-function main() {
+async function main() {
   if (process.env.ELECTRON_SKIP_BINARY_DOWNLOAD) {
     console.log(
       chalk.yellow(
@@ -127,7 +219,7 @@ function main() {
   const runningProcessCount = countRunningElectronProcesses();
   if (runningProcessCount === 0) {
     try {
-      reinstallElectron();
+      await reinstallElectron();
     } catch (error) {
       console.error(chalk.red('Electron 安装脚本执行失败：'), error.message);
     }
@@ -144,4 +236,7 @@ function main() {
   process.exit(1);
 }
 
-main();
+main().catch((error) => {
+  console.error(chalk.red('Electron 自检失败：'), error.message);
+  process.exit(1);
+});
